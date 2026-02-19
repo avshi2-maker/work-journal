@@ -152,41 +152,68 @@ function initializeVoiceRecognition() {
         voiceRecognition.lang = 'he-IL'; // Hebrew
         voiceRecognition.continuous = true;
         voiceRecognition.interimResults = true;
+        voiceRecognition.maxAlternatives = 1;
+        
+        voiceRecognition.onstart = () => {
+            console.log('🎤 Voice started - speak now!');
+        };
         
         voiceRecognition.onresult = (event) => {
+            console.log('📝 Got voice result:', event);
             let finalTranscript = '';
-            let interimTranscript = '';
             
             for (let i = event.resultIndex; i < event.results.length; i++) {
                 const transcript = event.results[i][0].transcript;
+                console.log('Transcript:', transcript, 'Final:', event.results[i].isFinal);
+                
                 if (event.results[i].isFinal) {
                     finalTranscript += transcript + ' ';
-                } else {
-                    interimTranscript += transcript;
                 }
             }
             
             if (currentVoiceTarget && finalTranscript) {
+                console.log('✅ Adding text:', finalTranscript);
                 const textarea = document.getElementById(currentVoiceTarget);
-                textarea.value += finalTranscript;
+                if (textarea) {
+                    textarea.value += finalTranscript;
+                    console.log('✅ Text added to:', currentVoiceTarget);
+                }
             }
         };
         
         voiceRecognition.onerror = (event) => {
-            console.error('Voice error:', event.error);
-            stopVoiceRecording();
+            console.error('❌ Voice error:', event.error);
+            
             if (event.error === 'no-speech') {
-                alert('לא זוהה דיבור. נסה שוב.');
+                alert('לא זוהה דיבור. נסה שוב ודבר בבירור.');
+            } else if (event.error === 'not-allowed') {
+                alert('נא לאשר גישה למיקרופון בהגדרות הדפדפן.');
+            } else {
+                alert('שגיאה בהקלטה: ' + event.error);
             }
+            
+            stopVoiceRecording();
         };
         
         voiceRecognition.onend = () => {
-            stopVoiceRecording();
+            console.log('🎤 Voice ended');
+            // Don't stop automatically - user should click stop
+            if (document.getElementById('voiceIndicator').style.display === 'flex') {
+                // Still recording, restart
+                try {
+                    console.log('🔄 Restarting recognition...');
+                    voiceRecognition.start();
+                } catch (error) {
+                    console.log('⏹️ Recognition ended');
+                    stopVoiceRecording();
+                }
+            }
         };
         
         console.log('✅ Voice recognition ready');
     } else {
         console.warn('⚠️ Voice recognition not supported');
+        alert('הקלטה קולית לא נתמכת בדפדפן זה. השתמש ב-Chrome.');
     }
 }
 
