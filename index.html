@@ -60,6 +60,8 @@
             padding: 25px;
             margin-bottom: 15px;
             box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+            position: relative;
+            pointer-events: auto;
         }
         
         .section-title {
@@ -231,6 +233,9 @@
             grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
             gap: 12px;
             margin-top: 20px;
+            position: relative;
+            z-index: 10;
+            pointer-events: auto;
         }
         
         .btn {
@@ -245,10 +250,18 @@
             align-items: center;
             justify-content: center;
             gap: 8px;
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            user-select: none;
+            touch-action: manipulation;
+            -webkit-tap-highlight-color: rgba(0,0,0,0.1);
+            position: relative;
+            z-index: 10;
         }
         
         .btn:active {
-            transform: scale(0.98);
+            transform: scale(0.95);
+            opacity: 0.8;
         }
         
         .btn-primary {
@@ -257,14 +270,28 @@
             box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
         }
         
+        .btn-primary:active {
+            box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+        }
+        
         .btn-success {
             background: #27ae60;
             color: white;
+            box-shadow: 0 4px 15px rgba(39, 174, 96, 0.3);
+        }
+        
+        .btn-success:active {
+            box-shadow: 0 2px 8px rgba(39, 174, 96, 0.2);
         }
         
         .btn-whatsapp {
             background: #25D366;
             color: white;
+            box-shadow: 0 4px 15px rgba(37, 211, 102, 0.3);
+        }
+        
+        .btn-whatsapp:active {
+            box-shadow: 0 2px 8px rgba(37, 211, 102, 0.2);
         }
         
         /* Owner View Styles */
@@ -605,13 +632,13 @@
     <!-- Actions -->
     <div class="section">
         <div class="action-buttons">
-            <button class="btn btn-primary" onclick="generateShareLink()">
+            <button class="btn btn-primary" id="generateLinkBtn">
                 <span>🔗</span> צור קישור לשיתוף
             </button>
-            <button class="btn btn-whatsapp" onclick="shareViaWhatsApp()">
+            <button class="btn btn-whatsapp" id="whatsappBtn">
                 <span>📱</span> שלח WhatsApp
             </button>
-            <button class="btn btn-success" onclick="saveLocally()">
+            <button class="btn btn-success" id="saveBtn">
                 <span>💾</span> שמור מקומי
             </button>
         </div>
@@ -750,6 +777,61 @@ function initializeApp() {
         // Manager view - fill report
         showManagerView();
     }
+    
+    // Add mobile-friendly event listeners for action buttons
+    addMobileEventListeners();
+}
+
+function addMobileEventListeners() {
+    // Helper function to add mobile-friendly event listener
+    function addMobileClick(elementId, handler) {
+        const element = document.getElementById(elementId);
+        if (!element) return;
+        
+        // Remove any existing listeners
+        const newElement = element.cloneNode(true);
+        element.parentNode.replaceChild(newElement, element);
+        
+        let touchStarted = false;
+        
+        // Touch events (for mobile)
+        newElement.addEventListener('touchstart', function(e) {
+            touchStarted = true;
+            newElement.style.transform = 'scale(0.95)';
+            newElement.style.opacity = '0.8';
+        }, { passive: true });
+        
+        newElement.addEventListener('touchend', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            newElement.style.transform = '';
+            newElement.style.opacity = '';
+            if (touchStarted) {
+                setTimeout(() => handler(), 100);
+            }
+            touchStarted = false;
+        });
+        
+        newElement.addEventListener('touchcancel', function(e) {
+            touchStarted = false;
+            newElement.style.transform = '';
+            newElement.style.opacity = '';
+        });
+        
+        // Click event (for desktop - will not fire if touch events already handled)
+        newElement.addEventListener('click', function(e) {
+            if (!touchStarted) {
+                e.preventDefault();
+                e.stopPropagation();
+                handler();
+            }
+        });
+    }
+    
+    // Add listeners to all buttons
+    addMobileClick('generateLinkBtn', generateShareLink);
+    addMobileClick('whatsappBtn', shareViaWhatsApp);
+    addMobileClick('saveBtn', saveLocally);
 }
 
 function showManagerView() {
