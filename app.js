@@ -1,18 +1,19 @@
 // ============================================
-// STONHARD WORK JOURNAL - APPLICATION (FIXED)
+// STONHARD WORK JOURNAL - ENHANCED VERSION
+// Owner Photos + Voice Input + Print
 // ============================================
 
 // Supabase Configuration
 const SUPABASE_URL = 'https://vmcipofovheztbjmhwsl.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZtY2lwb2ZvdmhlenRiam1od3NsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDA3NzQxMDQsImV4cCI6MjA1NjM1MDEwNH0.sb_publishable_bwS1W5RsvS-KSaGkRop7kg_xJqUDcuH';
 
-// Initialize Supabase client
+// Initialize Supabase
 let supabaseClient;
 try {
     supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-    console.log('Supabase initialized successfully');
+    console.log('✅ Supabase initialized');
 } catch (error) {
-    console.error('Supabase initialization error:', error);
+    console.error('❌ Supabase error:', error);
 }
 
 // Global State
@@ -20,6 +21,9 @@ let currentReport = null;
 let signaturePad = null;
 let ownerSignaturePad = null;
 let selectedPhotos = [];
+let selectedOwnerPhotos = [];
+let voiceRecognition = null;
+let currentVoiceTarget = null;
 
 // ============================================
 // INITIALIZATION
@@ -28,17 +32,17 @@ let selectedPhotos = [];
 document.addEventListener('DOMContentLoaded', () => {
     console.log('App initializing...');
     
-    // Check if viewing a report (owner view) or creating one (manager view)
     const urlParams = new URLSearchParams(window.location.search);
     const token = urlParams.get('token');
     
     if (token) {
-        // Owner view - load report
         loadReportForOwner(token);
     } else {
-        // Manager view - initialize form
         initializeManagerView();
     }
+    
+    // Initialize voice recognition
+    initializeVoiceRecognition();
 });
 
 // ============================================
@@ -51,25 +55,174 @@ function initializeManagerView() {
     document.getElementById('managerView').style.display = 'block';
     document.getElementById('ownerView').style.display = 'none';
     
-    // Set default date
-    const today = new Date().toISOString().split('T')[0];
-    document.getElementById('reportDate').value = today;
+    // Set default dates
+    const today = new Date();
+    document.getElementById('reportDate').valueAsDate = today;
     
-    // Initialize signature pad
+    // Set tomorrow's date
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    document.getElementById('tomorrowDate').valueAsDate = tomorrow;
+    
+    // Initialize signature
     initSignaturePad('signatureCanvas');
     
     // Add initial rows
     addWorkerRow();
     addActivityRow();
     
-    // Photo handler
+    // Photo handlers
     document.getElementById('photoInput').addEventListener('change', handlePhotoSelection);
     
     // Button handlers
     document.getElementById('saveBtn').addEventListener('click', saveDraft);
     document.getElementById('sendBtn').addEventListener('click', sendReport);
     
-    console.log('Manager view initialized');
+    // Voice button handlers
+    document.getElementById('voiceNotesBtn').addEventListener('click', () => {
+        startVoiceRecording('generalNotes');
+    });
+    
+    document.getElementById('voiceTomorrowBtn').addEventListener('click', () => {
+        startVoiceRecording('tomorrowPlan');
+    });
+    
+    // Auto-calculate work hours
+    document.getElementById('startTime').addEventListener('change', calculateWorkHours);
+    document.getElementById('endTime').addEventListener('change', calculateWorkHours);
+    document.getElementById('breakHours').addEventListener('input', calculateWorkHours);
+    
+    console.log('✅ Manager view ready');
+}
+
+// ============================================
+// AUTO-CALCULATIONS
+// ============================================
+
+function calculateWorkHours() {
+    const startTime = document.getElementById('startTime').value;
+    const endTime = document.getElementById('endTime').value;
+    const breakHours = parseFloat(document.getElementById('breakHours').value) || 0;
+    
+    if (!startTime || !endTime) {
+        document.getElementById('totalWorkHours').textContent = '0';
+        return;
+    }
+    
+    // Parse times
+    const [startHour, startMin] = startTime.split(':').map(Number);
+    const [endHour, endMin] = endTime.split(':').map(Number);
+    
+    // Calculate total minutes
+    let totalMinutes = (endHour * 60 + endMin) - (startHour * 60 + startMin);
+    
+    // Handle overnight shifts
+    if (totalMinutes < 0) {
+        totalMinutes += 24 * 60;
+    }
+    
+    // Convert to hours and subtract breaks
+    const totalHours = (totalMinutes / 60) - breakHours;
+    
+    // Update display
+    document.getElementById('totalWorkHours').textContent = totalHours.toFixed(1);
+}
+
+function calculateTotalWorkerHours() {
+    let total = 0;
+    
+    document.querySelectorAll('#workersContainer .form-row').forEach(row => {
+        const count = parseInt(row.querySelector('.worker-count').value) || 0;
+        const hours = parseFloat(row.querySelector('.worker-hours').value) || 0;
+        total += count * hours;
+    });
+    
+    document.getElementById('totalWorkerHours').textContent = total.toFixed(1);
+}
+
+// ============================================
+// VOICE RECOGNITION
+// ============================================
+
+function initializeVoiceRecognition() {
+    if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        voiceRecognition = new SpeechRecognition();
+        
+        voiceRecognition.lang = 'he-IL'; // Hebrew
+        voiceRecognition.continuous = true;
+        voiceRecognition.interimResults = true;
+        
+        voiceRecognition.onresult = (event) => {
+            let finalTranscript = '';
+            let interimTranscript = '';
+            
+            for (let i = event.resultIndex; i < event.results.length; i++) {
+                const transcript = event.results[i][0].transcript;
+                if (event.results[i].isFinal) {
+                    finalTranscript += transcript + ' ';
+                } else {
+                    interimTranscript += transcript;
+                }
+            }
+            
+            if (currentVoiceTarget && finalTranscript) {
+                const textarea = document.getElementById(currentVoiceTarget);
+                textarea.value += finalTranscript;
+            }
+        };
+        
+        voiceRecognition.onerror = (event) => {
+            console.error('Voice error:', event.error);
+            stopVoiceRecording();
+            if (event.error === 'no-speech') {
+                alert('לא זוהה דיבור. נסה שוב.');
+            }
+        };
+        
+        voiceRecognition.onend = () => {
+            stopVoiceRecording();
+        };
+        
+        console.log('✅ Voice recognition ready');
+    } else {
+        console.warn('⚠️ Voice recognition not supported');
+    }
+}
+
+function startVoiceRecording(targetId) {
+    if (!voiceRecognition) {
+        alert('הקלטה קולית לא נתמכת בדפדפן זה');
+        return;
+    }
+    
+    currentVoiceTarget = targetId;
+    
+    // Show indicator
+    document.getElementById('voiceIndicator').style.display = 'flex';
+    
+    // Start recognition
+    try {
+        voiceRecognition.start();
+        console.log('🎤 Recording started');
+    } catch (error) {
+        console.error('Start error:', error);
+        stopVoiceRecording();
+    }
+}
+
+function stopVoiceRecording() {
+    if (voiceRecognition) {
+        try {
+            voiceRecognition.stop();
+        } catch (error) {
+            console.error('Stop error:', error);
+        }
+    }
+    
+    document.getElementById('voiceIndicator').style.display = 'none';
+    currentVoiceTarget = null;
+    console.log('⏹️ Recording stopped');
 }
 
 // ============================================
@@ -78,10 +231,7 @@ function initializeManagerView() {
 
 function initSignaturePad(canvasId) {
     const canvas = document.getElementById(canvasId);
-    if (!canvas) {
-        console.error('Canvas not found:', canvasId);
-        return;
-    }
+    if (!canvas) return;
     
     const ctx = canvas.getContext('2d');
     canvas.width = 400;
@@ -160,12 +310,8 @@ function clearOwnerSignature() {
 // ============================================
 
 function addWorkerRow() {
-    console.log('Adding worker row');
     const container = document.getElementById('workersContainer');
-    if (!container) {
-        console.error('Workers container not found');
-        return;
-    }
+    if (!container) return;
     
     const row = document.createElement('div');
     row.className = 'form-row';
@@ -175,15 +321,18 @@ function addWorkerRow() {
         <input type="number" placeholder="שעות" step="0.5" class="worker-hours" value="8">
     `;
     container.appendChild(row);
+    
+    // Add event listeners for auto-calculation
+    row.querySelector('.worker-count').addEventListener('input', calculateTotalWorkerHours);
+    row.querySelector('.worker-hours').addEventListener('input', calculateTotalWorkerHours);
+    
+    // Calculate initial total
+    calculateTotalWorkerHours();
 }
 
 function addActivityRow() {
-    console.log('Adding activity row');
     const container = document.getElementById('activitiesContainer');
-    if (!container) {
-        console.error('Activities container not found');
-        return;
-    }
+    if (!container) return;
     
     const row = document.createElement('div');
     row.className = 'form-row';
@@ -196,11 +345,10 @@ function addActivityRow() {
 }
 
 // ============================================
-// PHOTO HANDLING
+// PHOTO HANDLING - MANAGER
 // ============================================
 
 function handlePhotoSelection(e) {
-    console.log('Photos selected');
     const files = Array.from(e.target.files);
     selectedPhotos = [...selectedPhotos, ...files];
     displayPhotoPreview();
@@ -233,14 +381,48 @@ function removePhoto(index) {
 }
 
 // ============================================
+// PHOTO HANDLING - OWNER
+// ============================================
+
+function handleOwnerPhotoSelection(e) {
+    const files = Array.from(e.target.files);
+    selectedOwnerPhotos = [...selectedOwnerPhotos, ...files];
+    displayOwnerPhotoPreview();
+}
+
+function displayOwnerPhotoPreview() {
+    const preview = document.getElementById('ownerPhotoPreview');
+    if (!preview) return;
+    
+    preview.innerHTML = '';
+    
+    selectedOwnerPhotos.forEach((file, index) => {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const div = document.createElement('div');
+            div.className = 'photo-item';
+            div.innerHTML = `
+                <img src="${e.target.result}" alt="Owner Photo">
+                <button class="remove-photo" onclick="removeOwnerPhoto(${index})">×</button>
+            `;
+            preview.appendChild(div);
+        };
+        reader.readAsDataURL(file);
+    });
+}
+
+function removeOwnerPhoto(index) {
+    selectedOwnerPhotos.splice(index, 1);
+    displayOwnerPhotoPreview();
+}
+
+// ============================================
 // COLLECT FORM DATA
 // ============================================
 
 function collectFormData() {
-    // Workers
     const workers = [];
-    const workerRows = document.querySelectorAll('#workersContainer .form-row');
-    workerRows.forEach(row => {
+    document.querySelectorAll('#workersContainer .form-row').forEach(row => {
         const role = row.querySelector('.worker-role').value;
         const count = row.querySelector('.worker-count').value;
         const hours = row.querySelector('.worker-hours').value;
@@ -253,10 +435,8 @@ function collectFormData() {
         }
     });
     
-    // Activities
     const activities = [];
-    const activityRows = document.querySelectorAll('#activitiesContainer .form-row');
-    activityRows.forEach(row => {
+    document.querySelectorAll('#activitiesContainer .form-row').forEach(row => {
         const desc = row.querySelector('.activity-desc').value;
         const location = row.querySelector('.activity-location').value;
         const quantity = row.querySelector('.activity-quantity').value;
@@ -265,15 +445,32 @@ function collectFormData() {
         }
     });
     
+    // Calculate total work hours
+    const startTime = document.getElementById('startTime').value;
+    const endTime = document.getElementById('endTime').value;
+    const breakHours = parseFloat(document.getElementById('breakHours').value) || 0;
+    let totalWorkHours = 0;
+    
+    if (startTime && endTime) {
+        const [startHour, startMin] = startTime.split(':').map(Number);
+        const [endHour, endMin] = endTime.split(':').map(Number);
+        let totalMinutes = (endHour * 60 + endMin) - (startHour * 60 + startMin);
+        if (totalMinutes < 0) totalMinutes += 24 * 60;
+        totalWorkHours = (totalMinutes / 60) - breakHours;
+    }
+    
     return {
         project_name: document.getElementById('projectName').value || 'ללא שם',
         report_date: document.getElementById('reportDate').value,
         manager_name: 'אבשי ספיר',
         weather: document.getElementById('weather').value,
-        start_time: document.getElementById('startTime').value || null,
-        end_time: document.getElementById('endTime').value || null,
-        break_hours: parseFloat(document.getElementById('breakHours').value) || 0,
+        start_time: startTime || null,
+        end_time: endTime || null,
+        break_hours: breakHours,
+        total_work_hours: totalWorkHours,
         general_notes: document.getElementById('generalNotes').value,
+        tomorrow_date: document.getElementById('tomorrowDate').value,
+        tomorrow_plan: document.getElementById('tomorrowPlan').value,
         workers,
         activities
     };
@@ -284,23 +481,19 @@ function collectFormData() {
 // ============================================
 
 async function saveDraft() {
-    console.log('Saving draft...');
     showLoading(true);
     
     try {
         const data = collectFormData();
         
-        // Validate
         if (!data.project_name) {
             alert('❌ נא למלא שם פרוייקט');
             showLoading(false);
             return;
         }
         
-        // Upload signature
         const signaturePath = await uploadSignature(signaturePad, 'manager');
         
-        // Insert report
         const { data: report, error } = await supabaseClient
             .from('reports')
             .insert({
@@ -313,53 +506,44 @@ async function saveDraft() {
         
         if (error) throw error;
         
-        console.log('Report saved:', report);
-        
-        // Insert workers
         if (data.workers.length > 0) {
             await supabaseClient.from('workers').insert(
                 data.workers.map(w => ({ ...w, report_id: report.id }))
             );
         }
         
-        // Insert activities
         if (data.activities.length > 0) {
             await supabaseClient.from('activities').insert(
                 data.activities.map(a => ({ ...a, report_id: report.id }))
             );
         }
         
-        // Upload photos
-        await uploadPhotos(report.id);
+        await uploadPhotos(report.id, selectedPhotos, 'manager');
         
         alert('✅ טיוטה נשמרה!');
         
     } catch (error) {
-        console.error('Save error:', error);
-        alert('❌ שגיאה בשמירה: ' + error.message);
+        console.error('Error:', error);
+        alert('❌ שגיאה: ' + error.message);
     } finally {
         showLoading(false);
     }
 }
 
 async function sendReport() {
-    console.log('Sending report...');
     showLoading(true);
     
     try {
         const data = collectFormData();
         
-        // Validate
         if (!data.project_name) {
             alert('❌ נא למלא שם פרוייקט');
             showLoading(false);
             return;
         }
         
-        // Upload signature
         const signaturePath = await uploadSignature(signaturePad, 'manager');
         
-        // Insert report
         const { data: report, error } = await supabaseClient
             .from('reports')
             .insert({
@@ -373,33 +557,24 @@ async function sendReport() {
         
         if (error) throw error;
         
-        console.log('Report sent:', report);
-        
-        // Insert workers
         if (data.workers.length > 0) {
             await supabaseClient.from('workers').insert(
                 data.workers.map(w => ({ ...w, report_id: report.id }))
             );
         }
         
-        // Insert activities
         if (data.activities.length > 0) {
             await supabaseClient.from('activities').insert(
                 data.activities.map(a => ({ ...a, report_id: report.id }))
             );
         }
         
-        // Upload photos
-        await uploadPhotos(report.id);
+        await uploadPhotos(report.id, selectedPhotos, 'manager');
         
-        // Generate short URL
         const shareURL = `${window.location.origin}${window.location.pathname}?token=${report.share_token}`;
         
-        console.log('Share URL:', shareURL);
-        
-        // Open WhatsApp
         const message = `🔒 *דוח עבודה יומי מאובטח*\n\n` +
-            `👷 *מנהל פרויקט:* אבשי ספיר\n` +
+            `👷 *מנהל:* אבשי ספיר\n` +
             `🏗️ *פרוייקט:* ${data.project_name}\n` +
             `📅 *תאריך:* ${data.report_date}\n\n` +
             `✅ *לחץ לאישור:*\n${shareURL}\n\n` +
@@ -410,8 +585,8 @@ async function sendReport() {
         alert('✅ דוח נשלח!\n\nקישור: ' + shareURL);
         
     } catch (error) {
-        console.error('Send error:', error);
-        alert('❌ שגיאה בשליחה: ' + error.message);
+        console.error('Error:', error);
+        alert('❌ שגיאה: ' + error.message);
     } finally {
         showLoading(false);
     }
@@ -422,10 +597,7 @@ async function sendReport() {
 // ============================================
 
 async function uploadSignature(canvas, type) {
-    if (!canvas) {
-        console.log('No signature to upload');
-        return null;
-    }
+    if (!canvas) return null;
     
     const blob = await new Promise(resolve => canvas.toBlob(resolve));
     const fileName = `${type}_${Date.now()}.png`;
@@ -438,10 +610,10 @@ async function uploadSignature(canvas, type) {
     return data.path;
 }
 
-async function uploadPhotos(reportId) {
-    for (let i = 0; i < selectedPhotos.length; i++) {
-        const file = selectedPhotos[i];
-        const fileName = `${reportId}_${Date.now()}_${i}.jpg`;
+async function uploadPhotos(reportId, photos, uploadedBy) {
+    for (let i = 0; i < photos.length; i++) {
+        const file = photos[i];
+        const fileName = `${reportId}_${uploadedBy}_${Date.now()}_${i}.jpg`;
         
         const { data, error } = await supabaseClient.storage
             .from('photos')
@@ -465,7 +637,6 @@ async function loadReportForOwner(token) {
     showLoading(true);
     
     try {
-        // Load report using helper function
         const { data, error } = await supabaseClient.rpc('get_full_report', {
             report_token: token
         });
@@ -485,9 +656,17 @@ async function loadReportForOwner(token) {
         
         initSignaturePad('ownerSignature');
         
+        // Owner photo handler
+        document.getElementById('ownerPhotoInput').addEventListener('change', handleOwnerPhotoSelection);
+        
+        // Voice button for owner remarks
+        document.getElementById('voiceRemarksBtn').addEventListener('click', () => {
+            startVoiceRecording('ownerRemarks');
+        });
+        
     } catch (error) {
-        console.error('Load error:', error);
-        alert('❌ שגיאה בטעינת הדוח: ' + error.message);
+        console.error('Error:', error);
+        alert('❌ שגיאה: ' + error.message);
     } finally {
         showLoading(false);
     }
@@ -501,11 +680,67 @@ function displayReportForOwner(data) {
     html += `<h2>📋 ${report.project_name}</h2>`;
     html += `<p><strong>תאריך:</strong> ${report.report_date}</p>`;
     html += `<p><strong>מנהל:</strong> ${report.manager_name}</p>`;
-    if (report.general_notes) {
-        html += `<p><strong>הערות:</strong> ${report.general_notes}</p>`;
-    }
-    html += '</div>';
+    if (report.weather) html += `<p><strong>מזג אוויר:</strong> ${report.weather}</p>`;
     
+    // Work hours
+    if (report.start_time && report.end_time) {
+        html += `<p><strong>שעות עבודה:</strong> ${report.start_time} - ${report.end_time}`;
+        if (report.total_work_hours) {
+            html += ` (סה"כ: ${report.total_work_hours} שעות)`;
+        }
+        html += '</p>';
+    }
+    
+    // Notes
+    if (report.general_notes) html += `<p><strong>הערות:</strong> ${report.general_notes}</p>`;
+    
+    // Tomorrow's plan
+    if (report.tomorrow_plan) {
+        html += '<hr style="margin: 15px 0; border: 1px solid #e1e8ed;">';
+        html += '<h3>📅 תוכנית עבודה למחר</h3>';
+        if (report.tomorrow_date) {
+            html += `<p><strong>תאריך:</strong> ${report.tomorrow_date}</p>`;
+        }
+        html += `<p>${report.tomorrow_plan}</p>`;
+    }
+    
+    // Workers
+    if (data.workers && data.workers.length > 0) {
+        html += '<hr style="margin: 15px 0; border: 1px solid #e1e8ed;">';
+        html += '<h3>👷 כוח אדם</h3>';
+        let totalWorkerHours = 0;
+        data.workers.forEach(worker => {
+            html += `<p>• ${worker.role}: ${worker.worker_count} עובדים × ${worker.hours_worked} שעות</p>`;
+            totalWorkerHours += worker.worker_count * worker.hours_worked;
+        });
+        html += `<p><strong>סה"כ שעות כוח אדם:</strong> ${totalWorkerHours} שעות</p>`;
+    }
+    
+    // Activities
+    if (data.activities && data.activities.length > 0) {
+        html += '<hr style="margin: 15px 0; border: 1px solid #e1e8ed;">';
+        html += '<h3>🔨 פעילויות</h3>';
+        data.activities.forEach(activity => {
+            html += `<p>• ${activity.description}`;
+            if (activity.location) html += ` - ${activity.location}`;
+            if (activity.quantity) html += ` (${activity.quantity})`;
+            html += '</p>';
+        });
+    }
+    
+    // Show manager photos if any
+    if (data.photos && data.photos.length > 0) {
+        html += '<hr style="margin: 15px 0; border: 1px solid #e1e8ed;">';
+        html += '<h3>📸 תמונות מהאתר</h3>';
+        html += '<div class="photo-preview">';
+        data.photos.forEach(photo => {
+            const photoUrl = `${SUPABASE_URL}/storage/v1/object/public/photos/${photo.storage_path}`;
+            html += `<div class="photo-item"><img src="${photoUrl}" alt="Site photo"></div>`;
+        });
+        html += '</div>';
+    }
+    
+    html += '</div>';
     container.innerHTML = html;
 }
 
@@ -514,17 +749,20 @@ async function approveReport() {
     const remarks = document.getElementById('ownerRemarks').value;
     
     if (!ownerName) {
-        alert('❌ נא למלא את שמך');
+        alert('❌ נא למלא שם');
         return;
     }
     
     showLoading(true);
     
     try {
-        // Upload owner signature
         const signaturePath = await uploadSignature(ownerSignaturePad, 'owner');
         
-        // Update report
+        // Upload owner photos if any
+        if (selectedOwnerPhotos.length > 0) {
+            await uploadPhotos(currentReport.report.id, selectedOwnerPhotos, 'owner');
+        }
+        
         await supabaseClient
             .from('reports')
             .update({
@@ -534,7 +772,6 @@ async function approveReport() {
             })
             .eq('id', currentReport.report.id);
         
-        // Insert approval record
         await supabaseClient.from('approvals').insert({
             report_id: currentReport.report.id,
             owner_name: ownerName,
@@ -542,26 +779,34 @@ async function approveReport() {
             signature_path: signaturePath
         });
         
-        alert('✅ דוח אושר בהצלחה!');
+        alert('✅ דוח אושר!');
         
-        // Send confirmation via WhatsApp
         const message = `✅ *דוח אושר*\n\n` +
             `🏗️ ${currentReport.report.project_name}\n` +
-            `👤 אושר ע"י: ${ownerName}\n` +
-            `📅 ${currentReport.report.report_date}`;
+            `👤 ${ownerName}\n` +
+            `📅 ${currentReport.report.report_date}` +
+            (selectedOwnerPhotos.length > 0 ? `\n📸 ${selectedOwnerPhotos.length} תמונות נוספו` : '');
         
         window.open(`https://wa.me/972505231042?text=${encodeURIComponent(message)}`);
         
     } catch (error) {
-        console.error('Approve error:', error);
-        alert('❌ שגיאה באישור: ' + error.message);
+        console.error('Error:', error);
+        alert('❌ שגיאה: ' + error.message);
     } finally {
         showLoading(false);
     }
 }
 
 // ============================================
-// UTILITY FUNCTIONS
+// PRINT FUNCTION
+// ============================================
+
+function printReport() {
+    window.print();
+}
+
+// ============================================
+// UTILITY
 // ============================================
 
 function showLoading(show) {
@@ -571,4 +816,4 @@ function showLoading(show) {
     }
 }
 
-console.log('App.js loaded successfully');
+console.log('✅ App loaded with all features');
