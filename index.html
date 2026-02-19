@@ -1,0 +1,1401 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <title>יומן עבודה דיגיטלי - Stonhard</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Heebo', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #2c3e50;
+            direction: rtl;
+            padding: 10px;
+        }
+        
+        .view-container {
+            display: none;
+        }
+        
+        .view-container.active {
+            display: block;
+        }
+        
+        /* Manager View Styles */
+        .manager-view {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+        
+        .header {
+            background: white;
+            border-radius: 16px;
+            padding: 25px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+        
+        .header h1 {
+            font-size: 28px;
+            font-weight: 900;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 10px;
+        }
+        
+        .section {
+            background: white;
+            border-radius: 16px;
+            padding: 25px;
+            margin-bottom: 15px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+            position: relative;
+            pointer-events: auto;
+        }
+        
+        .section-title {
+            font-size: 20px;
+            font-weight: 700;
+            color: #1a3d5c;
+            margin-bottom: 20px;
+            padding-bottom: 12px;
+            border-bottom: 2px solid #e1e8ed;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+        
+        @media (min-width: 600px) {
+            .form-row.cols-2 { grid-template-columns: 1fr 1fr; }
+            .form-row.cols-3 { grid-template-columns: 1fr 1fr 1fr; }
+        }
+        
+        .form-group label {
+            display: block;
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #2c3e50;
+        }
+        
+        input, select, textarea {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e1e8ed;
+            border-radius: 8px;
+            font-size: 15px;
+            font-family: inherit;
+            transition: all 0.2s;
+        }
+        
+        input:focus, select:focus, textarea:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+        
+        textarea {
+            resize: vertical;
+            min-height: 100px;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 15px;
+        }
+        
+        table th {
+            background: #1a3d5c;
+            color: white;
+            padding: 12px 8px;
+            text-align: right;
+            font-size: 13px;
+        }
+        
+        table td {
+            padding: 8px;
+            border-bottom: 1px solid #e1e8ed;
+        }
+        
+        table td input {
+            padding: 8px;
+            font-size: 14px;
+        }
+        
+        .add-row-btn {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .signature-pad {
+            border: 3px solid #667eea;
+            border-radius: 12px;
+            cursor: crosshair;
+            touch-action: none;
+            width: 100%;
+            max-width: 400px;
+            height: 100px;
+            background: #fafafa;
+            display: block;
+            margin: 0 auto;
+        }
+        
+        .signature-controls {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+        
+        .signature-controls button {
+            flex: 1;
+            padding: 12px;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        
+        .photo-upload {
+            border: 3px dashed #667eea;
+            border-radius: 12px;
+            padding: 30px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            background: #f8f9fa;
+        }
+        
+        .photo-upload:hover {
+            background: #e9ecef;
+            border-color: #764ba2;
+        }
+        
+        .photo-preview {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            gap: 10px;
+            margin-top: 15px;
+        }
+        
+        .photo-item {
+            position: relative;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        
+        .photo-item img {
+            width: 100%;
+            height: 150px;
+            object-fit: cover;
+        }
+        
+        .remove-photo {
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            background: #e74c3c;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            cursor: pointer;
+            font-size: 18px;
+        }
+        
+        .action-buttons {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+            gap: 12px;
+            margin-top: 20px;
+            position: relative;
+            z-index: 10;
+            pointer-events: auto;
+        }
+        
+        .btn {
+            padding: 16px 24px;
+            border: none;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            user-select: none;
+            touch-action: manipulation;
+            -webkit-tap-highlight-color: rgba(0,0,0,0.1);
+            position: relative;
+            z-index: 10;
+        }
+        
+        .btn:active {
+            transform: scale(0.95);
+            opacity: 0.8;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+        }
+        
+        .btn-primary:active {
+            box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+        }
+        
+        .btn-success {
+            background: #27ae60;
+            color: white;
+            box-shadow: 0 4px 15px rgba(39, 174, 96, 0.3);
+        }
+        
+        .btn-success:active {
+            box-shadow: 0 2px 8px rgba(39, 174, 96, 0.2);
+        }
+        
+        .btn-whatsapp {
+            background: #25D366;
+            color: white;
+            box-shadow: 0 4px 15px rgba(37, 211, 102, 0.3);
+        }
+        
+        .btn-whatsapp:active {
+            box-shadow: 0 2px 8px rgba(37, 211, 102, 0.2);
+        }
+        
+        /* Owner View Styles */
+        .owner-view {
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        
+        .security-banner {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 12px;
+            padding: 15px;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+        }
+        
+        .security-icon {
+            font-size: 32px;
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+        
+        .bio-card {
+            background: white;
+            border-radius: 16px;
+            padding: 25px;
+            margin-bottom: 20px;
+            box-shadow: 0 8px 30px rgba(0,0,0,0.12);
+            text-align: center;
+        }
+        
+        .bio-avatar {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 36px;
+            font-weight: 700;
+            margin: 0 auto 15px;
+            border: 4px solid #f0f0f0;
+        }
+        
+        .report-details {
+            background: white;
+            border-radius: 16px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+        }
+        
+        .detail-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 12px 0;
+            border-bottom: 1px solid #e1e8ed;
+        }
+        
+        .detail-row:last-child {
+            border-bottom: none;
+        }
+        
+        .action-menu {
+            background: white;
+            border-radius: 16px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+        }
+        
+        .action-btn {
+            width: 100%;
+            padding: 18px;
+            margin-bottom: 12px;
+            border: none;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 700;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            transition: all 0.3s;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+        }
+        
+        .action-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.15);
+        }
+        
+        /* Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.7);
+            z-index: 1000;
+            padding: 20px;
+            overflow-y: auto;
+        }
+        
+        .modal.active {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .modal-content {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            max-width: 500px;
+            width: 100%;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+        
+        .alert {
+            padding: 15px 20px;
+            border-radius: 12px;
+            margin-bottom: 15px;
+            font-size: 14px;
+        }
+        
+        .alert-success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .alert-info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+        
+        /* Loading */
+        .loading {
+            text-align: center;
+            padding: 40px;
+            font-size: 18px;
+            color: white;
+        }
+        
+        .spinner {
+            border: 4px solid rgba(255,255,255,0.3);
+            border-top: 4px solid white;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+
+<!-- LOADING VIEW -->
+<div id="loadingView" class="loading">
+    <div class="spinner"></div>
+    <div>טוען...</div>
+</div>
+
+<!-- MANAGER VIEW (Avshi fills report) -->
+<div id="managerView" class="view-container manager-view">
+    <div class="header">
+        <h1>📝 יומן עבודה דיגיטלי</h1>
+        <div style="font-size: 14px; color: #666;">Stonhard Installation - אבשי ספיר</div>
+    </div>
+
+    <!-- Project Info -->
+    <div class="section">
+        <div class="section-title">
+            <span>📋</span> פרטי פרוייקט
+        </div>
+        <div class="form-row cols-2">
+            <div class="form-group">
+                <label>שם פרוייקט:</label>
+                <input type="text" id="projectName" placeholder="תמר גרופ - קיסריה">
+            </div>
+            <div class="form-group">
+                <label>תאריך:</label>
+                <input type="date" id="reportDate">
+            </div>
+        </div>
+        <div class="form-row cols-2">
+            <div class="form-group">
+                <label>מנהל פרויקט:</label>
+                <input type="text" id="managerName" value="אבשי ספיר" placeholder="שם מלא">
+            </div>
+            <div class="form-group">
+                <label>מזג אוויר:</label>
+                <select id="weather">
+                    <option value="">בחר...</option>
+                    <option value="sunny">☀️ שמש</option>
+                    <option value="cloudy">⛅ מעונן</option>
+                    <option value="rainy">🌧️ גשום</option>
+                </select>
+            </div>
+        </div>
+    </div>
+
+    <!-- Work Hours -->
+    <div class="section">
+        <div class="section-title">
+            <span>⏰</span> שעות עבודה
+        </div>
+        <div class="form-row cols-3">
+            <div class="form-group">
+                <label>התחלה:</label>
+                <input type="time" id="startTime">
+            </div>
+            <div class="form-group">
+                <label>סיום:</label>
+                <input type="time" id="endTime">
+            </div>
+            <div class="form-group">
+                <label>הפסקות (שעות):</label>
+                <input type="number" id="breakHours" value="0" step="0.5" min="0">
+            </div>
+        </div>
+    </div>
+
+    <!-- Workforce -->
+    <div class="section">
+        <div class="section-title">
+            <span>👷</span> כוח אדם
+        </div>
+        <div style="overflow-x: auto;">
+            <table id="workforceTable">
+                <thead>
+                    <tr>
+                        <th>תפקיד</th>
+                        <th>מספר</th>
+                        <th>שעות</th>
+                        <th>הערות</th>
+                    </tr>
+                </thead>
+                <tbody id="workforceBody">
+                    <tr>
+                        <td><input type="text" placeholder="תפקיד"></td>
+                        <td><input type="number" min="0"></td>
+                        <td><input type="number" step="0.5" min="0"></td>
+                        <td><input type="text"></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        <button class="add-row-btn" onclick="addRow('workforce')">
+            <span>➕</span> הוסף שורה
+        </button>
+    </div>
+
+    <!-- Activities -->
+    <div class="section">
+        <div class="section-title">
+            <span>🔨</span> פעילויות
+        </div>
+        <div style="overflow-x: auto;">
+            <table id="activitiesTable">
+                <thead>
+                    <tr>
+                        <th>תיאור עבודה</th>
+                        <th>מיקום</th>
+                        <th>כמות</th>
+                        <th>הערות</th>
+                    </tr>
+                </thead>
+                <tbody id="activitiesBody">
+                    <tr>
+                        <td><input type="text" placeholder="תיאור"></td>
+                        <td><input type="text" placeholder="מיקום"></td>
+                        <td><input type="text" placeholder="כמות"></td>
+                        <td><input type="text"></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        <button class="add-row-btn" onclick="addRow('activities')">
+            <span>➕</span> הוסף שורה
+        </button>
+    </div>
+
+    <!-- Notes & Photos -->
+    <div class="section">
+        <div class="section-title">
+            <span>📝</span> הערות כלליות ותמונות
+        </div>
+        <textarea id="generalNotes" placeholder="הערות, בעיות, או נקודות לתשומת לב..."></textarea>
+        
+        <div style="margin-top: 20px;">
+            <label style="display:block; font-size:14px; font-weight:600; margin-bottom:10px;">
+                📸 תמונות מהאתר
+            </label>
+            <div class="photo-upload" onclick="document.getElementById('sitePhotos').click()">
+                <div style="font-size: 48px; margin-bottom: 10px;">📷</div>
+                <div style="font-weight: 600; margin-bottom: 5px;">לחץ לצילום/העלאת תמונות</div>
+                <div style="font-size: 13px; color: #666;">בעיות, התקדמות, או הוכחות</div>
+                <input type="file" id="sitePhotos" accept="image/*" capture="environment" multiple style="display:none;">
+            </div>
+            <div id="sitePhotosPreview" class="photo-preview"></div>
+        </div>
+    </div>
+
+    <!-- Manager Signature -->
+    <div class="section">
+        <div class="section-title">
+            <span>✍️</span> חתימת מנהל פרויקט
+        </div>
+        <canvas id="managerSignature" class="signature-pad" width="400" height="100"></canvas>
+        <div class="signature-controls">
+            <button style="background:#e74c3c;color:white;" onclick="clearSignature()">🗑️ נקה</button>
+            <button style="background:#27ae60;color:white;" onclick="saveSignature()">💾 שמור חתימה</button>
+        </div>
+    </div>
+
+    <!-- Actions -->
+    <div class="section">
+        <div class="action-buttons">
+            <button class="btn btn-primary" id="generateLinkBtn">
+                <span>🔗</span> צור קישור לשיתוף
+            </button>
+            <button class="btn btn-whatsapp" id="whatsappBtn">
+                <span>📱</span> שלח WhatsApp
+            </button>
+            <button class="btn btn-success" id="saveBtn">
+                <span>💾</span> שמור מקומי
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- OWNER VIEW (Owner approves) -->
+<div id="ownerView" class="view-container owner-view">
+    <div class="security-banner">
+        <div class="security-icon">🔒</div>
+        <div>
+            <div style="font-weight:700;color:#27ae60;">דוח מאובטח ומאומת</div>
+            <div style="font-size:12px;color:#666;">נשלח מאבשי ספיר - מנהל פרויקט</div>
+        </div>
+    </div>
+
+    <div class="bio-card">
+        <div class="bio-avatar">א״ס</div>
+        <div style="font-size:22px;font-weight:700;margin-bottom:5px;">אבשי ספיר</div>
+        <div style="font-size:14px;color:#666;margin-bottom:15px;">מנהל פרויקט | Stonhard Installation</div>
+        <div style="background:#ecf0f1;padding:10px 20px;border-radius:20px;display:inline-block;font-size:13px;font-weight:600;">
+            📋 דוח יומי לאישור
+        </div>
+    </div>
+
+    <div class="report-details" id="reportDetailsContainer">
+        <!-- Will be populated with report data -->
+    </div>
+
+    <div class="action-menu">
+        <div style="font-size:16px;font-weight:700;margin-bottom:15px;text-align:center;">בחר פעולה:</div>
+        <button class="action-btn" onclick="quickApprove()">
+            <span style="font-size:24px;">✅</span>
+            <div style="flex:1;text-align:right;">
+                <div>אישור מהיר</div>
+                <div style="font-size:11px;opacity:0.9;">לחיצה אחת → סיום</div>
+            </div>
+        </button>
+        <button class="action-btn" onclick="openSignatureModal()">
+            <span style="font-size:24px;">📝</span>
+            <div style="flex:1;text-align:right;">
+                <div>חתימה דיגיטלית</div>
+                <div style="font-size:11px;opacity:0.9;">חתום ושלח חזרה</div>
+            </div>
+        </button>
+    </div>
+</div>
+
+<!-- Signature Modal -->
+<div id="signatureModal" class="modal">
+    <div class="modal-content">
+        <div style="font-size:20px;font-weight:700;margin-bottom:20px;text-align:center;">חתימת בעל/מנהל</div>
+        
+        <div class="form-group" style="margin-bottom:20px;">
+            <label>שמך המלא:</label>
+            <input type="text" id="ownerName" placeholder="שם מלא">
+        </div>
+        
+        <div class="form-group" style="margin-bottom:20px;">
+            <label>הערות (אופציונלי):</label>
+            <textarea id="ownerRemarks" placeholder="הערות, תיקונים, או הנחיות..."></textarea>
+        </div>
+        
+        <div style="margin-bottom:20px;">
+            <label style="display:block;font-size:14px;font-weight:600;margin-bottom:10px;">חתימה:</label>
+            <canvas id="ownerSignature" class="signature-pad" width="400" height="100"></canvas>
+            <div class="signature-controls">
+                <button style="background:#e74c3c;color:white;" onclick="clearOwnerSignature()">🗑️ נקה</button>
+                <button style="background:#27ae60;color:white;" onclick="approveReport()">✅ אשר ושלח</button>
+            </div>
+        </div>
+        
+        <button class="btn" style="background:#95a5a6;color:white;width:100%;" onclick="closeModal()">
+            ביטול
+        </button>
+    </div>
+</div>
+
+<!-- Success Modal -->
+<div id="successModal" class="modal">
+    <div class="modal-content">
+        <div style="text-align:center;">
+            <div style="font-size:80px;margin-bottom:20px;">✅</div>
+            <div style="font-size:24px;font-weight:700;color:#27ae60;margin-bottom:10px;">תודה על האישור!</div>
+            <div style="font-size:16px;color:#666;margin-bottom:30px;">
+                הדוח אושר ונשלח חזרה למנהל הפרויקט
+            </div>
+            <div class="alert-success" style="margin-bottom:20px;">
+                <div><strong>פרוייקט:</strong> <span id="successProject"></span></div>
+                <div><strong>תאריך:</strong> <span id="successDate"></span></div>
+                <div><strong>מאשר:</strong> <span id="successOwner"></span></div>
+            </div>
+            <button class="btn btn-whatsapp" onclick="sendApprovalBack()" style="width:100%;margin-bottom:10px;">
+                📱 שלח ב-WhatsApp למנהל
+            </button>
+            <button class="btn" style="background:#95a5a6;color:white;width:100%;" onclick="closeAll()">
+                סגור
+            </button>
+        </div>
+    </div>
+</div>
+
+<script>
+// Global state
+let reportData = {};
+let sitePhotos = [];
+let managerSignatureData = null;
+let ownerSignatureData = null;
+let signaturePad = null;
+let ownerSignaturePad = null;
+
+// UTF-8 safe base64 encoding/decoding
+function base64EncodeUnicode(str) {
+    // First we use encodeURIComponent to get percent-encoded UTF-8,
+    // then we convert the percent encodings into raw bytes which
+    // can be fed into btoa.
+    return btoa(encodeURIComponent(str).replace(/%([0-9A-F]{2})/g,
+        function toSolidBytes(match, p1) {
+            return String.fromCharCode('0x' + p1);
+    }));
+}
+
+function base64DecodeUnicode(str) {
+    // Going backwards: from bytestream, to percent-encoding, to original string.
+    return decodeURIComponent(atob(str).split('').map(function(c) {
+        return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+    }).join(''));
+}
+
+// Initialize
+document.addEventListener('DOMContentLoaded', function() {
+    initializeApp();
+});
+
+function initializeApp() {
+    // Hide loading
+    document.getElementById('loadingView').style.display = 'none';
+    
+    // Detect view mode
+    const urlParams = new URLSearchParams(window.location.search);
+    const view = urlParams.get('view');
+    const encodedData = urlParams.get('data');
+    
+    if (view === 'owner' && encodedData) {
+        // Owner view - decode and show report
+        try {
+            // Decode with UTF-8 support for Hebrew
+            const jsonString = base64DecodeUnicode(encodedData);
+            reportData = JSON.parse(jsonString);
+            showOwnerView();
+        } catch (e) {
+            alert('שגיאה בטעינת הדוח. נא לבקש קישור חדש.');
+            console.error('Decoding error:', e);
+            showManagerView();
+        }
+    } else {
+        // Manager view - fill report
+        showManagerView();
+    }
+    
+    // Add mobile-friendly event listeners for action buttons
+    addMobileEventListeners();
+}
+
+function addMobileEventListeners() {
+    // Helper function to add mobile-friendly event listener
+    function addMobileClick(elementId, handler) {
+        const element = document.getElementById(elementId);
+        if (!element) return;
+        
+        // Remove any existing listeners
+        const newElement = element.cloneNode(true);
+        element.parentNode.replaceChild(newElement, element);
+        
+        let touchStarted = false;
+        
+        // Touch events (for mobile)
+        newElement.addEventListener('touchstart', function(e) {
+            touchStarted = true;
+            newElement.style.transform = 'scale(0.95)';
+            newElement.style.opacity = '0.8';
+        }, { passive: true });
+        
+        newElement.addEventListener('touchend', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            newElement.style.transform = '';
+            newElement.style.opacity = '';
+            if (touchStarted) {
+                setTimeout(() => handler(), 100);
+            }
+            touchStarted = false;
+        });
+        
+        newElement.addEventListener('touchcancel', function(e) {
+            touchStarted = false;
+            newElement.style.transform = '';
+            newElement.style.opacity = '';
+        });
+        
+        // Click event (for desktop - will not fire if touch events already handled)
+        newElement.addEventListener('click', function(e) {
+            if (!touchStarted) {
+                e.preventDefault();
+                e.stopPropagation();
+                handler();
+            }
+        });
+    }
+    
+    // Add listeners to all buttons
+    addMobileClick('generateLinkBtn', generateShareLink);
+    addMobileClick('whatsappBtn', shareViaWhatsApp);
+    addMobileClick('saveBtn', saveLocally);
+}
+
+function showManagerView() {
+    document.getElementById('managerView').classList.add('active');
+    document.getElementById('ownerView').classList.remove('active');
+    
+    // Set default date
+    const today = new Date().toISOString().split('T')[0];
+    document.getElementById('reportDate').value = today;
+    
+    // Initialize signature pad
+    initSignaturePad('managerSignature');
+    
+    // Photo upload handler
+    document.getElementById('sitePhotos').addEventListener('change', handleSitePhotos);
+    
+    // Load from localStorage if exists
+    loadFromLocalStorage();
+}
+
+function showOwnerView() {
+    document.getElementById('managerView').classList.remove('active');
+    document.getElementById('ownerView').classList.add('active');
+    
+    // Display report data
+    displayReportData();
+    
+    // Initialize owner signature pad
+    initOwnerSignaturePad('ownerSignature');
+}
+
+// Signature Pad
+function initSignaturePad(canvasId) {
+    const canvas = document.getElementById(canvasId);
+    const ctx = canvas.getContext('2d');
+    
+    // Set actual canvas size (affects image quality)
+    canvas.width = 400;
+    canvas.height = 100;
+    
+    let isDrawing = false;
+    let lastX = 0;
+    let lastY = 0;
+
+    function getPos(e) {
+        const rect = canvas.getBoundingClientRect();
+        const touch = e.touches ? e.touches[0] : e;
+        return {
+            x: (touch.clientX - rect.left) * (canvas.width / rect.width),
+            y: (touch.clientY - rect.top) * (canvas.height / rect.height)
+        };
+    }
+
+    function startDrawing(e) {
+        e.preventDefault();
+        isDrawing = true;
+        const pos = getPos(e);
+        lastX = pos.x;
+        lastY = pos.y;
+    }
+
+    function draw(e) {
+        if (!isDrawing) return;
+        e.preventDefault();
+        
+        const pos = getPos(e);
+        ctx.strokeStyle = '#000';
+        ctx.lineWidth = 3;
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        
+        ctx.beginPath();
+        ctx.moveTo(lastX, lastY);
+        ctx.lineTo(pos.x, pos.y);
+        ctx.stroke();
+        
+        lastX = pos.x;
+        lastY = pos.y;
+    }
+
+    function stopDrawing() {
+        isDrawing = false;
+    }
+
+    canvas.addEventListener('mousedown', startDrawing);
+    canvas.addEventListener('mousemove', draw);
+    canvas.addEventListener('mouseup', stopDrawing);
+    canvas.addEventListener('mouseout', stopDrawing);
+    
+    canvas.addEventListener('touchstart', startDrawing);
+    canvas.addEventListener('touchmove', draw);
+    canvas.addEventListener('touchend', stopDrawing);
+
+    signaturePad = { canvas, ctx };
+}
+
+function initOwnerSignaturePad(canvasId) {
+    const canvas = document.getElementById(canvasId);
+    const ctx = canvas.getContext('2d');
+    
+    // Set actual canvas size (affects image quality)
+    canvas.width = 400;
+    canvas.height = 100;
+    
+    let isDrawing = false;
+    let lastX = 0;
+    let lastY = 0;
+
+    function getPos(e) {
+        const rect = canvas.getBoundingClientRect();
+        const touch = e.touches ? e.touches[0] : e;
+        return {
+            x: (touch.clientX - rect.left) * (canvas.width / rect.width),
+            y: (touch.clientY - rect.top) * (canvas.height / rect.height)
+        };
+    }
+
+    function startDrawing(e) {
+        e.preventDefault();
+        isDrawing = true;
+        const pos = getPos(e);
+        lastX = pos.x;
+        lastY = pos.y;
+    }
+
+    function draw(e) {
+        if (!isDrawing) return;
+        e.preventDefault();
+        
+        const pos = getPos(e);
+        ctx.strokeStyle = '#000';
+        ctx.lineWidth = 3;
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        
+        ctx.beginPath();
+        ctx.moveTo(lastX, lastY);
+        ctx.lineTo(pos.x, pos.y);
+        ctx.stroke();
+        
+        lastX = pos.x;
+        lastY = pos.y;
+    }
+
+    function stopDrawing() {
+        isDrawing = false;
+    }
+
+    canvas.addEventListener('mousedown', startDrawing);
+    canvas.addEventListener('mousemove', draw);
+    canvas.addEventListener('mouseup', stopDrawing);
+    canvas.addEventListener('mouseout', stopDrawing);
+    
+    canvas.addEventListener('touchstart', startDrawing);
+    canvas.addEventListener('touchmove', draw);
+    canvas.addEventListener('touchend', stopDrawing);
+
+    ownerSignaturePad = { canvas, ctx };
+}
+
+function clearSignature() {
+    if (signaturePad) {
+        signaturePad.ctx.clearRect(0, 0, signaturePad.canvas.width, signaturePad.canvas.height);
+    }
+}
+
+function clearOwnerSignature() {
+    if (ownerSignaturePad) {
+        ownerSignaturePad.ctx.clearRect(0, 0, ownerSignaturePad.canvas.width, ownerSignaturePad.canvas.height);
+    }
+}
+
+function saveSignature() {
+    if (!signaturePad) return;
+    managerSignatureData = signaturePad.canvas.toDataURL('image/png');
+    alert('✅ חתימה נשמרה!');
+}
+
+// Photo handling
+function handleSitePhotos(e) {
+    const files = e.target.files;
+    const preview = document.getElementById('sitePhotosPreview');
+    
+    for (let file of files) {
+        const reader = new FileReader();
+        
+        reader.onload = function(event) {
+            const photoData = event.target.result;
+            const photoInfo = {
+                data: photoData,
+                timestamp: new Date().toISOString(),
+                name: file.name
+            };
+            sitePhotos.push(photoInfo);
+            
+            const photoDiv = document.createElement('div');
+            photoDiv.className = 'photo-item';
+            photoDiv.innerHTML = `
+                <img src="${photoData}" alt="תמונה מהאתר">
+                <button class="remove-photo" onclick="removeSitePhoto(${sitePhotos.length - 1})">×</button>
+                <div style="padding:8px;background:rgba(0,0,0,0.7);color:white;font-size:11px;position:absolute;bottom:0;left:0;right:0;">
+                    ${new Date().toLocaleTimeString('he-IL')}
+                </div>
+            `;
+            preview.appendChild(photoDiv);
+        };
+        
+        reader.readAsDataURL(file);
+    }
+}
+
+function removeSitePhoto(index) {
+    sitePhotos.splice(index, 1);
+    rebuildPhotosPreview();
+}
+
+function rebuildPhotosPreview() {
+    const preview = document.getElementById('sitePhotosPreview');
+    preview.innerHTML = '';
+    
+    sitePhotos.forEach((photo, idx) => {
+        const photoDiv = document.createElement('div');
+        photoDiv.className = 'photo-item';
+        const timestamp = new Date(photo.timestamp).toLocaleTimeString('he-IL');
+        photoDiv.innerHTML = `
+            <img src="${photo.data}" alt="תמונה מהאתר">
+            <button class="remove-photo" onclick="removeSitePhoto(${idx})">×</button>
+            <div style="padding:8px;background:rgba(0,0,0,0.7);color:white;font-size:11px;position:absolute;bottom:0;left:0;right:0;">
+                ${timestamp}
+            </div>
+        `;
+        preview.appendChild(photoDiv);
+    });
+}
+
+// Add table rows
+function addRow(tableType) {
+    const tbody = document.getElementById(tableType + 'Body');
+    const newRow = tbody.rows[0].cloneNode(true);
+    const inputs = newRow.getElementsByTagName('input');
+    for (let input of inputs) {
+        input.value = '';
+    }
+    tbody.appendChild(newRow);
+}
+
+// Collect form data
+function collectFormData() {
+    return {
+        projectName: document.getElementById('projectName').value,
+        reportDate: document.getElementById('reportDate').value,
+        managerName: document.getElementById('managerName').value,
+        weather: document.getElementById('weather').value,
+        startTime: document.getElementById('startTime').value,
+        endTime: document.getElementById('endTime').value,
+        breakHours: document.getElementById('breakHours').value,
+        generalNotes: document.getElementById('generalNotes').value,
+        workforce: collectTableData('workforce'),
+        activities: collectTableData('activities'),
+        sitePhotos: sitePhotos,
+        managerSignature: managerSignatureData,
+        timestamp: new Date().toISOString()
+    };
+}
+
+function collectTableData(tableType) {
+    const tbody = document.getElementById(tableType + 'Body');
+    const data = [];
+    
+    for (let row of tbody.rows) {
+        const inputs = row.getElementsByTagName('input');
+        const rowData = [];
+        for (let input of inputs) {
+            rowData.push(input.value);
+        }
+        if (rowData.some(val => val.trim() !== '')) {
+            data.push(rowData);
+        }
+    }
+    
+    return data;
+}
+
+// Generate share link
+function generateShareLink() {
+    if (!managerSignatureData) {
+        alert('❌ נא לחתום על הדוח תחילה');
+        return;
+    }
+    
+    reportData = collectFormData();
+    
+    // Encode data to base64 with UTF-8 support for Hebrew
+    try {
+        const jsonString = JSON.stringify(reportData);
+        // Use UTF-8 safe encoding
+        const encodedData = base64EncodeUnicode(jsonString);
+        
+        // Generate URL - check if testing locally
+        let baseURL = window.location.origin + window.location.pathname;
+        
+        // If testing from local file, use GitHub Pages URL instead
+        if (baseURL.includes('file:///')) {
+            baseURL = 'https://avshi2-maker.github.io/work-journal/';
+            alert('⚠️ שימו לב!\n\nאתה בודק מקובץ מקומי.\nהקישור שנוצר ישתמש בכתובת GitHub:\n' + baseURL + '\n\nכדי לבדוק נכון, פתח את:\nhttps://avshi2-maker.github.io/work-journal/');
+        }
+        
+        const shareURL = `${baseURL}?view=owner&data=${encodedData}`;
+        
+        // Copy to clipboard
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(shareURL).then(() => {
+                alert('✅ קישור הועתק ללוח!\n\n' + shareURL.substring(0, 80) + '...\n\nאורך: ~' + Math.round(shareURL.length/100)*100 + ' תווים');
+            }).catch(() => {
+                // Fallback - show URL in prompt
+                prompt('העתק קישור זה:', shareURL);
+            });
+        } else {
+            // Fallback for browsers without clipboard API
+            prompt('העתק קישור זה:', shareURL);
+        }
+    } catch (error) {
+        alert('❌ שגיאה ביצירת קישור: ' + error.message);
+        console.error('Encoding error:', error);
+    }
+}
+
+// Share via WhatsApp
+function shareViaWhatsApp() {
+    if (!managerSignatureData) {
+        alert('❌ נא לחתום על הדוח תחילה');
+        return;
+    }
+    
+    reportData = collectFormData();
+    
+    try {
+        // Encode data with UTF-8 support for Hebrew
+        const jsonString = JSON.stringify(reportData);
+        const encodedData = base64EncodeUnicode(jsonString);
+        
+        // Generate URL - check if testing locally
+        let baseURL = window.location.origin + window.location.pathname;
+        
+        // If testing from local file, use GitHub Pages URL instead
+        if (baseURL.includes('file:///')) {
+            baseURL = 'https://avshi2-maker.github.io/work-journal/';
+        }
+        
+        const shareURL = `${baseURL}?view=owner&data=${encodedData}`;
+        
+        let message = `🔒 *דוח עבודה יומי מאובטח*\n\n`;
+        message += `👷 *מנהל פרויקט:* אבשי ספיר\n`;
+        message += `🏗️ *פרוייקט:* ${reportData.projectName}\n`;
+        message += `📅 *תאריך:* ${reportData.reportDate}\n\n`;
+        
+        if (reportData.generalNotes) {
+            message += `📝 *הערות:*\n${reportData.generalNotes}\n\n`;
+        }
+        
+        if (sitePhotos.length > 0) {
+            message += `📸 *תמונות:* ${sitePhotos.length} מצורפות\n\n`;
+        }
+        
+        message += `✅ *לחץ לאישור הדוח (מאובטח):*\n`;
+        message += `${shareURL}\n\n`;
+        message += `💡 לוקח פחות מ-2 דקות\n`;
+        message += `📱 050-5231042`;
+        
+        const whatsappURL = `https://wa.me/?text=${encodeURIComponent(message)}`;
+        window.open(whatsappURL, '_blank');
+    } catch (error) {
+        alert('❌ שגיאה בשליחה: ' + error.message);
+        console.error('WhatsApp share error:', error);
+    }
+}
+
+// Save locally
+function saveLocally() {
+    reportData = collectFormData();
+    localStorage.setItem('stonhardWorkJournal', JSON.stringify(reportData));
+    alert('✅ דוח נשמר מקומית!');
+}
+
+function loadFromLocalStorage() {
+    const saved = localStorage.getItem('stonhardWorkJournal');
+    if (saved) {
+        try {
+            const data = JSON.parse(saved);
+            // Restore form data (simplified)
+            if (data.projectName) document.getElementById('projectName').value = data.projectName;
+            if (data.managerName) document.getElementById('managerName').value = data.managerName;
+            // ... restore other fields as needed
+        } catch (e) {
+            console.error('Error loading saved data');
+        }
+    }
+}
+
+// Owner view functions
+function displayReportData() {
+    const container = document.getElementById('reportDetailsContainer');
+    
+    let html = '<div style="font-size:16px;font-weight:700;margin-bottom:15px;color:#1a3d5c;">פרטי הדוח:</div>';
+    
+    html += '<div class="detail-row">';
+    html += '<span style="color:#666;">פרוייקט:</span>';
+    html += `<span style="font-weight:600;">${reportData.projectName || '-'}</span>`;
+    html += '</div>';
+    
+    html += '<div class="detail-row">';
+    html += '<span style="color:#666;">תאריך:</span>';
+    html += `<span style="font-weight:600;">${reportData.reportDate || '-'}</span>`;
+    html += '</div>';
+    
+    html += '<div class="detail-row">';
+    html += '<span style="color:#666;">מנהל פרויקט:</span>';
+    html += `<span style="font-weight:600;">${reportData.managerName || 'אבשי ספיר'}</span>`;
+    html += '</div>';
+    
+    html += '<div class="detail-row">';
+    html += '<span style="color:#666;">מזג אוויר:</span>';
+    html += `<span style="font-weight:600;">${getWeatherText(reportData.weather)}</span>`;
+    html += '</div>';
+    
+    if (reportData.generalNotes) {
+        html += '<div style="margin-top:20px;padding:15px;background:#f8f9fa;border-radius:8px;">';
+        html += '<div style="font-weight:600;margin-bottom:8px;">📝 הערות:</div>';
+        html += `<div style="color:#666;">${reportData.generalNotes}</div>`;
+        html += '</div>';
+    }
+    
+    if (reportData.sitePhotos && reportData.sitePhotos.length > 0) {
+        html += '<div style="margin-top:20px;">';
+        html += `<div style="font-weight:600;margin-bottom:10px;">📸 תמונות (${reportData.sitePhotos.length}):</div>`;
+        html += '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;">';
+        reportData.sitePhotos.forEach(photo => {
+            html += `<img src="${photo.data}" style="width:100%;height:80px;object-fit:cover;border-radius:6px;cursor:pointer;" onclick="window.open('${photo.data}')">`;
+        });
+        html += '</div>';
+        html += '</div>';
+    }
+    
+    container.innerHTML = html;
+}
+
+function getWeatherText(weather) {
+    const map = {
+        'sunny': '☀️ שמש',
+        'cloudy': '⛅ מעונן',
+        'rainy': '🌧️ גשום'
+    };
+    return map[weather] || '-';
+}
+
+function quickApprove() {
+    if (confirm('אישור מהיר?\n\nפעולה זו תאשר את הדוח ללא הערות נוספות.')) {
+        const approvalData = {
+            ...reportData,
+            ownerName: 'אישור מהיר',
+            ownerRemarks: '',
+            approvalTimestamp: new Date().toISOString(),
+            approved: true
+        };
+        
+        showSuccess(approvalData);
+    }
+}
+
+function openSignatureModal() {
+    document.getElementById('signatureModal').classList.add('active');
+}
+
+function closeModal() {
+    document.getElementById('signatureModal').classList.remove('active');
+}
+
+function approveReport() {
+    const ownerName = document.getElementById('ownerName').value.trim();
+    
+    if (!ownerName) {
+        alert('❌ נא למלא את שמך');
+        return;
+    }
+    
+    if (!ownerSignaturePad) {
+        alert('❌ נא לחתום');
+        return;
+    }
+    
+    ownerSignatureData = ownerSignaturePad.canvas.toDataURL('image/png');
+    
+    const approvalData = {
+        ...reportData,
+        ownerName: ownerName,
+        ownerRemarks: document.getElementById('ownerRemarks').value,
+        ownerSignature: ownerSignatureData,
+        approvalTimestamp: new Date().toISOString(),
+        approved: true
+    };
+    
+    closeModal();
+    showSuccess(approvalData);
+}
+
+function showSuccess(approvalData) {
+    window.approvalData = approvalData; // Store for WhatsApp sharing
+    
+    document.getElementById('successProject').textContent = approvalData.projectName;
+    document.getElementById('successDate').textContent = approvalData.reportDate;
+    document.getElementById('successOwner').textContent = approvalData.ownerName;
+    
+    document.getElementById('successModal').classList.add('active');
+}
+
+function sendApprovalBack() {
+    if (!window.approvalData) return;
+    
+    let message = `✅ *דוח עבודה מאושר*\n\n`;
+    message += `🏗️ *פרוייקט:* ${window.approvalData.projectName}\n`;
+    message += `📅 *תאריך:* ${window.approvalData.reportDate}\n`;
+    message += `👤 *אושר ע"י:* ${window.approvalData.ownerName}\n`;
+    message += `⏰ *זמן אישור:* ${new Date().toLocaleTimeString('he-IL')}\n\n`;
+    
+    if (window.approvalData.ownerRemarks) {
+        message += `💬 *הערות:*\n${window.approvalData.ownerRemarks}\n\n`;
+    }
+    
+    message += `✅ הדוח אושר ומאומת לתשלום`;
+    
+    const whatsappURL = `https://wa.me/972505231042?text=${encodeURIComponent(message)}`;
+    window.open(whatsappURL, '_blank');
+}
+
+function closeAll() {
+    document.querySelectorAll('.modal').forEach(modal => {
+        modal.classList.remove('active');
+    });
+}
+</script>
+
+</body>
+</html>
