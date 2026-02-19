@@ -5,7 +5,7 @@
 
 // Supabase Configuration
 const SUPABASE_URL = 'https://vmcipofovheztbjmhwsl.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZtY2lwb2ZvdmhlenRiam1od3NsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDA3NzQxMDQsImV4cCI6MjA1NjM1MDEwNH0.sb_publishable_bwS1W5RsvS-KSaGkRop7kg_xJqUDcuH';
+const 
 
 // Initialize Supabase
 let supabaseClient;
