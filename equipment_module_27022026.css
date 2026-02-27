@@ -1,0 +1,264 @@
+/* ================================================================
+   EQUIPMENT MODULE CSS — add to style.css
+   Date: 27/02/2026
+   ================================================================ */
+
+/* ── Equipment Card ─────────────────────────────────────────── */
+.equip-card {
+  background: #fff;
+  border: 2px solid #d1d5db;
+  border-radius: 12px;
+  margin-bottom: 16px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+}
+
+.equip-header {
+  background: #f8fafc;
+  border-bottom: 1px solid #e2e8f0;
+  padding: 12px 16px;
+}
+
+.equip-header-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: flex-end;
+}
+
+.equip-field-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+  min-width: 140px;
+}
+
+.equip-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: #64748b;
+  white-space: nowrap;
+}
+
+.equip-input {
+  border: 1px solid #cbd5e1;
+  border-radius: 7px;
+  padding: 7px 10px;
+  font-size: 13px;
+  font-family: inherit;
+  direction: rtl;
+  background: white;
+}
+
+.equip-input:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 2px rgba(59,130,246,0.15);
+}
+
+.equip-remove-btn {
+  background: #fee2e2;
+  color: #dc2626;
+  border: 1px solid #fca5a5;
+  border-radius: 7px;
+  padding: 6px 10px;
+  cursor: pointer;
+  font-size: 14px;
+  align-self: flex-end;
+  flex-shrink: 0;
+}
+
+.equip-remove-btn:hover { background: #dc2626; color: white; }
+
+/* ── Subcontractor Section ───────────────────────────────────── */
+.equip-subs-section {
+  padding: 12px 16px;
+}
+
+.equip-subs-title {
+  font-size: 13px;
+  font-weight: 800;
+  color: #374151;
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.btn-add-sub {
+  background: #eff6ff;
+  color: #1d4ed8;
+  border: 1.5px dashed #93c5fd;
+  border-radius: 7px;
+  padding: 4px 12px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.btn-add-sub:hover { background: #dbeafe; }
+
+/* Column headers for sub rows */
+.equip-subs-header {
+  display: grid;
+  grid-template-columns: 2fr 1fr 0.7fr 1fr 28px;
+  gap: 8px;
+  padding: 5px 8px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #94a3b8;
+  border-bottom: 1px solid #f1f5f9;
+  margin-bottom: 6px;
+}
+
+/* Each subcontractor row */
+.equip-sub-row {
+  display: grid;
+  grid-template-columns: 2fr 1fr 0.7fr 1fr 28px;
+  gap: 8px;
+  align-items: center;
+  padding: 5px 0;
+  border-bottom: 1px solid #f8fafc;
+}
+
+.equip-sub-row:last-child { border-bottom: none; }
+
+.sub-percent {
+  font-size: 12px;
+  color: #6366f1;
+  font-weight: 700;
+  text-align: center;
+}
+
+.sub-cost {
+  font-size: 13px;
+  font-weight: 800;
+  color: #059669;
+  text-align: right;
+}
+
+.sub-remove-btn {
+  background: none;
+  border: none;
+  color: #dc2626;
+  cursor: pointer;
+  font-size: 14px;
+  padding: 2px;
+  opacity: 0.6;
+}
+.sub-remove-btn:hover { opacity: 1; }
+
+/* ── Totals Row ──────────────────────────────────────────────── */
+.equip-totals {
+  display: grid;
+  grid-template-columns: 2fr 1fr 0.7fr 1fr 28px;
+  gap: 8px;
+  padding: 8px 0 4px;
+  border-top: 2px solid #e2e8f0;
+  margin-top: 6px;
+}
+
+.equip-total-label {
+  font-size: 12px;
+  font-weight: 900;
+  color: #374151;
+}
+
+.equip-total-hours {
+  font-size: 12px;
+  font-weight: 700;
+  color: #1e40af;
+}
+
+.equip-total-cost {
+  font-size: 14px;
+  font-weight: 900;
+  color: #065f46;
+  text-align: right;
+}
+
+/* ── Summary Table ───────────────────────────────────────────── */
+.equip-summary {
+  margin-top: 20px;
+  background: #f0fdf4;
+  border: 2px solid #86efac;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.equip-summary-title {
+  background: #16a34a;
+  color: white;
+  padding: 10px 16px;
+  font-size: 14px;
+  font-weight: 900;
+}
+
+.equip-summary-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  direction: rtl;
+}
+
+.equip-summary-table th {
+  background: #dcfce7;
+  padding: 8px 12px;
+  font-weight: 800;
+  color: #166534;
+  text-align: right;
+  border-bottom: 1px solid #86efac;
+}
+
+.equip-summary-table td {
+  padding: 7px 12px;
+  border-bottom: 1px solid #f0fdf4;
+  color: #374151;
+}
+
+.sub-first-row td { background: #fafafa; }
+.sub-cont-row  td { background: white; }
+
+.sub-total-row td {
+  background: #f0fdf4;
+  font-weight: 700;
+  color: #166534;
+  border-top: 1px solid #86efac;
+}
+
+.grand-total-row td {
+  background: #166534;
+  color: white;
+  font-weight: 900;
+  font-size: 14px;
+  border-top: 2px solid #15803d;
+}
+
+/* ── Mobile responsive ───────────────────────────────────────── */
+@media (max-width: 600px) {
+  .equip-header-row { flex-direction: column; }
+  .equip-field-group { min-width: 100%; }
+
+  .equip-subs-header,
+  .equip-sub-row,
+  .equip-totals {
+    grid-template-columns: 2fr 0.8fr 0.6fr 0.8fr 24px;
+    gap: 5px;
+    font-size: 12px;
+  }
+
+  .equip-summary-table { font-size: 12px; }
+}
+
+/* ── Print ───────────────────────────────────────────────────── */
+@media print {
+  .btn-add-sub,
+  .equip-remove-btn,
+  .sub-remove-btn { display: none !important; }
+  .equip-card { box-shadow: none; border-color: #000; }
+  .equip-summary { border-color: #000; }
+  .grand-total-row td { background: #333 !important; -webkit-print-color-adjust: exact; }
+}
