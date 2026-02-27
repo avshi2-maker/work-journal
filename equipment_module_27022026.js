@@ -169,12 +169,14 @@ function addSubRow(equipId) {
   const row = document.createElement('div');
   row.className = 'equip-sub-row'; row.id = subId;
   row.innerHTML = `
-    <select class="equip-input sub-name" onchange="onSubChange(this,'${equipId}')">
-      <option value="">בחר קבלן...</option>${subOpts}
-      <option value="__custom__">✏️ אחר</option>
-    </select>
-    <input type="text" class="equip-input sub-name-custom" placeholder="שם"
-      style="display:none;" onchange="recalcEquipment('${equipId}')">
+    <div class="sub-name-wrapper">
+      <select class="equip-input sub-name" onchange="onSubChange(this,'${equipId}')">
+        <option value="">בחר קבלן...</option>${subOpts}
+        <option value="__custom__">✏️ אחר</option>
+      </select>
+      <input type="text" class="equip-input sub-name-custom" placeholder="שם קבלן"
+        style="display:none;margin-top:4px;" onchange="recalcEquipment('${equipId}')">
+    </div>
     <input type="number" class="equip-input sub-hours" placeholder="שעות"
       min="0" max="24" step="0.5"
       oninput="recalcEquipment('${equipId}')" onchange="recalcEquipment('${equipId}')">
@@ -182,7 +184,8 @@ function addSubRow(equipId) {
     <span class="sub-cost">₪—</span>
     <button type="button" class="sub-remove-btn"
       onclick="document.getElementById('${subId}').remove();recalcEquipment('${equipId}')">✕</button>`;
-  wireCustom(row.querySelector('.sub-name'), row.querySelector('.sub-name-custom'));
+  wireCustom(row.querySelector('.sub-name-wrapper .sub-name'),
+             row.querySelector('.sub-name-wrapper .sub-name-custom'));
   container.appendChild(row);
 }
 

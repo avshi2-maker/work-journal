@@ -114,14 +114,21 @@
   margin-bottom: 6px;
 }
 
-/* Each subcontractor row */
+/* Each subcontractor row — wrapper keeps select+custom in ONE grid cell */
 .equip-sub-row {
   display: grid;
   grid-template-columns: 2fr 1fr 0.7fr 1fr 28px;
   gap: 8px;
-  align-items: center;
-  padding: 5px 0;
+  align-items: start;
+  padding: 6px 0;
   border-bottom: 1px solid #f8fafc;
+}
+
+.sub-name-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  min-width: 0;
 }
 
 .equip-sub-row:last-child { border-bottom: none; }

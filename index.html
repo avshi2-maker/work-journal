@@ -3,9 +3,57 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>יומן עבודה - Stonhard</title>
+    <title>יומן עבודה יומי</title>
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="equipment_module_27022026.css">
+    <style>
+        /* ── ID validation colors ─────────────────────────────── */
+        .id-valid   { border-color: #16a34a !important; background: #f0fdf4 !important; }
+        .id-invalid { border-color: #dc2626 !important; background: #fff1f2 !important; }
+
+        /* ── Send confirmation banner ─────────────────────────── */
+        #sendConfirmation {
+            display: none;
+            background: #f0fdf4; border: 2px solid #16a34a; border-radius: 10px;
+            padding: 12px 16px; margin-top: 12px; font-size: 13px;
+            color: #166534; font-weight: 700; direction: rtl;
+        }
+
+        /* ── Logbook section ──────────────────────────────────── */
+        #logbookSection {
+            background: #f8fafc; border-top: 3px solid #3b82f6;
+            padding: 20px; margin-top: 0; direction: rtl;
+        }
+        #logbookSection h2 {
+            font-size: 16px; font-weight: 900; color: #1e3a5f; margin-bottom: 12px;
+        }
+        #logbookList {
+            max-height: 340px; overflow-y: auto;
+            border: 1px solid #cbd5e1; border-radius: 10px; background: white;
+        }
+        .logbook-row {
+            display: grid;
+            grid-template-columns: 80px 1fr 1fr 90px 80px;
+            gap: 10px; align-items: center;
+            padding: 10px 14px; border-bottom: 1px solid #f1f5f9;
+            font-size: 12px; color: #374151;
+        }
+        .logbook-row:last-child { border-bottom: none; }
+        .logbook-row:hover { background: #eff6ff; }
+        .logbook-header {
+            background: #1e3a5f; color: white; font-weight: 900;
+            border-radius: 9px 9px 0 0;
+        }
+        .logbook-status-sent   { color: #16a34a; font-weight: 800; }
+        .logbook-status-draft  { color: #d97706; font-weight: 800; }
+        .logbook-view-btn {
+            background: #3b82f6; color: white; border: none; border-radius: 6px;
+            padding: 4px 10px; font-size: 11px; cursor: pointer; font-family: inherit;
+        }
+        .logbook-empty {
+            text-align: center; padding: 30px; color: #94a3b8; font-size: 13px;
+        }
+    </style>
 </head>
 <body>
     <!-- Manager View -->
@@ -22,15 +70,27 @@
 
         <main class="container">
             <form id="reportForm">
-                <!-- Project Info -->
+
+                <!-- ── PROJECT INFO ──────────────────────────────── -->
                 <section class="section">
                     <h2>📋 פרטי פרוייקט</h2>
                     <div class="form-row">
                         <input type="text" id="projectName" placeholder="שם פרוייקט" required>
                         <input type="date" id="reportDate" required>
                     </div>
+                    <!-- FIX 3: manager name + role + validated ID -->
                     <div class="form-row">
                         <input type="text" id="projectManager" placeholder="שם מנהל הפרוייקט" required>
+                        <input type="text" id="projectManagerRole" placeholder="תפקיד (לדוגמה: מנהל עבודה)" required>
+                    </div>
+                    <div class="form-row">
+                        <input type="text" id="projectManagerID"
+                            placeholder="תעודת זהות מנהל הפרויקט (9 ספרות)"
+                            inputmode="numeric" maxlength="9"
+                            oninput="validateIsraeliID(this)"
+                            style="max-width:260px;"
+                            required>
+                        <span id="idValidMsg" style="font-size:12px;color:#94a3b8;align-self:center;">הזן 9 ספרות</span>
                     </div>
                     <div class="form-row">
                         <select id="weather">
@@ -45,12 +105,12 @@
                     </div>
                 </section>
 
-                <!-- Work Hours -->
+                <!-- ── WORK HOURS ────────────────────────────────── -->
                 <section class="section">
                     <h2>⏰ שעות עבודה</h2>
                     <div class="form-row">
-                        <input type="time" id="startTime" placeholder="שעת התחלה">
-                        <input type="time" id="endTime" placeholder="שעת סיום">
+                        <input type="time" id="startTime">
+                        <input type="time" id="endTime">
                         <input type="number" id="breakHours" value="0" step="0.5" placeholder="הפסקות (שעות)">
                     </div>
                     <div class="total-hours">
@@ -58,7 +118,7 @@
                     </div>
                 </section>
 
-                <!-- Workers -->
+                <!-- ── WORKERS ────────────────────────────────────── -->
                 <section class="section">
                     <h2>👷 כוח אדם</h2>
                     <div id="workersContainer"></div>
@@ -68,14 +128,14 @@
                     </div>
                 </section>
 
-                <!-- Activities -->
+                <!-- ── ACTIVITIES ─────────────────────────────────── -->
                 <section class="section">
                     <h2>🔨 פעילויות</h2>
                     <div id="activitiesContainer"></div>
                     <button type="button" class="btn-add" onclick="addActivityRow()">➕ הוסף פעילות</button>
                 </section>
 
-                <!-- LEGAL SECTION 1: Material Deliveries -->
+                <!-- ── MATERIALS ──────────────────────────────────── -->
                 <section class="section legal-section">
                     <h2>📦 אספקות חומרים <span class="legal-badge">חובה לפי חוק</span></h2>
                     <p class="helper-text">תיעוד חומרים שהגיעו לאתר - נדרש להוכחת תשלום</p>
@@ -83,16 +143,16 @@
                     <button type="button" class="btn-add" onclick="addMaterialRow()">➕ הוסף חומר</button>
                 </section>
 
-                <!-- LEGAL SECTION 2: Equipment & Machinery — UPDATED -->
+                <!-- ── EQUIPMENT (with subcontractor module) ──────── -->
                 <section class="section legal-section">
                     <h2>🚜 ציוד ומכונות <span class="legal-badge">חובה לפי חוק</span></h2>
-                    <p class="helper-text">רישום ציוד בשימוש — ניתן לשייך כל כלי למספר קבלני משנה עם חיוב לפי שעות</p>
+                    <p class="helper-text">רישום ציוד בשימוש — שייך כל כלי לקבלני משנה עם חיוב לפי שעות</p>
                     <div id="equipmentContainer"></div>
                     <button type="button" class="btn-add" onclick="addEquipmentRow()">➕ הוסף ציוד / כלי</button>
                     <div id="equipmentSummary"></div>
                 </section>
 
-                <!-- LEGAL SECTION 3: Safety Incidents -->
+                <!-- ── SAFETY ─────────────────────────────────────── -->
                 <section class="section legal-section critical">
                     <h2>⚠️ בטיחות ואירועים <span class="legal-badge critical">קריטי</span></h2>
                     <p class="helper-text">תיעוד אירועי בטיחות - חובה לפי חוק הבטיחות בעבודה</p>
@@ -100,7 +160,7 @@
                     <button type="button" class="btn-add" onclick="addSafetyRow()">➕ הוסף אירוע</button>
                 </section>
 
-                <!-- LEGAL SECTION 4: Regulatory Inspections -->
+                <!-- ── INSPECTIONS ────────────────────────────────── -->
                 <section class="section legal-section critical">
                     <h2>👮 ביקורות ופיקוח <span class="legal-badge critical">קריטי</span></h2>
                     <p class="helper-text">רישום ביקורות מפקחים - חובה לפי תקנות התכנון והבניה 1992</p>
@@ -108,7 +168,7 @@
                     <button type="button" class="btn-add" onclick="addInspectionRow()">➕ הוסף ביקורת</button>
                 </section>
 
-                <!-- LEGAL SECTION 5: Delays -->
+                <!-- ── DELAYS ─────────────────────────────────────── -->
                 <section class="section legal-section">
                     <h2>⏰ עיכובים והפסקות <span class="legal-badge">חובה לפי חוק</span></h2>
                     <p class="helper-text">תיעוד עיכובים - נדרש לקביעת אחריות ותשלומים</p>
@@ -116,14 +176,13 @@
                     <button type="button" class="btn-add" onclick="addDelayRow()">➕ הוסף עיכוב</button>
                 </section>
 
-                <!-- Notes & Photos -->
+                <!-- ── NOTES & PHOTOS ─────────────────────────────── -->
                 <section class="section">
                     <h2>📝 הערות ותמונות</h2>
                     <div class="voice-textarea-container">
                         <textarea id="generalNotes" placeholder="הערות כלליות... (לחץ 🎤 להקלטה)"></textarea>
                         <button type="button" class="btn-voice" id="voiceNotesBtn" title="הקלט קולי">🎤</button>
                     </div>
-                    
                     <div class="photo-upload" onclick="document.getElementById('photoInput').click()">
                         <span>📷 לחץ להוספת תמונות</span>
                     </div>
@@ -131,11 +190,11 @@
                     <div id="photoPreview" class="photo-preview"></div>
                 </section>
 
-                <!-- Tomorrow's Work Plan -->
+                <!-- ── TOMORROW PLAN ──────────────────────────────── -->
                 <section class="section">
                     <h2>📅 תוכנית עבודה למחר</h2>
                     <div class="form-row">
-                        <input type="date" id="tomorrowDate" placeholder="תאריך">
+                        <input type="date" id="tomorrowDate">
                     </div>
                     <div class="voice-textarea-container">
                         <textarea id="tomorrowPlan" placeholder="תוכנית עבודה למחר... (לחץ 🎤 להקלטה)"></textarea>
@@ -143,12 +202,16 @@
                     </div>
                 </section>
 
-                <!-- Signature -->
+                <!-- ── SIGNATURE ──────────────────────────────────── -->
                 <section class="section">
                     <h2>✍️ חתימת מנהל העבודה / מנהל הפרוייקט / עובד בכיר</h2>
                     <div class="form-row" style="margin-bottom:12px;">
                         <input type="text" id="signerName" placeholder="שם החותם" required>
-                        <input type="text" id="signerID" placeholder="מספר תעודת זהות" required inputmode="numeric" maxlength="9">
+                        <input type="text" id="signerID"
+                            placeholder="ת.ז. החותם (9 ספרות)"
+                            inputmode="numeric" maxlength="9"
+                            oninput="validateSignerID(this)"
+                            required>
                     </div>
                     <canvas id="signatureCanvas" class="signature-pad"></canvas>
                     <div class="btn-group">
@@ -156,19 +219,41 @@
                     </div>
                 </section>
 
-                <!-- Actions -->
-                <section class="section">
-                    <button type="button" id="saveBtn" class="btn-primary">💾 שמור טיוטה</button>
-                    <button type="button" id="sendBtn" class="btn-success">📤 שלח לאישור</button>
+                <!-- ── FIX 5: CUSTOMER DETAILS ────────────────────── -->
+                <section class="section" style="background:#fffbeb;border:2px solid #f59e0b;border-radius:12px;">
+                    <h2>👤 פרטי הלקוח לשליחת הדוח</h2>
+                    <p class="helper-text" style="margin-bottom:10px;">
+                        הדוח ישלח ב-WhatsApp לנייד הלקוח בלחיצת "שלח לאישור"
+                    </p>
+                    <div class="form-row">
+                        <input type="text" id="customerName" placeholder="שם הלקוח" required>
+                        <input type="tel" id="customerPhone"
+                            placeholder="נייד לקוח (לדוגמה: 0501234567)"
+                            inputmode="numeric" maxlength="10"
+                            required>
+                    </div>
                 </section>
 
-                <!-- NEW: Clear & Reset Buttons -->
+                <!-- ── ACTIONS ────────────────────────────────────── -->
+                <section class="section">
+                    <button type="button" id="saveBtn" class="btn-primary">💾 שמור טיוטה</button>
+                    <!-- FIX 4: שלח לאישור now opens WhatsApp to customer -->
+                    <button type="button" id="sendBtn" class="btn-success" onclick="sendViaWhatsApp()">
+                        📤 שלח לאישור (WhatsApp)
+                    </button>
+
+                    <!-- FIX 7: confirmation appears here after send -->
+                    <div id="sendConfirmation"></div>
+                </section>
+
+                <!-- ── RESET ──────────────────────────────────────── -->
                 <section class="section action-buttons">
                     <div class="btn-group">
                         <button type="button" class="btn-warning" onclick="clearAllData()">🗑️ נקה את כל הנתונים</button>
                         <button type="button" class="btn-info" onclick="startNewReport()">🆕 התחל דוח חדש</button>
                     </div>
                 </section>
+
             </form>
         </main>
     </div>
@@ -181,20 +266,17 @@
             <button class="btn-print" onclick="printReport()">🖨️ הדפס</button>
         </header>
 
-        <!-- Print Header (shows only in print) -->
         <div class="print-header">
             <div class="print-logo">
-                <h1>Stonhard Installation</h1>
-                <p>אבשי ספיר - קבלן רצפות תעשייתיות</p>
-                <p>📱 050-5231042</p>
+                <h1>יומן עבודה יומי</h1>
+                <p>תיעוד משפטי — תקנות התכנון והבניה 1992</p>
             </div>
             <div class="print-report-number" id="printReportNumber"></div>
         </div>
 
         <main class="container" id="printableArea">
             <div id="reportDetails"></div>
-            
-            <!-- Owner Photos Section -->
+
             <section class="section no-print">
                 <h2>📸 הוסף תמונות שלך (אופציונלי)</h2>
                 <p class="helper-text">תעד ממצאים או מצב סופי</p>
@@ -204,16 +286,14 @@
                 <input type="file" id="ownerPhotoInput" accept="image/*" capture="environment" multiple style="display:none;">
                 <div id="ownerPhotoPreview" class="photo-preview"></div>
             </section>
-            
+
             <section class="section no-print">
                 <h2>✍️ אישור</h2>
                 <input type="text" id="ownerName" placeholder="שם מלא">
-                
                 <div class="voice-textarea-container">
                     <textarea id="ownerRemarks" placeholder="הערות (אופציונלי - לחץ 🎤 להקלטה)"></textarea>
                     <button type="button" class="btn-voice" id="voiceRemarksBtn" title="הקלט קולי">🎤</button>
                 </div>
-                
                 <canvas id="ownerSignature" class="signature-pad"></canvas>
                 <div class="btn-group">
                     <button onclick="clearOwnerSignature()" class="btn-secondary">🗑️ נקה</button>
@@ -222,10 +302,8 @@
             </section>
         </main>
 
-        <!-- Print Footer (shows only in print) -->
         <div class="print-footer">
             <p>דוח זה נוצר באופן דיגיטלי ועומד בתקנות התכנון והבניה (פיקוח עליון על הבניה), תשנ"ב-1992</p>
-            <p>Stonhard Installation | אבשי ספיר | 050-5231042</p>
         </div>
     </div>
 
@@ -235,16 +313,249 @@
         <p>טוען...</p>
     </div>
 
-    <!-- Voice Recording Indicator -->
+    <!-- Voice Indicator -->
     <div id="voiceIndicator" class="voice-indicator" style="display:none;">
         <div class="voice-pulse"></div>
         <p>🎤 מקליט... דבר עכשיו</p>
         <button onclick="stopVoiceRecording()" class="btn-stop">⏹️ עצור</button>
     </div>
 
+    <!-- ── FIX 8: LOGBOOK FOOTER ──────────────────────────────── -->
+    <div id="logbookSection">
+        <div style="max-width:900px;margin:0 auto;">
+            <h2>📚 יומן דוחות — כל הדוחות שנשלחו</h2>
+            <div style="display:flex;gap:10px;margin-bottom:12px;flex-wrap:wrap;">
+                <button onclick="loadLogbook()" class="btn-add" style="font-size:12px;padding:6px 14px;">
+                    🔄 רענן רשימה
+                </button>
+                <input type="text" id="logbookFilter" placeholder="חפש לפי פרויקט / תאריך..."
+                    oninput="filterLogbook(this.value)"
+                    style="flex:1;min-width:180px;border:1px solid #cbd5e1;border-radius:8px;
+                           padding:6px 12px;font-size:12px;font-family:inherit;direction:rtl;">
+            </div>
+            <div id="logbookList">
+                <div class="logbook-empty">לחץ על 🔄 רענן לטעינת הדוחות</div>
+            </div>
+        </div>
+    </div>
+
     <!-- Supabase -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="app.js"></script>
     <script src="equipment_module_27022026.js"></script>
+
+    <!-- ── INLINE SCRIPTS: ID validation + WhatsApp + Logbook ─── -->
+    <script>
+    // ── Israeli ID validation (Luhn algorithm) ───────────────────
+    function isValidIsraeliID(id) {
+        id = String(id).trim().replace(/\D/g, '');
+        if (id.length > 9 || id.length < 5) return false;
+        id = id.padStart(9, '0');
+        let sum = 0;
+        for (let i = 0; i < 9; i++) {
+            let d = parseInt(id[i]) * (i % 2 === 0 ? 1 : 2);
+            if (d > 9) d -= 9;
+            sum += d;
+        }
+        return sum % 10 === 0;
+    }
+
+    function validateIsraeliID(input) {
+        const raw = input.value.replace(/\D/g, '');
+        input.value = raw;
+        const msgEl = document.getElementById('idValidMsg');
+        if (raw.length < 9) {
+            input.classList.remove('id-valid', 'id-invalid');
+            if (msgEl) msgEl.textContent = `${raw.length}/9 ספרות`;
+            if (msgEl) msgEl.style.color = '#94a3b8';
+            return;
+        }
+        if (isValidIsraeliID(raw)) {
+            input.classList.add('id-valid');
+            input.classList.remove('id-invalid');
+            if (msgEl) { msgEl.textContent = '✅ תקין'; msgEl.style.color = '#16a34a'; }
+        } else {
+            input.classList.add('id-invalid');
+            input.classList.remove('id-valid');
+            if (msgEl) { msgEl.textContent = '❌ לא תקין'; msgEl.style.color = '#dc2626'; }
+        }
+    }
+
+    function validateSignerID(input) {
+        const raw = input.value.replace(/\D/g, '');
+        input.value = raw;
+        if (raw.length === 9) {
+            if (isValidIsraeliID(raw)) {
+                input.classList.add('id-valid'); input.classList.remove('id-invalid');
+            } else {
+                input.classList.add('id-invalid'); input.classList.remove('id-valid');
+            }
+        } else {
+            input.classList.remove('id-valid', 'id-invalid');
+        }
+    }
+
+    // ── WhatsApp send ─────────────────────────────────────────────
+    // FIX 4 & 5: sends to customer phone, shows confirmation
+    function sendViaWhatsApp() {
+        const project  = document.getElementById('projectName')?.value  || 'לא צוין';
+        const date     = document.getElementById('reportDate')?.value   || '';
+        const manager  = document.getElementById('projectManager')?.value || '';
+        const customer = document.getElementById('customerName')?.value || '';
+        const phone    = (document.getElementById('customerPhone')?.value || '').replace(/\D/g,'');
+        const reportId = document.querySelector('#reportNumber .report-id')?.textContent?.trim() || '';
+
+        if (!phone || phone.length < 9) {
+            alert('⚠️ יש להזין מספר נייד לקוח לפני השליחה');
+            document.getElementById('customerPhone')?.focus();
+            return;
+        }
+
+        // Build Hebrew date
+        const dateHe = date
+            ? new Date(date).toLocaleDateString('he-IL', { day:'2-digit', month:'2-digit', year:'numeric' })
+            : '';
+
+        // Format WhatsApp message
+        const msg = [
+            `📋 *יומן עבודה יומי*`,
+            reportId ? `מספר דוח: ${reportId}` : '',
+            `פרויקט: ${project}`,
+            dateHe ? `תאריך: ${dateHe}` : '',
+            manager ? `מנהל עבודה: ${manager}` : '',
+            ``,
+            `לצפייה ואישור הדוח — פתח את הקישור שיישלח בנפרד.`,
+            ``,
+            `⚖️ מסמך משפטי — תקנות התכנון והבניה 1992`
+        ].filter(Boolean).join('\n');
+
+        // Format phone to international IL format
+        let intlPhone = phone;
+        if (phone.startsWith('0')) intlPhone = '972' + phone.slice(1);
+
+        const waURL = `https://wa.me/${intlPhone}?text=${encodeURIComponent(msg)}`;
+
+        // FIX 7: show confirmation banner
+        const now    = new Date();
+        const timeStr = now.toLocaleTimeString('he-IL', { hour:'2-digit', minute:'2-digit' });
+        const dateStr = now.toLocaleDateString('he-IL', { day:'2-digit', month:'2-digit', year:'numeric' });
+        const conf   = document.getElementById('sendConfirmation');
+        if (conf) {
+            conf.style.display = 'block';
+            conf.innerHTML = `
+                ✅ הדוח נשלח ל: <strong>${customer || phone}</strong>
+                &nbsp;|&nbsp; נייד: ${phone}
+                &nbsp;|&nbsp; 🕐 ${timeStr} &nbsp; 📅 ${dateStr}
+            `;
+        }
+
+        // Open WhatsApp
+        window.open(waURL, '_blank');
+
+        // Reload logbook after short delay
+        setTimeout(loadLogbook, 2000);
+    }
+
+    // ── Logbook ───────────────────────────────────────────────────
+    let allLogbookRows = [];
+
+    async function loadLogbook() {
+        const listEl = document.getElementById('logbookList');
+        if (!listEl) return;
+        listEl.innerHTML = '<div class="logbook-empty">⏳ טוען...</div>';
+
+        try {
+            // Use WJ_URL and WJ_KEY from equipment_module_27022026.js
+            if (typeof wjSB === 'undefined' || !wjSB) {
+                listEl.innerHTML = '<div class="logbook-empty">⚠️ מחכה לחיבור Supabase...</div>';
+                setTimeout(loadLogbook, 1500);
+                return;
+            }
+
+            const { data, error } = await wjSB
+                .from('reports')
+                .select('id, report_number, project_name, report_date, manager_name, status, sent_at, approved_at, share_token')
+                .order('created_at', { ascending: false })
+                .limit(100);
+
+            if (error) throw error;
+            if (!data || data.length === 0) {
+                listEl.innerHTML = '<div class="logbook-empty">אין דוחות עדיין</div>';
+                return;
+            }
+
+            allLogbookRows = data;
+            renderLogbook(data);
+
+        } catch(e) {
+            listEl.innerHTML = `<div class="logbook-empty">❌ שגיאה: ${e.message}</div>`;
+        }
+    }
+
+    function renderLogbook(rows) {
+        const listEl = document.getElementById('logbookList');
+        if (!listEl) return;
+        if (!rows.length) {
+            listEl.innerHTML = '<div class="logbook-empty">לא נמצאו תוצאות</div>';
+            return;
+        }
+
+        let html = `
+            <div class="logbook-row logbook-header">
+                <span>תאריך</span>
+                <span>פרויקט</span>
+                <span>מנהל עבודה</span>
+                <span>סטטוס</span>
+                <span>פתח</span>
+            </div>`;
+
+        rows.forEach(r => {
+            const dateStr = r.report_date
+                ? new Date(r.report_date).toLocaleDateString('he-IL', { day:'2-digit', month:'2-digit', year:'2-digit' })
+                : '—';
+            const statusClass = r.status === 'sent' || r.status === 'approved'
+                ? 'logbook-status-sent' : 'logbook-status-draft';
+            const statusText = r.status === 'approved' ? '✅ מאושר'
+                             : r.status === 'sent'     ? '📤 נשלח'
+                             : r.status === 'draft'    ? '📝 טיוטה'
+                             : r.status || '—';
+            const reportNum = r.report_number || r.id?.substring(0, 6) + '...' || '—';
+            const viewHref  = r.share_token
+                ? `?token=${r.share_token}`
+                : `?report_id=${r.id}`;
+
+            html += `
+                <div class="logbook-row" title="מספר: ${reportNum}">
+                    <span>${dateStr}</span>
+                    <span>${r.project_name || '—'}</span>
+                    <span>${r.manager_name || '—'}</span>
+                    <span class="${statusClass}">${statusText}</span>
+                    <span>
+                        <button class="logbook-view-btn"
+                            onclick="window.open('${viewHref}','_blank')">
+                            📄 פתח
+                        </button>
+                    </span>
+                </div>`;
+        });
+
+        listEl.innerHTML = html;
+    }
+
+    function filterLogbook(query) {
+        if (!allLogbookRows.length) return;
+        const q = query.toLowerCase();
+        const filtered = allLogbookRows.filter(r =>
+            (r.project_name  || '').toLowerCase().includes(q) ||
+            (r.report_date   || '').includes(q) ||
+            (r.manager_name  || '').toLowerCase().includes(q) ||
+            (r.report_number || '').toLowerCase().includes(q)
+        );
+        renderLogbook(filtered);
+    }
+
+    // Auto-load logbook when page opens
+    window.addEventListener('load', () => { setTimeout(loadLogbook, 2000); });
+    </script>
 </body>
 </html>
