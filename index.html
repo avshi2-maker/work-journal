@@ -17,7 +17,6 @@
                 <div class="report-timestamp"></div>
             </div>
             <h1>📝 יומן עבודה יומי</h1>
-            <p>Stonhard Installation - אבשי ספיר</p>
             <p class="legal-notice">⚖️ תיעוד משפטי מלא - תקנות התכנון והבניה 1992</p>
         </header>
 
@@ -29,6 +28,9 @@
                     <div class="form-row">
                         <input type="text" id="projectName" placeholder="שם פרוייקט" required>
                         <input type="date" id="reportDate" required>
+                    </div>
+                    <div class="form-row">
+                        <input type="text" id="projectManager" placeholder="שם מנהל הפרוייקט" required>
                     </div>
                     <div class="form-row">
                         <select id="weather">
@@ -143,7 +145,11 @@
 
                 <!-- Signature -->
                 <section class="section">
-                    <h2>✍️ חתימת מנהל העבודה</h2>
+                    <h2>✍️ חתימת מנהל העבודה / מנהל הפרוייקט / עובד בכיר</h2>
+                    <div class="form-row" style="margin-bottom:12px;">
+                        <input type="text" id="signerName" placeholder="שם החותם" required>
+                        <input type="text" id="signerID" placeholder="מספר תעודת זהות" required inputmode="numeric" maxlength="9">
+                    </div>
                     <canvas id="signatureCanvas" class="signature-pad"></canvas>
                     <div class="btn-group">
                         <button type="button" class="btn-secondary" onclick="clearSignature()">🗑️ נקה חתימה</button>
