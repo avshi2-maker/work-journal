@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>יומן עבודה - Stonhard</title>
     <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="equipment_module_27022026.css">
 </head>
 <body>
     <!-- Manager View -->
@@ -80,12 +81,13 @@
                     <button type="button" class="btn-add" onclick="addMaterialRow()">➕ הוסף חומר</button>
                 </section>
 
-                <!-- LEGAL SECTION 2: Equipment & Machinery -->
+                <!-- LEGAL SECTION 2: Equipment & Machinery — UPDATED -->
                 <section class="section legal-section">
                     <h2>🚜 ציוד ומכונות <span class="legal-badge">חובה לפי חוק</span></h2>
-                    <p class="helper-text">רישום ציוד בשימוש - נדרש למעקב עלויות</p>
+                    <p class="helper-text">רישום ציוד בשימוש — ניתן לשייך כל כלי למספר קבלני משנה עם חיוב לפי שעות</p>
                     <div id="equipmentContainer"></div>
-                    <button type="button" class="btn-add" onclick="addEquipmentRow()">➕ הוסף ציוד</button>
+                    <button type="button" class="btn-add" onclick="addEquipmentRow()">➕ הוסף ציוד / כלי</button>
+                    <div id="equipmentSummary"></div>
                 </section>
 
                 <!-- LEGAL SECTION 3: Safety Incidents -->
@@ -237,5 +239,6 @@
     <!-- Supabase -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="app.js"></script>
+    <script src="equipment_module_27022026.js"></script>
 </body>
 </html>
