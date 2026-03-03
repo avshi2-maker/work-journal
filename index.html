@@ -803,6 +803,185 @@ function renderWorkPlan(){
   </div>`;
 }
 
+/* ── TEAM CVs — TAB 13 ── */
+function renderTeam(){
+  const AVSHI_CV = 'https://vqelnbvvbowchtvedntw.supabase.co/storage/v1/object/public/facade-images/profieAvshi.pdf';
+  return `
+  <div class="slide" id="slide-team" style="background:#0f1420;padding-top:68px">
+    <div class="slide-header">
+      <div class="slide-label" style="color:var(--gold)">קבוצת ביצוע</div>
+      <h1 style="color:#fff">קורות חיים — צוות הפרויקט</h1>
+      <p style="color:var(--lgray)">אנשי מקצוע מנוסים · תכנון · ביצוע · פיקוח · ציפוי</p>
+      <div class="header-line" style="background:var(--gold)"></div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-top:8px">
+
+      <!-- בני פרסקי -->
+      <div style="background:#1a2030;border-radius:16px;overflow:hidden;
+                  border:1px solid rgba(201,147,58,0.25)">
+        <!-- header card -->
+        <div style="background:linear-gradient(135deg,var(--teal),var(--teal2));
+                    padding:28px 24px;text-align:center;position:relative">
+          <div style="width:80px;height:80px;border-radius:50%;background:rgba(255,255,255,0.15);
+                      margin:0 auto 14px;display:flex;align-items:center;justify-content:center;
+                      font-size:36px;border:3px solid rgba(201,147,58,0.5)">👷</div>
+          <div style="font-size:22px;font-weight:900;color:#fff;margin-bottom:6px">בני פרסקי</div>
+          <div style="font-size:12px;color:var(--gold);font-weight:700;letter-spacing:1px">
+            תכנון · ביצוע · פיקוח
+          </div>
+          <div style="font-size:10px;color:rgba(255,255,255,0.5);margin-top:6px">
+            מנהל פרויקט ראשי
+          </div>
+        </div>
+        <!-- body -->
+        <div style="padding:22px 24px">
+          ${[
+            ['🎓','הכשרה','הנדסאי בנין מוסמך · מנהל עבודה מוסמך'],
+            ['📋','תפקיד בפרויקט','תכנון מערכת החזית · ניהול ביצוע · פיקוח על איכות'],
+            ['🏗️','התמחות','שיפוצי חזיתות · פרויקטים מורכבים · שימור מבנים היסטוריים'],
+            ['📍','ניסיון','20+ שנות ניסיון בניהול פרויקטי בנייה ושיפוץ'],
+            ['✅','אחריות','מסירה בזמן · עמידה בתקציב · פיקוח יומי בשטח'],
+          ].map(([ico,label,val])=>`
+            <div style="display:flex;gap:12px;padding:9px 0;
+                        border-bottom:1px solid rgba(255,255,255,0.06);align-items:flex-start">
+              <span style="font-size:16px;flex-shrink:0;width:24px;text-align:center;margin-top:1px">${ico}</span>
+              <div>
+                <div style="font-size:9px;font-weight:900;color:var(--gold);
+                            letter-spacing:1px;margin-bottom:3px">${label}</div>
+                <div style="font-size:11px;color:#ccc;line-height:1.6">${val}</div>
+              </div>
+            </div>`).join('')}
+
+          <div style="margin-top:18px;background:rgba(13,92,99,0.2);border-radius:10px;
+                      padding:12px 16px;border:1px solid rgba(13,92,99,0.4)">
+            <div style="font-size:10px;color:var(--teal);font-weight:900;margin-bottom:6px">
+              🏆 פרויקטים נבחרים
+            </div>
+            <div style="font-size:10px;color:#aaa;line-height:2">
+              · שיפוץ חזיתות בית גולדמן נתניה<br>
+              · פרויקט חזיתות בית פלדמן נתניה (נוכחי)<br>
+              · שיפוצי בניינים רב-קומתיים — מרכז הארץ
+            </div>
+          </div>
+
+          <div style="margin-top:14px;background:rgba(201,147,58,0.08);border-radius:10px;
+                      padding:10px 14px;font-size:10px;color:#999;text-align:center;
+                      border:1px dashed rgba(201,147,58,0.25)">
+            📄 קורות חיים מלאים — זמינים על פי בקשה
+          </div>
+        </div>
+      </div>
+
+      <!-- אבשי ספיר -->
+      <div style="background:#1a2030;border-radius:16px;overflow:hidden;
+                  border:1px solid rgba(45,158,107,0.3)">
+        <!-- header card -->
+        <div style="background:linear-gradient(135deg,#1a3a2a,#0d2e1e);
+                    padding:28px 24px;text-align:center;position:relative">
+          <div style="width:80px;height:80px;border-radius:50%;background:rgba(45,158,107,0.2);
+                      margin:0 auto 14px;display:flex;align-items:center;justify-content:center;
+                      font-size:36px;border:3px solid rgba(45,158,107,0.5)">🪵</div>
+          <div style="font-size:22px;font-weight:900;color:#fff;margin-bottom:6px">אבשי ספיר</div>
+          <div style="font-size:12px;color:var(--green);font-weight:700;letter-spacing:1px">
+            ציפוי לוחות במיקרוטופינג
+          </div>
+          <div style="font-size:10px;color:rgba(255,255,255,0.5);margin-top:6px">
+            מומחה יישום באקסב-אקו® · מיישם מוסמך Topcret®
+          </div>
+        </div>
+        <!-- body -->
+        <div style="padding:22px 24px">
+          ${[
+            ['🎓','הכשרה','מיישם מוסמך Topcret® · ריצוף וחיפוי מקצועי · 30+ שנות ניסיון'],
+            ['📋','תפקיד בפרויקט','יישום באקסב-אקו® על לוחות דנסגלס® · הכנת משטח · גימור'],
+            ['🏗️','התמחות','מיקרו-מלט · ציפויים דקורטיביים · עבודות חזית · ריצוף'],
+            ['📍','ניסיון','עשרות פרויקטים של מיקרוטופינג · חזיתות · רצפות · קירות'],
+            ['✅','אחריות','יישום לפי תקן Topcret® · אחריות על עבודת הציפוי'],
+          ].map(([ico,label,val])=>`
+            <div style="display:flex;gap:12px;padding:9px 0;
+                        border-bottom:1px solid rgba(255,255,255,0.06);align-items:flex-start">
+              <span style="font-size:16px;flex-shrink:0;width:24px;text-align:center;margin-top:1px">${ico}</span>
+              <div>
+                <div style="font-size:9px;font-weight:900;color:var(--green);
+                            letter-spacing:1px;margin-bottom:3px">${label}</div>
+                <div style="font-size:11px;color:#ccc;line-height:1.6">${val}</div>
+              </div>
+            </div>`).join('')}
+
+          <div style="margin-top:18px;background:rgba(45,158,107,0.1);border-radius:10px;
+                      padding:12px 16px;border:1px solid rgba(45,158,107,0.3)">
+            <div style="font-size:10px;color:var(--green);font-weight:900;margin-bottom:6px">
+              🏆 פרויקטים נבחרים
+            </div>
+            <div style="font-size:10px;color:#aaa;line-height:2">
+              · מיקרוטופינג חזיתות — בית פלדמן נתניה (נוכחי)<br>
+              · ציפויי מיקרו-מלט לרצפות ולקירות — מגורים ומסחר<br>
+              · פרויקטי חזיתות באקסב-אקו® — מרכז הארץ
+            </div>
+          </div>
+
+          <!-- CV PDF -->
+          <div style="margin-top:14px">
+            <div style="font-size:10px;font-weight:900;color:var(--green);
+                        margin-bottom:8px;letter-spacing:1px">📄 קורות חיים מלאים</div>
+            <div style="background:#fff;border-radius:10px;overflow:hidden;
+                        box-shadow:0 4px 16px rgba(0,0,0,0.3)">
+              <div style="background:var(--green);padding:8px 14px;display:flex;
+                          align-items:center;justify-content:space-between">
+                <span style="font-size:11px;font-weight:700;color:#fff">אבשי ספיר — פרופיל מקצועי</span>
+                <a href="${AVSHI_CV}" target="_blank"
+                   style="background:var(--gold);color:var(--dark);padding:5px 12px;
+                          border-radius:12px;font-size:10px;font-weight:900;text-decoration:none">
+                  ⬇️ הורד PDF
+                </a>
+              </div>
+              <iframe src="${AVSHI_CV}"
+                      style="width:100%;height:320px;border:none;display:block"
+                      title="קורות חיים אבשי ספיר">
+              </iframe>
+            </div>
+            <div style="text-align:center;margin-top:6px;font-size:9px;color:#555">
+              אם ה-PDF לא נטען —
+              <a href="${AVSHI_CV}" target="_blank"
+                 style="color:var(--green);font-weight:700">פתח בחלון חדש</a>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+    </div>
+
+    <!-- bottom bar -->
+    <div style="background:rgba(201,147,58,0.08);border:1px solid rgba(201,147,58,0.2);
+                border-radius:12px;padding:14px 20px;margin-top:20px;
+                display:flex;align-items:center;gap:16px;flex-wrap:wrap;direction:rtl">
+      <span style="font-size:20px">🤝</span>
+      <div>
+        <div style="font-size:12px;font-weight:900;color:var(--gold)">קבוצת ביצוע מקצועית</div>
+        <div style="font-size:11px;color:#999;margin-top:3px">
+          תכנון + פיקוח + יישום מיקרוטופינג · מוסמכי Topcret® · ניסיון עשרות פרויקטים
+        </div>
+      </div>
+      <div style="margin-right:auto;display:flex;gap:10px;flex-wrap:wrap">
+        <span style="background:rgba(13,92,99,0.3);border:1px solid var(--teal);
+                     color:var(--teal);padding:5px 14px;border-radius:20px;font-size:10px;font-weight:700">
+          ✅ מיישמים מוסמכים
+        </span>
+        <span style="background:rgba(45,158,107,0.2);border:1px solid var(--green);
+                     color:var(--green);padding:5px 14px;border-radius:20px;font-size:10px;font-weight:700">
+          ✅ אחריות Topcret®
+        </span>
+        <span style="background:rgba(201,147,58,0.15);border:1px solid var(--gold);
+                     color:var(--gold);padding:5px 14px;border-radius:20px;font-size:10px;font-weight:700">
+          ✅ פיקוח יומי
+        </span>
+      </div>
+    </div>
+  </div>`;
+}
+
 /* ── RENDER ALL ── */
 function renderAll(){
   const main = document.getElementById('main');
@@ -820,15 +999,18 @@ function renderAll(){
     else html += renderGrid3(sl);
   });
 
-  // Tab 12 — static, not from Supabase
+  // Tab 12 — static
   html += renderWorkPlan();
+  // Tab 13 — static
+  html += renderTeam();
 
   main.innerHTML = html;
 
   nav.innerHTML = allSlides.map((sl,i)=>`
     <button class="nav-btn ${i===0?'active':''}" onclick="goTo(${i})">${sl.slide_order}. ${sl.title}</button>
   `).join('') +
-  `<button class="nav-btn" onclick="goTo(${allSlides.length})">12. נהלי עבודה</button>`;
+  `<button class="nav-btn" onclick="goTo(${allSlides.length})">12. נהלי עבודה</button>` +
+  `<button class="nav-btn" onclick="goTo(${allSlides.length+1})">13. קבוצת ביצוע</button>`;
 }
 
 function goTo(i){
