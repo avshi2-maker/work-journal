@@ -10,21 +10,31 @@
 <title>דנסגלס® + באקסב-אקו® — מערכת חידוש חזיתות</title>
 <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;600;700;900&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2">
-/* ── SWIPE GESTURES — iOS & Android ── */
+/* ── SWIPE GESTURES — Android & iOS FIXED ── */
 (function(){
-  let startX = 0, startY = 0;
+  let startX = 0, startY = 0, moved = false;
+
   document.addEventListener('touchstart', e => {
     startX = e.touches[0].clientX;
     startY = e.touches[0].clientY;
+    moved = false;
   }, { passive: true });
+
+  document.addEventListener('touchmove', e => {
+    moved = true;
+  }, { passive: true });
+
   document.addEventListener('touchend', e => {
+    if(!moved) return;
     const dx = e.changedTouches[0].clientX - startX;
     const dy = e.changedTouches[0].clientY - startY;
-    if(Math.abs(dx) < 40 || Math.abs(dy) > Math.abs(dx) * 1.2) return;
-    // RTL: swipe left = next, swipe right = prev
+    // Only horizontal swipes (dx dominant, minimum 50px)
+    if(Math.abs(dx) < 50) return;
+    if(Math.abs(dy) > Math.abs(dx) * 0.8) return;
     const totalSlides = document.querySelectorAll('.slide').length;
-    if(dx < -40) goTo(Math.min(current + 1, totalSlides - 1));
-    if(dx >  40) goTo(Math.max(current - 1, 0));
+    // RTL layout: swipe RIGHT → go to PREVIOUS tab, swipe LEFT → NEXT tab
+    if(dx < -50) goTo(Math.min(current + 1, totalSlides - 1));
+    if(dx >  50) goTo(Math.max(current - 1, 0));
   }, { passive: true });
 })();
 
@@ -317,6 +327,11 @@ main{padding-top:56px}
 
 /* Smooth scroll */
 html{ scroll-behavior:smooth; -webkit-overflow-scrolling:touch; }
+
+
+/* TOUCH-ACTION FIX — prevent scroll blocking swipe */
+.slide { touch-action: pan-y pinch-zoom; }
+#nav-buttons { touch-action: pan-x; }
 
 </style>
 </head>
@@ -664,9 +679,9 @@ function renderPriceTable(sl){
           ⬇️ הורד PDF
         </a>
       </div>
-      <iframe src="${PDF_OFFER}"
+      <iframe data-src="${PDF_OFFER}" src="about:blank"
               style="width:100%;height:68vh;border:none;display:block"
-              title="הצעת מחיר בית פלדמן">
+              class="lazy-iframe" title="הצעת מחיר בית פלדמן">
       </iframe>
     </div>
 
@@ -901,9 +916,9 @@ function renderWorkPlan(){
             🔗 פתח בחלון מלא
           </a>
         </div>
-        <iframe src="https://avshi2-maker.github.io/work-journal/"
+        <iframe data-src="https://avshi2-maker.github.io/work-journal/" src="about:blank"
                 style="flex:1;width:100%;min-height:520px;border:none;background:#fff"
-                title="יומן עבודה">
+                class="lazy-iframe" title="יומן עבודה">
         </iframe>
         <div style="padding:8px 16px;background:#131925;font-size:9px;color:#555;text-align:center">
           אם היומן לא נטען — לחץ "פתח בחלון מלא" למעלה
@@ -1288,9 +1303,9 @@ function renderTeam(){
                   ⬇️ הורד PDF
                 </a>
               </div>
-              <iframe src="${AVSHI_CV}"
+              <iframe data-src="${AVSHI_CV}" src="about:blank"
                       style="width:100%;height:320px;border:none;display:block"
-                      title="קורות חיים אבשי ספיר">
+                      class="lazy-iframe" title="קורות חיים אבשי ספיר">
               </iframe>
             </div>
             <div style="text-align:center;margin-top:6px;font-size:9px;color:#555">
@@ -1373,8 +1388,23 @@ function renderAll(){
 
 function goTo(i){
   document.querySelectorAll('.slide').forEach((s,j)=>s.classList.toggle('active',j===i));
-  document.querySelectorAll('.nav-btn').forEach((b,j)=>b.classList.toggle('active',j===i));
-  current=i; window.scrollTo(0,0);
+  document.querySelectorAll('.nav-btn').forEach((b,j)=>{
+    b.classList.toggle('active',j===i);
+    // Scroll active nav button into view on mobile
+    if(j===i) b.scrollIntoView({behavior:'smooth',block:'nearest',inline:'center'});
+  });
+  current=i;
+  window.scrollTo(0,0);
+
+  // Lazy-load iframes only when their slide becomes active
+  const activeSlide = document.querySelectorAll('.slide')[i];
+  if(activeSlide){
+    activeSlide.querySelectorAll('iframe.lazy-iframe').forEach(fr=>{
+      if(fr.dataset.src && fr.src !== fr.dataset.src){
+        fr.src = fr.dataset.src;
+      }
+    });
+  }
 }
 
 document.addEventListener('keydown',e=>{
@@ -1393,21 +1423,31 @@ document.addEventListener('keydown',e=>{
   }
 })();
 
-/* ── SWIPE GESTURES — iOS & Android ── */
+/* ── SWIPE GESTURES — Android & iOS FIXED ── */
 (function(){
-  let startX = 0, startY = 0;
+  let startX = 0, startY = 0, moved = false;
+
   document.addEventListener('touchstart', e => {
     startX = e.touches[0].clientX;
     startY = e.touches[0].clientY;
+    moved = false;
   }, { passive: true });
+
+  document.addEventListener('touchmove', e => {
+    moved = true;
+  }, { passive: true });
+
   document.addEventListener('touchend', e => {
+    if(!moved) return;
     const dx = e.changedTouches[0].clientX - startX;
     const dy = e.changedTouches[0].clientY - startY;
-    if(Math.abs(dx) < 40 || Math.abs(dy) > Math.abs(dx) * 1.2) return;
-    // RTL: swipe left = next, swipe right = prev
+    // Only horizontal swipes (dx dominant, minimum 50px)
+    if(Math.abs(dx) < 50) return;
+    if(Math.abs(dy) > Math.abs(dx) * 0.8) return;
     const totalSlides = document.querySelectorAll('.slide').length;
-    if(dx < -40) goTo(Math.min(current + 1, totalSlides - 1));
-    if(dx >  40) goTo(Math.max(current - 1, 0));
+    // RTL layout: swipe RIGHT → go to PREVIOUS tab, swipe LEFT → NEXT tab
+    if(dx < -50) goTo(Math.min(current + 1, totalSlides - 1));
+    if(dx >  50) goTo(Math.max(current - 1, 0));
   }, { passive: true });
 })();
 
