@@ -2,10 +2,33 @@
 <html lang="he" dir="rtl">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#1a1a2e">
 <title>דנסגלס® + באקסב-אקו® — מערכת חידוש חזיתות</title>
 <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;600;700;900&display=swap" rel="stylesheet">
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2">
+/* ── SWIPE GESTURES — iOS & Android ── */
+(function(){
+  let startX = 0, startY = 0;
+  document.addEventListener('touchstart', e => {
+    startX = e.touches[0].clientX;
+    startY = e.touches[0].clientY;
+  }, { passive: true });
+  document.addEventListener('touchend', e => {
+    const dx = e.changedTouches[0].clientX - startX;
+    const dy = e.changedTouches[0].clientY - startY;
+    if(Math.abs(dx) < 40 || Math.abs(dy) > Math.abs(dx) * 1.2) return;
+    // RTL: swipe left = next, swipe right = prev
+    const totalSlides = document.querySelectorAll('.slide').length;
+    if(dx < -40) goTo(Math.min(current + 1, totalSlides - 1));
+    if(dx >  40) goTo(Math.max(current - 1, 0));
+  }, { passive: true });
+})();
+
+</script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 :root{
@@ -192,6 +215,109 @@ main{padding-top:56px}
   .slide{display:block!important;page-break-after:always;min-height:100vh;padding:36px}
   main{padding-top:0}
 }
+
+/* ═══════════════════════════════════════
+   MOBILE — Android & iOS
+═══════════════════════════════════════ */
+@media(max-width:640px){
+
+  /* NAV — bottom tab bar on mobile */
+  nav{
+    top:auto; bottom:0; right:0; left:0;
+    padding:6px 8px 10px;
+    flex-direction:column; gap:4px;
+    border-top:1px solid rgba(201,147,58,0.3);
+    border-bottom:none;
+  }
+  .nav-title{ font-size:11px; margin-left:0; margin-bottom:2px; }
+  #nav-buttons{
+    display:flex; flex-wrap:nowrap; overflow-x:auto;
+    gap:6px; padding-bottom:2px; -webkit-overflow-scrolling:touch;
+    scrollbar-width:none;
+  }
+  #nav-buttons::-webkit-scrollbar{ display:none; }
+  .nav-btn{ font-size:10px; padding:6px 10px; white-space:nowrap; flex-shrink:0; }
+  .nav-left{ display:none; }  /* hide print on mobile */
+
+  /* MAIN — extra bottom padding for nav bar */
+  main{ padding-top:8px; padding-bottom:90px; }
+
+  /* SLIDES */
+  .slide{ padding:16px 14px 20px; min-height:auto; }
+  .slide-header h1{ font-size:22px; }
+  .slide-header p{ font-size:12px; }
+
+  /* COVER */
+  .cover-wrap{ grid-template-columns:1fr; gap:20px; min-height:auto; }
+  .cover-title{ font-size:28px; }
+  .cover-sub{ font-size:14px; }
+
+  /* GRIDS → single column */
+  .grid3{ grid-template-columns:1fr; }
+  .two-col{ grid-template-columns:1fr; }
+  .two-tables{ grid-template-columns:1fr; }
+  .colors-grid{ grid-template-columns:1fr 1fr; gap:10px; }
+  .surface-grid{ grid-template-columns:1fr 1fr; }
+  .stats-row{ grid-template-columns:1fr 1fr; }
+  .price-notes{ grid-template-columns:1fr 1fr; }
+
+  /* TABLES — scrollable */
+  .price-wrap{ overflow-x:auto; -webkit-overflow-scrolling:touch; }
+  .data-table{ font-size:10px; }
+  .data-table th, .data-table td{ padding:6px 8px; }
+
+  /* SPEC rows */
+  .spec-key{ width:80px; font-size:8px; }
+  .spec-val{ font-size:10px; }
+
+  /* IMAGES */
+  .hero-img{ height:180px; }
+  .product-img{ height:140px; }
+  .color-card img{ height:160px; }
+
+  /* MODULE 3-colors → stack */
+  .colors-grid{ grid-template-columns:1fr; }
+
+  /* TAB 12 — gantt + journal stack */
+  #slide-operations > div > div:first-child,
+  #slide-operations > div > div:last-child{ width:100%; }
+  #slide-operations > div{ grid-template-columns:1fr !important; }
+
+  /* TAB 13 — team cards stack */
+  #slide-team > div:nth-child(2){ grid-template-columns:1fr !important; }
+
+  /* TAB 15 — process stack */
+  #slide-process > div:last-child{ grid-template-columns:1fr !important; }
+
+  /* IFRAME — shrink height on mobile */
+  iframe{ min-height:320px !important; height:320px !important; }
+
+  /* VIDEO */
+  video{ max-height:220px; }
+
+  /* LIGHTBOX */
+  #lb-img{ max-width:96vw; max-height:75vh; }
+
+  /* EPD bar */
+  .epd-bar{ flex-wrap:wrap; font-size:10px; }
+
+  /* contact */
+  .contact-box{ padding:18px 20px; }
+  .contact-wrap h1{ font-size:26px; }
+
+  /* weight bar */
+  .weight-bar{ font-size:10px; line-height:1.8; }
+}
+
+/* SWIPE support */
+.slide{ touch-action:pan-y; }
+
+/* Tap highlight remove */
+*{ -webkit-tap-highlight-color:transparent; }
+
+/* Smooth scroll */
+html{ scroll-behavior:smooth; -webkit-overflow-scrolling:touch; }
+
 </style>
 </head>
 <body>
@@ -1266,6 +1392,25 @@ document.addEventListener('keydown',e=>{
     console.error(e);
   }
 })();
+
+/* ── SWIPE GESTURES — iOS & Android ── */
+(function(){
+  let startX = 0, startY = 0;
+  document.addEventListener('touchstart', e => {
+    startX = e.touches[0].clientX;
+    startY = e.touches[0].clientY;
+  }, { passive: true });
+  document.addEventListener('touchend', e => {
+    const dx = e.changedTouches[0].clientX - startX;
+    const dy = e.changedTouches[0].clientY - startY;
+    if(Math.abs(dx) < 40 || Math.abs(dy) > Math.abs(dx) * 1.2) return;
+    // RTL: swipe left = next, swipe right = prev
+    const totalSlides = document.querySelectorAll('.slide').length;
+    if(dx < -40) goTo(Math.min(current + 1, totalSlides - 1));
+    if(dx >  40) goTo(Math.max(current - 1, 0));
+  }, { passive: true });
+})();
+
 </script>
 </body>
 </html>
