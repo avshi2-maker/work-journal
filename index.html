@@ -803,6 +803,204 @@ function renderWorkPlan(){
   </div>`;
 }
 
+/* ── MICROTOPPING PROCESS — TAB 15 ── */
+function renderProcess(){
+  // Set video URL after uploading to Supabase:
+  const VIDEO_URL = 'https://vqelnbvvbowchtvedntw.supabase.co/storage/v1/object/public/facade-images/application_video.mp4';
+
+  const steps = [
+    { n:'01', title:'הכנת המשטח', icon:'🧹', color:'#0d5c63',
+      body:'ניקוי יסודי של לוח הדנסגלס®. הסרת אבק, שמן וכל חומר זר. בדיקת יציבות ואחידות המשטח. שיוף קל במידת הצורך.' },
+    { n:'02', title:'שכבת פריימר', icon:'🖌️', color:'#0d5c63',
+      body:'יישום פריימר Topcret® ייעודי לדנסגלס®. יצירת הידבקות מרבית בין הלוח למיקרו-מלט. זמן ייבוש: 2-4 שעות.' },
+    { n:'03', title:'שכבת בסיס — Baxab®', icon:'🪣', color:'#2d9e6b',
+      body:'ערבוב שכבת הבסיס לפי יחס Topcret® המדויק. יישום בעזרת מגרד נירוסטה בתנועות אחידות. עובי: 1.5 מ"מ.' },
+    { n:'04', title:'ייבוש שכבת בסיס', icon:'⏱️', color:'#c9933a',
+      body:'המתנה של 24 שעות לפחות. בדיקת אחידות המשטח. שיוף עדין במידת הצורך לפני שכבת הגימור.' },
+    { n:'05', title:'שכבת גימור — Baxab®', icon:'✨', color:'#2d9e6b',
+      body:'יישום שכבת הגימור בצבע הנבחר. תנועות מגרד מדויקות ליצירת מרקם אחיד. עובי: 0.5-1 מ"מ.' },
+    { n:'06', title:'איטום — Sealer', icon:'🛡️', color:'#0d5c63',
+      body:'יישום 2 שכבות סיילר Topcret® לאטימה מלאה. הגנת UV לשימוש חיצוני. ייבוש 6 שעות בין שכבות.' },
+  ];
+
+  return `
+  <div class="slide" id="slide-process" style="background:#0f1420;padding-top:68px">
+    <div class="slide-header">
+      <div class="slide-label" style="color:var(--gold)">מדריך טכני</div>
+      <h1 style="color:#fff">תהליך מריחת מיקרוטופינג</h1>
+      <p style="color:var(--lgray)">באקסב-אקו® על לוחות דנסגלס® — 6 שלבים מקצועיים</p>
+      <div class="header-line" style="background:var(--gold)"></div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px">
+
+      <!-- LEFT: VIDEO -->
+      <div>
+        <div style="background:#1a2030;border-radius:14px;overflow:hidden;
+                    border:1px solid rgba(201,147,58,0.25)">
+          <div style="background:var(--teal);padding:10px 18px;display:flex;
+                      align-items:center;justify-content:space-between">
+            <span style="font-size:12px;font-weight:900;color:#fff">🎬 וידאו — תהליך היישום</span>
+            ${VIDEO_URL ? `<a href="${VIDEO_URL}" target="_blank"
+               style="background:var(--gold);color:var(--dark);padding:5px 12px;
+                      border-radius:12px;font-size:10px;font-weight:900;text-decoration:none">
+              ⬇️ הורד
+            </a>` : ''}
+          </div>
+
+          ${VIDEO_URL ? `
+            <video controls playsinline
+                   style="width:100%;max-height:340px;display:block;background:#000">
+              <source src="${VIDEO_URL}" type="video/mp4">
+              <source src="${VIDEO_URL}" type="video/quicktime">
+              הדפדפן שלך אינו תומך בוידאו —
+              <a href="${VIDEO_URL}" style="color:var(--gold)">לחץ להורדה</a>
+            </video>
+          ` : `
+            <!-- placeholder -->
+            <div style="height:300px;display:flex;flex-direction:column;align-items:center;
+                        justify-content:center;background:#131925">
+              <div style="font-size:64px;margin-bottom:16px;opacity:0.25">🎬</div>
+              <div style="font-size:14px;font-weight:700;color:rgba(255,255,255,0.3);margin-bottom:8px">
+                וידאו בדרך
+              </div>
+              <div style="font-size:11px;color:#444;text-align:center;max-width:280px;line-height:1.8">
+                העלה קובץ MP4/MOV לבאקט Supabase<br>
+                ועדכן את VIDEO_URL בקוד טאב 15
+              </div>
+              <div style="margin-top:20px;background:rgba(201,147,58,0.1);border:1px dashed rgba(201,147,58,0.3);
+                          border-radius:8px;padding:10px 18px;font-size:10px;color:var(--gold);font-weight:700">
+                📤 Upload → facade-images bucket
+              </div>
+            </div>
+          `}
+        </div>
+
+        <!-- key facts below video -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px">
+          ${[
+            ['⏱️','זמן יישום','2-3 ימי עבודה'],
+            ['📐','עובי סופי','2-3 מ"מ'],
+            ['💧','אטימה','מיידית לאחר סיילר'],
+            ['🎨','צבע','לפי בחירת הלקוח'],
+          ].map(([ico,label,val])=>`
+            <div style="background:#1a2030;border-radius:10px;padding:12px;
+                        border:1px solid rgba(255,255,255,0.06);text-align:center">
+              <div style="font-size:20px;margin-bottom:6px">${ico}</div>
+              <div style="font-size:9px;color:#666;margin-bottom:3px">${label}</div>
+              <div style="font-size:12px;font-weight:700;color:#fff">${val}</div>
+            </div>`).join('')}
+        </div>
+      </div>
+
+      <!-- RIGHT: STEPS -->
+      <div>
+        <div style="font-size:11px;font-weight:900;color:var(--gold);
+                    margin-bottom:14px;letter-spacing:1px">6 שלבי היישום המקצועי</div>
+        ${steps.map(s=>`
+          <div style="display:flex;gap:12px;background:#1a2030;border-radius:10px;
+                      padding:13px;margin-bottom:10px;
+                      border-right:4px solid ${s.color};direction:rtl">
+            <div style="flex-shrink:0;text-align:center">
+              <div style="background:${s.color};color:#fff;border-radius:8px;
+                          width:36px;height:36px;font-size:11px;font-weight:900;
+                          display:flex;align-items:center;justify-content:center">${s.n}</div>
+              <div style="font-size:18px;margin-top:6px">${s.icon}</div>
+            </div>
+            <div style="flex:1">
+              <div style="font-size:12px;font-weight:900;color:#fff;margin-bottom:5px">${s.title}</div>
+              <div style="font-size:10px;color:#999;line-height:1.8">${s.body}</div>
+            </div>
+          </div>`).join('')}
+
+        <div style="background:rgba(45,158,107,0.1);border:1px solid rgba(45,158,107,0.3);
+                    border-radius:10px;padding:12px 16px;margin-top:4px;direction:rtl">
+          <div style="font-size:10px;font-weight:900;color:var(--green);margin-bottom:6px">
+            ✅ תקן Topcret® — מיישם מוסמך בלבד
+          </div>
+          <div style="font-size:10px;color:#888;line-height:1.8">
+            כל שלבי היישום מבוצעים לפי פרוטוקול Topcret® המחייב.
+            רק מיישמים מוסמכים רשאים לבצע ולקבל את אחריות היצרן.
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>`;
+}
+
+/* ── SITE PHOTOS — TAB 14 ── */
+function renderSitePhotos(){
+  // Photo URLs — add here when Avshi uploads to Supabase bucket
+  const photos = [
+    // { url: 'https://...supabase.co/storage/...jpg', caption: 'תיאור' },
+    // Add more when ready
+  ];
+
+  return `
+  <div class="slide" id="slide-sitephotos" style="background:#0f1420;padding-top:68px">
+    <div class="slide-header">
+      <div class="slide-label" style="color:var(--gold)">תיעוד שטח</div>
+      <h1 style="color:#fff">תמונות מצב קיים</h1>
+      <p style="color:var(--lgray)">בית פלדמן נתניה — מצב החזיתות לפני השיפוץ</p>
+      <div class="header-line" style="background:var(--gold)"></div>
+    </div>
+
+    ${photos.length === 0 ? `
+      <!-- PLACEHOLDER — תמונות בדרך -->
+      <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;
+                  min-height:55vh;text-align:center">
+        <div style="font-size:72px;margin-bottom:24px;opacity:0.3">📷</div>
+        <div style="font-size:20px;font-weight:900;color:rgba(255,255,255,0.4);margin-bottom:12px">
+          תמונות יועלו בקרוב
+        </div>
+        <div style="font-size:13px;color:#555;max-width:400px;line-height:1.8">
+          העלה תמונות לבאקט Supabase<br>
+          <code style="font-size:11px;color:var(--teal);background:rgba(13,92,99,0.15);
+                       padding:2px 8px;border-radius:4px">facade-images</code><br>
+          ועדכן את רשימת ה-URLs בקוד
+        </div>
+        <div style="margin-top:28px;background:rgba(201,147,58,0.08);border:1px dashed rgba(201,147,58,0.3);
+                    border-radius:12px;padding:20px 32px">
+          <div style="font-size:11px;color:var(--gold);font-weight:700;margin-bottom:10px">
+            📋 מה לצלם
+          </div>
+          ${['מבט כללי על החזית הקיימת','סדקים וקילופים בבטון','פינות ואזורי נזק','חלונות ודלתות — מסגרות','תשתית — יסודות נראים לעין','מבט מהרחוב — זווית מלאה'].map((item,i)=>`
+            <div style="display:flex;gap:10px;align-items:center;padding:5px 0;
+                        border-bottom:1px solid rgba(255,255,255,0.05);direction:rtl">
+              <span style="background:var(--gold);color:var(--dark);border-radius:50%;
+                           width:20px;height:20px;font-size:9px;font-weight:900;
+                           display:flex;align-items:center;justify-content:center;flex-shrink:0">${i+1}</span>
+              <span style="font-size:11px;color:#aaa">${item}</span>
+            </div>`).join('')}
+        </div>
+      </div>
+    ` : `
+      <!-- PHOTO GRID — when photos are added -->
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px;margin-top:16px">
+        ${photos.map((p,i)=>`
+          <div style="border-radius:12px;overflow:hidden;cursor:zoom-in;
+                      box-shadow:0 6px 24px rgba(0,0,0,0.4);
+                      transition:transform 0.2s" onclick="openLB('${p.url}','${p.caption}')">
+            <img src="${p.url}" alt="${p.caption}"
+                 style="width:100%;height:220px;object-fit:cover;display:block">
+            <div style="background:#1a2030;padding:10px 14px;font-size:11px;
+                        color:#ccc;direction:rtl">${p.caption}</div>
+          </div>`).join('')}
+      </div>
+    `}
+
+    <!-- upload instructions -->
+    <div style="margin-top:20px;background:rgba(13,92,99,0.1);border:1px solid rgba(13,92,99,0.25);
+                border-radius:10px;padding:12px 18px;font-size:10px;color:#666;
+                display:flex;align-items:center;gap:10px;direction:rtl">
+      <span style="font-size:18px">💡</span>
+      <span>להוספת תמונות: העלה ל-Supabase bucket → <code style="color:var(--teal)">facade-images</code> → 
+      הוסף URL לרשימת <code style="color:var(--teal)">photos</code> בקוד טאב 14</span>
+    </div>
+  </div>`;
+}
+
 /* ── TEAM CVs — TAB 13 ── */
 function renderTeam(){
   const AVSHI_CV = 'https://vqelnbvvbowchtvedntw.supabase.co/storage/v1/object/public/facade-images/profieAvshi.pdf';
@@ -879,9 +1077,10 @@ function renderTeam(){
         <!-- header card -->
         <div style="background:linear-gradient(135deg,#1a3a2a,#0d2e1e);
                     padding:28px 24px;text-align:center;position:relative">
-          <div style="width:80px;height:80px;border-radius:50%;background:rgba(45,158,107,0.2);
-                      margin:0 auto 14px;display:flex;align-items:center;justify-content:center;
-                      font-size:36px;border:3px solid rgba(45,158,107,0.5)">🪵</div>
+          <img src="https://vqelnbvvbowchtvedntw.supabase.co/storage/v1/object/public/facade-images/handlogo.jpg"
+              style="width:80px;height:80px;border-radius:50%;object-fit:cover;
+                     margin:0 auto 14px;display:block;
+                     border:3px solid rgba(45,158,107,0.5)">
           <div style="font-size:22px;font-weight:900;color:#fff;margin-bottom:6px">אבשי ספיר</div>
           <div style="font-size:12px;color:var(--green);font-weight:700;letter-spacing:1px">
             ציפוי לוחות במיקרוטופינג
@@ -893,10 +1092,10 @@ function renderTeam(){
         <!-- body -->
         <div style="padding:22px 24px">
           ${[
-            ['🎓','הכשרה','מיישם מוסמך Topcret® · ריצוף וחיפוי מקצועי · 30+ שנות ניסיון'],
+            ['🎓','הכשרה','נציג מוסמך יצרן האפוקסי הגדול בעולם Stonhard · stonhard.com · ריצוף וחיפוי מקצועי'],
             ['📋','תפקיד בפרויקט','יישום באקסב-אקו® על לוחות דנסגלס® · הכנת משטח · גימור'],
-            ['🏗️','התמחות','מיקרו-מלט · ציפויים דקורטיביים · עבודות חזית · ריצוף'],
-            ['📍','ניסיון','עשרות פרויקטים של מיקרוטופינג · חזיתות · רצפות · קירות'],
+            ['🏗️','התמחות','מאות פרויקטים בעבודות אפוקסי ומיקרוטופינג · חזיתות · רצפות · קירות · עבודות גדולות: אינטל פאב 18 ו-28 — כ-100,000 מ"ר'],
+            ['📍','ניסיון','30+ שנות ניסיון · עבודות תעשייתיות ומסחריות בסטנדרטים בינלאומיים'],
             ['✅','אחריות','יישום לפי תקן Topcret® · אחריות על עבודת הציפוי'],
           ].map(([ico,label,val])=>`
             <div style="display:flex;gap:12px;padding:9px 0;
@@ -921,7 +1120,31 @@ function renderTeam(){
             </div>
           </div>
 
-          <!-- CV PDF -->
+          <!-- Stonhard badge -->
+          <div style="margin-top:14px;background:rgba(255,255,255,0.04);border-radius:10px;
+                      padding:12px 16px;border:1px solid rgba(45,158,107,0.25);direction:rtl">
+            <div style="font-size:10px;color:var(--green);font-weight:900;margin-bottom:6px">
+              🏅 הסמכות מיוחדות
+            </div>
+            <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+              <div>
+                <div style="font-size:11px;font-weight:700;color:#fff">נציג מוסמך — Stonhard®</div>
+                <div style="font-size:10px;color:#888;margin-top:2px">יצרן האפוקסי הגדול בעולם</div>
+                <a href="https://www.stonhard.com" target="_blank"
+                   style="font-size:9px;color:var(--green);text-decoration:none;font-weight:700">
+                  🔗 www.stonhard.com
+                </a>
+              </div>
+              <div style="margin-right:auto;background:rgba(45,158,107,0.2);border:1px solid var(--green);
+                          border-radius:8px;padding:6px 12px;text-align:center">
+                <div style="font-size:18px">🌍</div>
+                <div style="font-size:8px;color:var(--green);font-weight:900">CERTIFIED</div>
+              </div>
+            </div>
+            <div style="margin-top:10px;font-size:10px;color:#888;line-height:1.8">
+              ⭐ אינטל פאב 18 ו-28 — כ-100,000 מ"ר אפוקסי תעשייתי
+            </div>
+          </div>
           <div style="margin-top:14px">
             <div style="font-size:10px;font-weight:900;color:var(--green);
                         margin-bottom:8px;letter-spacing:1px">📄 קורות חיים מלאים</div>
@@ -1003,6 +1226,10 @@ function renderAll(){
   html += renderWorkPlan();
   // Tab 13 — static
   html += renderTeam();
+  // Tab 14 — site photos placeholder
+  html += renderSitePhotos();
+  // Tab 15 — microtopping process + video
+  html += renderProcess();
 
   main.innerHTML = html;
 
@@ -1010,7 +1237,9 @@ function renderAll(){
     <button class="nav-btn ${i===0?'active':''}" onclick="goTo(${i})">${sl.slide_order}. ${sl.title}</button>
   `).join('') +
   `<button class="nav-btn" onclick="goTo(${allSlides.length})">12. נהלי עבודה</button>` +
-  `<button class="nav-btn" onclick="goTo(${allSlides.length+1})">13. קבוצת ביצוע</button>`;
+  `<button class="nav-btn" onclick="goTo(${allSlides.length+1})">13. קבוצת ביצוע</button>` +
+  `<button class="nav-btn" onclick="goTo(${allSlides.length+2})">14. תמונות מצב קיים</button>` +
+  `<button class="nav-btn" onclick="goTo(${allSlides.length+3})">15. תהליך יישום</button>`;
 }
 
 function goTo(i){
