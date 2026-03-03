@@ -31,7 +31,7 @@
     // Only horizontal swipes (dx dominant, minimum 50px)
     if(Math.abs(dx) < 50) return;
     if(Math.abs(dy) > Math.abs(dx) * 0.8) return;
-    const totalSlides = document.querySelectorAll('.slide').length;
+    const totalSlides = window._totalSlides || document.querySelectorAll('.slide').length;
     // RTL layout: swipe RIGHT → go to PREVIOUS tab, swipe LEFT → NEXT tab
     if(dx < -50) goTo(Math.min(current + 1, totalSlides - 1));
     if(dx >  50) goTo(Math.max(current - 1, 0));
@@ -1375,15 +1375,26 @@ function renderAll(){
   // Tab 15 — microtopping process + video
   html += renderProcess();
 
+  // Build nav AFTER html is injected so DOM slide count is accurate
   main.innerHTML = html;
+  const totalNow = document.querySelectorAll('.slide').length;
+
+  // Supabase tabs use slide_order from DB; static tabs are fixed
+  const staticTabs = [
+    [totalNow-4, '12. נהלי עבודה'],
+    [totalNow-3, '13. קבוצת ביצוע'],
+    [totalNow-2, '14. תמונות מצב קיים'],
+    [totalNow-1, '15. תהליך יישום'],
+  ];
 
   nav.innerHTML = allSlides.map((sl,i)=>`
     <button class="nav-btn ${i===0?'active':''}" onclick="goTo(${i})">${sl.slide_order}. ${sl.title}</button>
-  `).join('') +
-  `<button class="nav-btn" onclick="goTo(${allSlides.length})">12. נהלי עבודה</button>` +
-  `<button class="nav-btn" onclick="goTo(${allSlides.length+1})">13. קבוצת ביצוע</button>` +
-  `<button class="nav-btn" onclick="goTo(${allSlides.length+2})">14. תמונות מצב קיים</button>` +
-  `<button class="nav-btn" onclick="goTo(${allSlides.length+3})">15. תהליך יישום</button>`;
+  `).join('') + staticTabs.map(([idx,label])=>`
+    <button class="nav-btn" onclick="goTo(${idx})">${label}</button>
+  `).join('');
+
+  // Store total for swipe/keyboard
+  window._totalSlides = totalNow;
 }
 
 function goTo(i){
@@ -1409,7 +1420,7 @@ function goTo(i){
 
 document.addEventListener('keydown',e=>{
   if(e.key==='ArrowRight'||e.key==='ArrowUp')   goTo(Math.max(current-1,0));
-  if(e.key==='ArrowLeft' ||e.key==='ArrowDown') goTo(Math.min(current+1,allSlides.length-1));
+  if(e.key==='ArrowLeft' ||e.key==='ArrowDown') goTo(Math.min(current+1,(window._totalSlides||99)-1));
 });
 
 (async()=>{
@@ -1444,7 +1455,7 @@ document.addEventListener('keydown',e=>{
     // Only horizontal swipes (dx dominant, minimum 50px)
     if(Math.abs(dx) < 50) return;
     if(Math.abs(dy) > Math.abs(dx) * 0.8) return;
-    const totalSlides = document.querySelectorAll('.slide').length;
+    const totalSlides = window._totalSlides || document.querySelectorAll('.slide').length;
     // RTL layout: swipe RIGHT → go to PREVIOUS tab, swipe LEFT → NEXT tab
     if(dx < -50) goTo(Math.min(current + 1, totalSlides - 1));
     if(dx >  50) goTo(Math.max(current - 1, 0));
