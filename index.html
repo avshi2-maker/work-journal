@@ -482,7 +482,7 @@ function renderGrid3(sl){
           <div class="card-body">${item.body_text||''}</div>
         </div>`).join('')}
     </div>
-    ${sl.slide_key==='system'?`<div class="weight-bar">⚡ משקל כולל של המערכת ≈ 12-15 ק"ג/מ"ר &nbsp;·&nbsp; חזית בטון מסורתית: 80-120 ק"ג/מ"ר &nbsp;·&nbsp; חיסכון במשקל: ~85%</div>`:''}
+    ${sl.slide_key==='system'?`<div class="weight-bar">⚡ משקל כולל של המערכת ≈ 12-15 ק"ג/מ"ר &nbsp;·&nbsp; חזית בטון מסורתית: 80-120 ק"ג/מ"ר &nbsp;·&nbsp; חיסכון במשקל: ~85%</div><div style="margin-top:28px;border-radius:16px;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,0.5);border:2px solid rgba(201,147,58,0.3);cursor:zoom-in" onclick="openLB('https://vqelnbvvbowchtvedntw.supabase.co/storage/v1/object/public/facade-images/infographic.png','מערכת חידוש חזיתות — דנסגלס® + באקסב-אקו®'"><img src="https://vqelnbvvbowchtvedntw.supabase.co/storage/v1/object/public/facade-images/infographic.png" style="width:100%;display:block" alt="אינפוגרפיקה מערכת חזיתות" onerror="this.style.display='none'"><div style="background:rgba(0,0,0,0.55);padding:9px 20px;text-align:center;font-size:11px;color:rgba(255,255,255,0.5)">🔍 לחץ להגדלה מלאה</div></div>`:''}
     ${sl.slide_key==='challenge'?`<div style="background:${sl.accent_color};border-radius:10px;padding:11px 18px;margin-top:18px;font-size:12px;font-weight:700;color:#fff">✅ הפתרון שלנו: מסגרת אלומיניום + לוח דנסגלס® עמיד אש + מיקרוטופינג באקסב-אקו® ללא VOC — קל, בטוח, יפה, עומד בתקנות.</div>`:''}
   </div>`;
 }
