@@ -37,7 +37,16 @@ html{direction:rtl;font-size:15px}
 
 /* ══ CRM PANEL ══ */
 #crm-panel{background:#fdf6e3}
-#crm-panel .sidebar{top:54px;height:calc(100vh - 54px)}
+#crm-panel .sidebar{
+  top:54px;
+  height:calc(100vh - 54px);
+  overflow-y:auto;
+  overflow-x:hidden;
+  scrollbar-width:thin;
+  scrollbar-color:rgba(154,111,0,0.3) transparent;
+}
+.sidebar::-webkit-scrollbar{width:4px}
+.sidebar::-webkit-scrollbar-thumb{background:rgba(154,111,0,0.3);border-radius:2px}
 #crm-panel .main{padding-top:86px}
 
 /* ══ JOURNAL PANEL ══ */
@@ -124,12 +133,15 @@ body{
 }
 .nav-item{
   display:flex; align-items:center; gap:10px;
-  padding:11px 20px; cursor:pointer;
+  padding:9px 16px; cursor:pointer;
   border-radius:0; transition:all 0.18s;
-  font-size:14px; font-weight:500; color:var(--text2);
+  font-size:13px; font-weight:500; color:var(--text2);
   border-right:3px solid transparent;
   margin: 1px 0;
   position: relative;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
 }
 .nav-item:hover{background:var(--surface2);color:var(--text);}
 .nav-item.active{
@@ -646,14 +658,8 @@ button:active{transform:scale(0.98)}
     <span class="nav-icon">📄</span>
     <span>דוחות</span>
   </div>
-          <div class="nav-item" onclick="showPage('forecast')" id="nav-forecast">
-            <span class="nav-icon">📈</span>
-            <span class="nav-text">תחזית הכנסות</span>
-          </div>
-          <div class="nav-item" onclick="showPage('gantt')" id="nav-gantt">
-            <span class="nav-icon">📅</span>
-            <span class="nav-text">גאנט פרויקטים</span>
-          </div>
+          <div class="nav-item" onclick="showPage('forecast')" id="nav-forecast"><span class="nav-icon">📈</span><span>תחזית הכנסות</span></div>
+          <div class="nav-item" onclick="showPage('gantt')" id="nav-gantt"><span class="nav-icon">📅</span><span>גאנט פרויקטים</span></div>
   <a href="#" onclick="switchTab('journal')" target="_blank" style="text-decoration:none;">
     <div class="nav-item" style="background:linear-gradient(90deg,rgba(154,111,0,0.18),transparent);color:#9a6f00;border-right:3px solid #9a6f00;margin-top:8px;">
       <span class="nav-icon">📝</span>
