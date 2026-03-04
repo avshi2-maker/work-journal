@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#f5e9c4">
 <title>יומן פעילות מנוהל AI — בני פרסקי</title>
 <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;600;700;800;900&family=Rubik:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -1135,603 +1135,7 @@ button:active{transform:scale(0.98)}
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script>
-// ── CONFIG ───────────────────────────────────────────────
-const SUPABASE_URL     = 'https://vmcipofovheztbjmhwsl.supabase.co';
-const SUPABASE_ANON_KEY= 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZtY2lwb2ZvdmhlenRiam1od3NsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE0NjE2MTcsImV4cCI6MjA4NzAzNzYxN30.LPq5N2Xo8iEqjgz2UhmdzUdh5tpGT3EYzSxJcYBEJ1w';
-const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-// ── STATE ────────────────────────────────────────────────
-let allContractors = [], allProjects = [], allTransactions = [], allReports = [];
-let editingContractorId = null, editingProjectId = null, editingTransactionId = null;
-
-// ── INIT ─────────────────────────────────────────────────
-document.addEventListener('DOMContentLoaded', async () => {
-  document.getElementById('dashboard-date').textContent =
-    new Date().toLocaleDateString('he-IL', {weekday:'long',year:'numeric',month:'long',day:'numeric'});
-  await loadAll();
-});
-
-async function loadAll() {
-  showLoading(true);
-  try {
-    await Promise.all([loadContractors(), loadProjects(), loadTransactions(), loadReports()]);
-    renderDashboard();
-  } catch(e){ showToast('שגיאה בטעינת נתונים: '+e.message,'error'); }
-  finally { showLoading(false); }
-}
-
-// ── LOAD ─────────────────────────────────────────────────
-async function loadContractors() {
-  const {data,error} = await sb.from('contractors_master').select('*').order('company_name');
-  if(error) throw error;
-  allContractors = data || [];
-  document.getElementById('badge-contractors').textContent = allContractors.filter(c=>c.is_active).length;
-  renderContractors();
-  populateContractorSelects();
-  populateOccupationFilter();
-}
-
-async function loadProjects() {
-  const {data,error} = await sb.from('projects').select('*').order('created_at',{ascending:false});
-  if(error) throw error;
-  allProjects = data || [];
-  document.getElementById('badge-projects').textContent = allProjects.filter(p=>p.status==='active').length;
-  renderProjects();
-  populateProjectSelects();
-}
-
-async function loadTransactions() {
-  const {data,error} = await sb.from('contractor_transactions')
-    .select('*, contractors_master(company_name), projects(project_name)')
-    .order('transaction_date',{ascending:false});
-  if(error) throw error;
-  allTransactions = data || [];
-  renderBalances();
-  renderTransactions();
-}
-
-async function loadReports() {
-  const {data,error} = await sb.from('reports').select('*').order('report_date',{ascending:false}).limit(100);
-  if(error) throw error;
-  allReports = data || [];
-  renderReports();
-  populateReportProjectFilter();
-}
-
-// ── NAVIGATION ───────────────────────────────────────────
-function showPage(page) {
-  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
-  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
-  document.getElementById('page-'+page).classList.add('active');
-  document.getElementById('nav-'+page).classList.add('active');
-  if(page==='finance') renderBalances();
-}
-
-function showFinanceTab(tab) {
-  document.getElementById('finance-balances').style.display = tab==='balances' ? 'block' : 'none';
-  document.getElementById('finance-transactions').style.display = tab==='transactions' ? 'block' : 'none';
-  document.getElementById('ftab-balances').classList.toggle('active', tab==='balances');
-  document.getElementById('ftab-transactions').classList.toggle('active', tab==='transactions');
-}
-
-// ── DASHBOARD ────────────────────────────────────────────
-function renderDashboard() {
-  const activeProjects = allProjects.filter(p=>p.status==='active');
-  const activeContractors = allContractors.filter(c=>c.is_active);
-  const totalSent = allTransactions.filter(t=>t.type==='sent').reduce((s,t)=>s+Number(t.amount),0);
-  const now = new Date();
-  const monthReports = allReports.filter(r=>{
-    const d = new Date(r.report_date||r.created_at);
-    return d.getFullYear()===now.getFullYear() && d.getMonth()===now.getMonth();
-  });
-
-  document.getElementById('stat-active-projects').textContent = activeProjects.length;
-  document.getElementById('stat-total-projects').textContent = allProjects.length;
-  document.getElementById('stat-active-contractors').textContent = activeContractors.length;
-  document.getElementById('stat-total-sent').textContent = fmtMoney(totalSent);
-  document.getElementById('stat-reports-month').textContent = monthReports.length;
-
-  // Projects list
-  const plist = document.getElementById('dashboard-projects-list');
-  if(!activeProjects.length) {
-    plist.innerHTML = '<div class="empty-state"><div class="empty-icon">🏗️</div><h3>אין פרויקטים פעילים</h3></div>';
-  } else {
-    plist.innerHTML = activeProjects.map(p=>`
-      <div class="contractor-mini" onclick="showPage('projects')">
-        <div class="contractor-avatar" style="background:linear-gradient(135deg,#1e6b30,#0e7490)">${(p.project_name||'?')[0]}</div>
-        <div class="contractor-info">
-          <div class="contractor-name">${esc(p.project_name)}</div>
-          <div class="contractor-role">${esc(p.client_name||'')} ${p.start_date?'| '+fmtDate(p.start_date):''}</div>
-        </div>
-        ${p.total_budget?`<div style="font-size:13px;color:var(--text3)">₪${fmtMoney(p.total_budget)}</div>`:''}
-      </div>`).join('');
-  }
-
-  // Recent transactions
-  const tlist = document.getElementById('dashboard-transactions');
-  const recent = allTransactions.slice(0,5);
-  if(!recent.length) {
-    tlist.innerHTML = '<div class="empty-state"><div class="empty-icon">💰</div><h3>אין תנועות עדיין</h3></div>';
-  } else {
-    tlist.innerHTML = `<table style="width:100%"><tbody>${
-      recent.map(t=>`<tr>
-        <td style="padding:10px 8px;font-size:13px;color:var(--text3)">${fmtDate(t.transaction_date)}</td>
-        <td style="padding:10px 8px;font-weight:600">${esc(t.contractors_master?.company_name||'')}</td>
-        <td style="padding:10px 8px;font-size:13px;color:var(--text3)">${esc(t.description||'')}</td>
-        <td style="padding:10px 8px;text-align:left;font-weight:700" class="${t.type==='sent'?'amount-sent':'amount-received'}">
-          ${t.type==='sent'?'−':'+'} ₪${fmtMoney(t.amount)}
-        </td></tr>`).join('')
-    }</tbody></table>`;
-  }
-}
-
-// ── CONTRACTORS ──────────────────────────────────────────
-function renderContractors(list) {
-  const data = list || allContractors;
-  const tbody = document.getElementById('contractors-tbody');
-  if(!data.length) {
-    tbody.innerHTML = '<tr><td colspan="8"><div class="empty-state"><div class="empty-icon">👷</div><h3>אין קבלנים</h3></div></td></tr>';
-    return;
-  }
-  // Compute balances per contractor
-  const balMap = {};
-  allTransactions.forEach(t=>{
-    if(!balMap[t.contractor_id]) balMap[t.contractor_id]={sent:0,received:0};
-    if(t.type==='sent') balMap[t.contractor_id].sent+=Number(t.amount);
-    else balMap[t.contractor_id].received+=Number(t.amount);
-  });
-
-  tbody.innerHTML = data.map(c=>{
-    const bal = balMap[c.id]||{sent:0,received:0};
-    const balance = bal.sent - bal.received;
-    const balClass = balance>0?'balance-positive':balance<0?'balance-negative':'balance-zero';
-    const balText = balance===0 ? '—' : (balance>0?'-':'+')+' ₪'+fmtMoney(Math.abs(balance));
-    return `<tr style="cursor:pointer" onclick="openContractorModal('${c.id}')">
-      <td><strong>${esc(c.company_name)}</strong></td>
-      <td>${esc(c.contact_name)}</td>
-      <td><a href="tel:${esc(c.mobile||'')}" style="color:var(--accent);text-decoration:none;font-weight:600" onclick="event.stopPropagation()">${esc(c.mobile||'—')}</a></td>
-      <td>${esc(c.main_occupation||'—')}</td>
-    </tr>`;
-  }).join('');
-}
-
-function filterContractors() {
-  const q = document.getElementById('contractor-search').value.toLowerCase();
-  const occ = document.getElementById('contractor-filter-occupation').value;
-  const st = document.getElementById('contractor-filter-status').value;
-  let f = allContractors.filter(c=>{
-    const txt = (c.company_name+c.contact_name+(c.mobile||'')+(c.main_occupation||'')).toLowerCase();
-    const matchQ = !q || txt.includes(q);
-    const matchO = !occ || c.main_occupation===occ;
-    const matchS = !st || (st==='active'?c.is_active:!c.is_active);
-    return matchQ&&matchO&&matchS;
-  });
-  renderContractors(f);
-}
-
-function populateOccupationFilter() {
-  const occupations = [...new Set(allContractors.map(c=>c.main_occupation).filter(Boolean))].sort();
-  const sel = document.getElementById('contractor-filter-occupation');
-  sel.innerHTML = '<option value="">כל העיסוקים</option>' +
-    occupations.map(o=>`<option value="${esc(o)}">${esc(o)}</option>`).join('');
-}
-
-function openContractorModal(id=null) {
-  editingContractorId = id;
-  const modal = document.getElementById('modal-contractor');
-  const fields = ['company','contact','mobile','office','email','occupation','id','license','license-expiry','rating','notes'];
-  fields.forEach(f=>{ const el=document.getElementById('c-'+f); if(el) el.value=''; });
-  document.getElementById('btn-delete-contractor').style.display = id ? 'block' : 'none';
-  document.getElementById('modal-contractor-title').textContent = id ? 'עריכת קבלן' : 'קבלן חדש';
-  if(id) {
-    const c = allContractors.find(x=>x.id===id);
-    if(c) {
-      document.getElementById('c-company').value   = c.company_name||'';
-      document.getElementById('c-contact').value   = c.contact_name||'';
-      document.getElementById('c-mobile').value    = c.mobile||'';
-      document.getElementById('c-office').value    = c.office_tel||'';
-      document.getElementById('c-email').value     = c.email||'';
-      document.getElementById('c-occupation').value= c.main_occupation||'';
-      document.getElementById('c-id').value        = c.id_number||'';
-      document.getElementById('c-license').value   = c.license_number||'';
-      document.getElementById('c-license-expiry').value = c.license_expiry||'';
-      document.getElementById('c-rating').value    = c.rating||'';
-      document.getElementById('c-notes').value     = c.internal_notes||'';
-    }
-  }
-  modal.style.display = 'flex';
-}
-
-async function saveContractor() {
-  const company = document.getElementById('c-company').value.trim();
-  const contact = document.getElementById('c-contact').value.trim();
-  if(!company||!contact) { showToast('שדות חובה: שם חברה ואיש קשר','error'); return; }
-  showLoading(true);
-  try {
-    const payload = {
-      company_name:   company,
-      contact_name:   contact,
-      mobile:         document.getElementById('c-mobile').value.trim()||null,
-      office_tel:     document.getElementById('c-office').value.trim()||null,
-      email:          document.getElementById('c-email').value.trim()||null,
-      main_occupation:document.getElementById('c-occupation').value||null,
-      id_number:      document.getElementById('c-id').value.trim()||null,
-      license_number: document.getElementById('c-license').value.trim()||null,
-      license_expiry: document.getElementById('c-license-expiry').value||null,
-      rating:         parseInt(document.getElementById('c-rating').value)||null,
-      internal_notes: document.getElementById('c-notes').value.trim()||null,
-      updated_at:     new Date().toISOString(),
-    };
-    if(editingContractorId) {
-      const {error} = await sb.from('contractors_master').update(payload).eq('id',editingContractorId);
-      if(error) throw error;
-      showToast('קבלן עודכן בהצלחה ✅','success');
-    } else {
-      const {error} = await sb.from('contractors_master').insert({...payload,is_active:true});
-      if(error) throw error;
-      showToast('קבלן חדש נוסף ✅','success');
-    }
-    closeModal('modal-contractor');
-    await loadContractors();
-  } catch(e){ showToast('שגיאה: '+e.message,'error'); }
-  finally { showLoading(false); }
-}
-
-async function deleteContractor() {
-  if(!editingContractorId) return;
-  if(!confirm('האם למחוק קבלן זה?')) return;
-  showLoading(true);
-  try {
-    const {error} = await sb.from('contractors_master').delete().eq('id',editingContractorId);
-    if(error) throw error;
-    showToast('קבלן נמחק','success');
-    closeModal('modal-contractor');
-    await loadContractors();
-  } catch(e){ showToast('שגיאה: '+e.message,'error'); }
-  finally { showLoading(false); }
-}
-
-function callContractor(mobile) { if(mobile) window.open('tel:'+mobile); }
-function whatsappContractor(mobile, name) {
-  if(!mobile) return;
-  const num = mobile.replace(/[^0-9]/g,'').replace(/^0/,'972');
-  window.open(`https://wa.me/${num}?text=${encodeURIComponent('שלום '+name+',')}`);
-}
-
-// ── PROJECTS ─────────────────────────────────────────────
-const STATUS_HE = {active:'פעיל',completed:'הושלם',paused:'מושהה',cancelled:'בוטל'};
-const STATUS_BADGE = {active:'badge-green',completed:'badge-blue',paused:'badge-amber',cancelled:'badge-red'};
-
-function renderProjects(list) {
-  const data = list || allProjects;
-  const tbody = document.getElementById('projects-tbody');
-  if(!data.length) {
-    tbody.innerHTML = '<tr><td colspan="8"><div class="empty-state"><div class="empty-icon">🏗️</div><h3>אין פרויקטים</h3></div></td></tr>';
-    return;
-  }
-  const reportCount = {};
-  allReports.forEach(r=>{ if(r.project_id) reportCount[r.project_id]=(reportCount[r.project_id]||0)+1; });
-
-  tbody.innerHTML = data.map(p=>`<tr>
-    <td><strong>${esc(p.project_name)}</strong></td>
-    <td>${esc(p.client_name||'—')}</td>
-    <td style="font-size:13px;color:var(--text3)">${esc(p.city||p.address||'—')}</td>
-    <td style="font-size:13px">${p.start_date?fmtDate(p.start_date):'—'}</td>
-    <td>${p.total_budget?'₪'+fmtMoney(p.total_budget):'—'}</td>
-    <td style="text-align:center"><span class="badge badge-blue">${reportCount[p.id]||0}</span></td>
-    <td><span class="badge ${STATUS_BADGE[p.status]||'badge-gray'}">${STATUS_HE[p.status]||p.status}</span></td>
-    <td class="td-actions"><div class="btn-group">
-      <button class="btn btn-ghost btn-sm btn-icon" onclick="openProjectModal('${p.id}')" title="עריכה">✏️</button>
-    </div></td>
-  </tr>`).join('');
-}
-
-function filterProjects() {
-  const q = document.getElementById('project-search').value.toLowerCase();
-  const st = document.getElementById('project-filter-status').value;
-  let f = allProjects.filter(p=>{
-    const txt = (p.project_name+(p.client_name||'')+(p.city||'')).toLowerCase();
-    return (!q||txt.includes(q)) && (!st||p.status===st);
-  });
-  renderProjects(f);
-}
-
-function openProjectModal(id=null) {
-  editingProjectId = id;
-  const fields = ['name','client','client-mobile','address','city','status','start','end','budget','contract','scope'];
-  fields.forEach(f=>{ const el=document.getElementById('p-'+f); if(el) el.value=''; });
-  document.getElementById('p-status').value = 'active';
-  document.getElementById('btn-delete-project').style.display = id ? 'block' : 'none';
-  document.getElementById('modal-project-title').textContent = id ? 'עריכת פרויקט' : 'פרויקט חדש';
-  if(id) {
-    const p = allProjects.find(x=>x.id===id);
-    if(p) {
-      document.getElementById('p-name').value          = p.project_name||'';
-      document.getElementById('p-client').value        = p.client_name||'';
-      document.getElementById('p-client-mobile').value = p.client_mobile||'';
-      document.getElementById('p-address').value       = p.address||'';
-      document.getElementById('p-city').value          = p.city||'';
-      document.getElementById('p-status').value        = p.status||'active';
-      document.getElementById('p-start').value         = p.start_date||'';
-      document.getElementById('p-end').value           = p.planned_end_date||'';
-      document.getElementById('p-budget').value        = p.total_budget||'';
-      document.getElementById('p-contract').value      = p.contract_amount||'';
-      document.getElementById('p-scope').value         = p.scope_of_work||'';
-    }
-  }
-  document.getElementById('modal-project').style.display = 'flex';
-}
-
-async function saveProject() {
-  const name = document.getElementById('p-name').value.trim();
-  if(!name) { showToast('שם פרויקט הוא שדה חובה','error'); return; }
-  showLoading(true);
-  try {
-    const payload = {
-      project_name:    name,
-      client_name:     document.getElementById('p-client').value.trim()||null,
-      client_mobile:   document.getElementById('p-client-mobile').value.trim()||null,
-      address:         document.getElementById('p-address').value.trim()||null,
-      city:            document.getElementById('p-city').value.trim()||null,
-      status:          document.getElementById('p-status').value,
-      start_date:      document.getElementById('p-start').value||null,
-      planned_end_date:document.getElementById('p-end').value||null,
-      total_budget:    parseFloat(document.getElementById('p-budget').value)||null,
-      contract_amount: parseFloat(document.getElementById('p-contract').value)||null,
-      scope_of_work:   document.getElementById('p-scope').value.trim()||null,
-      updated_at:      new Date().toISOString(),
-    };
-    if(editingProjectId) {
-      const {error} = await sb.from('projects').update(payload).eq('id',editingProjectId);
-      if(error) throw error;
-      showToast('פרויקט עודכן ✅','success');
-    } else {
-      const {error} = await sb.from('projects').insert(payload);
-      if(error) throw error;
-      showToast('פרויקט חדש נוסף ✅','success');
-    }
-    closeModal('modal-project');
-    await loadProjects();
-    renderDashboard();
-  } catch(e){ showToast('שגיאה: '+e.message,'error'); }
-  finally { showLoading(false); }
-}
-
-async function deleteProject() {
-  if(!editingProjectId) return;
-  if(!confirm('האם למחוק פרויקט זה? הדוחות לא יימחקו.')) return;
-  showLoading(true);
-  try {
-    const {error} = await sb.from('projects').delete().eq('id',editingProjectId);
-    if(error) throw error;
-    showToast('פרויקט נמחק','success');
-    closeModal('modal-project');
-    await loadProjects();
-    renderDashboard();
-  } catch(e){ showToast('שגיאה: '+e.message,'error'); }
-  finally { showLoading(false); }
-}
-
-// ── FINANCE ──────────────────────────────────────────────
-function renderBalances() {
-  const tbody = document.getElementById('balances-tbody');
-  if(!allContractors.length) {
-    tbody.innerHTML = '<tr><td colspan="5"><div class="empty-state"><div class="empty-icon">💰</div><h3>אין קבלנים</h3></div></td></tr>';
-    return;
-  }
-  const balMap = {};
-  allTransactions.forEach(t=>{
-    if(!balMap[t.contractor_id]) balMap[t.contractor_id]={sent:0,received:0};
-    if(t.type==='sent') balMap[t.contractor_id].sent+=Number(t.amount);
-    else balMap[t.contractor_id].received+=Number(t.amount);
-  });
-
-  const rows = allContractors.filter(c=>c.is_active).map(c=>{
-    const b = balMap[c.id]||{sent:0,received:0};
-    const balance = b.sent - b.received;
-    const cls = balance>0?'balance-positive':balance<0?'balance-negative':'balance-zero';
-    const balStr = balance===0 ? '—' : (balance>0?'שולם ':'קיבלנו ')+'₪'+fmtMoney(Math.abs(balance));
-    return `<tr>
-      <td><strong>${esc(c.company_name)}</strong><br><span style="font-size:12px;color:var(--text3)">${esc(c.contact_name)}</span></td>
-      <td style="font-size:13px;color:var(--text3)">${esc(c.main_occupation||'—')}</td>
-      <td class="amount-sent">${b.sent?'₪'+fmtMoney(b.sent):'—'}</td>
-      <td class="amount-received">${b.received?'₪'+fmtMoney(b.received):'—'}</td>
-      <td class="${cls}" style="font-size:15px">${balStr}</td>
-    </tr>`;
-  });
-  tbody.innerHTML = rows.join('') || '<tr><td colspan="5"><div class="empty-state"><div class="empty-icon">💰</div><h3>אין נתונים</h3></div></td></tr>';
-}
-
-function renderTransactions(list) {
-  const data = list || allTransactions;
-  const tbody = document.getElementById('transactions-tbody');
-  if(!data.length) {
-    tbody.innerHTML = '<tr><td colspan="8"><div class="empty-state"><div class="empty-icon">📋</div><h3>אין תנועות</h3></div></td></tr>';
-    return;
-  }
-  tbody.innerHTML = data.map(t=>`<tr>
-    <td style="font-size:13px">${fmtDate(t.transaction_date)}</td>
-    <td><strong>${esc(t.contractors_master?.company_name||'—')}</strong></td>
-    <td style="font-size:13px;color:var(--text3)">${esc(t.projects?.project_name||'—')}</td>
-    <td><span class="badge ${t.type==='sent'?'badge-red':'badge-green'}">${t.type==='sent'?'💸 שולם':'✅ התקבל'}</span></td>
-    <td class="${t.type==='sent'?'amount-sent':'amount-received'}" style="font-weight:700">₪${fmtMoney(t.amount)}</td>
-    <td style="font-size:13px;color:var(--text3)">${esc(t.description||'—')}</td>
-    <td style="font-size:12px;color:var(--text3)">${esc(t.reference_number||'—')}</td>
-    <td class="td-actions"><div class="btn-group">
-      <button class="btn btn-ghost btn-sm btn-icon" onclick="openTransactionModal('${t.id}')" title="עריכה">✏️</button>
-    </div></td>
-  </tr>`).join('');
-}
-
-function filterTransactions() {
-  const q = document.getElementById('transaction-search').value.toLowerCase();
-  const type = document.getElementById('transaction-filter-type').value;
-  let f = allTransactions.filter(t=>{
-    const txt = ((t.contractors_master?.company_name||'')+(t.description||'')+(t.reference_number||'')).toLowerCase();
-    return (!q||txt.includes(q)) && (!type||t.type===type);
-  });
-  renderTransactions(f);
-}
-
-function openTransactionModal(id=null) {
-  editingTransactionId = id;
-  ['contractor','project','type','date','amount','ref','desc'].forEach(f=>{
-    const el=document.getElementById('t-'+f); if(el) el.value='';
-  });
-  document.getElementById('t-type').value = 'sent';
-  document.getElementById('t-date').value = new Date().toISOString().split('T')[0];
-  document.getElementById('btn-delete-transaction').style.display = id ? 'block' : 'none';
-  document.getElementById('modal-transaction-title').textContent = id ? 'עריכת תנועה' : 'תנועה כספית חדשה';
-  if(id) {
-    const t = allTransactions.find(x=>x.id===id);
-    if(t) {
-      document.getElementById('t-contractor').value = t.contractor_id||'';
-      document.getElementById('t-project').value    = t.project_id||'';
-      document.getElementById('t-type').value       = t.type;
-      document.getElementById('t-date').value       = t.transaction_date||'';
-      document.getElementById('t-amount').value     = t.amount||'';
-      document.getElementById('t-ref').value        = t.reference_number||'';
-      document.getElementById('t-desc').value       = t.description||'';
-    }
-  }
-  document.getElementById('modal-transaction').style.display = 'flex';
-}
-
-async function saveTransaction() {
-  const cid = document.getElementById('t-contractor').value;
-  const amount = parseFloat(document.getElementById('t-amount').value);
-  const date = document.getElementById('t-date').value;
-  if(!cid||!amount||!date) { showToast('שדות חובה: קבלן, סכום, תאריך','error'); return; }
-  showLoading(true);
-  try {
-    const payload = {
-      contractor_id:    cid,
-      project_id:       document.getElementById('t-project').value||null,
-      type:             document.getElementById('t-type').value,
-      transaction_date: date,
-      amount,
-      reference_number: document.getElementById('t-ref').value.trim()||null,
-      description:      document.getElementById('t-desc').value.trim()||null,
-    };
-    if(editingTransactionId) {
-      const {error} = await sb.from('contractor_transactions').update(payload).eq('id',editingTransactionId);
-      if(error) throw error;
-      showToast('תנועה עודכנה ✅','success');
-    } else {
-      const {error} = await sb.from('contractor_transactions').insert(payload);
-      if(error) throw error;
-      showToast('תנועה נוספה ✅','success');
-    }
-    closeModal('modal-transaction');
-    await loadTransactions();
-    renderDashboard();
-  } catch(e){ showToast('שגיאה: '+e.message,'error'); }
-  finally { showLoading(false); }
-}
-
-async function deleteTransaction() {
-  if(!editingTransactionId) return;
-  if(!confirm('למחוק תנועה זו?')) return;
-  showLoading(true);
-  try {
-    const {error} = await sb.from('contractor_transactions').delete().eq('id',editingTransactionId);
-    if(error) throw error;
-    showToast('תנועה נמחקה','success');
-    closeModal('modal-transaction');
-    await loadTransactions();
-    renderDashboard();
-  } catch(e){ showToast('שגיאה: '+e.message,'error'); }
-  finally { showLoading(false); }
-}
-
-// ── REPORTS ──────────────────────────────────────────────
-function renderReports(list) {
-  const data = list || allReports;
-  const tbody = document.getElementById('reports-tbody');
-  const STATUS_REPORT = {draft:'badge-amber',sent:'badge-blue',approved:'badge-green'};
-  const STATUS_REPORT_HE = {draft:'טיוטה',sent:'נשלח',approved:'אושר'};
-  if(!data.length) {
-    tbody.innerHTML = '<tr><td colspan="7"><div class="empty-state"><div class="empty-icon">📄</div><h3>אין דוחות עדיין</h3></div></td></tr>';
-    return;
-  }
-  tbody.innerHTML = data.map(r=>`<tr>
-    <td style="font-family:monospace;font-size:13px">${esc(r.report_number||'—')}</td>
-    <td>${esc(r.project_name||allProjects.find(p=>p.id===r.project_id)?.project_name||'—')}</td>
-    <td>${r.report_date?fmtDate(r.report_date):'—'}</td>
-    <td style="font-size:13px">${esc(r.manager_name||'—')}</td>
-    <td style="text-align:center">${r.total_work_hours||'—'}</td>
-    <td><span class="badge ${STATUS_REPORT[r.status]||'badge-gray'}">${STATUS_REPORT_HE[r.status]||r.status||'—'}</span></td>
-    <td class="td-actions"><div class="btn-group">
-      ${r.share_token?`<button class="btn btn-ghost btn-sm btn-icon" onclick="window.open('journal.html?token=${r.share_token}')" title="צפייה">👁️</button>`:''}
-    </div></td>
-  </tr>`).join('');
-}
-
-function filterReports() {
-  const q = document.getElementById('reports-search').value.toLowerCase();
-  const pid = document.getElementById('reports-filter-project').value;
-  const date = document.getElementById('reports-filter-date').value;
-  let f = allReports.filter(r=>{
-    const txt = (r.report_number||'').toLowerCase();
-    return (!q||txt.includes(q)) && (!pid||r.project_id===pid) && (!date||r.report_date===date);
-  });
-  renderReports(f);
-}
-
-function populateReportProjectFilter() {
-  const sel = document.getElementById('reports-filter-project');
-  sel.innerHTML = '<option value="">כל הפרויקטים</option>' +
-    allProjects.map(p=>`<option value="${p.id}">${esc(p.project_name)}</option>`).join('');
-}
-
-// ── POPULATE SELECTS ─────────────────────────────────────
-function populateContractorSelects() {
-  const sel = document.getElementById('t-contractor');
-  sel.innerHTML = '<option value="">— בחר קבלן —</option>' +
-    allContractors.filter(c=>c.is_active).map(c=>`<option value="${c.id}">${esc(c.company_name)}</option>`).join('');
-}
-
-function populateProjectSelects() {
-  const sel = document.getElementById('t-project');
-  sel.innerHTML = '<option value="">— ללא פרויקט —</option>' +
-    allProjects.map(p=>`<option value="${p.id}">${esc(p.project_name)}</option>`).join('');
-}
-
-// ── MODAL HELPERS ─────────────────────────────────────────
-function closeModal(id) { document.getElementById(id).style.display='none'; }
-function closeModalOnOverlay(e,id) { if(e.target===e.currentTarget) closeModal(id); }
-
-// ── UI HELPERS ────────────────────────────────────────────
-function showLoading(v) { document.getElementById('loading').style.display=v?'flex':'none'; }
-
-let toastTimer;
-function showToast(msg, type='success') {
-  clearTimeout(toastTimer);
-  let t = document.querySelector('.toast');
-  if(!t){ t=document.createElement('div'); t.className='toast'; document.body.appendChild(t); }
-  t.className = 'toast '+(type==='error'?'error':'success');
-  t.textContent = msg;
-  t.style.display='flex';
-  toastTimer = setTimeout(()=>{ t.style.display='none'; }, 3200);
-}
-
-function fmtMoney(n) {
-  return Number(n).toLocaleString('he-IL',{maximumFractionDigits:0});
-}
-
-function fmtDate(d) {
-  if(!d) return '—';
-  try { return new Date(d).toLocaleDateString('he-IL',{day:'2-digit',month:'2-digit',year:'numeric'}); }
-  catch{ return d; }
-}
-
-function esc(str) {
-  return String(str||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-}
-
-console.log('✅ Stonhard CRM loaded');
-</script>
 
 </div>
 
@@ -1955,410 +1359,7 @@ console.log('✅ Stonhard CRM loaded');
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script>
-// ── CONFIG ──────────────────────────────────────
-const SUPABASE_URL = 'https://vmcipofovheztbjmhwsl.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZtY2lwb2ZvdmhlenRiam1od3NsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE0NjE2MTcsImV4cCI6MjA4NzAzNzYxN30.LPq5N2Xo8iEqjgz2UhmdzUdh5tpGT3EYzSxJcYBEJ1w';
-let supabaseClient;
-try { supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY); } catch(e) { console.error(e); }
 
-// ── STATE ───────────────────────────────────────
-let currentReport=null, signaturePad=null, ownerSignaturePad=null;
-let selectedPhotos=[], selectedOwnerPhotos=[], voiceRecognition=null;
-let currentVoiceTarget=null, currentReportNumber=null;
-
-// ── REPORT NUMBER ───────────────────────────────
-function generateReportNumber() {
-  const n=new Date(), z=v=>String(v).padStart(2,'0');
-  return {
-    reportNum: `STH-${n.getFullYear()}${z(n.getMonth()+1)}${z(n.getDate())}-${z(n.getHours())}${z(n.getMinutes())}${z(n.getSeconds())}`,
-    timestamp: `${z(n.getDate())}/${z(n.getMonth()+1)}/${n.getFullYear()} ${z(n.getHours())}:${z(n.getMinutes())}:${z(n.getSeconds())}`
-  };
-}
-function displayReportNumber() {
-  const {reportNum,timestamp} = generateReportNumber();
-  currentReportNumber = reportNum;
-  const d = document.querySelector('.report-number');
-  if(d) { d.querySelector('.report-id').textContent=reportNum; d.querySelector('.report-timestamp').textContent=timestamp; }
-}
-
-// ── CLEAR / NEW ─────────────────────────────────
-function clearAllData() {
-  if(!confirm('האם אתה בטוח שברצונך למחוק את כל הנתונים?')) return;
-  ['projectName','weather','startTime','endTime','generalNotes','tomorrowPlan'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
-  document.getElementById('breakHours').value='0';
-  ['workersContainer','activitiesContainer','materialsContainer','equipmentContainer','safetyContainer','inspectionsContainer','delaysContainer'].forEach(id=>{const e=document.getElementById(id);if(e)e.innerHTML='';});
-  const cb=document.getElementById('contractorsBody');if(cb){cb.innerHTML='<tr><td colspan="7" class="contractors-empty">לחץ ״➕ הוסף קבלן״ להוספת שורה</td></tr>';}
-  selectedPhotos=[]; document.getElementById('photoPreview').innerHTML='';
-  if(signaturePad){const c=signaturePad.getContext('2d');c.clearRect(0,0,signaturePad.width,signaturePad.height);}
-  document.getElementById('totalWorkHours').textContent='0';
-  document.getElementById('totalWorkerHours').textContent='0';
-  alert('כל הנתונים נמחקו!');
-}
-function startNewReport() {
-  clearAllData();
-  const today=new Date(); document.getElementById('reportDate').valueAsDate=today;
-  const tom=new Date(today); tom.setDate(tom.getDate()+1); document.getElementById('tomorrowDate').valueAsDate=tom;
-  displayReportNumber(); addWorkerRow(); addActivityRow();
-  window.scrollTo({top:0,behavior:'smooth'});
-  alert('דוח חדש התחיל!\n\nמספר דוח: '+currentReportNumber);
-}
-
-// ── INIT ────────────────────────────────────────
-document.addEventListener('DOMContentLoaded', () => {
-  const token = new URLSearchParams(window.location.search).get('token');
-  if(token) loadReportForOwner(token);
-  else initializeManagerView();
-  initializeVoiceRecognition();
-});
-
-function initializeManagerView() {
-  document.getElementById('managerView').style.display='block';
-  document.getElementById('ownerView').style.display='none';
-  displayReportNumber();
-  const today=new Date(); document.getElementById('reportDate').valueAsDate=today;
-  const tom=new Date(today); tom.setDate(tom.getDate()+1); document.getElementById('tomorrowDate').valueAsDate=tom;
-  initSignaturePad('signatureCanvas');
-  addWorkerRow(); addActivityRow();
-  document.getElementById('photoInput').addEventListener('change', handlePhotoSelection);
-  document.getElementById('saveBtn').addEventListener('click', saveDraft);
-  document.getElementById('sendBtn').addEventListener('click', sendReport);
-  document.getElementById('voiceNotesBtn').addEventListener('click', ()=>startVoiceRecording('generalNotes'));
-  document.getElementById('voiceTomorrowBtn').addEventListener('click', ()=>startVoiceRecording('tomorrowPlan'));
-  document.getElementById('startTime').addEventListener('change', calculateWorkHours);
-  document.getElementById('endTime').addEventListener('change', calculateWorkHours);
-  document.getElementById('breakHours').addEventListener('input', calculateWorkHours);
-}
-
-// ── CALCULATIONS ────────────────────────────────
-function calculateWorkHours() {
-  const s=document.getElementById('startTime').value, e=document.getElementById('endTime').value;
-  const b=parseFloat(document.getElementById('breakHours').value)||0;
-  if(!s||!e){document.getElementById('totalWorkHours').textContent='0';return;}
-  const [sh,sm]=s.split(':').map(Number),[eh,em]=e.split(':').map(Number);
-  let m=(eh*60+em)-(sh*60+sm); if(m<0)m+=1440;
-  document.getElementById('totalWorkHours').textContent=((m/60)-b).toFixed(1);
-}
-function calculateTotalWorkerHours() {
-  let t=0;
-  document.querySelectorAll('#workersContainer .form-row').forEach(r=>{
-    t+=(parseInt(r.querySelector('.worker-count').value)||0)*(parseFloat(r.querySelector('.worker-hours').value)||0);
-  });
-  document.getElementById('totalWorkerHours').textContent=t.toFixed(1);
-}
-
-// ── VOICE ───────────────────────────────────────
-function initializeVoiceRecognition() {
-  if(!('webkitSpeechRecognition' in window||'SpeechRecognition' in window)) return;
-  const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
-  voiceRecognition=new SR();
-  voiceRecognition.lang='he-IL'; voiceRecognition.continuous=true; voiceRecognition.interimResults=true;
-  voiceRecognition.onresult=e=>{
-    let final='';
-    for(let i=e.resultIndex;i<e.results.length;i++) if(e.results[i].isFinal) final+=e.results[i][0].transcript+' ';
-    if(currentVoiceTarget&&final){const el=document.getElementById(currentVoiceTarget);if(el)el.value+=final;}
-  };
-  voiceRecognition.onerror=e=>{
-    if(e.error==='no-speech') alert('לא זוהה דיבור. נסה שוב.');
-    else if(e.error==='not-allowed') alert('נא לאשר גישה למיקרופון.');
-    stopVoiceRecording();
-  };
-  voiceRecognition.onend=()=>{
-    setTimeout(()=>{
-      if(document.getElementById('voiceIndicator').style.display==='flex'){
-        try{voiceRecognition.start();}catch(e){stopVoiceRecording();}
-      }
-    },100);
-  };
-}
-function startVoiceRecording(targetId) {
-  if(!voiceRecognition){alert('הקלטה קולית לא נתמכת');return;}
-  currentVoiceTarget=targetId;
-  document.getElementById('voiceIndicator').style.display='flex';
-  try{voiceRecognition.start();}catch(e){stopVoiceRecording();}
-}
-function stopVoiceRecording() {
-  if(voiceRecognition){try{voiceRecognition.stop();}catch(e){}}
-  document.getElementById('voiceIndicator').style.display='none';
-  setTimeout(()=>{currentVoiceTarget=null;},1000);
-}
-
-// ── SIGNATURE ───────────────────────────────────
-function initSignaturePad(canvasId) {
-  const canvas=document.getElementById(canvasId); if(!canvas)return;
-  const ctx=canvas.getContext('2d'); canvas.width=400; canvas.height=100;
-  let drawing=false,lx=0,ly=0;
-  function getPos(e){const r=canvas.getBoundingClientRect(),t=e.touches?e.touches[0]:e;return{x:(t.clientX-r.left)*(canvas.width/r.width),y:(t.clientY-r.top)*(canvas.height/r.height)};}
-  function start(e){e.preventDefault();drawing=true;const p=getPos(e);lx=p.x;ly=p.y;}
-  function draw(e){if(!drawing)return;e.preventDefault();const p=getPos(e);ctx.beginPath();ctx.moveTo(lx,ly);ctx.lineTo(p.x,p.y);ctx.strokeStyle='#000';ctx.lineWidth=2;ctx.stroke();lx=p.x;ly=p.y;}
-  function stop(){drawing=false;}
-  canvas.addEventListener('mousedown',start);canvas.addEventListener('mousemove',draw);canvas.addEventListener('mouseup',stop);canvas.addEventListener('mouseout',stop);
-  canvas.addEventListener('touchstart',start,{passive:false});canvas.addEventListener('touchmove',draw,{passive:false});canvas.addEventListener('touchend',stop);
-  if(canvasId==='signatureCanvas') signaturePad=canvas; else ownerSignaturePad=canvas;
-}
-function clearSignature(){if(signaturePad){const c=signaturePad.getContext('2d');c.clearRect(0,0,signaturePad.width,signaturePad.height);}}
-function clearOwnerSignature(){if(ownerSignaturePad){const c=ownerSignaturePad.getContext('2d');c.clearRect(0,0,ownerSignaturePad.width,ownerSignaturePad.height);}}
-
-// ── DYNAMIC ROWS ────────────────────────────────
-function addWorkerRow() {
-  const c=document.getElementById('workersContainer');
-  const r=document.createElement('div'); r.className='form-row';
-  r.innerHTML='<input type="text" placeholder="תפקיד" class="worker-role"><input type="number" placeholder="מספר" class="worker-count" value="1"><input type="number" placeholder="שעות" step="0.5" class="worker-hours" value="8">';
-  c.appendChild(r);
-  r.querySelector('.worker-count').addEventListener('input',calculateTotalWorkerHours);
-  r.querySelector('.worker-hours').addEventListener('input',calculateTotalWorkerHours);
-  calculateTotalWorkerHours();
-}
-function addActivityRow() {
-  const c=document.getElementById('activitiesContainer');
-  const r=document.createElement('div'); r.className='form-row';
-  r.innerHTML='<input type="text" placeholder="תיאור" class="activity-desc"><input type="text" placeholder="מיקום" class="activity-location"><input type="text" placeholder="כמות" class="activity-quantity">';
-  c.appendChild(r);
-}
-function addMaterialRow() {
-  const c=document.getElementById('materialsContainer');
-  const r=document.createElement('div'); r.className='dynamic-row';
-  r.innerHTML='<button type="button" class="remove-row" onclick="this.parentElement.remove()">×</button><div class="form-row four-col"><input type="text" placeholder="סוג חומר" class="material-type"><input type="text" placeholder="כמות" class="material-quantity"><input type="text" placeholder="יחידה (ק״ג/מ״ר/יח׳)" class="material-unit"><input type="text" placeholder="ספק" class="material-supplier"></div><input type="datetime-local" class="material-delivery-time" style="margin-top:8px">';
-  c.appendChild(r);
-}
-function addEquipmentRow() {
-  const c=document.getElementById('equipmentContainer');
-  const r=document.createElement('div'); r.className='dynamic-row';
-  r.innerHTML='<button type="button" class="remove-row" onclick="this.parentElement.remove()">×</button><div class="form-row three-col"><input type="text" placeholder="סוג ציוד/מכונה" class="equipment-type"><input type="number" placeholder="שעות שימוש" step="0.5" class="equipment-hours"><select class="equipment-rental"><option value="false">בבעלות</option><option value="true">השכרה</option></select></div><textarea placeholder="תקלות/בעיות (אופציונלי)" class="equipment-issues" rows="2" style="margin-top:8px"></textarea>';
-  c.appendChild(r);
-}
-function addSafetyRow() {
-  const c=document.getElementById('safetyContainer');
-  const r=document.createElement('div'); r.className='dynamic-row critical-row';
-  r.innerHTML='<button type="button" class="remove-row" onclick="this.parentElement.remove()">×</button><div class="form-row three-col"><select class="safety-type"><option value="">סוג אירוע</option><option value="near-miss">כמעט תאונה</option><option value="violation">הפרת בטיחות</option><option value="injury">פציעה קלה</option><option value="serious">אירוע חמור</option><option value="safe">אין אירועים - הכל תקין</option></select><select class="safety-severity"><option value="low">חומרה נמוכה</option><option value="medium">חומרה בינונית</option><option value="high">חומרה גבוהה</option></select></div><textarea placeholder="תיאור האירוע" class="safety-description" rows="2" style="margin-top:8px"></textarea><textarea placeholder="פעולה מתקנת שבוצעה" class="safety-corrective" rows="2" style="margin-top:8px"></textarea>';
-  c.appendChild(r);
-}
-function addInspectionRow() {
-  const c=document.getElementById('inspectionsContainer');
-  const r=document.createElement('div'); r.className='dynamic-row critical-row';
-  r.innerHTML='<button type="button" class="remove-row" onclick="this.parentElement.remove()">×</button><div class="form-row three-col"><input type="text" placeholder="שם המפקח" class="inspector-name"><select class="inspector-role"><option value="">תפקיד</option><option value="building">מפקח בניה</option><option value="safety">מפקח בטיחות</option><option value="quality">בקרת איכות</option><option value="client">נציג לקוח</option><option value="engineer">מהנדס</option></select><input type="datetime-local" class="inspection-time"></div><textarea placeholder="ממצאים" class="inspection-findings" rows="2" style="margin-top:8px"></textarea><textarea placeholder="תיקונים נדרשים" class="inspection-corrections" rows="2" style="margin-top:8px"></textarea>';
-  c.appendChild(r);
-}
-function addDelayRow() {
-  const c=document.getElementById('delaysContainer');
-  const r=document.createElement('div'); r.className='dynamic-row';
-  r.innerHTML='<button type="button" class="remove-row" onclick="this.parentElement.remove()">×</button><div class="form-row three-col"><select class="delay-reason"><option value="">סיבת עיכוב</option><option value="weather">מזג אוויר</option><option value="materials">חוסר חומרים</option><option value="equipment">תקלת ציוד</option><option value="client">לקוח</option><option value="permits">היתרים/אישורים</option><option value="workers">כוח אדם</option><option value="other">אחר</option></select><select class="delay-responsible"><option value="">גורם אחראי</option><option value="client">לקוח</option><option value="contractor">קבלן</option><option value="supplier">ספק</option><option value="authority">רשות</option><option value="force-majeure">כוח עליון</option></select><input type="number" placeholder="השפעה (שעות)" step="0.5" class="delay-hours"></div><textarea placeholder="תיאור מפורט" class="delay-description" rows="2" style="margin-top:8px"></textarea>';
-  c.appendChild(r);
-}
-
-// ── PHOTOS ──────────────────────────────────────
-function handlePhotoSelection(e){selectedPhotos=[...selectedPhotos,...Array.from(e.target.files)];renderPhotos('photoPreview',selectedPhotos,'removePhoto');}
-function handleOwnerPhotoSelection(e){selectedOwnerPhotos=[...selectedOwnerPhotos,...Array.from(e.target.files)];renderPhotos('ownerPhotoPreview',selectedOwnerPhotos,'removeOwnerPhoto');}
-function renderPhotos(containerId,photos,removeFn){
-  const p=document.getElementById(containerId); p.innerHTML='';
-  photos.forEach((f,i)=>{const r=new FileReader();r.onload=e=>{const d=document.createElement('div');d.className='photo-item';d.innerHTML=`<img src="${e.target.result}"><button class="remove-photo" onclick="${removeFn}(${i})">×</button>`;p.appendChild(d);};r.readAsDataURL(f);});
-}
-function removePhoto(i){selectedPhotos.splice(i,1);renderPhotos('photoPreview',selectedPhotos,'removePhoto');}
-function removeOwnerPhoto(i){selectedOwnerPhotos.splice(i,1);renderPhotos('ownerPhotoPreview',selectedOwnerPhotos,'removeOwnerPhoto');}
-
-// ── CONTRACTORS ─────────────────────────────────
-const OCCUPATION_OPTIONS = [
-  '','בטון ועבודות עפר','ביוב וצנרת','בנייה כללית','גבס ופנים','גגות ואיטום',
-  'חשמל ותאורה','טיח וצבע','כבישים ופיתוח','מדרכות וריצוף חוץ','מסגרות ומתכת',
-  'מעליות','עבודות עץ ונגרות','ריצוף וחיפוי','שיפוץ ושחזור','תקשורת ואינטרנט',
-  'קירור ומיזוג אוויר','אחר'
-];
-
-function addContractorRow(data={}) {
-  const tbody = document.getElementById('contractorsBody');
-  // Remove empty-state row if present
-  const emptyRow = tbody.querySelector('.contractors-empty');
-  if(emptyRow) emptyRow.closest('tr').remove();
-
-  const tr = document.createElement('tr');
-  tr.innerHTML = `
-    <td><input type="text" placeholder="שם חברה / קבלן" class="contr-company" value="${data.company_name||''}"></td>
-    <td><input type="text" placeholder="שם איש קשר" class="contr-contact" value="${data.contact_name||''}"></td>
-    <td><input type="tel"  placeholder="05X-XXXXXXX"  class="contr-mobile"  value="${data.mobile||''}" style="min-width:120px"></td>
-    <td><input type="tel"  placeholder="0X-XXXXXXX"   class="contr-office"  value="${data.office_tel||''}" style="min-width:110px"></td>
-    <td>
-      <select class="contr-occupation">
-        ${OCCUPATION_OPTIONS.map(o=>`<option value="${o}" ${o===data.main_occupation?'selected':''}>${o||'— בחר עיסוק —'}</option>`).join('')}
-      </select>
-    </td>
-    <td><input type="text" placeholder="מה הוא עושה בפרוייקט זה?" class="contr-activity" value="${data.project_activity||''}" style="min-width:160px"></td>
-    <td class="td-actions">
-      <button type="button" class="btn-remove-contractor" onclick="removeContractorRow(this)" title="הסר">×</button>
-    </td>`;
-  tbody.appendChild(tr);
-}
-
-function removeContractorRow(btn) {
-  const tbody = document.getElementById('contractorsBody');
-  btn.closest('tr').remove();
-  if(tbody.rows.length === 0) {
-    const tr = document.createElement('tr');
-    tr.innerHTML = '<td colspan="7" class="contractors-empty">לחץ ״➕ הוסף קבלן״ להוספת שורה</td>';
-    tbody.appendChild(tr);
-  }
-}
-
-function collectContractors() {
-  const rows = [];
-  document.querySelectorAll('#contractorsBody tr:not(:has(.contractors-empty))').forEach(tr => {
-    const company = tr.querySelector('.contr-company')?.value?.trim();
-    const contact = tr.querySelector('.contr-contact')?.value?.trim();
-    if(company || contact) {
-      rows.push({
-        company_name:      company || '',
-        contact_name:      contact || '',
-        mobile:            tr.querySelector('.contr-mobile')?.value?.trim()  || null,
-        office_tel:        tr.querySelector('.contr-office')?.value?.trim()  || null,
-        main_occupation:   tr.querySelector('.contr-occupation')?.value      || null,
-        project_activity:  tr.querySelector('.contr-activity')?.value?.trim()|| null,
-      });
-    }
-  });
-  return rows;
-}
-
-
-function collectFormData() {
-  const workers=[],activities=[],materials=[],equipment=[],safety=[],inspections=[],delays=[];
-  document.querySelectorAll('#workersContainer .form-row').forEach(r=>{const role=r.querySelector('.worker-role').value;if(role)workers.push({role,worker_count:parseInt(r.querySelector('.worker-count').value)||0,hours_worked:parseFloat(r.querySelector('.worker-hours').value)||0});});
-  document.querySelectorAll('#activitiesContainer .form-row').forEach(r=>{const d=r.querySelector('.activity-desc').value;if(d)activities.push({description:d,location:r.querySelector('.activity-location').value,quantity:r.querySelector('.activity-quantity').value});});
-  document.querySelectorAll('#materialsContainer .dynamic-row').forEach(r=>{const t=r.querySelector('.material-type').value,q=r.querySelector('.material-quantity').value;if(t&&q)materials.push({material_type:t,quantity:q,unit:r.querySelector('.material-unit').value,supplier:r.querySelector('.material-supplier').value,delivery_time:r.querySelector('.material-delivery-time').value||null});});
-  document.querySelectorAll('#equipmentContainer .dynamic-row').forEach(r=>{const t=r.querySelector('.equipment-type').value;if(t)equipment.push({equipment_type:t,hours_used:parseFloat(r.querySelector('.equipment-hours').value)||0,rental:r.querySelector('.equipment-rental').value==='true',issues:r.querySelector('.equipment-issues').value});});
-  document.querySelectorAll('#safetyContainer .dynamic-row').forEach(r=>{const t=r.querySelector('.safety-type').value,d=r.querySelector('.safety-description').value;if(t&&d)safety.push({incident_type:t,severity:r.querySelector('.safety-severity').value,description:d,corrective_action:r.querySelector('.safety-corrective').value});});
-  document.querySelectorAll('#inspectionsContainer .dynamic-row').forEach(r=>{const n=r.querySelector('.inspector-name').value,role=r.querySelector('.inspector-role').value;if(n&&role)inspections.push({inspector_name:n,inspector_role:role,inspection_time:r.querySelector('.inspection-time').value||null,findings:r.querySelector('.inspection-findings').value,required_corrections:r.querySelector('.inspection-corrections').value});});
-  document.querySelectorAll('#delaysContainer .dynamic-row').forEach(r=>{const rs=r.querySelector('.delay-reason').value,rsp=r.querySelector('.delay-responsible').value,d=r.querySelector('.delay-description').value;if(rs&&rsp&&d)delays.push({delay_reason:rs,responsible_party:rsp,impact_hours:parseFloat(r.querySelector('.delay-hours').value)||0,description:d});});
-  const s=document.getElementById('startTime').value, e=document.getElementById('endTime').value;
-  const b=parseFloat(document.getElementById('breakHours').value)||0;
-  let totalWorkHours=0;
-  if(s&&e){const[sh,sm]=s.split(':').map(Number),[eh,em]=e.split(':').map(Number);let m=(eh*60+em)-(sh*60+sm);if(m<0)m+=1440;totalWorkHours=(m/60)-b;}
-  return{report_number:currentReportNumber,project_name:document.getElementById('projectName').value||'ללא שם',report_date:document.getElementById('reportDate').value,manager_name:'אבשי ספיר',weather:document.getElementById('weather').value,start_time:s||null,end_time:e||null,break_hours:b,total_work_hours:totalWorkHours,general_notes:document.getElementById('generalNotes').value,tomorrow_date:document.getElementById('tomorrowDate').value,tomorrow_plan:document.getElementById('tomorrowPlan').value,workers,activities,materials,equipment,safety,inspections,delays,contractors:collectContractors()};
-}
-
-// ── SAVE / SEND ─────────────────────────────────
-async function saveDraft() {
-  showLoading(true);
-  try {
-    const data=collectFormData();
-    if(!data.project_name){alert('נא למלא שם פרוייקט');showLoading(false);return;}
-    const sig=await uploadSignature(signaturePad,'manager');
-    const{data:report,error}=await supabaseClient.from('reports').insert({...data,manager_signature_path:sig,status:'draft'}).select().single();
-    if(error) throw error;
-    await saveRelatedData(report.id,data);
-    await uploadPhotos(report.id,selectedPhotos,'manager');
-    alert('טיוטה נשמרה!');
-  } catch(e){alert('שגיאה: '+e.message);}
-  finally{showLoading(false);}
-}
-async function sendReport() {
-  showLoading(true);
-  try {
-    const data=collectFormData();
-    if(!data.project_name){alert('נא למלא שם פרוייקט');showLoading(false);return;}
-    const sig=await uploadSignature(signaturePad,'manager');
-    const{data:report,error}=await supabaseClient.from('reports').insert({...data,manager_signature_path:sig,status:'sent',sent_at:new Date().toISOString()}).select().single();
-    if(error) throw error;
-    await saveRelatedData(report.id,data);
-    await uploadPhotos(report.id,selectedPhotos,'manager');
-    const url=`${window.location.origin}${window.location.pathname}?token=${report.share_token}`;
-    const msg=`דוח עבודה יומי\n\nמספר: ${data.report_number}\nמנהל: אבשי ספיר\nפרוייקט: ${data.project_name}\nתאריך: ${data.report_date}\n\nלאישור:\n${url}\n\n050-5231042`;
-    window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`);
-    alert('דוח נשלח!\n\n'+url);
-  } catch(e){alert('שגיאה: '+e.message);}
-  finally{showLoading(false);}
-}
-async function saveRelatedData(reportId,data) {
-  const tables=[['workers',data.workers],['activities',data.activities],['materials',data.materials],['equipment',data.equipment],['safety_incidents',data.safety],['inspections',data.inspections],['delays',data.delays],['project_contractors',data.contractors]];
-  for(const[t,rows] of tables) if(rows&&rows.length>0) await supabaseClient.from(t).insert(rows.map(r=>({...r,report_id:reportId})));
-}
-async function uploadSignature(canvas,type) {
-  if(!canvas) return null;
-  const blob=await new Promise(res=>canvas.toBlob(res));
-  const fn=`${type}_${Date.now()}.png`;
-  const{data,error}=await supabaseClient.storage.from('signatures').upload(fn,blob);
-  if(error) throw error;
-  return data.path;
-}
-async function uploadPhotos(reportId,photos,by) {
-  for(let i=0;i<photos.length;i++){
-    const f=photos[i],fn=`${reportId}_${by}_${Date.now()}_${i}.jpg`;
-    const{data,error}=await supabaseClient.storage.from('photos').upload(fn,f);
-    if(error) throw error;
-    await supabaseClient.from('photos').insert({report_id:reportId,storage_path:data.path,file_size:f.size});
-  }
-}
-
-// ── OWNER VIEW ──────────────────────────────────
-async function loadReportForOwner(token) {
-  showLoading(true);
-  try {
-    const{data,error}=await supabaseClient.rpc('get_full_report',{report_token:token});
-    if(error) throw error;
-    if(!data||!data.report){alert('דוח לא נמצא');return;}
-    currentReport=data; displayReportForOwner(data);
-    document.getElementById('managerView').style.display='none';
-    document.getElementById('ownerView').style.display='block';
-    initSignaturePad('ownerSignature');
-    document.getElementById('ownerPhotoInput').addEventListener('change',handleOwnerPhotoSelection);
-    document.getElementById('voiceRemarksBtn').addEventListener('click',()=>startVoiceRecording('ownerRemarks'));
-  } catch(e){alert('שגיאה: '+e.message);}
-  finally{showLoading(false);}
-}
-function displayReportForOwner(data) {
-  const rep=data.report;
-  const pn=document.getElementById('printReportNumber');
-  if(pn&&rep.report_number) pn.innerHTML=`<div style="text-align:center;font-size:18px;font-weight:bold;color:#667eea;">אישור עבודה מספר: ${rep.report_number}</div><div style="text-align:center;font-size:12px;color:#666;">${rep.report_date}</div>`;
-  let html='<div class="section">';
-  if(rep.report_number) html+=`<div style="background:#f0f7ff;padding:10px;border-radius:8px;margin-bottom:15px;text-align:center;"><strong style="color:#667eea;">מספר דוח:</strong> <span style="font-family:monospace;font-size:18px;font-weight:bold;">${rep.report_number}</span></div>`;
-  html+=`<h2>📋 ${rep.project_name}</h2><p><strong>תאריך:</strong> ${rep.report_date}</p><p><strong>מנהל:</strong> ${rep.manager_name}</p>`;
-  if(rep.weather) html+=`<p><strong>מזג אוויר:</strong> ${rep.weather}</p>`;
-  if(rep.start_time&&rep.end_time) html+=`<p><strong>שעות עבודה:</strong> ${rep.start_time} - ${rep.end_time}${rep.total_work_hours?` (סה"כ: ${rep.total_work_hours} שעות)`:''}</p>`;
-  if(rep.general_notes) html+=`<p><strong>הערות:</strong> ${rep.general_notes}</p>`;
-  if(rep.tomorrow_plan) html+=`<hr style="margin:15px 0;border:1px solid #e1e8ed"><h3>📅 תוכנית למחר</h3>${rep.tomorrow_date?`<p><strong>תאריך:</strong> ${rep.tomorrow_date}</p>`:''}<p>${rep.tomorrow_plan}</p>`;
-  const secs=[
-    ['contractors','🏗️ קבלני הפרוייקט',c=>`• ${c.company_name}${c.contact_name?' — '+c.contact_name:''}${c.mobile?' 📱 '+c.mobile:''}${c.office_tel?' ☎️ '+c.office_tel:''}${c.main_occupation?' | '+c.main_occupation:''}${c.project_activity?' → '+c.project_activity:''}`],
-    ['workers','👷 כוח אדם',w=>`• ${w.role}: ${w.worker_count} עובדים × ${w.hours_worked} שעות`],
-    ['activities','🔨 פעילויות',a=>`• ${a.description}${a.location?' - '+a.location:''}${a.quantity?' ('+a.quantity+')':''}`],
-    ['materials','📦 אספקות חומרים',m=>`• ${m.material_type}: ${m.quantity}${m.unit?' '+m.unit:''}${m.supplier?' ('+m.supplier+')':''}`],
-    ['equipment','🚜 ציוד ומכונות',e=>`• ${e.equipment_type}${e.hours_used?' ('+e.hours_used+' שעות)':''}${e.rental?' [השכרה]':''}`],
-    ['safety','⚠️ בטיחות',s=>`• ${s.description}${s.corrective_action?' - '+s.corrective_action:''}`],
-    ['inspections','👮 ביקורות ופיקוח',i=>`• ${i.inspector_name} (${i.inspector_role})${i.findings?' - '+i.findings:''}`],
-    ['delays','⏰ עיכובים',d=>`• ${d.description}${d.impact_hours?' ('+d.impact_hours+' שעות)':''}`],
-  ];
-  secs.forEach(([k,t,f])=>{
-    if(data[k]&&data[k].length>0){
-      html+=`<hr style="margin:15px 0;border:1px solid #e1e8ed"><h3>${t}</h3>`;
-      data[k].forEach(item=>{html+=`<p>${f(item)}</p>`;});
-    }
-  });
-  if(data.photos&&data.photos.length>0){
-    html+='<hr style="margin:15px 0;border:1px solid #e1e8ed"><h3>📸 תמונות מהאתר</h3><div class="photo-preview">';
-    data.photos.forEach(p=>{html+=`<div class="photo-item"><img src="${SUPABASE_URL}/storage/v1/object/public/photos/${p.storage_path}"></div>`;});
-    html+='</div>';
-  }
-  if(rep.manager_signature_path) html+=`<hr style="margin:15px 0;border:1px solid #e1e8ed"><h3>✍️ חתימת מנהל העבודה</h3><div style="text-align:center;padding:10px;"><img src="${SUPABASE_URL}/storage/v1/object/public/signatures/${rep.manager_signature_path}" style="max-width:300px;border:2px solid #667eea;border-radius:8px;padding:10px;background:white;"><p style="margin-top:10px;color:#666;">חתימה דיגיטלית: ${rep.manager_name}</p></div>`;
-  html+='</div>';
-  document.getElementById('reportDetails').innerHTML=html;
-}
-async function approveReport() {
-  const name=document.getElementById('ownerName').value;
-  if(!name){alert('נא למלא שם');return;}
-  showLoading(true);
-  try {
-    const sig=await uploadSignature(ownerSignaturePad,'owner');
-    if(selectedOwnerPhotos.length>0) await uploadPhotos(currentReport.report.id,selectedOwnerPhotos,'owner');
-    await supabaseClient.from('reports').update({status:'approved',approved_at:new Date().toISOString(),owner_signature_path:sig}).eq('id',currentReport.report.id);
-    await supabaseClient.from('approvals').insert({report_id:currentReport.report.id,owner_name:name,remarks:document.getElementById('ownerRemarks').value,signature_path:sig});
-    alert('דוח אושר!');
-    const msg=`דוח אושר\n${currentReport.report.project_name}\n${name}\n${currentReport.report.report_date}${selectedOwnerPhotos.length>0?`\n${selectedOwnerPhotos.length} תמונות נוספו`:''}`;
-    window.open(`https://wa.me/972505231042?text=${encodeURIComponent(msg)}`);
-  } catch(e){alert('שגיאה: '+e.message);}
-  finally{showLoading(false);}
-}
-
-function printReport(){window.print();}
-function showLoading(show){document.getElementById('loading').style.display=show?'flex':'none';}
-console.log('✅ Work Journal - Stonhard - Loaded OK');
-</script>
 
 </div>
 
@@ -2382,6 +1383,14 @@ function switchTab(tab) {
   window.scrollTo(0,0);
   try { localStorage.setItem('beni_active_tab', tab); } catch(e){}
 }
+// Single showLoading — works for both CRM and Journal
+function showLoading(v) {
+  const el = document.getElementById('global-loading');
+  if(el) el.style.display = v ? 'flex' : 'none';
+}
+// [removed] function showLoading(v) { showLoading(v); }
+// [removed] function showLoading(v) { showLoading(v); }
+
 // Restore last tab on reload
 try {
   const saved = localStorage.getItem('beni_active_tab');
@@ -2417,12 +1426,12 @@ document.addEventListener('DOMContentLoaded', async () => {
 });
 
 async function loadAll() {
-  crmShowLoading(true);
+  showLoading(true);
   try {
     await Promise.all([loadContractors(), loadProjects(), loadTransactions(), loadReports()]);
     renderDashboard();
   } catch(e){ showToast('שגיאה בטעינת נתונים: '+e.message,'error'); }
-  finally { crmShowLoading(false); }
+  finally { showLoading(false); }
 }
 
 // ── LOAD ─────────────────────────────────────────────────
@@ -2611,7 +1620,7 @@ async function saveContractor() {
   const company = document.getElementById('c-company').value.trim();
   const contact = document.getElementById('c-contact').value.trim();
   if(!company||!contact) { showToast('שדות חובה: שם חברה ואיש קשר','error'); return; }
-  crmShowLoading(true);
+  showLoading(true);
   try {
     const payload = {
       company_name:   company,
@@ -2639,13 +1648,13 @@ async function saveContractor() {
     closeModal('modal-contractor');
     await loadContractors();
   } catch(e){ showToast('שגיאה: '+e.message,'error'); }
-  finally { crmShowLoading(false); }
+  finally { showLoading(false); }
 }
 
 async function deleteContractor() {
   if(!editingContractorId) return;
   if(!confirm('האם למחוק קבלן זה?')) return;
-  crmShowLoading(true);
+  showLoading(true);
   try {
     const {error} = await sb.from('contractors_master').delete().eq('id',editingContractorId);
     if(error) throw error;
@@ -2653,7 +1662,7 @@ async function deleteContractor() {
     closeModal('modal-contractor');
     await loadContractors();
   } catch(e){ showToast('שגיאה: '+e.message,'error'); }
-  finally { crmShowLoading(false); }
+  finally { showLoading(false); }
 }
 
 function callContractor(mobile) { if(mobile) window.open('tel:'+mobile); }
@@ -2730,7 +1739,7 @@ function openProjectModal(id=null) {
 async function saveProject() {
   const name = document.getElementById('p-name').value.trim();
   if(!name) { showToast('שם פרויקט הוא שדה חובה','error'); return; }
-  crmShowLoading(true);
+  showLoading(true);
   try {
     const payload = {
       project_name:    name,
@@ -2759,13 +1768,13 @@ async function saveProject() {
     await loadProjects();
     renderDashboard();
   } catch(e){ showToast('שגיאה: '+e.message,'error'); }
-  finally { crmShowLoading(false); }
+  finally { showLoading(false); }
 }
 
 async function deleteProject() {
   if(!editingProjectId) return;
   if(!confirm('האם למחוק פרויקט זה? הדוחות לא יימחקו.')) return;
-  crmShowLoading(true);
+  showLoading(true);
   try {
     const {error} = await sb.from('projects').delete().eq('id',editingProjectId);
     if(error) throw error;
@@ -2774,7 +1783,7 @@ async function deleteProject() {
     await loadProjects();
     renderDashboard();
   } catch(e){ showToast('שגיאה: '+e.message,'error'); }
-  finally { crmShowLoading(false); }
+  finally { showLoading(false); }
 }
 
 // ── FINANCE ──────────────────────────────────────────────
@@ -2867,7 +1876,7 @@ async function saveTransaction() {
   const amount = parseFloat(document.getElementById('t-amount').value);
   const date = document.getElementById('t-date').value;
   if(!cid||!amount||!date) { showToast('שדות חובה: קבלן, סכום, תאריך','error'); return; }
-  crmShowLoading(true);
+  showLoading(true);
   try {
     const payload = {
       contractor_id:    cid,
@@ -2891,13 +1900,13 @@ async function saveTransaction() {
     await loadTransactions();
     renderDashboard();
   } catch(e){ showToast('שגיאה: '+e.message,'error'); }
-  finally { crmShowLoading(false); }
+  finally { showLoading(false); }
 }
 
 async function deleteTransaction() {
   if(!editingTransactionId) return;
   if(!confirm('למחוק תנועה זו?')) return;
-  crmShowLoading(true);
+  showLoading(true);
   try {
     const {error} = await sb.from('contractor_transactions').delete().eq('id',editingTransactionId);
     if(error) throw error;
@@ -2906,7 +1915,7 @@ async function deleteTransaction() {
     await loadTransactions();
     renderDashboard();
   } catch(e){ showToast('שגיאה: '+e.message,'error'); }
-  finally { crmShowLoading(false); }
+  finally { showLoading(false); }
 }
 
 // ── REPORTS ──────────────────────────────────────────────
@@ -2967,7 +1976,7 @@ function closeModal(id) { document.getElementById(id).style.display='none'; }
 function closeModalOnOverlay(e,id) { if(e.target===e.currentTarget) closeModal(id); }
 
 // ── UI HELPERS ────────────────────────────────────────────
-function crmShowLoading(v) { document.getElementById('loading').style.display=v?'flex':'none'; }
+// [removed] function showLoading(v) { document.getElementById('loading').style.display=v?'flex':'none'; }
 
 let toastTimer;
 function showToast(msg, type='success') {
