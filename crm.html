@@ -7,26 +7,26 @@
 <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;600;700;800;900&family=Rubik:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
 :root {
-  --bg:        #0f1117;
-  --surface:   #1a1d27;
-  --surface2:  #22263a;
-  --surface3:  #2a2f47;
-  --border:    #2e3350;
-  --border2:   #3d4466;
-  --accent:    #4f7cff;
-  --accent2:   #7c5cfc;
-  --green:     #22c55e;
-  --red:       #ef4444;
-  --amber:     #f59e0b;
-  --cyan:      #06b6d4;
-  --text:      #e8eaf6;
-  --text2:     #9098c8;
-  --text3:     #565d8a;
-  --gold:      #f5c842;
+  --bg:        #fdf6e3;
+  --surface:   #fffdf7;
+  --surface2:  #fef9ec;
+  --surface3:  #fdf3d0;
+  --border:    #e8d9a0;
+  --border2:   #c9a84c;
+  --accent:    #9a6f00;
+  --accent2:   #7a5500;
+  --green:     #1e6b30;
+  --red:       #b52a1d;
+  --amber:     #c4700a;
+  --cyan:      #0e7490;
+  --text:      #2c1f00;
+  --text2:     #6b4f1a;
+  --text3:     #a07c3a;
+  --gold:      #9a6f00;
   --radius:    12px;
   --radius-sm: 8px;
-  --shadow:    0 4px 24px rgba(0,0,0,0.4);
-  --shadow-lg: 0 8px 48px rgba(0,0,0,0.6);
+  --shadow:    0 4px 24px rgba(154,111,0,0.10);
+  --shadow-lg: 0 8px 48px rgba(154,111,0,0.16);
 }
 *{margin:0;padding:0;box-sizing:border-box}
 html{font-size:15px}
@@ -43,11 +43,11 @@ body{
 .sidebar{
   position:fixed; top:0; right:0;
   width:220px; height:100vh;
-  background:var(--surface);
+  background:#f5e9c4;
   border-left:1px solid var(--border);
   display:flex; flex-direction:column;
   z-index:100; padding:24px 0;
-  box-shadow: -4px 0 32px rgba(0,0,0,0.4);
+  box-shadow: -4px 0 32px rgba(154,111,0,0.12);
 }
 .sidebar-logo{
   padding:0 20px 28px;
@@ -75,7 +75,7 @@ body{
 }
 .nav-item:hover{background:var(--surface2);color:var(--text);}
 .nav-item.active{
-  background:linear-gradient(90deg, rgba(79,124,255,0.12), transparent);
+  background:linear-gradient(90deg, rgba(154,111,0,0.15), transparent);
   color:var(--accent);
   border-right-color:var(--accent);
 }
@@ -135,7 +135,7 @@ body{
   align-items:center; gap:6px;
 }
 .btn-primary{background:var(--accent);color:white;}
-.btn-primary:hover{background:#3d6be8;transform:translateY(-1px);box-shadow:0 4px 16px rgba(79,124,255,0.4);}
+.btn-primary:hover{background:#3d6be8;transform:translateY(-1px);box-shadow:0 4px 16px rgba(154,111,0,0.35);}
 .btn-success{background:var(--green);color:white;}
 .btn-success:hover{background:#16a34a;transform:translateY(-1px);}
 .btn-danger{background:var(--red);color:white;}
@@ -211,7 +211,7 @@ tbody td{padding:13px 16px;color:var(--text);}
 .badge-green{background:rgba(34,197,94,0.15);color:var(--green);}
 .badge-red{background:rgba(239,68,68,0.15);color:var(--red);}
 .badge-amber{background:rgba(245,158,11,0.15);color:var(--amber);}
-.badge-blue{background:rgba(79,124,255,0.15);color:var(--accent);}
+.badge-blue{background:rgba(154,111,0,0.12);color:var(--accent);}
 .badge-gray{background:rgba(144,152,200,0.15);color:var(--text2);}
 
 /* ── STARS ── */
@@ -358,7 +358,7 @@ textarea{min-height:80px;resize:vertical;}
 }
 .spinner{
   width:44px;height:44px;
-  border:4px solid rgba(79,124,255,0.2);
+  border:4px solid rgba(154,111,0,0.15);
   border-top-color:var(--accent);
   border-radius:50%;animation:spin 0.8s linear infinite;
 }
@@ -367,8 +367,8 @@ textarea{min-height:80px;resize:vertical;}
 /* ── SCROLLBAR ── */
 ::-webkit-scrollbar{width:6px;height:6px;}
 ::-webkit-scrollbar-track{background:var(--surface);}
-::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px;}
-::-webkit-scrollbar-thumb:hover{background:var(--text3);}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px;}
+::-webkit-scrollbar-thumb:hover{background:var(--border2);}
 
 /* ── RESPONSIVE ── */
 @media(max-width:1100px){.stats-grid{grid-template-columns:repeat(2,1fr);}}
@@ -1003,7 +1003,7 @@ function renderDashboard() {
   } else {
     plist.innerHTML = activeProjects.map(p=>`
       <div class="contractor-mini" onclick="showPage('projects')">
-        <div class="contractor-avatar" style="background:linear-gradient(135deg,#22c55e,#06b6d4)">${(p.project_name||'?')[0]}</div>
+        <div class="contractor-avatar" style="background:linear-gradient(135deg,#1e6b30,#0e7490)">${(p.project_name||'?')[0]}</div>
         <div class="contractor-info">
           <div class="contractor-name">${esc(p.project_name)}</div>
           <div class="contractor-role">${esc(p.client_name||'')} ${p.start_date?'| '+fmtDate(p.start_date):''}</div>
