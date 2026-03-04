@@ -1919,7 +1919,11 @@ async function loadReports() {
 // ── NAVIGATION ───────────────────────────────────────────
 function showPage(page) {
   if(page === 'gantt') {
-    document.querySelectorAll('.page').forEach(function(p){p.style.display='none';});
+    // Ensure CRM tab is visible
+    document.getElementById('crm-panel').classList.add('active');
+    document.getElementById('tab-crm').classList.add('active');
+    // Hide all pages inside CRM only
+    document.querySelectorAll('#crm-panel .page').forEach(function(p){p.style.display='none';});
     const gp = document.getElementById('page-gantt');
     if(gp) gp.style.display = 'block';
     document.querySelectorAll('.nav-item').forEach(function(n){n.classList.remove('active');});
@@ -1929,7 +1933,11 @@ function showPage(page) {
     return;
   }
   if(page === 'forecast') {
-    document.querySelectorAll('.page').forEach(function(p){p.style.display='none';});
+    // Ensure CRM tab is visible
+    document.getElementById('crm-panel').classList.add('active');
+    document.getElementById('tab-crm').classList.add('active');
+    // Hide all pages inside CRM only
+    document.querySelectorAll('#crm-panel .page').forEach(function(p){p.style.display='none';});
     const fp = document.getElementById('page-forecast');
     if(fp) fp.style.display = 'block';
     document.querySelectorAll('.nav-item').forEach(function(n){n.classList.remove('active');});
@@ -3268,7 +3276,7 @@ async function renderForecast() {
   showLoading(true);
   try {
     const { data: projects } = await sb.from('projects')
-      .select('id,project_name,budget,expected_profit,status,start_date,end_date,client_name')
+      .select('*')
       .order('created_at', {ascending:false});
     const { data: txns } = await sb.from('contractor_transactions')
       .select('project_id,amount,type');
