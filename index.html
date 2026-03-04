@@ -602,7 +602,7 @@ button:active{transform:scale(0.98)}
   </div>
   <div class="tab-sep"></div>
   <div class="top-tab" id="tab-notes" onclick="switchTab('notes')">
-    <span>📝</span><span>יומן חכם</span>
+    <span>📝</span><span>מזכרים-בני</span>
   </div>
   <div class="tab-sep"></div>
   <div class="top-tab" id="tab-gcal" onclick="switchTab('gcal')">
@@ -610,7 +610,7 @@ button:active{transform:scale(0.98)}
   </div>
   <div class="tab-sep"></div>
   <div class="top-tab" id="tab-journal" onclick="switchTab('journal')">
-    <span>📋</span><span>יומן שטח</span>
+    <span>📋</span><span>יומן עבודה יומי</span>
   </div>
 </div>
 
@@ -646,6 +646,10 @@ button:active{transform:scale(0.98)}
     <span class="nav-icon">📄</span>
     <span>דוחות</span>
   </div>
+          <div class="nav-item" onclick="showPage('forecast')" id="nav-forecast">
+            <span class="nav-icon">📈</span>
+            <span class="nav-text">תחזית הכנסות</span>
+          </div>
   <a href="#" onclick="switchTab('journal')" target="_blank" style="text-decoration:none;">
     <div class="nav-item" style="background:linear-gradient(90deg,rgba(154,111,0,0.18),transparent);color:#9a6f00;border-right:3px solid #9a6f00;margin-top:8px;">
       <span class="nav-icon">📝</span>
@@ -814,7 +818,7 @@ button:active{transform:scale(0.98)}
             <th>לקוח</th>
             <th>כתובת</th>
             <th>תאריך התחלה</th>
-            <th>תקציב</th>
+            <th>תקציב</th><th>רווח צפוי</th>
             <th>דוחות</th>
             <th>סטטוס</th>
             <th class="td-actions">פעולות</th>
@@ -905,6 +909,56 @@ button:active{transform:scale(0.98)}
         <a href="#" onclick="switchTab('journal')" target="_blank" class="btn btn-primary">📝 יומן חדש</a>
       </div>
     </div>
+
+      <!-- FORECAST PAGE -->
+      <div id="page-forecast" class="page" style="display:none">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;flex-wrap:wrap;gap:12px">
+          <h2 style="font-size:22px;font-weight:800;color:#1a3d5c">&#128200; תחזית הכנסות ורווח</h2>
+          <button onclick="renderForecast()" style="background:linear-gradient(135deg,#9a6f00,#c9a84c);border:none;color:#1a1a2e;padding:10px 20px;border-radius:10px;cursor:pointer;font-family:Heebo,sans-serif;font-weight:700">&#128260; רענן</button>
+        </div>
+        <div id="forecast-summary" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:16px;margin-bottom:28px"></div>
+        <div style="background:#fff;border-radius:14px;padding:20px;box-shadow:0 2px 12px rgba(0,0,0,0.06);margin-bottom:24px">
+          <h3 style="font-size:16px;font-weight:700;color:#1a3d5c;margin-bottom:16px">&#128202; רווח לפי פרויקט</h3>
+          <div id="forecast-chart" style="overflow-x:auto"></div>
+        </div>
+        <div style="background:#fff;border-radius:14px;padding:20px;box-shadow:0 2px 12px rgba(0,0,0,0.06)">
+          <h3 style="font-size:16px;font-weight:700;color:#1a3d5c;margin-bottom:16px">פירוט פרויקטים</h3>
+          <div style="overflow-x:auto">
+            <table style="width:100%;border-collapse:collapse;font-size:13px">
+              <thead>
+                <tr style="background:#f8f9fa;text-align:right">
+                  <th style="padding:10px 12px;border-bottom:2px solid #e1e8ed">פרויקט</th>
+                  <th style="padding:10px 12px;border-bottom:2px solid #e1e8ed">תקציב</th>
+                  <th style="padding:10px 12px;border-bottom:2px solid #e1e8ed">רווח צפוי</th>
+                  <th style="padding:10px 12px;border-bottom:2px solid #e1e8ed">% ROI</th>
+                  <th style="padding:10px 12px;border-bottom:2px solid #e1e8ed">הוצאות בפועל</th>
+                  <th style="padding:10px 12px;border-bottom:2px solid #e1e8ed">רווח בפועל</th>
+                  <th style="padding:10px 12px;border-bottom:2px solid #e1e8ed">סטטוס</th>
+                </tr>
+              </thead>
+              <tbody id="forecast-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+        <div style="background:#fff;border-radius:14px;padding:20px;box-shadow:0 2px 12px rgba(0,0,0,0.06);margin-top:20px">
+          <h3 style="font-size:16px;font-weight:700;color:#1a3d5c;margin-bottom:14px">&#9999;&#65039; עדכון תחזית ידנית לפרויקט</h3>
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:10px;align-items:end">
+            <div>
+              <label style="font-size:12px;font-weight:700;color:#666;display:block;margin-bottom:4px">פרויקט</label>
+              <select id="forecast-project-sel" style="width:100%;padding:10px;border:2px solid #e1e8ed;border-radius:8px;font-family:Heebo,sans-serif;font-size:13px;direction:rtl"></select>
+            </div>
+            <div>
+              <label style="font-size:12px;font-weight:700;color:#666;display:block;margin-bottom:4px">תקציב (&#8362;)</label>
+              <input type="number" id="forecast-budget" step="1000" placeholder="0" style="width:100%;padding:10px;border:2px solid #e1e8ed;border-radius:8px;font-family:Heebo,sans-serif;font-size:13px">
+            </div>
+            <div>
+              <label style="font-size:12px;font-weight:700;color:#666;display:block;margin-bottom:4px">רווח צפוי (&#8362;)</label>
+              <input type="number" id="forecast-profit" step="1000" placeholder="0" style="width:100%;padding:10px;border:2px solid #e1e8ed;border-radius:8px;font-family:Heebo,sans-serif;font-size:13px">
+            </div>
+            <button onclick="saveForecast()" style="background:linear-gradient(135deg,#27ae60,#2ecc71);border:none;color:#fff;padding:11px 20px;border-radius:8px;cursor:pointer;font-family:Heebo,sans-serif;font-weight:700;white-space:nowrap">&#128190; שמור</button>
+          </div>
+        </div>
+      </div>
     <div class="search-bar">
       <div class="search-input-wrap">
         <span class="search-icon">🔍</span>
@@ -1719,6 +1773,16 @@ async function loadReports() {
 
 // ── NAVIGATION ───────────────────────────────────────────
 function showPage(page) {
+  if(page === 'forecast') {
+    document.querySelectorAll('.page').forEach(function(p){p.style.display='none';});
+    const fp = document.getElementById('page-forecast');
+    if(fp) fp.style.display = 'block';
+    document.querySelectorAll('.nav-item').forEach(function(n){n.classList.remove('active');});
+    const nav = document.getElementById('nav-forecast');
+    if(nav) nav.classList.add('active');
+    renderForecast();
+    return;
+  }
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
   document.getElementById('page-'+page).classList.add('active');
@@ -2431,8 +2495,9 @@ function addMaterialRow(prefill) {
   const row = document.createElement('div');
   row.className = 'form-row four-col';
   row.style.cssText = 'background:#f8f9fa;padding:10px;border-radius:8px;margin-bottom:8px;align-items:center';
+  row.style.position = 'relative';
   row.innerHTML = `
-    <input type="text" value="${prefill||''}" placeholder="שם חומר" style="grid-column:span 1">
+    <input type="text" value="${prefill||''}" placeholder="שם חומר">
     <input type="number" placeholder="כמות" min="0" step="0.1">
     <select style="padding:10px;border:2px solid #e1e8ed;border-radius:8px;font-size:14px;font-family:inherit;direction:rtl">
       <option>יחידות</option><option>ק"ג</option><option>טון</option>
@@ -2440,8 +2505,14 @@ function addMaterialRow(prefill) {
       <option>שקים</option><option>ארגזים</option><option>פלטות</option>
       <option>גלילים</option><option>מטרים</option><option>ליטר</option>
     </select>
-    <button type="button" onclick="this.closest('.form-row').remove()" style="background:#e74c3c;color:#fff;border:none;border-radius:8px;padding:9px 14px;cursor:pointer;font-size:14px">🗑️</button>
   `;
+  const delBtn = document.createElement('button');
+  delBtn.type = 'button';
+  delBtn.innerHTML = '🗑️';
+  delBtn.title = 'מחק שורה';
+  delBtn.style.cssText = 'position:absolute;top:-10px;left:-10px;background:#e74c3c;color:#fff;border:none;border-radius:50%;width:28px;height:28px;cursor:pointer;font-size:14px;line-height:1;z-index:10;box-shadow:0 2px 6px rgba(231,76,60,0.4)';
+  delBtn.onclick = () => row.remove();
+  row.appendChild(delBtn);
   container.appendChild(row);
   // scroll into view
   row.scrollIntoView({behavior:'smooth',block:'nearest'});
@@ -2452,14 +2523,19 @@ function addEquipmentRow(prefill) {
   const row = document.createElement('div');
   row.className = 'form-row three-col';
   row.style.cssText = 'background:#f8f9fa;padding:10px;border-radius:8px;margin-bottom:8px;align-items:center';
+  row.style.position = 'relative';
   row.innerHTML = `
-    <input type="text" value="${prefill||''}" placeholder="סוג ציוד / מכונה" style="grid-column:span 1">
+    <input type="text" value="${prefill||''}" placeholder="סוג ציוד / מכונה">
     <input type="number" placeholder="שעות שימוש" min="0" step="0.5">
-    <div style="display:flex;gap:6px">
-      <input type="text" placeholder="תקלות / הערות (אופציונלי)" style="flex:1">
-      <button type="button" onclick="this.closest('.form-row').remove()" style="background:#e74c3c;color:#fff;border:none;border-radius:8px;padding:9px 14px;cursor:pointer;font-size:14px">🗑️</button>
-    </div>
+    <input type="text" placeholder="תקלות / הערות (אופציונלי)">
   `;
+  const delBtnEq = document.createElement('button');
+  delBtnEq.type = 'button';
+  delBtnEq.innerHTML = '🗑️';
+  delBtnEq.title = 'מחק שורה';
+  delBtnEq.style.cssText = 'position:absolute;top:-10px;left:-10px;background:#e74c3c;color:#fff;border:none;border-radius:50%;width:28px;height:28px;cursor:pointer;font-size:14px;line-height:1;z-index:10;box-shadow:0 2px 6px rgba(231,76,60,0.4)';
+  delBtnEq.onclick = () => row.remove();
+  row.appendChild(delBtnEq);
   container.appendChild(row);
   row.scrollIntoView({behavior:'smooth',block:'nearest'});
 }
@@ -2692,7 +2768,7 @@ async function approveReport() {
 }
 
 function printReport(){window.print();}
-function journalShowLoading(show){document.getElementById('loading').style.display=show?'flex':'none';}
+function journalShowLoading(show){ showLoading(show); }
 console.log('✅ Work Journal - Stonhard - Loaded OK');
 
 
@@ -3029,6 +3105,116 @@ function collectTomorrowPlan() {
   const extra = document.getElementById('tomorrowPlan')?.value || '';
   if(extra.trim()) lines.push('הערות: ' + extra.trim());
   return lines.join(' | ');
+}
+
+
+// FORECAST / ROI
+async function renderForecast() {
+  showLoading(true);
+  try {
+    const { data: projects } = await sb.from('projects')
+      .select('id,project_name,budget,expected_profit,status')
+      .order('created_at', {ascending:false});
+    const { data: txns } = await sb.from('contractor_transactions')
+      .select('project_id,amount,type');
+    const expMap = {};
+    (txns||[]).forEach(t => {
+      if(!expMap[t.project_id]) expMap[t.project_id] = 0;
+      if(t.type === 'expense' || t.amount < 0) expMap[t.project_id] += Math.abs(t.amount);
+    });
+    const rows = (projects||[]);
+    const totalBudget  = rows.reduce((s,p) => s+(p.budget||0), 0);
+    const totalProfit  = rows.reduce((s,p) => s+(p.expected_profit||0), 0);
+    const totalExpense = rows.reduce((s,p) => s+(expMap[p.id]||0), 0);
+    const totalROI     = totalBudget ? ((totalProfit/totalBudget)*100).toFixed(1) : 0;
+    const cards = [
+      { label:'סה"כ תקציב',    value: fmtMoney(totalBudget),            color:'#3b82f6', icon:'💰' },
+      { label:'רווח צפוי כולל',value: fmtMoney(totalProfit),            color:'#22c55e', icon:'📈' },
+      { label:'ROI ממוצע',      value: totalROI + '%',                   color:'#f59e0b', icon:'🎯' },
+      { label:'הוצאות בפועל',  value: fmtMoney(totalExpense),           color:'#ef4444', icon:'📉' },
+      { label:'רווח בפועל',    value: fmtMoney(totalBudget-totalExpense),color:'#a855f7', icon:'✅' },
+    ];
+    const summaryEl = document.getElementById('forecast-summary');
+    if(summaryEl) summaryEl.innerHTML = cards.map(c =>
+      '<div style="background:linear-gradient(135deg,'+c.color+'18,'+c.color+'08);border:1px solid '+c.color+'30;border-radius:12px;padding:16px;text-align:center">'
+      +'<div style="font-size:24px;margin-bottom:6px">'+c.icon+'</div>'
+      +'<div style="font-size:11px;color:#666;font-weight:700;margin-bottom:4px">'+c.label+'</div>'
+      +'<div style="font-size:18px;font-weight:900;color:'+c.color+'">'+c.value+'</div></div>'
+    ).join('');
+    const chartEl = document.getElementById('forecast-chart');
+    if(chartEl && rows.length) {
+      const maxVal = Math.max(...rows.map(p => p.budget||0), 1);
+      chartEl.innerHTML = rows.map(p => {
+        const bp = ((p.budget||0)/maxVal*100).toFixed(1);
+        const pp = ((p.expected_profit||0)/maxVal*100).toFixed(1);
+        const roi = p.budget ? (((p.expected_profit||0)/p.budget)*100).toFixed(1) : 0;
+        return '<div style="margin-bottom:14px">'
+          +'<div style="display:flex;justify-content:space-between;font-size:12px;font-weight:700;color:#1a3d5c;margin-bottom:4px"><span>'+p.project_name+'</span><span>ROI: '+roi+'%</span></div>'
+          +'<div style="background:#f0f0f0;border-radius:6px;height:12px;margin-bottom:3px;overflow:hidden"><div style="background:#3b82f6;height:100%;width:'+bp+'%;border-radius:6px"></div></div>'
+          +'<div style="background:#f0f0f0;border-radius:6px;height:12px;overflow:hidden"><div style="background:#22c55e;height:100%;width:'+pp+'%;border-radius:6px"></div></div>'
+          +'<div style="display:flex;gap:12px;font-size:10px;color:#888;margin-top:2px"><span>🔵 '+fmtMoney(p.budget||0)+'</span><span>🟢 '+fmtMoney(p.expected_profit||0)+'</span></div></div>';
+      }).join('');
+    }
+    const tbody = document.getElementById('forecast-tbody');
+    if(tbody) tbody.innerHTML = rows.map(p => {
+      const exp = expMap[p.id]||0;
+      const actual = (p.budget||0) - exp;
+      const roi = p.budget ? (((p.expected_profit||0)/p.budget)*100).toFixed(1) : '—';
+      const rc = Number(roi) > 20 ? '#22c55e' : Number(roi) > 10 ? '#f59e0b' : '#ef4444';
+      const sc = p.status==='active'?'#22c55e':p.status==='completed'?'#3b82f6':'#f59e0b';
+      return '<tr style="border-bottom:1px solid #f0f0f0">'
+        +'<td style="padding:10px 12px;font-weight:700">'+p.project_name+'</td>'
+        +'<td style="padding:10px 12px">'+fmtMoney(p.budget||0)+'</td>'
+        +'<td style="padding:10px 12px;color:#22c55e;font-weight:700">'+fmtMoney(p.expected_profit||0)+'</td>'
+        +'<td style="padding:10px 12px;font-weight:900;color:'+rc+'">'+roi+'%</td>'
+        +'<td style="padding:10px 12px;color:#ef4444">'+fmtMoney(exp)+'</td>'
+        +'<td style="padding:10px 12px;color:'+(actual>=0?'#22c55e':'#ef4444')+';font-weight:700">'+fmtMoney(actual)+'</td>'
+        +'<td style="padding:10px 12px"><span style="background:'+sc+'20;color:'+sc+';padding:3px 10px;border-radius:12px;font-size:11px;font-weight:700">'+(p.status||'—')+'</span></td></tr>';
+    }).join('');
+    const sel = document.getElementById('forecast-project-sel');
+    if(sel) {
+      sel.innerHTML = rows.map(p => '<option value="'+p.id+'" data-budget="'+(p.budget||0)+'" data-profit="'+(p.expected_profit||0)+'">'+p.project_name+'</option>').join('');
+      sel.onchange = function() {
+        const opt = this.options[this.selectedIndex];
+        document.getElementById('forecast-budget').value = opt.dataset.budget||'';
+        document.getElementById('forecast-profit').value = opt.dataset.profit||'';
+      };
+      if(sel.options.length) sel.dispatchEvent(new Event('change'));
+    }
+  } catch(e) { console.error('renderForecast:', e); }
+  finally { showLoading(false); }
+}
+
+async function saveForecast() {
+  const sel = document.getElementById('forecast-project-sel');
+  const id = sel && sel.value;
+  if(!id) return;
+  const budget = parseFloat(document.getElementById('forecast-budget').value)||0;
+  const profit = parseFloat(document.getElementById('forecast-profit').value)||0;
+  showLoading(true);
+  const { error } = await sb.from('projects').update({ budget, expected_profit: profit }).eq('id', id);
+  showLoading(false);
+  if(error) { showToast('שגיאה: ' + error.message); return; }
+  showToast('תחזית עודכנה');
+  renderForecast();
+}
+
+// ECCO SOUND
+function playEcco() {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    [523,659,784,1047].forEach(function(freq,i) {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain); gain.connect(ctx.destination);
+      osc.frequency.value = freq; osc.type = 'sine';
+      const t = ctx.currentTime + i*0.12;
+      gain.gain.setValueAtTime(0,t);
+      gain.gain.linearRampToValueAtTime(0.3,t+0.04);
+      gain.gain.linearRampToValueAtTime(0,t+0.18);
+      osc.start(t); osc.stop(t+0.2);
+    });
+  } catch(e) {}
 }
 
 </script>
