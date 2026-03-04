@@ -29,7 +29,7 @@ html{direction:rtl;font-size:15px}
 }
 .top-tab:hover{background:rgba(154,111,0,0.09)}
 .top-tab.active{color:#7a5500;border-bottom-color:#9a6f00;background:rgba(154,111,0,0.14)}
-#tab-sep{width:1px;background:#c9a84c;margin:10px 0}
+.tab-sep{width:1px;background:#c9a84c;margin:10px 0}
 
 /* ══ PANELS ══ */
 .app-panel{display:none;min-height:100vh}
@@ -574,6 +574,11 @@ button:active{transform:scale(0.98)}
   #crm-panel .main{margin-right:60px;padding:70px 14px 20px}
   .top-tab span:last-child{font-size:12px}
 }
+
+/* 4-tab bar adjust */
+#top-tabs { height: 54px; }
+.top-tab { font-size: 13px; }
+@media(max-width:640px) { .top-tab span:last-child { font-size: 10px; } }
 </style>
 </head>
 <body>
@@ -589,9 +594,17 @@ button:active{transform:scale(0.98)}
   <div class="top-tab active" id="tab-crm" onclick="switchTab('crm')">
     <span>📊</span><span>לוח בקרה</span>
   </div>
-  <div id="tab-sep"></div>
+  <div class="tab-sep"></div>
+  <div class="top-tab" id="tab-notes" onclick="switchTab('notes')">
+    <span>📝</span><span>יומן חכם</span>
+  </div>
+  <div class="tab-sep"></div>
+  <div class="top-tab" id="tab-gcal" onclick="switchTab('gcal')">
+    <span>📅</span><span>יומן Google</span>
+  </div>
+  <div class="tab-sep"></div>
   <div class="top-tab" id="tab-journal" onclick="switchTab('journal')">
-    <span>📝</span><span>יומן עבודה</span>
+    <span>📋</span><span>יומן שטח</span>
   </div>
 </div>
 
@@ -1140,6 +1153,145 @@ button:active{transform:scale(0.98)}
 
 </div>
 
+
+<!-- ══ SMART NOTES PANEL ══ -->
+<div class="app-panel" id="notes-panel">
+<div style="padding:70px 24px 40px;min-height:100vh;background:#1a1a2e;font-family:Heebo,sans-serif;direction:rtl">
+
+  <!-- Header -->
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;flex-wrap:wrap;gap:12px">
+    <div>
+      <div style="font-size:10px;letter-spacing:3px;color:#9a6f00;text-transform:uppercase;margin-bottom:4px">בני פרסקי</div>
+      <h1 style="font-size:26px;font-weight:900;color:#fff">📝 יומן חכם</h1>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button onclick="printNotes()" style="background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.15);color:#ccc;padding:8px 16px;border-radius:20px;cursor:pointer;font-family:Heebo,sans-serif;font-size:12px;font-weight:700">🖨️ הדפס</button>
+    </div>
+  </div>
+
+  <!-- NEW NOTE FORM -->
+  <div style="background:#242438;border-radius:16px;padding:20px;margin-bottom:24px;border:1px solid rgba(255,255,255,0.08)">
+    <div style="display:flex;gap:10px;margin-bottom:12px;flex-wrap:wrap">
+      <!-- Color picker -->
+      <div style="display:flex;gap:6px;align-items:center">
+        <span style="font-size:11px;color:#888">צבע:</span>
+        <button class="note-color-btn active-color" data-color="yellow"  onclick="selectNoteColor('yellow')"  title="כללי"    style="width:28px;height:28px;border-radius:50%;background:#f59e0b;border:3px solid transparent;cursor:pointer;transition:all 0.2s"></button>
+        <button class="note-color-btn"              data-color="red"     onclick="selectNoteColor('red')"     title="דחוף"    style="width:28px;height:28px;border-radius:50%;background:#ef4444;border:3px solid transparent;cursor:pointer;transition:all 0.2s"></button>
+        <button class="note-color-btn"              data-color="green"   onclick="selectNoteColor('green')"   title="בוצע"    style="width:28px;height:28px;border-radius:50%;background:#22c55e;border:3px solid transparent;cursor:pointer;transition:all 0.2s"></button>
+        <button class="note-color-btn"              data-color="blue"    onclick="selectNoteColor('blue')"    title="תכנון"   style="width:28px;height:28px;border-radius:50%;background:#3b82f6;border:3px solid transparent;cursor:pointer;transition:all 0.2s"></button>
+        <button class="note-color-btn"              data-color="purple"  onclick="selectNoteColor('purple')"  title="אישי"    style="width:28px;height:28px;border-radius:50%;background:#a855f7;border:3px solid transparent;cursor:pointer;transition:all 0.2s"></button>
+      </div>
+      <!-- Voice -->
+      <button id="note-voice-btn" onclick="toggleNoteVoice()" style="background:rgba(154,111,0,0.2);border:1px solid rgba(154,111,0,0.4);color:#f59e0b;padding:8px 14px;border-radius:20px;cursor:pointer;font-family:Heebo,sans-serif;font-size:12px;font-weight:700">🎤 הקלט</button>
+      <!-- Project tag -->
+      <select id="note-project-select" style="background:#1a1a2e;border:1px solid rgba(255,255,255,0.12);color:#ccc;padding:7px 12px;border-radius:20px;font-family:Heebo,sans-serif;font-size:12px;direction:rtl">
+        <option value="">📁 כל הפרויקטים</option>
+      </select>
+    </div>
+
+    <!-- Text area -->
+    <textarea id="note-text-input" placeholder="כתוב הערה... (קול או הקלדה)" rows="4"
+      style="width:100%;background:#1a1a2e;border:1px solid rgba(255,255,255,0.1);color:#fff;
+             padding:14px;border-radius:10px;font-family:Heebo,sans-serif;font-size:15px;
+             resize:vertical;direction:rtl;outline:none;line-height:1.7"
+      oninput="this.style.borderColor='#9a6f00'"></textarea>
+
+    <div style="display:flex;gap:10px;margin-top:12px;justify-content:flex-end">
+      <button onclick="clearNoteForm()" style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);color:#888;padding:10px 20px;border-radius:10px;cursor:pointer;font-family:Heebo,sans-serif;font-size:13px">נקה</button>
+      <button onclick="saveNote()" style="background:linear-gradient(135deg,#9a6f00,#c9a84c);border:none;color:#1a1a2e;padding:10px 28px;border-radius:10px;cursor:pointer;font-family:Heebo,sans-serif;font-size:14px;font-weight:900">💾 שמור הערה</button>
+    </div>
+  </div>
+
+  <!-- FILTERS -->
+  <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px;align-items:center">
+    <span style="font-size:11px;color:#666;font-weight:700">סנן:</span>
+    <button class="note-filter active-filter" data-filter="all"    onclick="filterNotes('all')"    style="background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.15);color:#ccc;padding:6px 14px;border-radius:20px;cursor:pointer;font-family:Heebo,sans-serif;font-size:11px;font-weight:700">הכל</button>
+    <button class="note-filter" data-filter="yellow" onclick="filterNotes('yellow')" style="background:rgba(245,158,11,0.15);border:1px solid rgba(245,158,11,0.3);color:#f59e0b;padding:6px 14px;border-radius:20px;cursor:pointer;font-family:Heebo,sans-serif;font-size:11px;font-weight:700">🟡 כללי</button>
+    <button class="note-filter" data-filter="red"    onclick="filterNotes('red')"    style="background:rgba(239,68,68,0.15);border:1px solid rgba(239,68,68,0.3);color:#ef4444;padding:6px 14px;border-radius:20px;cursor:pointer;font-family:Heebo,sans-serif;font-size:11px;font-weight:700">🔴 דחוף</button>
+    <button class="note-filter" data-filter="green"  onclick="filterNotes('green')"  style="background:rgba(34,197,94,0.15);border:1px solid rgba(34,197,94,0.3);color:#22c55e;padding:6px 14px;border-radius:20px;cursor:pointer;font-family:Heebo,sans-serif;font-size:11px;font-weight:700">🟢 בוצע</button>
+    <button class="note-filter" data-filter="blue"   onclick="filterNotes('blue')"   style="background:rgba(59,130,246,0.15);border:1px solid rgba(59,130,246,0.3);color:#3b82f6;padding:6px 14px;border-radius:20px;cursor:pointer;font-family:Heebo,sans-serif;font-size:11px;font-weight:700">🔵 תכנון</button>
+    <button class="note-filter" data-filter="purple" onclick="filterNotes('purple')" style="background:rgba(168,85,247,0.15);border:1px solid rgba(168,85,247,0.3);color:#a855f7;padding:6px 14px;border-radius:20px;cursor:pointer;font-family:Heebo,sans-serif;font-size:11px;font-weight:700">🟣 אישי</button>
+    <!-- Keyword search -->
+    <input id="note-search" type="text" placeholder="🔍 חיפוש..." oninput="filterNotesByKeyword(this.value)"
+      style="background:#1a1a2e;border:1px solid rgba(255,255,255,0.12);color:#fff;padding:7px 14px;
+             border-radius:20px;font-family:Heebo,sans-serif;font-size:12px;direction:rtl;outline:none;min-width:160px">
+    <!-- Date filter -->
+    <input id="note-date-from" type="date" oninput="filterNotesByDate()"
+      style="background:#1a1a2e;border:1px solid rgba(255,255,255,0.12);color:#ccc;padding:7px 10px;border-radius:20px;font-family:Heebo,sans-serif;font-size:11px">
+    <span style="color:#666;font-size:11px">עד</span>
+    <input id="note-date-to" type="date" oninput="filterNotesByDate()"
+      style="background:#1a1a2e;border:1px solid rgba(255,255,255,0.12);color:#ccc;padding:7px 10px;border-radius:20px;font-family:Heebo,sans-serif;font-size:11px">
+  </div>
+
+  <!-- NOTES WALL -->
+  <div id="notes-wall" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px">
+    <div style="grid-column:1/-1;text-align:center;padding:60px 20px;color:#444">
+      <div style="font-size:48px;margin-bottom:12px">📝</div>
+      <div style="font-size:14px">אין הערות עדיין — כתוב את ההערה הראשונה למעלה</div>
+    </div>
+  </div>
+
+</div>
+</div>
+
+
+<!-- ══ GOOGLE CALENDAR PANEL ══ -->
+<div class="app-panel" id="gcal-panel">
+<div style="padding:54px 0 0;min-height:100vh;background:#1a1a2e;font-family:Heebo,sans-serif;direction:rtl;display:flex;flex-direction:column">
+
+  <!-- Header + view tabs -->
+  <div style="padding:16px 24px 0;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
+    <h1 style="font-size:22px;font-weight:900;color:#fff">📅 יומן Google</h1>
+    <div style="display:flex;gap:6px">
+      <button class="gcal-view-btn active-gcal" data-view="agenda" onclick="switchGcalView('agenda')"
+        style="background:rgba(154,111,0,0.3);border:1px solid #9a6f00;color:#f59e0b;padding:7px 16px;border-radius:20px;cursor:pointer;font-family:Heebo,sans-serif;font-size:12px;font-weight:700">
+        📋 אג׳נדה
+      </button>
+      <button class="gcal-view-btn" data-view="week" onclick="switchGcalView('week')"
+        style="background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.15);color:#ccc;padding:7px 16px;border-radius:20px;cursor:pointer;font-family:Heebo,sans-serif;font-size:12px;font-weight:700">
+        📆 שבוע
+      </button>
+      <button class="gcal-view-btn" data-view="month" onclick="switchGcalView('month')"
+        style="background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.15);color:#ccc;padding:7px 16px;border-radius:20px;cursor:pointer;font-family:Heebo,sans-serif;font-size:12px;font-weight:700">
+        🗓️ חודש
+      </button>
+    </div>
+  </div>
+
+  <!-- Calendar embed -->
+  <div style="flex:1;padding:12px 16px 20px;display:flex;flex-direction:column;gap:12px">
+
+    <!-- Agenda view -->
+    <div id="gcal-agenda" class="gcal-view" style="flex:1;border-radius:14px;overflow:hidden;border:1px solid rgba(255,255,255,0.08)">
+      <iframe id="iframe-agenda" src="about:blank"
+        data-src="https://calendar.google.com/calendar/embed?mode=AGENDA&showTitle=0&showNav=1&showDate=1&showPrint=1&showTabs=0&showCalendars=0&showTz=0&hl=he&ctz=Asia%2FJerusalem"
+        style="width:100%;height:calc(100vh - 160px);border:none;display:block;background:#fff"
+        title="Google Calendar Agenda"></iframe>
+    </div>
+
+    <!-- Week view -->
+    <div id="gcal-week" class="gcal-view" style="display:none;flex:1;border-radius:14px;overflow:hidden;border:1px solid rgba(255,255,255,0.08)">
+      <iframe id="iframe-week" src="about:blank"
+        data-src="https://calendar.google.com/calendar/embed?mode=WEEK&showTitle=0&showNav=1&showDate=1&showPrint=1&showTabs=0&showCalendars=0&showTz=0&hl=he&ctz=Asia%2FJerusalem"
+        style="width:100%;height:calc(100vh - 160px);border:none;display:block;background:#fff"
+        title="Google Calendar Week"></iframe>
+    </div>
+
+    <!-- Month view -->
+    <div id="gcal-month" class="gcal-view" style="display:none;flex:1;border-radius:14px;overflow:hidden;border:1px solid rgba(255,255,255,0.08)">
+      <iframe id="iframe-month" src="about:blank"
+        data-src="https://calendar.google.com/calendar/embed?mode=MONTH&showTitle=0&showNav=1&showDate=1&showPrint=1&showTabs=0&showCalendars=0&showTz=0&hl=he&ctz=Asia%2FJerusalem"
+        style="width:100%;height:calc(100vh - 160px);border:none;display:block;background:#fff"
+        title="Google Calendar Month"></iframe>
+    </div>
+
+    <div style="text-align:center;font-size:10px;color:#444">
+      לחץ על האירוע ביומן Google להוספה ועריכה ישירה
+    </div>
+  </div>
+</div>
+</div>
+
 <!-- ══ JOURNAL PANEL ══ -->
 <div class="app-panel" id="journal-panel">
 
@@ -1377,13 +1529,17 @@ let supabaseClient = sb; // journal uses this name
 //  TAB SWITCHER
 // ══════════════════════════════════════════
 function switchTab(tab) {
-  ['crm','journal'].forEach(t => {
-    document.getElementById(t+'-panel').classList.toggle('active', t===tab);
-    document.getElementById('tab-'+t).classList.toggle('active', t===tab);
+  ['crm','notes','gcal','journal'].forEach(t => {
+    const panel = document.getElementById(t+'-panel');
+    const btn   = document.getElementById('tab-'+t);
+    if(panel) panel.classList.toggle('active', t===tab);
+    if(btn)   btn.classList.toggle('active', t===tab);
   });
   window.scrollTo(0,0);
   try { localStorage.setItem('beni_active_tab', tab); } catch(e){}
   if(tab === 'journal') initJournalOnce();
+  if(tab === 'notes')   loadNotes();
+  if(tab === 'gcal')    initGcal();
 }
 // Single showLoading — works for both CRM and Journal
 function showLoading(v) {
@@ -2424,6 +2580,290 @@ async function approveReport() {
 function printReport(){window.print();}
 function journalShowLoading(show){document.getElementById('loading').style.display=show?'flex':'none';}
 console.log('✅ Work Journal - Stonhard - Loaded OK');
+
+
+
+// ══════════════════════════════════════════
+//  SMART NOTES
+// ══════════════════════════════════════════
+const NOTE_COLORS = {
+  yellow: { bg:'#f59e0b', light:'rgba(245,158,11,0.12)', border:'rgba(245,158,11,0.35)', label:'🟡 כללי' },
+  red:    { bg:'#ef4444', light:'rgba(239,68,68,0.12)',  border:'rgba(239,68,68,0.35)',  label:'🔴 דחוף' },
+  green:  { bg:'#22c55e', light:'rgba(34,197,94,0.12)',  border:'rgba(34,197,94,0.35)',  label:'🟢 בוצע' },
+  blue:   { bg:'#3b82f6', light:'rgba(59,130,246,0.12)', border:'rgba(59,130,246,0.35)', label:'🔵 תכנון' },
+  purple: { bg:'#a855f7', light:'rgba(168,85,247,0.12)', border:'rgba(168,85,247,0.35)', label:'🟣 אישי' },
+};
+
+let currentNoteColor = 'yellow';
+let allNotes = [];
+let activeNoteFilter = 'all';
+let noteVoiceRecog = null;
+let noteVoiceActive = false;
+
+function selectNoteColor(color) {
+  currentNoteColor = color;
+  document.querySelectorAll('.note-color-btn').forEach(b => {
+    const isActive = b.dataset.color === color;
+    b.style.border = isActive ? `3px solid #fff` : '3px solid transparent';
+    b.style.transform = isActive ? 'scale(1.2)' : 'scale(1)';
+  });
+}
+
+async function loadNotes() {
+  const wall = document.getElementById('notes-wall');
+  if(!wall) return;
+  try {
+    const { data, error } = await sb.from('beni_notes')
+      .select('*, projects(project_name)')
+      .eq('is_archived', false)
+      .order('created_at', { ascending: false });
+    if(error) throw error;
+    allNotes = data || [];
+    renderNotes(allNotes);
+    // Populate project select
+    const sel = document.getElementById('note-project-select');
+    if(sel && allProjects.length) {
+      sel.innerHTML = '<option value="">📁 כל הפרויקטים</option>' +
+        allProjects.map(p => `<option value="${p.id}">${p.project_name}</option>`).join('');
+    }
+  } catch(e) {
+    console.error('loadNotes:', e);
+  }
+}
+
+function renderNotes(notes) {
+  const wall = document.getElementById('notes-wall');
+  if(!wall) return;
+  if(!notes.length) {
+    wall.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:60px 20px;color:#444">
+      <div style="font-size:48px;margin-bottom:12px">📝</div>
+      <div style="font-size:14px">אין הערות — כתוב את הראשונה למעלה</div>
+    </div>`;
+    return;
+  }
+  wall.innerHTML = notes.map(n => {
+    const c = NOTE_COLORS[n.color] || NOTE_COLORS.yellow;
+    const date = new Date(n.created_at).toLocaleDateString('he-IL', {day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'});
+    const proj = n.projects ? `<span style="font-size:10px;color:#888;margin-top:4px;display:block">📁 ${n.projects.project_name}</span>` : '';
+    return `
+    <div style="background:${c.light};border:1px solid ${c.border};border-right:4px solid ${c.bg};
+                border-radius:12px;padding:16px;position:relative;animation:fadeIn 0.3s ease">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:10px">
+        <span style="background:${c.bg};color:#fff;border-radius:8px;padding:3px 10px;font-size:10px;font-weight:900;white-space:nowrap">${c.label}</span>
+        <div style="display:flex;gap:6px">
+          <button onclick="editNote('${n.id}')" title="ערוך"
+            style="background:rgba(255,255,255,0.08);border:none;color:#aaa;width:28px;height:28px;border-radius:6px;cursor:pointer;font-size:13px">✏️</button>
+          <button onclick="deleteNote('${n.id}')" title="מחק"
+            style="background:rgba(239,68,68,0.1);border:none;color:#ef4444;width:28px;height:28px;border-radius:6px;cursor:pointer;font-size:13px">🗑️</button>
+          <button onclick="printNote('${n.id}')" title="הדפס"
+            style="background:rgba(255,255,255,0.08);border:none;color:#aaa;width:28px;height:28px;border-radius:6px;cursor:pointer;font-size:13px">🖨️</button>
+        </div>
+      </div>
+      <p style="color:#fff;font-size:14px;line-height:1.8;white-space:pre-wrap;margin-bottom:10px">${escNote(n.note_text)}</p>
+      ${proj}
+      <div style="font-size:10px;color:#555;margin-top:8px;border-top:1px solid rgba(255,255,255,0.06);padding-top:8px">${date}</div>
+    </div>`;
+  }).join('');
+}
+
+function escNote(t) {
+  return String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+async function saveNote() {
+  const text = document.getElementById('note-text-input')?.value?.trim();
+  if(!text) { alert('כתוב הערה תחילה'); return; }
+  const projectId = document.getElementById('note-project-select')?.value || null;
+  showLoading(true);
+  try {
+    const { error } = await sb.from('beni_notes').insert({
+      note_text: text,
+      color: currentNoteColor,
+      project_id: projectId || null,
+    });
+    if(error) throw error;
+    clearNoteForm();
+    await loadNotes();
+    showToast('✅ הערה נשמרה');
+  } catch(e) {
+    showToast('❌ שגיאה: ' + e.message);
+  } finally { showLoading(false); }
+}
+
+async function deleteNote(id) {
+  if(!confirm('למחוק הערה זו?')) return;
+  await sb.from('beni_notes').delete().eq('id', id);
+  await loadNotes();
+  showToast('🗑️ הערה נמחקה');
+}
+
+function editNote(id) {
+  const n = allNotes.find(x => x.id === id);
+  if(!n) return;
+  const inp = document.getElementById('note-text-input');
+  if(inp) inp.value = n.note_text;
+  selectNoteColor(n.color);
+  // Change save button to update
+  const btn = document.querySelector('[onclick="saveNote()"]');
+  if(btn) {
+    btn.textContent = '💾 עדכן הערה';
+    btn.onclick = async () => {
+      const text = inp.value.trim();
+      if(!text) return;
+      showLoading(true);
+      await sb.from('beni_notes').update({ note_text: text, color: currentNoteColor, updated_at: new Date().toISOString() }).eq('id', id);
+      showLoading(false);
+      btn.textContent = '💾 שמור הערה';
+      btn.onclick = saveNote;
+      clearNoteForm();
+      await loadNotes();
+      showToast('✅ הערה עודכנה');
+    };
+  }
+  document.getElementById('note-text-input')?.focus();
+}
+
+function printNote(id) {
+  const n = allNotes.find(x => x.id === id);
+  if(!n) return;
+  const c = NOTE_COLORS[n.color] || NOTE_COLORS.yellow;
+  const w = window.open('','_blank');
+  const date = new Date(n.created_at).toLocaleDateString('he-IL');
+  w.document.write('<html dir="rtl"><head><title>הערה — ' + date + '</title>'
+    + '<style>body{font-family:Heebo,sans-serif;padding:40px;direction:rtl}'
+    + '.badge{background:' + c.bg + ';color:#fff;padding:4px 12px;border-radius:8px;font-size:12px;font-weight:700;display:inline-block;margin-bottom:16px}'
+    + 'p{font-size:16px;line-height:2;white-space:pre-wrap}'
+    + '.date{font-size:12px;color:#888;margin-top:20px;border-top:1px solid #eee;padding-top:10px}'
+    + '</style></head><body>'
+    + '<div class="badge">' + c.label + '</div>'
+    + '<p>' + escNote(n.note_text) + '</p>'
+    + '<div class="date">' + date + ' — בני פרסקי</div>'
+    + '<scr' + 'ipt>window.print();window.close();</scr' + 'ipt>'
+    + '</body></html>');
+}
+
+function printNotes() {
+  const visible = allNotes.filter(n => activeNoteFilter === 'all' || n.color === activeNoteFilter);
+  if(!visible.length) { alert('אין הערות להדפסה'); return; }
+  const rows = visible.map(n => {
+    const c = NOTE_COLORS[n.color] || NOTE_COLORS.yellow;
+    const date = new Date(n.created_at).toLocaleDateString('he-IL');
+    return '<div class="note" style="border-color:' + c.bg + '">'
+      + '<strong style="color:' + c.bg + '">' + c.label + '</strong>'
+      + '<p>' + escNote(n.note_text) + '</p>'
+      + '<div class="note-date">' + date + '</div></div>';
+  }).join('');
+  const w = window.open('','_blank');
+  w.document.write('<html dir="rtl"><head><title>יומן חכם</title>'
+    + '<style>body{font-family:Heebo,sans-serif;padding:30px;direction:rtl}'
+    + 'h1{font-size:20px;margin-bottom:20px}'
+    + '.note{border-right:4px solid #ccc;padding:12px 16px;margin-bottom:16px;page-break-inside:avoid}'
+    + '.note p{font-size:14px;line-height:1.9;white-space:pre-wrap}'
+    + '.note-date{font-size:11px;color:#888;margin-top:6px}</style>'
+    + '</head><body><h1>📝 יומן חכם — בני פרסקי</h1>' + rows + '</body></html>');
+  w.document.close();
+  setTimeout(function(){ w.print(); }, 500);
+}
+
+function clearNoteForm() {
+  const inp = document.getElementById('note-text-input');
+  if(inp) { inp.value=''; inp.style.borderColor=''; }
+}
+
+function filterNotes(color) {
+  activeNoteFilter = color;
+  document.querySelectorAll('.note-filter').forEach(b => {
+    b.style.opacity = (b.dataset.filter === color) ? '1' : '0.5';
+    b.style.fontWeight = (b.dataset.filter === color) ? '900' : '700';
+  });
+  const filtered = color === 'all' ? allNotes : allNotes.filter(n => n.color === color);
+  renderNotes(filtered);
+}
+
+function filterNotesByKeyword(kw) {
+  const filtered = allNotes.filter(n =>
+    !kw || n.note_text.toLowerCase().includes(kw.toLowerCase())
+  );
+  renderNotes(activeNoteFilter === 'all' ? filtered : filtered.filter(n => n.color === activeNoteFilter));
+}
+
+function filterNotesByDate() {
+  const from = document.getElementById('note-date-from')?.value;
+  const to   = document.getElementById('note-date-to')?.value;
+  let filtered = allNotes;
+  if(from) filtered = filtered.filter(n => n.created_at >= from);
+  if(to)   filtered = filtered.filter(n => n.created_at <= to + 'T23:59:59');
+  renderNotes(activeNoteFilter === 'all' ? filtered : filtered.filter(n => n.color === activeNoteFilter));
+}
+
+function toggleNoteVoice() {
+  if(!('webkitSpeechRecognition' in window || 'SpeechRecognition' in window)) {
+    alert('דפדפן זה אינו תומך בזיהוי קול'); return;
+  }
+  if(noteVoiceActive) {
+    if(noteVoiceRecog) noteVoiceRecog.stop();
+    noteVoiceActive = false;
+    const btn = document.getElementById('note-voice-btn');
+    if(btn) { btn.textContent='🎤 הקלט'; btn.style.background='rgba(154,111,0,0.2)'; }
+    return;
+  }
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  noteVoiceRecog = new SR();
+  noteVoiceRecog.lang = 'he-IL';
+  noteVoiceRecog.continuous = true;
+  noteVoiceRecog.interimResults = false;
+  noteVoiceRecog.onresult = e => {
+    const transcript = Array.from(e.results).map(r=>r[0].transcript).join(' ');
+    const inp = document.getElementById('note-text-input');
+    if(inp) inp.value = (inp.value ? inp.value + ' ' : '') + transcript;
+  };
+  noteVoiceRecog.onerror = () => {
+    noteVoiceActive = false;
+    const btn = document.getElementById('note-voice-btn');
+    if(btn) { btn.textContent='🎤 הקלט'; btn.style.background='rgba(154,111,0,0.2)'; }
+  };
+  noteVoiceRecog.start();
+  noteVoiceActive = true;
+  const btn = document.getElementById('note-voice-btn');
+  if(btn) { btn.textContent='⏹ עצור'; btn.style.background='rgba(239,68,68,0.3)'; btn.style.borderColor='#ef4444'; btn.style.color='#ef4444'; }
+}
+
+// ══════════════════════════════════════════
+//  GOOGLE CALENDAR
+// ══════════════════════════════════════════
+let gcalInited = false;
+function initGcal() {
+  if(gcalInited) return;
+  gcalInited = true;
+  switchGcalView('agenda'); // load agenda by default
+}
+
+function switchGcalView(view) {
+  ['agenda','week','month'].forEach(v => {
+    const div = document.getElementById('gcal-'+v);
+    if(div) div.style.display = v===view ? 'block' : 'none';
+    const btn = document.querySelector('.gcal-view-btn[data-view="'+v+'"]');
+    if(btn) {
+      btn.style.background = v===view ? 'rgba(154,111,0,0.3)' : 'rgba(255,255,255,0.07)';
+      btn.style.borderColor = v===view ? '#9a6f00' : 'rgba(255,255,255,0.15)';
+      btn.style.color = v===view ? '#f59e0b' : '#ccc';
+    }
+  });
+  // Lazy-load the iframe
+  const iframe = document.getElementById('iframe-'+view);
+  if(iframe && iframe.dataset.src && iframe.src === 'about:blank') {
+    iframe.src = iframe.dataset.src;
+  }
+}
+
+// Add fadeIn keyframe if not present
+const styleEl = document.createElement('style');
+styleEl.textContent = `
+@keyframes fadeIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
+.note-color-btn { transition: all 0.2s; }
+.active-filter { opacity:1 !important; }
+`;
+document.head.appendChild(styleEl);
 
 </script>
 </body>
