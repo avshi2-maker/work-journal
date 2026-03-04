@@ -1922,8 +1922,9 @@ function showPage(page) {
     // Ensure CRM tab is visible
     document.getElementById('crm-panel').classList.add('active');
     document.getElementById('tab-crm').classList.add('active');
-    // Hide all pages inside CRM only
-    document.querySelectorAll('#crm-panel .page').forEach(function(p){p.style.display='none';});
+    // Hide only direct .page children of .main
+    var main = document.querySelector('#crm-panel .main');
+    if(main) Array.from(main.children).forEach(function(c){if(c.classList.contains('page'))c.style.display='none';});
     const gp = document.getElementById('page-gantt');
     if(gp) gp.style.display = 'block';
     document.querySelectorAll('.nav-item').forEach(function(n){n.classList.remove('active');});
@@ -1936,8 +1937,9 @@ function showPage(page) {
     // Ensure CRM tab is visible
     document.getElementById('crm-panel').classList.add('active');
     document.getElementById('tab-crm').classList.add('active');
-    // Hide all pages inside CRM only
-    document.querySelectorAll('#crm-panel .page').forEach(function(p){p.style.display='none';});
+    // Hide only direct .page children of .main
+    var main = document.querySelector('#crm-panel .main');
+    if(main) Array.from(main.children).forEach(function(c){if(c.classList.contains('page'))c.style.display='none';});
     const fp = document.getElementById('page-forecast');
     if(fp) fp.style.display = 'block';
     document.querySelectorAll('.nav-item').forEach(function(n){n.classList.remove('active');});
