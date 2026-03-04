@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Stonhard CRM — בני פרסקי</title>
+<title>יומן פעילות מנוהל AI — בני פרסקי</title>
 <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;600;700;800;900&family=Rubik:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
 :root {
@@ -388,8 +388,8 @@ textarea{min-height:80px;resize:vertical;}
 <!-- SIDEBAR -->
 <nav class="sidebar">
   <div class="sidebar-logo">
-    <div class="brand">Stonhard</div>
-    <div class="sub">CRM | בני פרסקי</div>
+    <div class="brand">יומן פעילות</div>
+    <div class="sub">מנוהל AI | בני פרסקי</div>
   </div>
   <div class="nav-item active" onclick="showPage('dashboard')" id="nav-dashboard">
     <span class="nav-icon">📊</span>
@@ -413,6 +413,12 @@ textarea{min-height:80px;resize:vertical;}
     <span class="nav-icon">📄</span>
     <span>דוחות</span>
   </div>
+  <a href="journal.html" target="_blank" style="text-decoration:none;">
+    <div class="nav-item" style="background:linear-gradient(90deg,rgba(154,111,0,0.18),transparent);color:#9a6f00;border-right:3px solid #9a6f00;margin-top:8px;">
+      <span class="nav-icon">📝</span>
+      <span style="font-weight:700;">יומן עבודה</span>
+    </div>
+  </a>
   <div class="sidebar-bottom">
     <div class="user-chip">
       <div class="user-avatar">ב</div>
@@ -433,6 +439,29 @@ textarea{min-height:80px;resize:vertical;}
       <div class="page-title">לוח <span>בקרה</span></div>
       <div class="topbar-actions">
         <div id="dashboard-date" style="font-size:13px;color:var(--text3);"></div>
+        <a href="journal.html" target="_blank" class="btn btn-primary" style="font-size:15px;padding:12px 24px;background:linear-gradient(135deg,#9a6f00,#c9a84c);box-shadow:0 4px 16px rgba(154,111,0,0.35);letter-spacing:0.3px;">
+          📝 פתח יומן עבודה
+        </a>
+      </div>
+    </div>
+
+    <!-- JOURNAL BANNER -->
+    <div onclick="window.open('journal.html','_blank')" style="
+      background:linear-gradient(135deg,#9a6f00,#c9a84c);
+      border-radius:14px; padding:20px 28px; margin-bottom:24px;
+      display:flex; align-items:center; justify-content:space-between;
+      cursor:pointer; transition:transform 0.2s, box-shadow 0.2s;
+      box-shadow:0 6px 24px rgba(154,111,0,0.25);
+    " onmouseover="this.style.transform='translateY(-2px)';this.style.boxShadow='0 10px 32px rgba(154,111,0,0.4)'"
+       onmouseout="this.style.transform='translateY(0)';this.style.boxShadow='0 6px 24px rgba(154,111,0,0.25)'">
+      <div>
+        <div style="font-size:11px;font-weight:700;letter-spacing:2px;color:rgba(44,31,0,0.7);text-transform:uppercase;margin-bottom:6px;">עמוד שדרת המערכת</div>
+        <div style="font-size:22px;font-weight:900;color:#2c1f00;font-family:'Rubik',sans-serif;">📝 יומן עבודה יומי</div>
+        <div style="font-size:13px;color:rgba(44,31,0,0.65);margin-top:4px;">תיעוד · חתימות · שיתוף WhatsApp · דוחות PDF</div>
+      </div>
+      <div style="background:rgba(44,31,0,0.15);border-radius:12px;padding:14px 22px;text-align:center;">
+        <div style="font-size:36px;">📖</div>
+        <div style="font-size:11px;font-weight:800;color:#2c1f00;margin-top:6px;">לחץ לפתיחה</div>
       </div>
     </div>
 
@@ -512,10 +541,6 @@ textarea{min-height:80px;resize:vertical;}
             <th>איש קשר</th>
             <th>נייד</th>
             <th>עיסוק</th>
-            <th>יתרה</th>
-            <th>דירוג</th>
-            <th>סטטוס</th>
-            <th class="td-actions">פעולות</th>
           </tr>
         </thead>
         <tbody id="contractors-tbody">
@@ -644,7 +669,7 @@ textarea{min-height:80px;resize:vertical;}
     <div class="topbar">
       <div class="page-title">יומני <span>עבודה</span></div>
       <div class="topbar-actions">
-        <a href="index.html" target="_blank" class="btn btn-primary">📝 יומן חדש</a>
+        <a href="journal.html" target="_blank" class="btn btn-primary">📝 יומן חדש</a>
       </div>
     </div>
     <div class="search-bar">
@@ -1051,20 +1076,11 @@ function renderContractors(list) {
     const balance = bal.sent - bal.received;
     const balClass = balance>0?'balance-positive':balance<0?'balance-negative':'balance-zero';
     const balText = balance===0 ? '—' : (balance>0?'-':'+')+' ₪'+fmtMoney(Math.abs(balance));
-    const stars = c.rating ? '⭐'.repeat(c.rating) : '—';
-    return `<tr>
+    return `<tr style="cursor:pointer" onclick="openContractorModal('${c.id}')">
       <td><strong>${esc(c.company_name)}</strong></td>
       <td>${esc(c.contact_name)}</td>
-      <td><a href="tel:${esc(c.mobile||'')}" style="color:var(--accent);text-decoration:none">${esc(c.mobile||'—')}</a></td>
+      <td><a href="tel:${esc(c.mobile||'')}" style="color:var(--accent);text-decoration:none;font-weight:600" onclick="event.stopPropagation()">${esc(c.mobile||'—')}</a></td>
       <td>${esc(c.main_occupation||'—')}</td>
-      <td class="${balClass}">${balText}</td>
-      <td>${stars}</td>
-      <td><span class="badge ${c.is_active?'badge-green':'badge-gray'}">${c.is_active?'פעיל':'לא פעיל'}</span></td>
-      <td class="td-actions"><div class="btn-group">
-        <button class="btn btn-ghost btn-sm btn-icon" onclick="openContractorModal('${c.id}')" title="עריכה">✏️</button>
-        <button class="btn btn-ghost btn-sm btn-icon" onclick="callContractor('${esc(c.mobile||'')}')" title="חייג">📞</button>
-        <button class="btn btn-ghost btn-sm btn-icon" onclick="whatsappContractor('${esc(c.mobile||'')}','${esc(c.contact_name)}')" title="WhatsApp">💬</button>
-      </div></td>
     </tr>`;
   }).join('');
 }
@@ -1436,7 +1452,7 @@ function renderReports(list) {
     <td style="text-align:center">${r.total_work_hours||'—'}</td>
     <td><span class="badge ${STATUS_REPORT[r.status]||'badge-gray'}">${STATUS_REPORT_HE[r.status]||r.status||'—'}</span></td>
     <td class="td-actions"><div class="btn-group">
-      ${r.share_token?`<button class="btn btn-ghost btn-sm btn-icon" onclick="window.open('index.html?token=${r.share_token}')" title="צפייה">👁️</button>`:''}
+      ${r.share_token?`<button class="btn btn-ghost btn-sm btn-icon" onclick="window.open('journal.html?token=${r.share_token}')" title="צפייה">👁️</button>`:''}
     </div></td>
   </tr>`).join('');
 }
