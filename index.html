@@ -920,7 +920,36 @@ button:active{transform:scale(0.98)}
       </div>
     </div>
 
-      <!-- FORECAST PAGE -->
+    <div class="search-bar">
+      <div class="search-input-wrap">
+        <span class="search-icon">🔍</span>
+        <input type="text" id="reports-search" placeholder="חיפוש בדוחות..." oninput="filterReports()">
+      </div>
+      <select id="reports-filter-project" onchange="filterReports()" style="width:220px;">
+        <option value="">כל הפרויקטים</option>
+      </select>
+      <input type="date" id="reports-filter-date" onchange="filterReports()" style="width:170px;">
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>מספר דוח</th>
+            <th>פרויקט</th>
+            <th>תאריך</th>
+            <th>מנהל</th>
+            <th>שעות</th>
+            <th>סטטוס</th>
+            <th class="td-actions">פעולות</th>
+          </tr>
+        </thead>
+        <tbody id="reports-tbody">
+          <tr><td colspan="7"><div class="empty-state"><div class="empty-icon">📄</div><h3>אין דוחות עדיין</h3></div></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
       <div id="page-forecast" class="page" style="display:none">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;flex-wrap:wrap;gap:12px">
           <h2 style="font-size:22px;font-weight:800;color:#1a3d5c">&#128200; תחזית הכנסות ורווח</h2>
@@ -928,6 +957,50 @@ button:active{transform:scale(0.98)}
         </div>
 
       <!-- GANTT PAGE -->
+        <div id="forecast-summary" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:16px;margin-bottom:28px"></div>
+        <div style="background:#fff;border-radius:14px;padding:20px;box-shadow:0 2px 12px rgba(0,0,0,0.06);margin-bottom:24px">
+          <h3 style="font-size:16px;font-weight:700;color:#1a3d5c;margin-bottom:16px">&#128202; רווח לפי פרויקט</h3>
+          <div id="forecast-chart" style="overflow-x:auto"></div>
+        </div>
+        <div style="background:#fff;border-radius:14px;padding:20px;box-shadow:0 2px 12px rgba(0,0,0,0.06)">
+          <h3 style="font-size:16px;font-weight:700;color:#1a3d5c;margin-bottom:16px">פירוט פרויקטים</h3>
+          <div style="overflow-x:auto">
+            <table style="width:100%;border-collapse:collapse;font-size:13px">
+              <thead>
+                <tr style="background:#f8f9fa;text-align:right">
+                  <th style="padding:10px 12px;border-bottom:2px solid #e1e8ed">פרויקט</th>
+                  <th style="padding:10px 12px;border-bottom:2px solid #e1e8ed">תקציב</th>
+                  <th style="padding:10px 12px;border-bottom:2px solid #e1e8ed">רווח צפוי</th>
+                  <th style="padding:10px 12px;border-bottom:2px solid #e1e8ed">% ROI</th>
+                  <th style="padding:10px 12px;border-bottom:2px solid #e1e8ed">הוצאות בפועל</th>
+                  <th style="padding:10px 12px;border-bottom:2px solid #e1e8ed">רווח בפועל</th>
+                  <th style="padding:10px 12px;border-bottom:2px solid #e1e8ed">סטטוס</th>
+                </tr>
+              </thead>
+              <tbody id="forecast-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+        <div style="background:#fff;border-radius:14px;padding:20px;box-shadow:0 2px 12px rgba(0,0,0,0.06);margin-top:20px">
+          <h3 style="font-size:16px;font-weight:700;color:#1a3d5c;margin-bottom:14px">&#9999;&#65039; עדכון תחזית ידנית לפרויקט</h3>
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:10px;align-items:end">
+            <div>
+              <label style="font-size:12px;font-weight:700;color:#666;display:block;margin-bottom:4px">פרויקט</label>
+              <select id="forecast-project-sel" style="width:100%;padding:10px;border:2px solid #e1e8ed;border-radius:8px;font-family:Heebo,sans-serif;font-size:13px;direction:rtl"></select>
+            </div>
+            <div>
+              <label style="font-size:12px;font-weight:700;color:#666;display:block;margin-bottom:4px">תקציב (&#8362;)</label>
+              <input type="number" id="forecast-budget" step="1000" placeholder="0" style="width:100%;padding:10px;border:2px solid #e1e8ed;border-radius:8px;font-family:Heebo,sans-serif;font-size:13px">
+            </div>
+            <div>
+              <label style="font-size:12px;font-weight:700;color:#666;display:block;margin-bottom:4px">רווח צפוי (&#8362;)</label>
+              <input type="number" id="forecast-profit" step="1000" placeholder="0" style="width:100%;padding:10px;border:2px solid #e1e8ed;border-radius:8px;font-family:Heebo,sans-serif;font-size:13px">
+            </div>
+            <button onclick="saveForecast()" style="background:linear-gradient(135deg,#27ae60,#2ecc71);border:none;color:#fff;padding:11px 20px;border-radius:8px;cursor:pointer;font-family:Heebo,sans-serif;font-weight:700;white-space:nowrap">&#128190; שמור</button>
+          </div>
+        </div>
+      </div>
+
       <div id="page-gantt" class="page" style="display:none">
 
         <!-- Header -->
@@ -995,7 +1068,6 @@ button:active{transform:scale(0.98)}
           הקו האדום = היום
         </div>
       </div>
-
       <!-- GANTT TASK MODAL -->
       <div id="gantt-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:3000;align-items:center;justify-content:center">
         <div style="background:#fff;border-radius:16px;padding:28px;width:90%;max-width:500px;direction:rtl;box-shadow:0 20px 60px rgba(0,0,0,0.3)">
@@ -1061,78 +1133,6 @@ button:active{transform:scale(0.98)}
           </div>
         </div>
       </div>
-        <div id="forecast-summary" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:16px;margin-bottom:28px"></div>
-        <div style="background:#fff;border-radius:14px;padding:20px;box-shadow:0 2px 12px rgba(0,0,0,0.06);margin-bottom:24px">
-          <h3 style="font-size:16px;font-weight:700;color:#1a3d5c;margin-bottom:16px">&#128202; רווח לפי פרויקט</h3>
-          <div id="forecast-chart" style="overflow-x:auto"></div>
-        </div>
-        <div style="background:#fff;border-radius:14px;padding:20px;box-shadow:0 2px 12px rgba(0,0,0,0.06)">
-          <h3 style="font-size:16px;font-weight:700;color:#1a3d5c;margin-bottom:16px">פירוט פרויקטים</h3>
-          <div style="overflow-x:auto">
-            <table style="width:100%;border-collapse:collapse;font-size:13px">
-              <thead>
-                <tr style="background:#f8f9fa;text-align:right">
-                  <th style="padding:10px 12px;border-bottom:2px solid #e1e8ed">פרויקט</th>
-                  <th style="padding:10px 12px;border-bottom:2px solid #e1e8ed">תקציב</th>
-                  <th style="padding:10px 12px;border-bottom:2px solid #e1e8ed">רווח צפוי</th>
-                  <th style="padding:10px 12px;border-bottom:2px solid #e1e8ed">% ROI</th>
-                  <th style="padding:10px 12px;border-bottom:2px solid #e1e8ed">הוצאות בפועל</th>
-                  <th style="padding:10px 12px;border-bottom:2px solid #e1e8ed">רווח בפועל</th>
-                  <th style="padding:10px 12px;border-bottom:2px solid #e1e8ed">סטטוס</th>
-                </tr>
-              </thead>
-              <tbody id="forecast-tbody"></tbody>
-            </table>
-          </div>
-        </div>
-        <div style="background:#fff;border-radius:14px;padding:20px;box-shadow:0 2px 12px rgba(0,0,0,0.06);margin-top:20px">
-          <h3 style="font-size:16px;font-weight:700;color:#1a3d5c;margin-bottom:14px">&#9999;&#65039; עדכון תחזית ידנית לפרויקט</h3>
-          <div style="display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:10px;align-items:end">
-            <div>
-              <label style="font-size:12px;font-weight:700;color:#666;display:block;margin-bottom:4px">פרויקט</label>
-              <select id="forecast-project-sel" style="width:100%;padding:10px;border:2px solid #e1e8ed;border-radius:8px;font-family:Heebo,sans-serif;font-size:13px;direction:rtl"></select>
-            </div>
-            <div>
-              <label style="font-size:12px;font-weight:700;color:#666;display:block;margin-bottom:4px">תקציב (&#8362;)</label>
-              <input type="number" id="forecast-budget" step="1000" placeholder="0" style="width:100%;padding:10px;border:2px solid #e1e8ed;border-radius:8px;font-family:Heebo,sans-serif;font-size:13px">
-            </div>
-            <div>
-              <label style="font-size:12px;font-weight:700;color:#666;display:block;margin-bottom:4px">רווח צפוי (&#8362;)</label>
-              <input type="number" id="forecast-profit" step="1000" placeholder="0" style="width:100%;padding:10px;border:2px solid #e1e8ed;border-radius:8px;font-family:Heebo,sans-serif;font-size:13px">
-            </div>
-            <button onclick="saveForecast()" style="background:linear-gradient(135deg,#27ae60,#2ecc71);border:none;color:#fff;padding:11px 20px;border-radius:8px;cursor:pointer;font-family:Heebo,sans-serif;font-weight:700;white-space:nowrap">&#128190; שמור</button>
-          </div>
-        </div>
-      </div>
-    <div class="search-bar">
-      <div class="search-input-wrap">
-        <span class="search-icon">🔍</span>
-        <input type="text" id="reports-search" placeholder="חיפוש בדוחות..." oninput="filterReports()">
-      </div>
-      <select id="reports-filter-project" onchange="filterReports()" style="width:220px;">
-        <option value="">כל הפרויקטים</option>
-      </select>
-      <input type="date" id="reports-filter-date" onchange="filterReports()" style="width:170px;">
-    </div>
-    <div class="table-wrap">
-      <table>
-        <thead>
-          <tr>
-            <th>מספר דוח</th>
-            <th>פרויקט</th>
-            <th>תאריך</th>
-            <th>מנהל</th>
-            <th>שעות</th>
-            <th>סטטוס</th>
-            <th class="td-actions">פעולות</th>
-          </tr>
-        </thead>
-        <tbody id="reports-tbody">
-          <tr><td colspan="7"><div class="empty-state"><div class="empty-icon">📄</div><h3>אין דוחות עדיין</h3></div></td></tr>
-        </tbody>
-      </table>
-    </div>
-  </div>
 
 </main>
 
