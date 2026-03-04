@@ -70,6 +70,32 @@ button:active{transform:scale(0.98)}
 .dynamic-row.critical-row{border-color:#dc3545;background:#fff5f5}
 .remove-row{position:absolute;top:10px;left:10px;background:#e74c3c;color:white;border:none;border-radius:50%;width:30px;height:30px;cursor:pointer;font-weight:bold;font-size:18px}
 .remove-row:hover{background:#c0392b}
+
+/* ── CONTRACTORS TABLE ── */
+.contractors-table-wrap{overflow-x:auto;margin-top:10px;border-radius:10px;border:2px solid #e1e8ed}
+.contractors-table{width:100%;border-collapse:collapse;min-width:700px;font-size:14px}
+.contractors-table thead tr{background:linear-gradient(135deg,#1a3d5c,#2c5f7a);color:white}
+.contractors-table thead th{padding:10px 12px;text-align:right;font-weight:700;white-space:nowrap;font-size:13px}
+.contractors-table tbody tr{border-bottom:1px solid #e1e8ed;transition:background 0.15s}
+.contractors-table tbody tr:hover{background:#f0f7ff}
+.contractors-table tbody tr:nth-child(even){background:#fafbfc}
+.contractors-table tbody tr:nth-child(even):hover{background:#e8f0fa}
+.contractors-table td{padding:6px 8px;vertical-align:middle}
+.contractors-table td input,
+.contractors-table td select{padding:7px 10px;border:1.5px solid #e1e8ed;border-radius:6px;font-size:13px;width:100%;font-family:inherit;background:white;transition:border-color 0.2s}
+.contractors-table td input:focus,
+.contractors-table td select:focus{outline:none;border-color:#667eea;background:#f8f9ff}
+.contractors-table .td-actions{width:36px;text-align:center}
+.btn-remove-contractor{background:#e74c3c;color:white;border:none;border-radius:50%;width:28px;height:28px;font-size:16px;font-weight:bold;cursor:pointer;line-height:28px;padding:0;transition:background 0.2s}
+.btn-remove-contractor:hover{background:#c0392b}
+.btn-add-contractor{background:linear-gradient(135deg,#27ae60,#2ecc71);color:white;border:none;border-radius:8px;padding:9px 18px;font-size:14px;font-weight:700;cursor:pointer;margin-top:10px;transition:all 0.2s;display:inline-flex;align-items:center;gap:6px}
+.btn-add-contractor:hover{transform:scale(1.03);box-shadow:0 3px 12px rgba(39,174,96,0.35)}
+.contractors-empty{text-align:center;color:#aaa;padding:20px;font-style:italic;font-size:13px}
+@media(max-width:600px){
+  .contractors-table-wrap{border-radius:6px}
+  .contractors-table{min-width:560px;font-size:12px}
+  .contractors-table thead th,.contractors-table td{padding:6px 7px}
+}
 .print-header,.print-footer{display:none}
 @media print{
   @page{size:A4;margin:15mm}
@@ -140,10 +166,34 @@ button:active{transform:scale(0.98)}
         </div>
       </section>
 
+      <!-- ══ קבלני הפרוייקט ══ -->
+      <section class="section">
+        <h2>🏗️ קבלני הפרוייקט</h2>
+        <p class="helper-text">בחר / הוסף קבלן — לחץ על שדה לעריכה. גלול ימינה לעמודות נוספות.</p>
+        <div class="contractors-table-wrap">
+          <table class="contractors-table" id="contractorsTable">
+            <thead>
+              <tr>
+                <th>שם חברה / קבלן</th>
+                <th>איש קשר</th>
+                <th>נייד</th>
+                <th>טל׳ משרד</th>
+                <th>עיסוק ראשי</th>
+                <th>פעילות בפרוייקט זה</th>
+                <th class="td-actions"></th>
+              </tr>
+            </thead>
+            <tbody id="contractorsBody">
+              <tr><td colspan="7" class="contractors-empty">לחץ ״➕ הוסף קבלן״ להוספת שורה</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <button type="button" class="btn-add-contractor" onclick="addContractorRow()">➕ הוסף קבלן</button>
+      </section>
+
       <section class="section">
         <h2>⏰ שעות עבודה</h2>
         <div class="form-row">
-          <input type="time" id="startTime">
           <input type="time" id="endTime">
           <input type="number" id="breakHours" value="0" step="0.5" placeholder="הפסקות (שעות)">
         </div>
@@ -332,6 +382,7 @@ function clearAllData() {
   ['projectName','weather','startTime','endTime','generalNotes','tomorrowPlan'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
   document.getElementById('breakHours').value='0';
   ['workersContainer','activitiesContainer','materialsContainer','equipmentContainer','safetyContainer','inspectionsContainer','delaysContainer'].forEach(id=>{const e=document.getElementById(id);if(e)e.innerHTML='';});
+  const cb=document.getElementById('contractorsBody');if(cb){cb.innerHTML='<tr><td colspan="7" class="contractors-empty">לחץ ״➕ הוסף קבלן״ להוספת שורה</td></tr>';}
   selectedPhotos=[]; document.getElementById('photoPreview').innerHTML='';
   if(signaturePad){const c=signaturePad.getContext('2d');c.clearRect(0,0,signaturePad.width,signaturePad.height);}
   document.getElementById('totalWorkHours').textContent='0';
@@ -499,7 +550,68 @@ function renderPhotos(containerId,photos,removeFn){
 function removePhoto(i){selectedPhotos.splice(i,1);renderPhotos('photoPreview',selectedPhotos,'removePhoto');}
 function removeOwnerPhoto(i){selectedOwnerPhotos.splice(i,1);renderPhotos('ownerPhotoPreview',selectedOwnerPhotos,'removeOwnerPhoto');}
 
-// ── COLLECT DATA ────────────────────────────────
+// ── CONTRACTORS ─────────────────────────────────
+const OCCUPATION_OPTIONS = [
+  '','בטון ועבודות עפר','ביוב וצנרת','בנייה כללית','גבס ופנים','גגות ואיטום',
+  'חשמל ותאורה','טיח וצבע','כבישים ופיתוח','מדרכות וריצוף חוץ','מסגרות ומתכת',
+  'מעליות','עבודות עץ ונגרות','ריצוף וחיפוי','שיפוץ ושחזור','תקשורת ואינטרנט',
+  'קירור ומיזוג אוויר','אחר'
+];
+
+function addContractorRow(data={}) {
+  const tbody = document.getElementById('contractorsBody');
+  // Remove empty-state row if present
+  const emptyRow = tbody.querySelector('.contractors-empty');
+  if(emptyRow) emptyRow.closest('tr').remove();
+
+  const tr = document.createElement('tr');
+  tr.innerHTML = `
+    <td><input type="text" placeholder="שם חברה / קבלן" class="contr-company" value="${data.company_name||''}"></td>
+    <td><input type="text" placeholder="שם איש קשר" class="contr-contact" value="${data.contact_name||''}"></td>
+    <td><input type="tel"  placeholder="05X-XXXXXXX"  class="contr-mobile"  value="${data.mobile||''}" style="min-width:120px"></td>
+    <td><input type="tel"  placeholder="0X-XXXXXXX"   class="contr-office"  value="${data.office_tel||''}" style="min-width:110px"></td>
+    <td>
+      <select class="contr-occupation">
+        ${OCCUPATION_OPTIONS.map(o=>`<option value="${o}" ${o===data.main_occupation?'selected':''}>${o||'— בחר עיסוק —'}</option>`).join('')}
+      </select>
+    </td>
+    <td><input type="text" placeholder="מה הוא עושה בפרוייקט זה?" class="contr-activity" value="${data.project_activity||''}" style="min-width:160px"></td>
+    <td class="td-actions">
+      <button type="button" class="btn-remove-contractor" onclick="removeContractorRow(this)" title="הסר">×</button>
+    </td>`;
+  tbody.appendChild(tr);
+}
+
+function removeContractorRow(btn) {
+  const tbody = document.getElementById('contractorsBody');
+  btn.closest('tr').remove();
+  if(tbody.rows.length === 0) {
+    const tr = document.createElement('tr');
+    tr.innerHTML = '<td colspan="7" class="contractors-empty">לחץ ״➕ הוסף קבלן״ להוספת שורה</td>';
+    tbody.appendChild(tr);
+  }
+}
+
+function collectContractors() {
+  const rows = [];
+  document.querySelectorAll('#contractorsBody tr:not(:has(.contractors-empty))').forEach(tr => {
+    const company = tr.querySelector('.contr-company')?.value?.trim();
+    const contact = tr.querySelector('.contr-contact')?.value?.trim();
+    if(company || contact) {
+      rows.push({
+        company_name:      company || '',
+        contact_name:      contact || '',
+        mobile:            tr.querySelector('.contr-mobile')?.value?.trim()  || null,
+        office_tel:        tr.querySelector('.contr-office')?.value?.trim()  || null,
+        main_occupation:   tr.querySelector('.contr-occupation')?.value      || null,
+        project_activity:  tr.querySelector('.contr-activity')?.value?.trim()|| null,
+      });
+    }
+  });
+  return rows;
+}
+
+
 function collectFormData() {
   const workers=[],activities=[],materials=[],equipment=[],safety=[],inspections=[],delays=[];
   document.querySelectorAll('#workersContainer .form-row').forEach(r=>{const role=r.querySelector('.worker-role').value;if(role)workers.push({role,worker_count:parseInt(r.querySelector('.worker-count').value)||0,hours_worked:parseFloat(r.querySelector('.worker-hours').value)||0});});
@@ -513,7 +625,7 @@ function collectFormData() {
   const b=parseFloat(document.getElementById('breakHours').value)||0;
   let totalWorkHours=0;
   if(s&&e){const[sh,sm]=s.split(':').map(Number),[eh,em]=e.split(':').map(Number);let m=(eh*60+em)-(sh*60+sm);if(m<0)m+=1440;totalWorkHours=(m/60)-b;}
-  return{report_number:currentReportNumber,project_name:document.getElementById('projectName').value||'ללא שם',report_date:document.getElementById('reportDate').value,manager_name:'אבשי ספיר',weather:document.getElementById('weather').value,start_time:s||null,end_time:e||null,break_hours:b,total_work_hours:totalWorkHours,general_notes:document.getElementById('generalNotes').value,tomorrow_date:document.getElementById('tomorrowDate').value,tomorrow_plan:document.getElementById('tomorrowPlan').value,workers,activities,materials,equipment,safety,inspections,delays};
+  return{report_number:currentReportNumber,project_name:document.getElementById('projectName').value||'ללא שם',report_date:document.getElementById('reportDate').value,manager_name:'אבשי ספיר',weather:document.getElementById('weather').value,start_time:s||null,end_time:e||null,break_hours:b,total_work_hours:totalWorkHours,general_notes:document.getElementById('generalNotes').value,tomorrow_date:document.getElementById('tomorrowDate').value,tomorrow_plan:document.getElementById('tomorrowPlan').value,workers,activities,materials,equipment,safety,inspections,delays,contractors:collectContractors()};
 }
 
 // ── SAVE / SEND ─────────────────────────────────
@@ -549,8 +661,8 @@ async function sendReport() {
   finally{showLoading(false);}
 }
 async function saveRelatedData(reportId,data) {
-  const tables=[['workers',data.workers],['activities',data.activities],['materials',data.materials],['equipment',data.equipment],['safety_incidents',data.safety],['inspections',data.inspections],['delays',data.delays]];
-  for(const[t,rows] of tables) if(rows.length>0) await supabaseClient.from(t).insert(rows.map(r=>({...r,report_id:reportId})));
+  const tables=[['workers',data.workers],['activities',data.activities],['materials',data.materials],['equipment',data.equipment],['safety_incidents',data.safety],['inspections',data.inspections],['delays',data.delays],['project_contractors',data.contractors]];
+  for(const[t,rows] of tables) if(rows&&rows.length>0) await supabaseClient.from(t).insert(rows.map(r=>({...r,report_id:reportId})));
 }
 async function uploadSignature(canvas,type) {
   if(!canvas) return null;
@@ -597,6 +709,7 @@ function displayReportForOwner(data) {
   if(rep.general_notes) html+=`<p><strong>הערות:</strong> ${rep.general_notes}</p>`;
   if(rep.tomorrow_plan) html+=`<hr style="margin:15px 0;border:1px solid #e1e8ed"><h3>📅 תוכנית למחר</h3>${rep.tomorrow_date?`<p><strong>תאריך:</strong> ${rep.tomorrow_date}</p>`:''}<p>${rep.tomorrow_plan}</p>`;
   const secs=[
+    ['contractors','🏗️ קבלני הפרוייקט',c=>`• ${c.company_name}${c.contact_name?' — '+c.contact_name:''}${c.mobile?' 📱 '+c.mobile:''}${c.office_tel?' ☎️ '+c.office_tel:''}${c.main_occupation?' | '+c.main_occupation:''}${c.project_activity?' → '+c.project_activity:''}`],
     ['workers','👷 כוח אדם',w=>`• ${w.role}: ${w.worker_count} עובדים × ${w.hours_worked} שעות`],
     ['activities','🔨 פעילויות',a=>`• ${a.description}${a.location?' - '+a.location:''}${a.quantity?' ('+a.quantity+')':''}`],
     ['materials','📦 אספקות חומרים',m=>`• ${m.material_type}: ${m.quantity}${m.unit?' '+m.unit:''}${m.supplier?' ('+m.supplier+')':''}`],
