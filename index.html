@@ -579,6 +579,12 @@ button:active{transform:scale(0.98)}
 #top-tabs { height: 54px; }
 .top-tab { font-size: 13px; }
 @media(max-width:640px) { .top-tab span:last-child { font-size: 10px; } }
+
+/* Tomorrow plan rows */
+.tomorrow-row{display:flex;align-items:center;gap:10px;padding:10px;border-radius:8px;background:#f8f9fa;margin-bottom:8px;border-right:4px solid #667eea}
+.tomorrow-label{font-size:13px;font-weight:700;color:#1a3d5c;min-width:150px;white-space:nowrap}
+.tomorrow-detail{flex:1;padding:9px 12px;border:2px solid #e1e8ed;border-radius:8px;font-size:14px;font-family:inherit;direction:rtl}
+.tomorrow-detail:focus{outline:none;border-color:#667eea}
 </style>
 </head>
 <body>
@@ -1358,7 +1364,8 @@ button:active{transform:scale(0.98)}
       <section class="section">
         <h2>⏰ שעות עבודה</h2>
         <div class="form-row">
-          <input type="time" id="endTime">
+          <input type="time" id="startTime" placeholder="שעת התחלה">
+          <input type="time" id="endTime" placeholder="שעת סיום">
           <input type="number" id="breakHours" value="0" step="0.5" placeholder="הפסקות (שעות)">
         </div>
         <div class="total-hours"><strong>סה"כ שעות עבודה:</strong> <span id="totalWorkHours">0</span> שעות</div>
@@ -1380,15 +1387,70 @@ button:active{transform:scale(0.98)}
       <section class="section legal-section">
         <h2>📦 אספקות חומרים <span class="legal-badge">חובה לפי חוק</span></h2>
         <p class="helper-text">תיעוד חומרים שהגיעו לאתר - נדרש להוכחת תשלום</p>
+        <!-- Quick-add from common list -->
+        <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap;align-items:center">
+          <select id="materialQuickSelect" style="flex:2;padding:10px;border:2px solid #e1e8ed;border-radius:8px;font-size:14px;font-family:inherit;direction:rtl">
+            <option value="">-- בחר חומר מהרשימה --</option>
+            <optgroup label="🧱 בנייה">
+              <option>בלוקים / לבנים</option><option>מלט / צמנט</option><option>חול בנייה</option>
+              <option>חצץ / אבן שבורה</option><option>בטון מוכן</option><option>ברזל / פלדה לבנייה</option>
+              <option>רשת זיון</option><option>לוחות בטון</option>
+            </optgroup>
+            <optgroup label="🪵 עץ ולוחות">
+              <option>קרשים / לוחות עץ</option><option>לוחות OSB</option><option>לוחות גבס</option>
+              <option>לוחות אלומיניום</option><option>פרופיל מתכת</option>
+            </optgroup>
+            <optgroup label="🪟 איטום וציפוי">
+              <option>צבע חיצוני</option><option>צבע פנימי</option><option>פריימר / בוהית</option>
+              <option>איטום / ביטומן</option><option>גליל ניילון</option><option>פלטות ריצוף</option>
+              <option>דבק ריצוף</option><option>פוגה</option>
+            </optgroup>
+            <optgroup label="⚡ אינסטלציה וחשמל">
+              <option>צינורות PVC</option><option>צינורות נחושת</option><option>חוטי חשמל</option>
+              <option>תיבות חשמל</option><option>בורגי עוגן</option>
+            </optgroup>
+            <optgroup label="🔩 כלים ומתכלים">
+              <option>ברגים / מסמרים</option><option>קשרי תיל</option><option>כפפות עבודה</option>
+              <option>קסדות בטיחות</option><option>שקי אשפה תעשייתיים</option>
+            </optgroup>
+            <option value="__other__">✏️ אחר — הוסף ידנית</option>
+          </select>
+          <button type="button" onclick="addMaterialFromList()" style="background:#667eea;color:#fff;border:none;border-radius:8px;padding:10px 18px;font-size:14px;font-weight:700;cursor:pointer;white-space:nowrap">➕ הוסף</button>
+        </div>
         <div id="materialsContainer"></div>
-        <button type="button" class="btn-add" onclick="addMaterialRow()">➕ הוסף חומר</button>
+        <button type="button" class="btn-add" onclick="addMaterialRow('')">➕ הוסף שורה ריקה</button>
       </section>
 
       <section class="section legal-section">
         <h2>🚜 ציוד ומכונות <span class="legal-badge">חובה לפי חוק</span></h2>
         <p class="helper-text">רישום ציוד בשימוש - נדרש למעקב עלויות</p>
+        <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap;align-items:center">
+          <select id="equipmentQuickSelect" style="flex:2;padding:10px;border:2px solid #e1e8ed;border-radius:8px;font-size:14px;font-family:inherit;direction:rtl">
+            <option value="">-- בחר ציוד/מכונה --</option>
+            <optgroup label="🚜 כלים כבדים">
+              <option>מחפר / בובקט</option><option>מנוף</option><option>משאית הטמנה</option>
+              <option>בטונייה / מיקסר</option><option>מכבש אדמה</option><option>גרייר / עגורן</option>
+            </optgroup>
+            <optgroup label="⚙️ כלי עבודה חשמליים">
+              <option>מקדחה / פטיש קידוח</option><option>מסור עגול</option><option>מסור סייבר</option>
+              <option>מטחנת זווית (פלקסה)</option><option>מברגה חשמלית</option>
+              <option>מסור שולחני</option><option>מכונת ריתוך</option>
+            </optgroup>
+            <optgroup label="🔧 ציוד עזר">
+              <option>פיגום / פיגומאות</option><option>סולם</option><option>מאוורר / ייבוש</option>
+              <option>מחולל חשמל (גנרטור)</option><option>משאבת מים</option>
+              <option>ויברטור לבטון</option><option>מיצוב לייזר</option>
+            </optgroup>
+            <optgroup label="🚗 רכבים">
+              <option>רכב שטח / פיקאפ</option><option>רכב קל להובלה</option>
+              <option>אופנוע / אופניים</option>
+            </optgroup>
+            <option value="__other__">✏️ אחר — הוסף ידנית</option>
+          </select>
+          <button type="button" onclick="addEquipmentFromList()" style="background:#667eea;color:#fff;border:none;border-radius:8px;padding:10px 18px;font-size:14px;font-weight:700;cursor:pointer;white-space:nowrap">➕ הוסף</button>
+        </div>
         <div id="equipmentContainer"></div>
-        <button type="button" class="btn-add" onclick="addEquipmentRow()">➕ הוסף ציוד</button>
+        <button type="button" class="btn-add" onclick="addEquipmentRow('')">➕ הוסף שורה ריקה</button>
       </section>
 
       <section class="section legal-section critical">
@@ -1426,8 +1488,33 @@ button:active{transform:scale(0.98)}
       <section class="section">
         <h2>📅 תוכנית עבודה למחר</h2>
         <div class="form-row"><input type="date" id="tomorrowDate"></div>
-        <div class="voice-textarea-container">
-          <textarea id="tomorrowPlan" placeholder="תוכנית עבודה למחר..."></textarea>
+        <div id="tomorrowContainer">
+          <!-- Fixed rows -->
+          <div class="tomorrow-row" data-type="continue">
+            <div class="tomorrow-label">🔄 המשך מאתמול</div>
+            <input type="text" class="tomorrow-detail" placeholder="פרט את ההמשך...">
+          </div>
+          <div class="tomorrow-row" data-type="new">
+            <div class="tomorrow-label">🆕 עבודה חדשה</div>
+            <input type="text" class="tomorrow-detail" placeholder="תאר את העבודה החדשה...">
+          </div>
+          <div class="tomorrow-row" data-type="delivery">
+            <div class="tomorrow-label">🚚 אספקה צפויה</div>
+            <input type="text" class="tomorrow-detail" placeholder="ציין חומרים / ציוד שיגיע...">
+          </div>
+          <div class="tomorrow-row" data-type="crew">
+            <div class="tomorrow-label">👷 כוח אדם נדרש</div>
+            <input type="text" class="tomorrow-detail" placeholder="כמה פועלים / אילו בעלי מקצוע...">
+          </div>
+          <div class="tomorrow-row" data-type="safety">
+            <div class="tomorrow-label">⛑️ בטיחות / היתרים</div>
+            <input type="text" class="tomorrow-detail" placeholder="בדיקות בטיחות, היתרי כניסה...">
+          </div>
+          <div id="tomorrowExtraRows"></div>
+        </div>
+        <button type="button" class="btn-add" onclick="addTomorrowRow()">➕ הוסף פריט נוסף</button>
+        <div class="voice-textarea-container" style="margin-top:10px">
+          <textarea id="tomorrowPlan" placeholder="הערות כלליות לתוכנית מחר..." rows="2"></textarea>
           <button type="button" class="btn-voice" id="voiceTomorrowBtn">🎤</button>
         </div>
       </section>
@@ -2242,14 +2329,15 @@ function initializeManagerView() {
   const tom=new Date(today); tom.setDate(tom.getDate()+1); document.getElementById('tomorrowDate').valueAsDate=tom;
   initSignaturePad('signatureCanvas');
   addWorkerRow(); addActivityRow();
-  document.getElementById('photoInput').addEventListener('change', handlePhotoSelection);
-  document.getElementById('saveBtn').addEventListener('click', saveDraft);
-  document.getElementById('sendBtn').addEventListener('click', sendReport);
-  document.getElementById('voiceNotesBtn').addEventListener('click', ()=>startVoiceRecording('generalNotes'));
-  document.getElementById('voiceTomorrowBtn').addEventListener('click', ()=>startVoiceRecording('tomorrowPlan'));
-  document.getElementById('startTime').addEventListener('change', calculateWorkHours);
-  document.getElementById('endTime').addEventListener('change', calculateWorkHours);
-  document.getElementById('breakHours').addEventListener('input', calculateWorkHours);
+  const _bind = (id, ev, fn) => { const el=document.getElementById(id); if(el) el.addEventListener(ev,fn); };
+  _bind('photoInput','change', handlePhotoSelection);
+  _bind('saveBtn','click', saveDraft);
+  _bind('sendBtn','click', sendReport);
+  _bind('voiceNotesBtn','click', ()=>startVoiceRecording('generalNotes'));
+  _bind('voiceTomorrowBtn','click', ()=>startVoiceRecording('tomorrowPlan'));
+  _bind('startTime','change', calculateWorkHours);
+  _bind('endTime','change', calculateWorkHours);
+  _bind('breakHours','input', calculateWorkHours);
 }
 
 // ── CALCULATIONS ────────────────────────────────
@@ -2337,17 +2425,43 @@ function addActivityRow() {
   r.innerHTML='<input type="text" placeholder="תיאור" class="activity-desc"><input type="text" placeholder="מיקום" class="activity-location"><input type="text" placeholder="כמות" class="activity-quantity">';
   c.appendChild(r);
 }
-function addMaterialRow() {
-  const c=document.getElementById('materialsContainer');
-  const r=document.createElement('div'); r.className='dynamic-row';
-  r.innerHTML='<button type="button" class="remove-row" onclick="this.parentElement.remove()">×</button><div class="form-row four-col"><input type="text" placeholder="סוג חומר" class="material-type"><input type="text" placeholder="כמות" class="material-quantity"><input type="text" placeholder="יחידה (ק״ג/מ״ר/יח׳)" class="material-unit"><input type="text" placeholder="ספק" class="material-supplier"></div><input type="datetime-local" class="material-delivery-time" style="margin-top:8px">';
-  c.appendChild(r);
+function addMaterialRow(prefill) {
+  const container = document.getElementById('materialsContainer');
+  if(!container) return;
+  const row = document.createElement('div');
+  row.className = 'form-row four-col';
+  row.style.cssText = 'background:#f8f9fa;padding:10px;border-radius:8px;margin-bottom:8px;align-items:center';
+  row.innerHTML = `
+    <input type="text" value="${prefill||''}" placeholder="שם חומר" style="grid-column:span 1">
+    <input type="number" placeholder="כמות" min="0" step="0.1">
+    <select style="padding:10px;border:2px solid #e1e8ed;border-radius:8px;font-size:14px;font-family:inherit;direction:rtl">
+      <option>יחידות</option><option>ק"ג</option><option>טון</option>
+      <option>מ"ר</option><option>מ"א</option><option>מ"ק</option>
+      <option>שקים</option><option>ארגזים</option><option>פלטות</option>
+      <option>גלילים</option><option>מטרים</option><option>ליטר</option>
+    </select>
+    <button type="button" onclick="this.closest('.form-row').remove()" style="background:#e74c3c;color:#fff;border:none;border-radius:8px;padding:9px 14px;cursor:pointer;font-size:14px">🗑️</button>
+  `;
+  container.appendChild(row);
+  // scroll into view
+  row.scrollIntoView({behavior:'smooth',block:'nearest'});
 }
-function addEquipmentRow() {
-  const c=document.getElementById('equipmentContainer');
-  const r=document.createElement('div'); r.className='dynamic-row';
-  r.innerHTML='<button type="button" class="remove-row" onclick="this.parentElement.remove()">×</button><div class="form-row three-col"><input type="text" placeholder="סוג ציוד/מכונה" class="equipment-type"><input type="number" placeholder="שעות שימוש" step="0.5" class="equipment-hours"><select class="equipment-rental"><option value="false">בבעלות</option><option value="true">השכרה</option></select></div><textarea placeholder="תקלות/בעיות (אופציונלי)" class="equipment-issues" rows="2" style="margin-top:8px"></textarea>';
-  c.appendChild(r);
+function addEquipmentRow(prefill) {
+  const container = document.getElementById('equipmentContainer');
+  if(!container) return;
+  const row = document.createElement('div');
+  row.className = 'form-row three-col';
+  row.style.cssText = 'background:#f8f9fa;padding:10px;border-radius:8px;margin-bottom:8px;align-items:center';
+  row.innerHTML = `
+    <input type="text" value="${prefill||''}" placeholder="סוג ציוד / מכונה" style="grid-column:span 1">
+    <input type="number" placeholder="שעות שימוש" min="0" step="0.5">
+    <div style="display:flex;gap:6px">
+      <input type="text" placeholder="תקלות / הערות (אופציונלי)" style="flex:1">
+      <button type="button" onclick="this.closest('.form-row').remove()" style="background:#e74c3c;color:#fff;border:none;border-radius:8px;padding:9px 14px;cursor:pointer;font-size:14px">🗑️</button>
+    </div>
+  `;
+  container.appendChild(row);
+  row.scrollIntoView({behavior:'smooth',block:'nearest'});
 }
 function addSafetyRow() {
   const c=document.getElementById('safetyContainer');
@@ -2864,6 +2978,58 @@ styleEl.textContent = `
 .active-filter { opacity:1 !important; }
 `;
 document.head.appendChild(styleEl);
+
+
+// Quick add material from dropdown
+function addMaterialFromList() {
+  const sel = document.getElementById('materialQuickSelect');
+  if(!sel) return;
+  const val = sel.value;
+  if(!val) { alert('בחר חומר מהרשימה תחילה'); return; }
+  if(val === '__other__') { addMaterialRow(''); sel.value=''; return; }
+  addMaterialRow(val);
+  sel.value = '';
+}
+
+// Quick add equipment from dropdown
+function addEquipmentFromList() {
+  const sel = document.getElementById('equipmentQuickSelect');
+  if(!sel) return;
+  const val = sel.value;
+  if(!val) { alert('בחר ציוד מהרשימה תחילה'); return; }
+  if(val === '__other__') { addEquipmentRow(''); sel.value=''; return; }
+  addEquipmentRow(val);
+  sel.value = '';
+}
+
+// Add extra tomorrow row
+function addTomorrowRow() {
+  const container = document.getElementById('tomorrowExtraRows');
+  if(!container) return;
+  const row = document.createElement('div');
+  row.className = 'tomorrow-row';
+  row.innerHTML = `
+    <input type="text" placeholder="כותרת פריט" class="tomorrow-label" style="min-width:140px;border:2px solid #667eea;border-radius:8px;padding:8px;font-size:13px;font-weight:700;color:#1a3d5c;background:#fff">
+    <input type="text" class="tomorrow-detail" placeholder="פרטים...">
+    <button type="button" onclick="this.closest('.tomorrow-row').remove()" style="background:#e74c3c;color:#fff;border:none;border-radius:50%;width:28px;height:28px;cursor:pointer;font-size:14px;flex-shrink:0">×</button>
+  `;
+  container.appendChild(row);
+  row.scrollIntoView({behavior:'smooth',block:'nearest'});
+}
+
+// Collect tomorrow plan rows into text for saving
+function collectTomorrowPlan() {
+  const rows = document.querySelectorAll('#tomorrowContainer .tomorrow-row');
+  let lines = [];
+  rows.forEach(row => {
+    const label = row.querySelector('.tomorrow-label')?.textContent || row.querySelector('input.tomorrow-label')?.value || '';
+    const detail = row.querySelector('.tomorrow-detail')?.value || '';
+    if(detail.trim()) lines.push(label.trim() + ': ' + detail.trim());
+  });
+  const extra = document.getElementById('tomorrowPlan')?.value || '';
+  if(extra.trim()) lines.push('הערות: ' + extra.trim());
+  return lines.join(' | ');
+}
 
 </script>
 </body>
