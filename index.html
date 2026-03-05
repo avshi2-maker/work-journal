@@ -2036,8 +2036,20 @@ input,select,textarea,button { -webkit-appearance:none; font-size:16px; }
       <section class="section">
         <h2>📋 פרטי פרוייקט</h2>
         <div class="form-row">
-          <input type="text" id="projectName" placeholder="שם פרוייקט" required>
+          <div style="position:relative;">
+            <select id="projectName" required
+              style="width:100%;padding:12px;border:2px solid #e1e8ed;border-radius:8px;font-size:16px;font-family:inherit;background:white;-webkit-appearance:none;appearance:none;"
+              onchange="onJournalProjectChange(this)">
+              <option value="">— בחר פרוייקט —</option>
+            </select>
+            <span style="position:absolute;left:12px;top:50%;transform:translateY(-50%);pointer-events:none;font-size:14px;">▼</span>
+          </div>
           <input type="date" id="reportDate" required>
+        </div>
+        <div id="project-custom-name-row" style="display:none;margin-top:8px;">
+          <input type="text" id="projectNameCustom" placeholder="הזן שם פרוייקט ידנית..."
+            style="width:100%;padding:12px;border:2px solid #667eea;border-radius:8px;font-size:16px;font-family:inherit;"
+            oninput="syncProjectNameToSelect()">
         </div>
         <div class="form-row">
           <select id="weather">
@@ -2433,6 +2445,10 @@ async function loadProjects() {
   rebuildCoApprovedSum();
   renderProjects();
   populateProjectSelects();
+  // Refresh journal dropdown if already initialized
+  if(typeof journalInitialized !== 'undefined' && journalInitialized) {
+    populateJournalProjectDropdown();
+  }
 }
 
 async function loadTransactions() {
@@ -2757,7 +2773,11 @@ function renderProjects(list) {
       const tip = cos>0 ? ` title="תקציב ₪${fmtMoney(bud)} − הצעות ₪${fmtMoney(qs)} − CO מאושר ₪${fmtMoney(cos)}"` : '';
       return '<span'+tip+' style="color:'+(profit>=0?'#22c55e':'#ef4444')+'">₪'+fmtMoney(profit)+'</span>';
     })()}</td>
-    <td style="text-align:center"><span class="badge badge-blue">${reportCount[p.id]||0}</span></td>
+    <td style="text-align:center">${(()=>{
+      const cnt = reportCount[p.id]||0;
+      if(cnt===0) return '<span class="badge badge-blue" title="אין דוחות — לחץ לפתיחת יומן חדש" onclick="event.stopPropagation();openJournalForProject(\'' + p.id + '\',\'' + esc(p.project_name).replace(/'/g,"\\'" ) + '\')" style="cursor:pointer;">+ דוח חדש</span>';
+      return '<span class="badge badge-blue" title="' + cnt + ' דוחות — לחץ לדוח חדש" onclick="event.stopPropagation();openJournalForProject(\'' + p.id + '\',\'' + esc(p.project_name).replace(/'/g,"\\'" ) + '\')" style="cursor:pointer;background:var(--accent);">' + cnt + ' 📝</span>';
+    })()}</td>
     <td><span class="badge ${STATUS_BADGE[p.status]||'badge-gray'}">${STATUS_HE[p.status]||p.status}</span></td>
     <td class="td-actions"><div class="btn-group">
       <button class="btn btn-ghost btn-sm btn-icon" onclick="openProjectModal('${p.id}')" title="עריכה">✏️</button>
@@ -3009,7 +3029,9 @@ function renderReports(list) {
     <td style="text-align:center">${r.total_work_hours||'—'}</td>
     <td><span class="badge ${STATUS_REPORT[r.status]||'badge-gray'}">${STATUS_REPORT_HE[r.status]||r.status||'—'}</span></td>
     <td class="td-actions"><div class="btn-group">
-      ${r.share_token?`<button class="btn btn-ghost btn-sm btn-icon" onclick="switchTab('journal')" title="צפייה">👁️</button>`:''}
+      <button class="btn btn-ghost btn-sm btn-icon"
+        onclick="openJournalForProject('${r.project_id||''}','${esc(r.project_name||allProjects.find(p=>p.id===r.project_id)?.project_name||'')}')"
+        title="פתח יומן לפרוייקט זה">📝</button>
     </div></td>
   </tr>`).join('');
   // Reset select-all
@@ -4228,7 +4250,7 @@ function displayReportNumber() {
 // ── CLEAR / NEW ─────────────────────────────────
 function clearAllData() {
   if(!confirm('האם אתה בטוח שברצונך למחוק את כל הנתונים?')) return;
-  ['projectName','weather','startTime','endTime','generalNotes','tomorrowPlan'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
+  ['weather','startTime','endTime','generalNotes','tomorrowPlan'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';}); populateJournalProjectDropdown(''); const customRow=document.getElementById('project-custom-name-row'); if(customRow) customRow.style.display='none'; const custIn=document.getElementById('projectNameCustom'); if(custIn) custIn.value='';
   document.getElementById('breakHours').value='0';
   ['workersContainer','activitiesContainer','materialsContainer','equipmentContainer','safetyContainer','inspectionsContainer','delaysContainer'].forEach(id=>{const e=document.getElementById(id);if(e)e.innerHTML='';});
   const cb=document.getElementById('contractorsBody');if(cb){cb.innerHTML='<tr><td colspan="7" class="contractors-empty">לחץ ״➕ הוסף קבלן״ להוספת שורה</td></tr>';}
@@ -4248,6 +4270,75 @@ function startNewReport() {
 }
 
 // ── INIT ────────────────────────────────────────
+
+// ── Journal ↔ Project connection ────────────────────────────────
+function populateJournalProjectDropdown(preselectName) {
+  const sel = document.getElementById('projectName');
+  if(!sel) return;
+  const current = preselectName || sel.value || '';
+  sel.innerHTML = '<option value="">— בחר פרוייקט —</option>' +
+    (allProjects||[])
+      .filter(p => p.status === 'active' || p.status === 'paused')
+      .sort((a,b) => (a.project_name||'').localeCompare(b.project_name||'','he'))
+      .map(p => `<option value="${esc(p.project_name)}" data-id="${p.id}" ${esc(p.project_name)===current?'selected':''}>${esc(p.project_name)}</option>`)
+      .join('') +
+    '<option value="__custom__">✏️ הזן שם ידנית...</option>';
+  if(current) sel.value = current;
+  // Show/hide custom row
+  const customRow = document.getElementById('project-custom-name-row');
+  if(customRow) customRow.style.display = current === '__custom__' ? 'block' : 'none';
+}
+
+function onJournalProjectChange(sel) {
+  const customRow = document.getElementById('project-custom-name-row');
+  if(!customRow) return;
+  if(sel.value === '__custom__') {
+    customRow.style.display = 'block';
+    document.getElementById('projectNameCustom').focus();
+  } else {
+    customRow.style.display = 'none';
+  }
+}
+
+function syncProjectNameToSelect() {
+  // Keeps the select value consistent when custom input changes
+  // The collectData() function reads the value below
+}
+
+function getJournalProjectName() {
+  const sel = document.getElementById('projectName');
+  if(!sel) return '';
+  if(sel.value === '__custom__') {
+    return (document.getElementById('projectNameCustom')?.value || '').trim();
+  }
+  return sel.value || '';
+}
+
+function openJournalForProject(projectId, projectName) {
+  // 1. Switch to journal tab
+  switchTab('journal');
+  // 2. Wait for journal to init, then pre-fill
+  const fill = () => {
+    const sel = document.getElementById('projectName');
+    if(!sel) { setTimeout(fill, 100); return; }
+    populateJournalProjectDropdown(projectName);
+    // Set today's date
+    const today = new Date();
+    const dateEl = document.getElementById('reportDate');
+    if(dateEl && !dateEl.value) dateEl.valueAsDate = today;
+    // Scroll to top of journal
+    const panel = document.getElementById('journal-panel');
+    if(panel) panel.scrollTo(0,0);
+    // Flash the project field to draw attention
+    sel.style.border = '2px solid #667eea';
+    sel.style.boxShadow = '0 0 0 3px rgba(102,126,234,0.25)';
+    setTimeout(()=>{ sel.style.border=''; sel.style.boxShadow=''; }, 1800);
+    // Show a toast
+    showToast('📝 יומן חדש עבור: ' + (projectName||'פרוייקט'), 'success');
+  };
+  setTimeout(fill, 80);
+}
+
 let journalInitialized = false;
 function initJournalOnce() {
   if(journalInitialized) return;
@@ -4268,6 +4359,7 @@ document.addEventListener('DOMContentLoaded', () => {
 function initializeManagerView() {
   document.getElementById('managerView').style.display='block';
   document.getElementById('ownerView').style.display='none';
+  populateJournalProjectDropdown();
   displayReportNumber();
   const today=new Date(); document.getElementById('reportDate').valueAsDate=today;
   const tom=new Date(today); tom.setDate(tom.getDate()+1); document.getElementById('tomorrowDate').valueAsDate=tom;
@@ -4639,7 +4731,7 @@ function collectFormData() {
   const b=parseFloat(document.getElementById('breakHours').value)||0;
   let totalWorkHours=0;
   if(s&&e){const[sh,sm]=s.split(':').map(Number),[eh,em]=e.split(':').map(Number);let m=(eh*60+em)-(sh*60+sm);if(m<0)m+=1440;totalWorkHours=(m/60)-b;}
-  return{report_number:currentReportNumber,project_name:document.getElementById('projectName').value||'ללא שם',report_date:document.getElementById('reportDate').value,manager_name:'אבשי ספיר',weather:document.getElementById('weather').value,start_time:s||null,end_time:e||null,break_hours:b,total_work_hours:totalWorkHours,general_notes:document.getElementById('generalNotes').value,tomorrow_date:document.getElementById('tomorrowDate').value,tomorrow_plan:document.getElementById('tomorrowPlan').value,workers,activities,materials,equipment,safety,inspections,delays,contractors:collectContractors()};
+  return{report_number:currentReportNumber,project_name:getJournalProjectName()||'ללא שם',report_date:document.getElementById('reportDate').value,manager_name:'אבשי ספיר',weather:document.getElementById('weather').value,start_time:s||null,end_time:e||null,break_hours:b,total_work_hours:totalWorkHours,general_notes:document.getElementById('generalNotes').value,tomorrow_date:document.getElementById('tomorrowDate').value,tomorrow_plan:document.getElementById('tomorrowPlan').value,workers,activities,materials,equipment,safety,inspections,delays,contractors:collectContractors()};
 }
 
 // ── SAVE / SEND ─────────────────────────────────
@@ -4647,7 +4739,7 @@ async function saveDraft() {
   journalShowLoading(true);
   try {
     const data=collectFormData();
-    if(!data.project_name){alert('נא למלא שם פרוייקט');journalShowLoading(false);return;}
+    if(!data.project_name){alert('נא לבחור / להזין שם פרוייקט');journalShowLoading(false);return;}
     const sig=await uploadSignature(signaturePad,'manager');
     const{data:report,error}=await supabaseClient.from('reports').insert({...data,manager_signature_path:sig,status:'draft'}).select().single();
     if(error) throw error;
@@ -4661,7 +4753,7 @@ async function sendReport() {
   journalShowLoading(true);
   try {
     const data=collectFormData();
-    if(!data.project_name){alert('נא למלא שם פרוייקט');journalShowLoading(false);return;}
+    if(!data.project_name){alert('נא לבחור / להזין שם פרוייקט');journalShowLoading(false);return;}
     const sig=await uploadSignature(signaturePad,'manager');
     const{data:report,error}=await supabaseClient.from('reports').insert({...data,manager_signature_path:sig,status:'sent',sent_at:new Date().toISOString()}).select().single();
     if(error) throw error;
