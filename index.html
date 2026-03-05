@@ -997,7 +997,12 @@ input,select,textarea,button { -webkit-appearance:none; font-size:16px; }
   </div>
   <div class="nav-item" onclick="showPage('reports')" id="nav-reports">
     <span class="nav-icon">📄</span>
-    <span>דוחות</span>
+    <span>דוחות פרויקטים</span>
+  </div>
+  <div class="nav-item" onclick="showPage('purchase-orders')" id="nav-purchase-orders">
+    <span class="nav-icon">🏷️</span>
+    <span>הזמנות עבודה</span>
+    <span class="nav-badge" id="badge-po">0</span>
   </div>
   <a href="#" onclick="switchTab('journal')" style="text-decoration:none;">
     <div class="nav-item" style="background:linear-gradient(90deg,rgba(154,111,0,0.18),transparent);color:#9a6f00;border-right:3px solid #9a6f00;margin-top:8px;">
@@ -1113,6 +1118,7 @@ input,select,textarea,button { -webkit-appearance:none; font-size:16px; }
     <div class="topbar">
       <div class="page-title">ספר <span>קבלנים</span></div>
       <div class="topbar-actions">
+        <button class="btn btn-ghost" onclick="showPage('dashboard')" title="חזרה ללוח בקרה" style="font-size:16px;padding:6px 10px;">🏠</button>
         <button class="btn btn-ghost" onclick="exportContractorsCSV()" title="ייצוא לאקסל">📥 CSV</button>
         <button class="btn btn-primary" onclick="openContractorModal()">➕ קבלן חדש</button>
       </div>
@@ -1155,6 +1161,7 @@ input,select,textarea,button { -webkit-appearance:none; font-size:16px; }
     <div class="topbar">
       <div class="page-title">ניהול <span>פרויקטים</span></div>
       <div class="topbar-actions">
+        <button class="btn btn-ghost" onclick="showPage('dashboard')" title="חזרה ללוח בקרה" style="font-size:16px;padding:6px 10px;">🏠</button>
         <button class="btn btn-ghost" onclick="exportProjectsCSV()" title="ייצוא לאקסל">📥 CSV</button>
         <button class="btn btn-primary" onclick="openProjectModal()">➕ פרויקט חדש</button>
       </div>
@@ -1202,6 +1209,7 @@ input,select,textarea,button { -webkit-appearance:none; font-size:16px; }
     <div class="topbar">
       <div class="page-title">הצעות מחיר <span>מקבלנים</span></div>
       <div class="topbar-actions">
+        <button class="btn btn-ghost" onclick="showPage('dashboard')" title="חזרה ללוח בקרה" style="font-size:16px;padding:6px 10px;">🏠</button>
         <button class="btn btn-primary" onclick="openNewQuoteModal()">➕ הצעה חדשה</button>
       </div>
     </div>
@@ -1265,6 +1273,7 @@ input,select,textarea,button { -webkit-appearance:none; font-size:16px; }
     <div class="topbar">
       <div class="page-title">מעקב <span>כספי</span></div>
       <div class="topbar-actions">
+        <button class="btn btn-ghost" onclick="showPage('dashboard')" title="חזרה ללוח בקרה" style="font-size:16px;padding:6px 10px;">🏠</button>
         <button class="btn btn-primary" onclick="openTransactionModal()">➕ תנועה חדשה</button>
       </div>
     </div>
@@ -1402,11 +1411,84 @@ input,select,textarea,button { -webkit-appearance:none; font-size:16px; }
     </div>
   </div>
 
+
+  <!-- ══ PAGE: PURCHASE ORDERS ══════════════════════════════ -->
+  <div class="page" id="page-purchase-orders">
+    <div class="topbar">
+      <div class="page-title">הזמנות <span>עבודה</span></div>
+      <div class="topbar-actions">
+        <button class="btn btn-ghost" onclick="showPage('dashboard')" title="חזרה ללוח בקרה" style="font-size:16px;padding:6px 10px;">🏠</button>
+        <button class="btn btn-ghost" onclick="exportPOsCSV()" title="ייצוא">📥 CSV</button>
+      </div>
+    </div>
+
+    <!-- Stats strip -->
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:18px;">
+      <div style="background:linear-gradient(135deg,#1a3d5c,#2d6a9f);color:white;border-radius:10px;padding:14px 16px;text-align:center;">
+        <div style="font-size:22px;font-weight:900;" id="po-stat-total">—</div>
+        <div style="font-size:11px;opacity:.8;margin-top:3px;">סה״כ הזמנות</div>
+      </div>
+      <div style="background:linear-gradient(135deg,#1e6b30,#22c55e);color:white;border-radius:10px;padding:14px 16px;text-align:center;">
+        <div style="font-size:22px;font-weight:900;" id="po-stat-sent-wa">—</div>
+        <div style="font-size:11px;opacity:.8;margin-top:3px;">נשלחו WhatsApp</div>
+      </div>
+      <div style="background:linear-gradient(135deg,#1e40af,#3b82f6);color:white;border-radius:10px;padding:14px 16px;text-align:center;">
+        <div style="font-size:22px;font-weight:900;" id="po-stat-sent-email">—</div>
+        <div style="font-size:11px;opacity:.8;margin-top:3px;">נשלחו Email</div>
+      </div>
+      <div style="background:linear-gradient(135deg,#7a4f00,#e8b84b);color:#1a1a1a;border-radius:10px;padding:14px 16px;text-align:center;">
+        <div style="font-size:22px;font-weight:900;" id="po-stat-grand">—</div>
+        <div style="font-size:11px;opacity:.7;margin-top:3px;">סה״כ כולל מע״מ</div>
+      </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="search-bar" style="margin-bottom:14px;">
+      <div class="search-input-wrap">
+        <span class="search-icon">🔍</span>
+        <input type="text" id="po-search" placeholder="חיפוש לפי קבלן, פרויקט, מספר..." oninput="filterPOs()">
+      </div>
+      <select id="po-filter-project" onchange="filterPOs()" style="width:200px;">
+        <option value="">כל הפרויקטים</option>
+      </select>
+      <select id="po-filter-status" onchange="filterPOs()" style="width:160px;">
+        <option value="">כל הסטטוסים</option>
+        <option value="active">פעילה</option>
+        <option value="completed">הושלמה</option>
+        <option value="cancelled">בוטלה</option>
+      </select>
+    </div>
+
+    <!-- Table -->
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>מס׳ הזמנה</th>
+            <th>קבלן</th>
+            <th>פרויקט</th>
+            <th>תאריך</th>
+            <th>תחילה</th>
+            <th>סיום</th>
+            <th>סה״כ + מע״מ</th>
+            <th style="text-align:center;">נשלח</th>
+            <th style="text-align:center;">חותמת</th>
+            <th class="td-actions">פעולות</th>
+          </tr>
+        </thead>
+        <tbody id="po-tbody">
+          <tr><td colspan="10"><div class="empty-state"><div class="empty-icon">🏷️</div><h3>אין הזמנות עבודה עדיין</h3><p>צור הזמנה מתוך הצעת מחיר</p></div></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
   <!-- ══ PAGE: REPORTS ══ -->
   <div class="page" id="page-reports">
     <div class="topbar">
-      <div class="page-title">יומני <span>עבודה</span></div>
+      <div class="page-title">דוחות <span>פרויקטים</span></div>
       <div class="topbar-actions">
+        <button class="btn btn-ghost" onclick="showPage('dashboard')" title="חזרה ללוח בקרה" style="font-size:16px;padding:6px 10px;">🏠</button>
         <a href="#" onclick="switchTab('journal')" class="btn btn-primary">📝 יומן חדש</a>
       </div>
     </div>
@@ -1454,6 +1536,7 @@ input,select,textarea,button { -webkit-appearance:none; font-size:16px; }
   </div>
 
       <div id="page-forecast" class="page" style="display:none">
+        <div style="padding:8px 20px;"><button class="btn btn-ghost" onclick="showPage('dashboard')" title="חזרה ללוח בקרה" style="font-size:16px;padding:6px 10px;">🏠</button></div>
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;flex-wrap:wrap;gap:12px">
           <h2 style="font-size:22px;font-weight:800;color:#1a3d5c">&#128200; תחזית הכנסות ורווח</h2>
           <button onclick="renderForecast()" style="background:linear-gradient(135deg,#9a6f00,#c9a84c);border:none;color:#1a1a2e;padding:10px 20px;border-radius:10px;cursor:pointer;font-family:Heebo,sans-serif;font-weight:700">&#128260; רענן</button>
@@ -1513,6 +1596,7 @@ input,select,textarea,button { -webkit-appearance:none; font-size:16px; }
             <div style="font-size:12px;color:#888">ניהול לוח זמנים — לחץ על פס לעריכה</div>
           </div>
           <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+            <button class="btn btn-ghost" onclick="showPage('dashboard')" title="חזרה ללוח בקרה" style="font-size:16px;padding:6px 10px;">🏠</button>
             <!-- View toggle -->
             <div style="display:flex;background:#f0f0f0;border-radius:8px;padding:3px;gap:2px">
               <button id="gantt-view-combined" onclick="setGanttView('combined')"
@@ -2738,6 +2822,13 @@ function showPage(page) {
     document.getElementById('page-forecast').style.display = 'block';
     document.getElementById('nav-forecast').classList.add('active');
     renderForecast();
+    return;
+  }
+  if(page === 'purchase-orders') {
+    document.getElementById('page-purchase-orders').style.display = 'block';
+    const navPO = document.getElementById('nav-purchase-orders');
+    if(navPO) navPO.classList.add('active');
+    loadPurchaseOrders();
     return;
   }
   // Regular pages use .active class (CSS handles display)
@@ -6035,7 +6126,7 @@ th{padding:10px 12px;text-align:right;font-size:12px;}
 <!-- TOOLBAR -->
 <div class="no-print" style="background:#1a3d5c;color:white;padding:12px 20px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;position:sticky;top:0;z-index:999;">
   <span style="font-weight:800;font-size:14px;">📋 ${PO_NUM}</span>
-  <button onclick="window.print()" style="background:#22c55e;color:#fff;border:none;padding:8px 14px;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;">🖨️ הדפס</button>
+  <button onclick="doPrint()" style="background:#22c55e;color:#fff;border:none;padding:8px 14px;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;">🖨️ הדפס</button>
   <button id="btn-gen-pdf" onclick="generateAndUpload()" style="background:#9a6f00;color:#fff;border:none;padding:8px 14px;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;">⏳ מכין PDF...</button>
   <button id="btn-wa"    onclick="doWhatsApp()"  disabled style="background:#25D366;color:#fff;border:none;padding:8px 14px;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;opacity:.45;">💬 WhatsApp</button>
   <button id="btn-email" onclick="doEmail()"     disabled style="background:#4285f4;color:#fff;border:none;padding:8px 14px;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;opacity:.45;">📧 Email</button>
@@ -6216,6 +6307,16 @@ function doDl() {
 }
 
 // ── WhatsApp ──────────────────────────────────────────────
+function doPrint() {
+  window.print();
+  // Mark hard copy sent
+  if(PO_ID_VAL && SB_URL && SB_KEY_VAL) {
+    try {
+      const sbp = window.supabase.createClient(SB_URL, SB_KEY_VAL);
+      sbp.from('purchase_orders').update({sent_hard_copy:true, sent_hard_copy_at:new Date().toISOString()}).eq('id',PO_ID_VAL);
+    } catch(e){}
+  }
+}
 function doWhatsApp() {
   const link = _pdfUrl ? '\\n\\n📎 הזמנה מלאה להורדה:\\n' + _pdfUrl : '';
   const msg  = 'שלום ' + CONTR_NAME + ',\\n\\n'
@@ -6227,6 +6328,13 @@ function doWhatsApp() {
     + '\\nנא לאשר קבלת ההזמנה.'
     + link;
   window.open('https://wa.me/?text='+encodeURIComponent(msg));
+  // Mark as sent in DB
+  if(PO_ID_VAL && SB_URL && SB_KEY_VAL) {
+    try {
+      const sbc = window.supabase.createClient(SB_URL, SB_KEY_VAL);
+      sbc.from('purchase_orders').update({sent_whatsapp:true, sent_whatsapp_at:new Date().toISOString()}).eq('id',PO_ID_VAL);
+    } catch(e){}
+  }
 }
 
 // ── Email via Resend API ──────────────────────────────────
@@ -6290,6 +6398,13 @@ async function doEmail() {
     if(btn){btn.disabled=false;btn.textContent='✅ נשלח!';}
     setStatus('✅ דוא״ל נשלח ל-' + CONTR_EMAIL,'#86efac');
     setTimeout(()=>setStatus('',''),5000);
+    // Mark as sent in DB
+    if(PO_ID_VAL && SB_URL && SB_KEY_VAL) {
+      try {
+        const sbc2 = window.supabase.createClient(SB_URL, SB_KEY_VAL);
+        sbc2.from('purchase_orders').update({sent_email:true, sent_email_at:new Date().toISOString()}).eq('id',PO_ID_VAL);
+      } catch(e){}
+    }
   } catch(err) {
     if(btn){btn.disabled=false;btn.textContent='📧 Email';}
     setStatus('שגיאת דוא״ל: '+err.message,'#ef4444');
@@ -6305,6 +6420,182 @@ async function doEmail() {
   else showToast('הרשה חלונות קופצים','error');
 }
 
+
+
+// ════════════════════════════════════════════════════════
+//  PURCHASE ORDERS LIST PAGE
+// ════════════════════════════════════════════════════════
+let allPOs = [];
+
+async function loadPurchaseOrders() {
+  const tbody = document.getElementById('po-tbody');
+  if(!tbody) return;
+  tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;padding:20px;color:#888;">⏳ טוען...</td></tr>';
+
+  const { data, error } = await sb
+    .from('purchase_orders')
+    .select('*')
+    .order('created_at', { ascending: false });
+
+  if(error) {
+    tbody.innerHTML = `<tr><td colspan="10" style="color:#c00;padding:12px;">${error.message}</td></tr>`;
+    return;
+  }
+
+  allPOs = data || [];
+
+  // Update nav badge
+  const badge = document.getElementById('badge-po');
+  if(badge) badge.textContent = allPOs.length;
+
+  // Populate project filter
+  const pf = document.getElementById('po-filter-project');
+  if(pf) {
+    const projects = [...new Set(allPOs.map(p => p.project_name).filter(Boolean))].sort();
+    pf.innerHTML = '<option value="">כל הפרויקטים</option>'
+      + projects.map(p => `<option value="${esc(p)}">${esc(p)}</option>`).join('');
+  }
+
+  renderPOList(allPOs);
+  renderPOStats(allPOs);
+}
+
+function renderPOStats(list) {
+  const total     = list.length;
+  const sentWA    = list.filter(p => p.sent_whatsapp).length;
+  const sentEmail = list.filter(p => p.sent_email).length;
+  const grand     = list.reduce((a,p) => a + parseFloat(p.grand_total||0), 0);
+
+  const el = id => document.getElementById(id);
+  if(el('po-stat-total'))    el('po-stat-total').textContent    = total;
+  if(el('po-stat-sent-wa'))  el('po-stat-sent-wa').textContent  = sentWA;
+  if(el('po-stat-sent-email')) el('po-stat-sent-email').textContent = sentEmail;
+  if(el('po-stat-grand'))    el('po-stat-grand').textContent    = '₪' + fmtMoney(grand);
+}
+
+function filterPOs() {
+  const q    = (document.getElementById('po-search')?.value||'').toLowerCase();
+  const proj = document.getElementById('po-filter-project')?.value||'';
+  const stat = document.getElementById('po-filter-status')?.value||'';
+  const filtered = allPOs.filter(p => {
+    const txt = (p.po_number+' '+p.contractor_name+' '+p.project_name).toLowerCase();
+    return (!q || txt.includes(q))
+      && (!proj || p.project_name === proj)
+      && (!stat || p.status === stat);
+  });
+  renderPOList(filtered);
+}
+
+function renderPOList(list) {
+  const tbody = document.getElementById('po-tbody');
+  if(!tbody) return;
+  if(!list.length) {
+    tbody.innerHTML = '<tr><td colspan="10"><div class="empty-state"><div class="empty-icon">🏷️</div><h3>אין הזמנות</h3></div></td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = list.map(po => {
+    const grand = parseFloat(po.grand_total||0);
+
+    // Sent indicators
+    const waStamp    = po.sent_whatsapp
+      ? `<span title="נשלח WhatsApp ${po.sent_whatsapp_at ? fmtDate(po.sent_whatsapp_at) : ''}"
+           style="display:inline-block;background:#25D366;color:white;border-radius:12px;padding:2px 8px;font-size:10px;font-weight:700;">💬 WA</span>`
+      : '<span style="color:#ccc;font-size:11px;">—</span>';
+
+    const emailStamp = po.sent_email
+      ? `<span title="נשלח Email ${po.sent_email_at ? fmtDate(po.sent_email_at) : ''}"
+           style="display:inline-block;background:#4285f4;color:white;border-radius:12px;padding:2px 8px;font-size:10px;font-weight:700;">📧 Email</span>`
+      : '<span style="color:#ccc;font-size:11px;">—</span>';
+
+    const hardCopyStamp = po.sent_hard_copy
+      ? `<span title="עותק מודפס ${po.sent_hard_copy_at ? fmtDate(po.sent_hard_copy_at) : ''}"
+           style="display:inline-block;background:#6b7280;color:white;border-radius:12px;padding:2px 8px;font-size:10px;font-weight:700;">🖨️ מודפס</span>`
+      : '<span style="color:#ccc;font-size:11px;">—</span>';
+
+    // Official stamp — shown when at least one channel sent
+    const anySent = po.sent_whatsapp || po.sent_email || po.sent_hard_copy;
+    const officialStamp = anySent
+      ? `<div style="display:inline-block;border:2px solid #1a3d5c;border-radius:6px;padding:3px 8px;transform:rotate(-3deg);font-size:9px;font-weight:900;color:#1a3d5c;letter-spacing:1px;opacity:.85;">✅ נשלח</div>`
+      : `<div style="color:#f59e0b;font-size:11px;font-weight:700;">⏳ טרם נשלח</div>`;
+
+    // Status badge
+    const statusColors = {active:'badge-green', completed:'badge-blue', cancelled:'badge-red'};
+    const statusHe     = {active:'פעילה', completed:'הושלמה', cancelled:'בוטלה'};
+    const statBadge    = `<span class="badge ${statusColors[po.status]||'badge-gray'}">${statusHe[po.status]||po.status}</span>`;
+
+    return `<tr>
+      <td style="font-family:monospace;font-weight:700;color:#1a3d5c;font-size:12px;">${esc(po.po_number||'—')}</td>
+      <td><strong>${esc(po.contractor_name||'—')}</strong><br><span style="font-size:11px;color:#888;">${esc(po.contractor_contact||'')}</span></td>
+      <td>${esc(po.project_name||'—')}</td>
+      <td style="font-size:12px;color:#666;">${po.po_date ? fmtDate(po.po_date) : '—'}</td>
+      <td style="font-size:12px;color:#1e6b30;font-weight:700;">${po.start_date ? fmtDate(po.start_date) : '—'}</td>
+      <td style="font-size:12px;color:#b52a1d;font-weight:700;">${po.end_date ? fmtDate(po.end_date) : '—'}</td>
+      <td style="font-weight:800;color:#1a3d5c;">₪${fmtMoney(grand)}</td>
+      <td style="text-align:center;">
+        <div style="display:flex;flex-direction:column;gap:3px;align-items:center;">
+          ${waStamp}${emailStamp}${hardCopyStamp}
+        </div>
+      </td>
+      <td style="text-align:center;">${officialStamp}</td>
+      <td class="td-actions">
+        <div class="btn-group">
+          <button class="btn btn-ghost btn-sm btn-icon" onclick="reprintPO('${po.id}')" title="הדפס/שלח שוב">🖨️</button>
+          <button class="btn btn-ghost btn-sm btn-icon" onclick="markHardCopy('${po.id}')" title="סמן כהודפס ונמסר" style="${po.sent_hard_copy?'opacity:.4':''}">📋</button>
+          <button class="btn btn-ghost btn-sm btn-icon" onclick="deletePO('${po.id}')" title="מחק">🗑️</button>
+        </div>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+// ── Reprint / resend existing PO ─────────────────────────────
+async function reprintPO(poId) {
+  const po = allPOs.find(p => p.id === poId);
+  if(!po) return;
+  const items = JSON.parse(po.items_json||'[]');
+  // Reopen print window — PDF will regenerate & re-upload
+  printPO(po, items, po.signature_data||null,
+    buildGcalUrl(po.po_number, po.project_name, po.contractor_name, po.start_date, po.end_date, po.grand_total),
+    window._sbUrl||'', window._sbKey||'', po.contractor_email||''
+  );
+}
+
+// ── Mark hard copy delivered ──────────────────────────────────
+async function markHardCopy(poId) {
+  if(!confirm('לסמן הזמנה זו כמועברת ידנית (עותק מודפס)?')) return;
+  const { error } = await sb.from('purchase_orders').update({
+    sent_hard_copy: true,
+    sent_hard_copy_at: new Date().toISOString()
+  }).eq('id', poId);
+  if(error) { showToast('שגיאה: '+error.message,'error'); return; }
+  showToast('✅ סומן כהועבר ידנית','success');
+  await loadPurchaseOrders();
+}
+
+// ── Delete PO ─────────────────────────────────────────────────
+async function deletePO(poId) {
+  if(!confirm('למחוק הזמנת עבודה זו לצמיתות?')) return;
+  const { error } = await sb.from('purchase_orders').delete().eq('id', poId);
+  if(error) { showToast('שגיאה: '+error.message,'error'); return; }
+  showToast('🗑️ הזמנה נמחקה','success');
+  await loadPurchaseOrders();
+}
+
+// ── CSV export ────────────────────────────────────────────────
+function exportPOsCSV() {
+  const today = new Date().toLocaleDateString('he-IL').replace(/\//g,'-');
+  const headers = ['מס׳ הזמנה','קבלן','פרויקט','תאריך הזמנה','תחילה','סיום','לפני מע״מ','מע״מ','סה״כ','נשלח WA','נשלח Email','עותק מודפס','סטטוס'];
+  const rows = [headers, ...allPOs.map(p => [
+    p.po_number||'', p.contractor_name||'', p.project_name||'',
+    p.po_date||'', p.start_date||'', p.end_date||'',
+    p.subtotal||0, p.vat_amount||0, p.grand_total||0,
+    p.sent_whatsapp?'כן':'לא', p.sent_email?'כן':'לא', p.sent_hard_copy?'כן':'לא',
+    {active:'פעילה',completed:'הושלמה',cancelled:'בוטלה'}[p.status]||p.status
+  ])];
+  downloadCSV(rows, 'הזמנות_עבודה_'+today+'.csv');
+  showToast('📥 ייוצאו '+allPOs.length+' הזמנות','success');
+}
 
 // ── Import from Quote → Gantt ───────────────────────────────
 function openImportFromQuoteModal() {
