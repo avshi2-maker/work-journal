@@ -3,7 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📋</text></svg>">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#f5e9c4">
 <title>יומן פעילות מנוהל AI — בני פרסקי</title>
@@ -169,6 +171,38 @@ body{
 .btn-co-report:hover{background:#0f2440;}
 .btn-co-new{background:linear-gradient(135deg,#c9860a,#e8b84b);color:white;border:none;border-radius:8px;padding:8px 16px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;}
 .co-add-bar{padding:10px 16px;background:#fffdf4;border-top:1px solid #fde68a;display:flex;gap:8px;flex-wrap:wrap;align-items:center;}
+
+
+/* Sidebar slide-in on 768px (hamburger mode) */
+@media(min-width:481px) and (max-width:768px){
+  .sidebar{transition:width 0.25s ease;}
+  .sidebar.mobile-open{
+    width:220px!important;
+    z-index:150;
+  }
+  .sidebar.mobile-open .sidebar-logo,
+  .sidebar.mobile-open .sidebar-clock,
+  .sidebar.mobile-open .nav-item span,
+  .sidebar.mobile-open .user-name,
+  .sidebar.mobile-open .user-role,
+  .sidebar.mobile-open .sidebar-bottom .user-chip > *:not(.user-avatar){
+    display:block!important;
+  }
+  .sidebar.mobile-open .nav-item{justify-content:flex-start;padding:12px 16px;}
+}
+
+
+@media(min-width:481px) and (max-width:768px){
+  #btn-hamburger{display:block!important;}
+  .nav-item{position:relative;}
+}
+
+
+@media(max-width:480px){
+  .contractor-mini{padding:10px 12px;gap:10px;}
+  .contractor-name{font-size:13px;}
+  .contractor-role{font-size:11px;}
+}
 
 .quotes-toolbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:18px;}
 .quotes-toolbar select,.quotes-toolbar input[type=text]{padding:8px 14px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;background:white;font-family:inherit;color:var(--text1);}
@@ -538,15 +572,192 @@ textarea{min-height:80px;resize:vertical;}
 
 /* ── RESPONSIVE ── */
 @media(max-width:1100px){.stats-grid{grid-template-columns:repeat(2,1fr);}}
-@media(max-width:768px){
-  .sidebar{width:60px;}
-  .sidebar-logo,.nav-item span,.user-name,.user-role,.sidebar-bottom .user-chip > *:not(.user-avatar){display:none;}
-  .nav-item{justify-content:center;padding:14px;}
-  .main{margin-right:60px;padding:20px 16px;}
-  .stats-grid{grid-template-columns:1fr 1fr;}
-  .form-grid,.form-grid.three{grid-template-columns:1fr;}
-  .form-group.span2,.form-group.span3{grid-column:span 1;}
+
+/* ═══════════════════════════════════════════════════════════
+   FULL MOBILE RESPONSIVE — Android & iOS
+   Breakpoints: 1100 tablet | 768 mobile-landscape | 480 mobile
+   ═══════════════════════════════════════════════════════════ */
+
+/* Tablet */
+@media(max-width:1100px){
+  .stats-grid{grid-template-columns:repeat(2,1fr);}
+  .form-grid.three{grid-template-columns:1fr 1fr;}
 }
+
+/* Mobile landscape + small tablets 768px */
+@media(max-width:768px){
+  /* Sidebar: icon-only strip */
+  .sidebar{
+    width:56px;
+    overflow:visible;
+    padding-top:env(safe-area-inset-top,0);
+  }
+  .sidebar-logo,.sidebar-clock,.nav-item span,
+  .user-name,.user-role,
+  .sidebar-bottom .user-chip > *:not(.user-avatar){display:none;}
+  .nav-item{justify-content:center;padding:12px 0;border-radius:0;}
+  .nav-item .nav-icon{font-size:20px;margin:0;}
+  .nav-badge{position:absolute;top:6px;right:6px;font-size:9px;min-width:16px;height:16px;line-height:16px;}
+  .user-avatar{width:32px;height:32px;font-size:13px;margin:auto;}
+
+  /* Main content */
+  .main{
+    margin-right:56px;
+    padding:16px 12px 80px;
+    min-height:100vh;
+  }
+
+  /* Stats 2-col */
+  .stats-grid{grid-template-columns:1fr 1fr;gap:10px;}
+  .stat-card{padding:14px 10px;}
+  .stat-value{font-size:18px;}
+  .stat-icon{font-size:24px;}
+
+  /* Tables: horizontal scroll */
+  .table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;border-radius:10px;}
+  table{min-width:520px;font-size:12px;}
+  th,td{padding:8px 8px;white-space:nowrap;}
+
+  /* Forms */
+  .form-grid,.form-grid.three,.form-grid.two{grid-template-columns:1fr;}
+  .form-group.span2,.form-group.span3{grid-column:span 1;}
+  .topbar{flex-wrap:wrap;gap:8px;}
+  .page-title{font-size:18px;}
+  .search-bar{flex-wrap:wrap;gap:8px;}
+  .search-bar input,.search-bar select{width:100%;}
+
+  /* Modals: full screen */
+  .modal-overlay{align-items:flex-end;padding:0;}
+  .modal{
+    width:100%!important;
+    max-width:100%!important;
+    max-height:92vh;
+    border-radius:20px 20px 0 0;
+    overflow-y:auto;
+    -webkit-overflow-scrolling:touch;
+    padding-bottom:env(safe-area-inset-bottom,16px);
+  }
+  .modal-body{max-height:65vh;overflow-y:auto;-webkit-overflow-scrolling:touch;}
+
+  /* Quote cards */
+  .quote-card-header{padding:12px 14px;flex-wrap:wrap;gap:6px;}
+  .quote-card-header .qh-title{font-size:13px;}
+  .quote-card-footer{flex-wrap:wrap;gap:8px;padding:10px 12px;}
+  .co-items-table{min-width:680px;}
+
+  /* Buttons: larger touch targets */
+  .btn,.btn-primary,.btn-ghost,.btn-add,.btn-co-new,.btn-quote-add-item{
+    min-height:40px;padding:9px 14px;font-size:13px;
+  }
+  button{min-height:36px;touch-action:manipulation;}
+
+  /* Forecast chart */
+  #forecast-chart{overflow-x:auto;-webkit-overflow-scrolling:touch;}
+}
+
+/* Mobile portrait 480px */
+@media(max-width:480px){
+  /* Sidebar becomes bottom nav on smallest screens */
+  .sidebar{
+    position:fixed;
+    top:auto!important;
+    bottom:0;
+    right:0;
+    left:0;
+    width:100%!important;
+    height:56px;
+    flex-direction:row;
+    overflow-x:auto;
+    overflow-y:hidden;
+    -webkit-overflow-scrolling:touch;
+    z-index:200;
+    padding:0;
+    padding-bottom:env(safe-area-inset-bottom,0);
+    border-top:1px solid rgba(255,255,255,0.2);
+    border-right:none;
+    justify-content:space-around;
+    align-items:center;
+    background:linear-gradient(180deg,#1a3d5c,#0f2440);
+  }
+  .sidebar-logo,.sidebar-clock,.sidebar-bottom{display:none!important;}
+  .nav-item{
+    flex:0 0 auto;
+    flex-direction:column;
+    padding:4px 10px;
+    border-radius:8px;
+    min-width:48px;
+    align-items:center;
+    border-right:none!important;
+    background:none!important;
+  }
+  .nav-item .nav-icon{font-size:18px;margin:0 0 2px;}
+  .nav-item span:last-of-type{display:block!important;font-size:9px;color:rgba(255,255,255,0.7);white-space:nowrap;max-width:52px;overflow:hidden;text-overflow:ellipsis;}
+  .nav-item.active{background:rgba(255,255,255,0.15)!important;}
+  .nav-badge{position:absolute;top:2px;right:4px;font-size:8px;min-width:14px;height:14px;line-height:14px;}
+
+  /* Main: no right margin, bottom padding for nav */
+  .main{
+    margin-right:0!important;
+    padding:12px 10px 72px!important;
+  }
+
+  /* Stats 1-col on very small */
+  .stats-grid{grid-template-columns:1fr 1fr;gap:8px;}
+  .stat-card{padding:12px 8px;}
+  .stat-value{font-size:16px;}
+
+  /* Page title smaller */
+  .page-title{font-size:16px;}
+  .topbar{padding:0 0 12px;}
+  .topbar-actions .btn{padding:8px 12px;font-size:12px;}
+
+  /* Search bar stacked */
+  .search-bar{flex-direction:column;gap:8px;}
+
+  /* Cards: tighter */
+  .contractor-card{padding:14px 12px;}
+  .contractor-avatar{width:40px;height:40px;font-size:15px;}
+
+  /* Tables even more compact */
+  table{font-size:11px;}
+  th,td{padding:6px 6px;}
+
+  /* Modal full-height on mobile */
+  .modal{max-height:88vh;}
+  .modal-header{padding:14px 16px;}
+  .modal-body{max-height:60vh;}
+
+  /* Quotes */
+  .quote-card-footer{flex-direction:column;align-items:stretch;}
+  .quote-card-footer > div{justify-content:stretch;}
+  .quote-card-footer button,.quote-card-footer select{width:100%;}
+
+  /* CO section */
+  .co-card-hdr{flex-wrap:wrap;gap:6px;}
+  .co-add-bar{flex-direction:column;}
+  .co-add-bar button,.co-add-bar select{width:100%;}
+
+  /* Reports send toolbar */
+  #reports-send-toolbar{flex-direction:column;align-items:stretch;gap:8px;}
+  #reports-send-toolbar button{width:100%;}
+
+  /* Forecast manual update */
+  #forecast-project-sel,#forecast-budget,#forecast-profit{width:100%!important;}
+
+  /* Journal section */
+  .form-row{grid-template-columns:1fr!important;}
+  .section h2{font-size:15px;}
+  .tomorrow-row{flex-direction:column;align-items:flex-start;gap:6px;}
+  .tomorrow-label{min-width:unset;}
+}
+
+/* iOS safe area padding */
+@supports(padding:max(0px)){
+  .main{
+    padding-bottom:max(80px,calc(56px + env(safe-area-inset-bottom)));
+  }
+}
+
 
 
 /* ══ JOURNAL STYLES ══ */
@@ -575,8 +786,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Heebo',Arial,sans-
 .form-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px}
 .form-row.three-col{grid-template-columns:1fr 1fr 1fr}
 .form-row.four-col{grid-template-columns:1fr 1fr 1fr 1fr}
-@media(max-width:600px){.form-row,.form-row.three-col,.form-row.four-col{grid-template-columns:1fr}}
-input,select,textarea{width:100%;padding:12px;border:2px solid #e1e8ed;border-radius:8px;font-size:15px;font-family:inherit}
+@media(max-width:600px){.form-row,.form-row.three-col,.form-row.four-col{grid-template-columns:1fr;gap:8px;}}
+input,select,textarea{width:100%;padding:12px;border:2px solid #e1e8ed;border-radius:8px;font-size:16px;font-family:inherit;-webkit-appearance:none;appearance:none;}
 input:focus,select:focus,textarea:focus{outline:none;border-color:#667eea}
 textarea{min-height:100px;resize:vertical}
 .voice-textarea-container{position:relative;margin-bottom:15px}
@@ -638,9 +849,9 @@ button:active{transform:scale(0.98)}
 .btn-add-contractor:hover{transform:scale(1.03);box-shadow:0 3px 12px rgba(39,174,96,0.35)}
 .contractors-empty{text-align:center;color:#aaa;padding:20px;font-style:italic;font-size:13px}
 @media(max-width:600px){
-  .contractors-table-wrap{border-radius:6px}
-  .contractors-table{min-width:560px;font-size:12px}
-  .contractors-table thead th,.contractors-table td{padding:6px 7px}
+  .contractors-table-wrap{border-radius:6px;overflow-x:auto;-webkit-overflow-scrolling:touch;}
+  .contractors-table{min-width:480px;font-size:11px}
+  .contractors-table thead th,.contractors-table td{padding:5px 6px}
 }
 .print-header,.print-footer{display:none}
 @media print{
@@ -668,25 +879,24 @@ button:active{transform:scale(0.98)}
   .helper-text{display:none}
   *{-webkit-print-color-adjust:exact;print-color-adjust:exact}
 }
-@media(max-width:768px){
-  .header h1{font-size:20px}
-  .legal-notice{font-size:11px;padding:6px 12px}
-  .btn-print{top:10px;left:10px;padding:8px 16px;font-size:14px}
-  .report-id{font-size:18px}
+@media(max-width:480px){
+  .header h1{font-size:18px}
+  .legal-notice{font-size:10px;padding:5px 10px}
+  .btn-print{top:8px;left:8px;padding:7px 14px;font-size:13px}
+  .report-id{font-size:16px}
 }
 
 
 /* ══ RESPONSIVE ══ */
-@media(max-width:768px){
-  #crm-panel .sidebar{width:60px}
-  #crm-panel .main{margin-right:60px;padding:70px 14px 20px}
-  .top-tab span:last-child{font-size:12px}
-}
+/* handled above */
 
 /* 4-tab bar adjust */
 #top-tabs { height: 54px; }
 .top-tab { font-size: 13px; }
 @media(max-width:640px) { .top-tab span:last-child { font-size: 10px; } }
+/* iOS tap highlight remove */
+* { -webkit-tap-highlight-color: transparent; }
+input,select,textarea,button { -webkit-appearance:none; font-size:16px; }
 
 /* Tomorrow plan rows */
 .tomorrow-row{display:flex;align-items:center;gap:10px;padding:10px;border-radius:8px;background:#f8f9fa;margin-bottom:8px;border-right:4px solid #667eea}
@@ -729,6 +939,9 @@ button:active{transform:scale(0.98)}
 <!-- SIDEBAR -->
 <nav class="sidebar">
   <div class="sidebar-logo">
+    <button onclick="toggleMobileSidebar()" id="btn-hamburger"
+      style="display:none;background:none;border:none;color:white;font-size:22px;cursor:pointer;padding:4px;position:absolute;top:12px;right:12px;z-index:160;min-height:36px;"
+      aria-label="תפריט">☰</button>
     <div class="brand">יומן פעילות</div>
     <div class="sub">מנוהל AI | בני פרסקי</div>
     <div class="sidebar-clock">
@@ -3888,6 +4101,24 @@ function printCOReport(coId, qid) {
   win.document.close();
 }
 // ══════════════════════════════════════════════════════════════
+
+
+// ── Mobile hamburger toggle ────────────────────────────────
+function toggleMobileSidebar() {
+  const sidebar = document.querySelector('#crm-panel .sidebar');
+  if(!sidebar) return;
+  const isOpen = sidebar.classList.contains('mobile-open');
+  sidebar.classList.toggle('mobile-open', !isOpen);
+  document.getElementById('crm-overlay').style.display = isOpen ? 'none' : 'block';
+}
+document.addEventListener('DOMContentLoaded', function() {
+  // Create overlay
+  const overlay = document.createElement('div');
+  overlay.id = 'crm-overlay';
+  overlay.style.cssText = 'display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.4);z-index:149;';
+  overlay.onclick = toggleMobileSidebar;
+  document.getElementById('crm-panel').appendChild(overlay);
+});
 
 // ── Digital Clock ──────────────────────────────
 function updateSidebarClock() {
