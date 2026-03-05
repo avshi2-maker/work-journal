@@ -708,22 +708,31 @@ button:active{transform:scale(0.98)}
     <span>קבלנים</span>
     <span class="nav-badge" id="badge-contractors">0</span>
   </div>
+  <div class="nav-item" onclick="showPage('quotes')" id="nav-quotes">
+    <span class="nav-icon">📋</span>
+    <span>הצעות מחיר</span>
+  </div>
   <div class="nav-item" onclick="showPage('projects')" id="nav-projects">
     <span class="nav-icon">🏗️</span>
     <span>פרויקטים</span>
     <span class="nav-badge" id="badge-projects">0</span>
   </div>
+  <div class="nav-item" onclick="showPage('gantt')" id="nav-gantt">
+    <span class="nav-icon">📅</span>
+    <span>גאנט פרויקטים</span>
+  </div>
   <div class="nav-item" onclick="showPage('finance')" id="nav-finance">
     <span class="nav-icon">💰</span>
     <span>כספים</span>
+  </div>
+  <div class="nav-item" onclick="showPage('forecast')" id="nav-forecast">
+    <span class="nav-icon">📈</span>
+    <span>תחזית הכנסות</span>
   </div>
   <div class="nav-item" onclick="showPage('reports')" id="nav-reports">
     <span class="nav-icon">📄</span>
     <span>דוחות</span>
   </div>
-          <div class="nav-item" onclick="showPage('forecast')" id="nav-forecast"><span class="nav-icon">📈</span><span>תחזית הכנסות</span></div>
-          <div class="nav-item" onclick="showPage('gantt')" id="nav-gantt"><span class="nav-icon">📅</span><span>גאנט פרויקטים</span></div>
-          <div class="nav-item" onclick="showPage('quotes')" id="nav-quotes"><span class="nav-icon">📋</span><span>הצעות מחיר</span></div>
   <a href="#" onclick="switchTab('journal')" style="text-decoration:none;">
     <div class="nav-item" style="background:linear-gradient(90deg,rgba(154,111,0,0.18),transparent);color:#9a6f00;border-right:3px solid #9a6f00;margin-top:8px;">
       <span class="nav-icon">📝</span>
@@ -1058,10 +1067,21 @@ button:active{transform:scale(0.98)}
       </select>
       <input type="date" id="reports-filter-date" onchange="filterReports()" style="width:170px;">
     </div>
+    <div id="reports-send-toolbar" style="display:none;background:linear-gradient(135deg,#1a3d5c,#2d6a9f);border-radius:12px;padding:12px 18px;margin-bottom:12px;display:none;align-items:center;gap:12px;flex-wrap:wrap;">
+      <span style="color:white;font-weight:700;font-size:14px;" id="reports-selected-count">0 נבחרו</span>
+      <div style="flex:1"></div>
+      <button onclick="sendSelectedReports('print')" style="background:white;color:#1a3d5c;border:none;border-radius:8px;padding:8px 16px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;">🖨️ הדפס נבחרים</button>
+      <button onclick="openReportSendModal('whatsapp')" style="background:#25d366;color:white;border:none;border-radius:8px;padding:8px 16px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;">💬 WhatsApp</button>
+      <button onclick="openReportSendModal('email')" style="background:#ea4335;color:white;border:none;border-radius:8px;padding:8px 16px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;">📧 דוא״ל</button>
+      <button onclick="clearReportSelection()" style="background:rgba(255,255,255,0.2);color:white;border:none;border-radius:8px;padding:8px 14px;font-size:12px;cursor:pointer;font-family:inherit;">✕ בטל בחירה</button>
+    </div>
     <div class="table-wrap">
       <table>
         <thead>
           <tr>
+            <th style="width:36px;text-align:center">
+              <input type="checkbox" id="reports-select-all" onchange="toggleAllReports(this)" title="בחר הכל" style="width:16px;height:16px;cursor:pointer;">
+            </th>
             <th>מספר דוח</th>
             <th>פרויקט</th>
             <th>תאריך</th>
@@ -1265,6 +1285,73 @@ button:active{transform:scale(0.98)}
 </main>
 
 <!-- ══ MODAL: CONTRACTOR ══ -->
+
+  <!-- Modal: Send Reports ══════════════════════════════════ -->
+  <div class="modal-overlay" id="modal-send-reports" style="display:none" onclick="closeModalOnOverlay(event,'modal-send-reports')">
+    <div class="modal" style="max-width:540px">
+      <div class="modal-header">
+        <span id="send-modal-title">📧 שליחת דוחות</span>
+        <button class="modal-close" onclick="closeModal('modal-send-reports')">✕</button>
+      </div>
+      <div class="modal-body">
+        <div style="background:#f0f4ff;border-radius:10px;padding:12px 16px;margin-bottom:16px;font-size:13px;">
+          <strong>דוחות שנבחרו:</strong>
+          <div id="send-modal-report-list" style="margin-top:6px;color:#1a3d5c;font-weight:600;"></div>
+        </div>
+        <div style="display:flex;gap:8px;margin-bottom:14px;">
+          <button id="rcpt-tab-contractors" onclick="switchRcptTab('contractors')"
+            style="flex:1;padding:8px;border-radius:8px;border:2px solid #1a3d5c;background:#1a3d5c;color:white;font-weight:700;cursor:pointer;font-family:inherit;font-size:13px;">
+            👷 קבלנים קיימים
+          </button>
+          <button id="rcpt-tab-new" onclick="switchRcptTab('new')"
+            style="flex:1;padding:8px;border-radius:8px;border:2px solid var(--border);background:white;color:var(--text2);font-weight:600;cursor:pointer;font-family:inherit;font-size:13px;">
+            ➕ איש קשר חדש
+          </button>
+        </div>
+        <div id="rcpt-panel-contractors">
+          <div style="font-size:12px;color:var(--text3);margin-bottom:8px;font-weight:600;">בחר קבלנים לשליחה:</div>
+          <div id="send-contractors-list" style="max-height:220px;overflow-y:auto;border:1.5px solid var(--border);border-radius:10px;padding:8px;display:flex;flex-direction:column;gap:4px;"></div>
+        </div>
+        <div id="rcpt-panel-new" style="display:none;">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+            <div class="form-group">
+              <label>שם מלא *</label>
+              <input type="text" id="new-rcpt-name" placeholder="שם איש הקשר" style="width:100%;padding:9px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit;">
+            </div>
+            <div class="form-group">
+              <label>חברה</label>
+              <input type="text" id="new-rcpt-company" placeholder="שם החברה" style="width:100%;padding:9px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit;">
+            </div>
+            <div class="form-group">
+              <label>טלפון (WhatsApp)</label>
+              <input type="tel" id="new-rcpt-phone" placeholder="05X-XXXXXXX" style="width:100%;padding:9px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit;">
+            </div>
+            <div class="form-group">
+              <label>דוא״ל</label>
+              <input type="email" id="new-rcpt-email" placeholder="email@example.com" style="width:100%;padding:9px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit;">
+            </div>
+          </div>
+          <div style="margin-top:8px;">
+            <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;">
+              <input type="checkbox" id="new-rcpt-save" style="width:15px;height:15px;">
+              שמור איש קשר זה ברשימת הקבלנים
+            </label>
+          </div>
+        </div>
+        <div class="form-group" style="margin-top:14px;">
+          <label>הודעה (אופציונלי)</label>
+          <textarea id="send-rcpt-message" rows="3" placeholder="טקסט ההודעה שתלווה את הדוח..." style="width:100%;padding:9px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit;resize:vertical;"></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-ghost" onclick="closeModal('modal-send-reports')">ביטול</button>
+        <button class="btn btn-primary" id="send-modal-btn" onclick="executeSendReports()">
+          <span id="send-modal-btn-label">📧 שלח</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
 <div class="modal-overlay" id="modal-contractor" style="display:none" onclick="closeModalOnOverlay(event,'modal-contractor')">
   <div class="modal">
     <div class="modal-title">
@@ -1872,6 +1959,9 @@ button:active{transform:scale(0.98)}
 <!-- Owner View -->
 <div id="ownerView" style="display:none">
   <header class="header no-print">
+    <button onclick="switchTab('crm')" style="background:linear-gradient(135deg,#1a3d5c,#2d6a9f);color:white;border:none;border-radius:10px;padding:9px 18px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:6px;">
+      ◀ חזרה ללוח בקרה
+    </button>
     <div class="security-badge">🔒 דוח מאובטח</div>
     <h1>אישור דוח עבודה</h1>
     <button class="btn-print" onclick="printReport()">🖨️ הדפס</button>
@@ -2031,6 +2121,13 @@ async function loadProjects() {
   if(error) throw error;
   allProjects = data || [];
   document.getElementById('badge-projects').textContent = allProjects.filter(p=>p.status==='active').length;
+  // Rebuild quoteSum now that both quotes and projects are loaded
+  window.quoteSum = {};
+  (window.allQuotes||[]).forEach(q=>{
+    const items = (window.allQuoteItems||[]).filter(i=>i.quote_id===q.id);
+    const sum = items.reduce((a,i)=>a+(parseFloat(i.unit_cost||0)*parseFloat(i.quantity||1)),0);
+    window.quoteSum[q.project_id] = (window.quoteSum[q.project_id]||0) + sum;
+  });
   renderProjects();
   populateProjectSelects();
 }
@@ -2541,10 +2638,13 @@ function renderReports(list) {
   const STATUS_REPORT = {draft:'badge-amber',sent:'badge-blue',approved:'badge-green'};
   const STATUS_REPORT_HE = {draft:'טיוטה',sent:'נשלח',approved:'אושר'};
   if(!data.length) {
-    tbody.innerHTML = '<tr><td colspan="7"><div class="empty-state"><div class="empty-icon">📄</div><h3>אין דוחות עדיין</h3></div></td></tr>';
+    tbody.innerHTML = '<tr><td colspan="8"><div class="empty-state"><div class="empty-icon">📄</div><h3>אין דוחות עדיין</h3></div></td></tr>';
     return;
   }
-  tbody.innerHTML = data.map(r=>`<tr>
+  tbody.innerHTML = data.map(r=>`<tr id="report-row-${r.id}">
+    <td style="text-align:center;width:36px">
+      <input type="checkbox" class="report-cb" data-id="${r.id}" data-number="${esc(r.report_number||'')}" data-project="${esc(r.project_name||allProjects.find(p=>p.id===r.project_id)?.project_name||'')}" data-date="${r.report_date||''}" onchange="onReportCbChange()" style="width:16px;height:16px;cursor:pointer;">
+    </td>
     <td style="font-family:monospace;font-size:13px">${esc(r.report_number||'—')}</td>
     <td>${esc(r.project_name||allProjects.find(p=>p.id===r.project_id)?.project_name||'—')}</td>
     <td>${r.report_date?fmtDate(r.report_date):'—'}</td>
@@ -2552,9 +2652,69 @@ function renderReports(list) {
     <td style="text-align:center">${r.total_work_hours||'—'}</td>
     <td><span class="badge ${STATUS_REPORT[r.status]||'badge-gray'}">${STATUS_REPORT_HE[r.status]||r.status||'—'}</span></td>
     <td class="td-actions"><div class="btn-group">
-      ${r.share_token?`<button class="btn btn-ghost btn-sm btn-icon" onclick="switchTab('journal'); //token=${r.share_token}')" title="צפייה">👁️</button>`:''}
+      ${r.share_token?`<button class="btn btn-ghost btn-sm btn-icon" onclick="switchTab('journal')" title="צפייה">👁️</button>`:''}
     </div></td>
   </tr>`).join('');
+  // Reset select-all
+  const sa = document.getElementById('reports-select-all');
+  if(sa) sa.checked = false;
+  updateReportToolbar();
+}
+
+function toggleAllReports(cb) {
+  document.querySelectorAll('.report-cb').forEach(c=>c.checked=cb.checked);
+  updateReportToolbar();
+}
+
+function onReportCbChange() {
+  const all = document.querySelectorAll('.report-cb');
+  const checked = document.querySelectorAll('.report-cb:checked');
+  const sa = document.getElementById('reports-select-all');
+  if(sa) sa.checked = all.length > 0 && checked.length === all.length;
+  updateReportToolbar();
+}
+
+function updateReportToolbar() {
+  const checked = document.querySelectorAll('.report-cb:checked');
+  const toolbar = document.getElementById('reports-send-toolbar');
+  const countEl = document.getElementById('reports-selected-count');
+  if(!toolbar) return;
+  if(checked.length > 0) {
+    toolbar.style.display = 'flex';
+    countEl.textContent = checked.length + ' נבחרו';
+  } else {
+    toolbar.style.display = 'none';
+  }
+}
+
+function clearReportSelection() {
+  document.querySelectorAll('.report-cb').forEach(c=>c.checked=false);
+  const sa = document.getElementById('reports-select-all');
+  if(sa) sa.checked = false;
+  updateReportToolbar();
+}
+
+function getSelectedReportIds() {
+  return Array.from(document.querySelectorAll('.report-cb:checked')).map(c=>c.dataset.id);
+}
+
+function sendSelectedReports(type) {
+  const ids = getSelectedReportIds();
+  if(!ids.length) return;
+  if(type==='print') {
+    const rows = Array.from(document.querySelectorAll('.report-cb:checked')).map(c=>`
+      <tr><td>${c.dataset.number}</td><td>${c.dataset.project}</td><td>${c.dataset.date}</td></tr>`).join('');
+    const win = window.open('','_blank');
+    win.document.write(`<!DOCTYPE html><html dir="rtl"><head><meta charset="UTF-8"><title>דוחות נבחרים</title>
+      <style>body{font-family:Arial;padding:30px;direction:rtl}table{width:100%;border-collapse:collapse}
+      th{background:#1a3d5c;color:white;padding:10px}td{padding:9px;border-bottom:1px solid #ddd}
+      h1{color:#1a3d5c}@media print{button{display:none}}</style></head><body>
+      <h1>📄 דוחות נבחרים</h1>
+      <button onclick="window.print()" style="background:#1a3d5c;color:white;border:none;padding:8px 20px;border-radius:6px;cursor:pointer;margin-bottom:16px">🖨️ הדפס</button>
+      <table><thead><tr><th>מספר דוח</th><th>פרויקט</th><th>תאריך</th></tr></thead><tbody>${rows}</tbody></table>
+      </body></html>`);
+    win.document.close();
+  }
 }
 
 function filterReports() {
@@ -2991,6 +3151,127 @@ function printQuote(qid) {
   win.document.close();
 }
 
+// ══════════════════════════════════════════════════════════════
+
+
+// ══════════════════════════════════════════════════════════════
+//  REPORT SEND MODULE
+// ══════════════════════════════════════════════════════════════
+let _sendMode = 'email'; // 'whatsapp' | 'email'
+
+function openReportSendModal(mode) {
+  _sendMode = mode;
+  const ids = getSelectedReportIds();
+  if(!ids.length) return;
+
+  // Title + button label
+  const isWA = mode === 'whatsapp';
+  document.getElementById('send-modal-title').textContent = isWA ? '💬 שליחה ב-WhatsApp' : '📧 שליחה בדוא״ל';
+  document.getElementById('send-modal-btn-label').textContent = isWA ? '💬 שלח WhatsApp' : '📧 שלח דוא״ל';
+
+  // Show selected report list
+  const checked = Array.from(document.querySelectorAll('.report-cb:checked'));
+  document.getElementById('send-modal-report-list').innerHTML =
+    checked.map(c=>`<div>• דוח ${c.dataset.number} — ${c.dataset.project} (${c.dataset.date})</div>`).join('');
+
+  // Populate contractors list
+  const clist = document.getElementById('send-contractors-list');
+  clist.innerHTML = (allContractors||[]).filter(c=>c.is_active).map(c=>{
+    const contact = esc(c.company_name + (c.contact_name ? ' — ' + c.contact_name : ''));
+    const phone = c.mobile_phone || c.phone || '';
+    const email = c.email || '';
+    const detail = isWA ? (phone ? '📱 '+phone : '—') : (email ? '✉️ '+email : '—');
+    const hasContact = isWA ? !!phone : !!email;
+    return `<label style="display:flex;align-items:center;gap:10px;padding:7px 8px;border-radius:7px;cursor:pointer;${hasContact?'':'opacity:0.45;pointer-events:none;'} hover:background:#f0f4ff;">
+      <input type="checkbox" class="send-contractor-cb" data-id="${c.id}" data-name="${contact}" data-phone="${phone}" data-email="${email}" style="width:15px;height:15px;cursor:pointer;" ${hasContact?'':'disabled'}>
+      <div style="flex:1">
+        <div style="font-weight:700;font-size:13px">${contact}</div>
+        <div style="font-size:11px;color:var(--text3)">${detail}</div>
+      </div>
+    </label>`;
+  }).join('') || '<div style="color:var(--text3);padding:8px">אין קבלנים פעילים</div>';
+
+  // Reset new contact fields
+  document.getElementById('new-rcpt-name').value = '';
+  document.getElementById('new-rcpt-company').value = '';
+  document.getElementById('new-rcpt-phone').value = '';
+  document.getElementById('new-rcpt-email').value = '';
+  document.getElementById('new-rcpt-save').checked = false;
+  document.getElementById('send-rcpt-message').value = '';
+
+  switchRcptTab('contractors');
+  document.getElementById('modal-send-reports').style.display = 'flex';
+}
+
+function switchRcptTab(tab) {
+  const isContractors = tab === 'contractors';
+  document.getElementById('rcpt-panel-contractors').style.display = isContractors ? 'block' : 'none';
+  document.getElementById('rcpt-panel-new').style.display = isContractors ? 'none' : 'block';
+  document.getElementById('rcpt-tab-contractors').style.background = isContractors ? '#1a3d5c' : 'white';
+  document.getElementById('rcpt-tab-contractors').style.color = isContractors ? 'white' : 'var(--text2)';
+  document.getElementById('rcpt-tab-contractors').style.borderColor = isContractors ? '#1a3d5c' : 'var(--border)';
+  document.getElementById('rcpt-tab-new').style.background = !isContractors ? '#1a3d5c' : 'white';
+  document.getElementById('rcpt-tab-new').style.color = !isContractors ? 'white' : 'var(--text2)';
+  document.getElementById('rcpt-tab-new').style.borderColor = !isContractors ? '#1a3d5c' : 'var(--border)';
+}
+
+async function executeSendReports() {
+  const isWA = _sendMode === 'whatsapp';
+  const msg = document.getElementById('send-rcpt-message').value.trim();
+  const checked = Array.from(document.querySelectorAll('.report-cb:checked'));
+  const reportSummary = checked.map(c=>`דוח ${c.dataset.number} - ${c.dataset.project} (${c.dataset.date})`).join('\n');
+  const fullMsg = (msg ? msg + '\n\n' : '') + 'דוחות מצורפים:\n' + reportSummary;
+
+  const activeTab = document.getElementById('rcpt-panel-new').style.display === 'block' ? 'new' : 'contractors';
+
+  if(activeTab === 'contractors') {
+    const selected = Array.from(document.querySelectorAll('.send-contractor-cb:checked'));
+    if(!selected.length) { alert('יש לבחור לפחות קבלן אחד'); return; }
+    for(const cb of selected) {
+      if(isWA) {
+        const phone = cb.dataset.phone.replace(/[-\s]/g,'');
+        const intl = phone.startsWith('0') ? '972' + phone.slice(1) : phone;
+        window.open(`https://wa.me/${intl}?text=${encodeURIComponent(fullMsg)}`, '_blank');
+      } else {
+        const email = cb.dataset.email;
+        window.location.href = `mailto:${email}?subject=${encodeURIComponent('דוחות עבודה')}&body=${encodeURIComponent(fullMsg)}`;
+      }
+    }
+  } else {
+    // New contact
+    const name = document.getElementById('new-rcpt-name').value.trim();
+    const phone = document.getElementById('new-rcpt-phone').value.trim();
+    const email = document.getElementById('new-rcpt-email').value.trim();
+    const company = document.getElementById('new-rcpt-company').value.trim();
+    const shouldSave = document.getElementById('new-rcpt-save').checked;
+    if(!name) { alert('יש להזין שם'); return; }
+    if(isWA && !phone) { alert('יש להזין מספר טלפון'); return; }
+    if(!isWA && !email) { alert('יש להזין דוא״ל'); return; }
+
+    // Save to Supabase if requested
+    if(shouldSave) {
+      await sb.from('contractors_master').insert({
+        company_name: company || name,
+        contact_name: name,
+        mobile_phone: phone,
+        email: email,
+        is_active: true
+      });
+      // Refresh contractors list
+      const {data} = await sb.from('contractors_master').select('*').order('company_name');
+      if(data) { allContractors = data; }
+    }
+
+    if(isWA) {
+      const intl = phone.replace(/[-\s]/g,'').replace(/^0/,'972');
+      window.open(`https://wa.me/${intl}?text=${encodeURIComponent(fullMsg)}`, '_blank');
+    } else {
+      window.location.href = `mailto:${email}?subject=${encodeURIComponent('דוחות עבודה')}&body=${encodeURIComponent(fullMsg)}`;
+    }
+  }
+  closeModal('modal-send-reports');
+  clearReportSelection();
+}
 // ══════════════════════════════════════════════════════════════
 
 // ── Digital Clock ──────────────────────────────
@@ -3821,7 +4102,7 @@ async function renderForecast() {
       if(t.type === 'expense' || t.amount < 0) expMap[t.project_id] += Math.abs(t.amount);
     });
     const rows = (projects||[]);
-    const totalBudget  = rows.reduce((s,p) => s+(p.budget||0), 0);
+    const totalBudget  = rows.reduce((s,p) => s+(p.total_budget||p.budget||0), 0);
     const totalProfit  = rows.reduce((s,p) => s+(p.expected_profit||0), 0);
     const totalExpense = rows.reduce((s,p) => s+(expMap[p.id]||0), 0);
     const totalROI     = totalBudget ? ((totalProfit/totalBudget)*100).toFixed(1) : 0;
@@ -3841,11 +4122,11 @@ async function renderForecast() {
     ).join('');
     const chartEl = document.getElementById('forecast-chart');
     if(chartEl && rows.length) {
-      const maxVal = Math.max(...rows.map(p => p.budget||0), 1);
+      const maxVal = Math.max(...rows.map(p => p.total_budget||p.budget||0), 1);
       chartEl.innerHTML = rows.map(p => {
-        const bp = ((p.budget||0)/maxVal*100).toFixed(1);
+        const bp = ((p.total_budget||p.budget||0)/maxVal*100).toFixed(1);
         const pp = ((p.expected_profit||0)/maxVal*100).toFixed(1);
-        const roi = p.budget ? (((p.expected_profit||0)/p.budget)*100).toFixed(1) : 0;
+        const roi = (p.total_budget||p.budget) ? (((p.expected_profit||0)/(p.total_budget||p.budget||1))*100).toFixed(1) : 0;
         return '<div style="margin-bottom:14px">'
           +'<div style="display:flex;justify-content:space-between;font-size:12px;font-weight:700;color:#1a3d5c;margin-bottom:4px"><span>'+p.project_name+'</span><span>ROI: '+roi+'%</span></div>'
           +'<div style="background:#f0f0f0;border-radius:6px;height:12px;margin-bottom:3px;overflow:hidden"><div style="background:#3b82f6;height:100%;width:'+bp+'%;border-radius:6px"></div></div>'
@@ -3856,13 +4137,13 @@ async function renderForecast() {
     const tbody = document.getElementById('forecast-tbody');
     if(tbody) tbody.innerHTML = rows.map(p => {
       const exp = expMap[p.id]||0;
-      const actual = (p.budget||0) - exp;
-      const roi = p.budget ? (((p.expected_profit||0)/p.budget)*100).toFixed(1) : '—';
+      const actual = (p.total_budget||p.budget||0) - exp;
+      const roi = (p.total_budget||p.budget) ? (((p.expected_profit||0)/(p.total_budget||p.budget||1))*100).toFixed(1) : '—';
       const rc = Number(roi) > 20 ? '#22c55e' : Number(roi) > 10 ? '#f59e0b' : '#ef4444';
       const sc = p.status==='active'?'#22c55e':p.status==='completed'?'#3b82f6':'#f59e0b';
       return '<tr style="border-bottom:1px solid #f0f0f0">'
         +'<td style="padding:10px 12px;font-weight:700">'+p.project_name+'</td>'
-        +'<td style="padding:10px 12px">'+fmtMoney(p.budget||0)+'</td>'
+        +'<td style="padding:10px 12px">'+fmtMoney(p.total_budget||p.budget||0)+'</td>'
         +'<td style="padding:10px 12px;color:#22c55e;font-weight:700">'+fmtMoney(p.expected_profit||0)+'</td>'
         +'<td style="padding:10px 12px;font-weight:900;color:'+rc+'">'+roi+'%</td>'
         +'<td style="padding:10px 12px;color:#ef4444">'+fmtMoney(exp)+'</td>'
@@ -3871,7 +4152,7 @@ async function renderForecast() {
     }).join('');
     const sel = document.getElementById('forecast-project-sel');
     if(sel) {
-      sel.innerHTML = rows.map(p => '<option value="'+p.id+'" data-budget="'+(p.budget||0)+'" data-profit="'+(p.expected_profit||0)+'">'+p.project_name+'</option>').join('');
+      sel.innerHTML = rows.map(p => '<option value="'+p.id+'" data-budget="'+(p.total_budget||p.budget||0)+'" data-profit="'+(p.expected_profit||0)+'">'+p.project_name+'</option>').join('');
       sel.onchange = function() {
         const opt = this.options[this.selectedIndex];
         document.getElementById('forecast-budget').value = opt.dataset.budget||'';
