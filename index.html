@@ -584,14 +584,15 @@ textarea{min-height:80px;resize:vertical;}
 /* ── Mobile (≤768px): full-screen drawer sidebar ─────── */
 @media(max-width:768px){
 
-  /* Sidebar: off screen to the right, slides in on open */
+  /* Sidebar: hidden off right edge */
   #crm-panel .sidebar{
-    top:54px!important;           /* below tab bar */
+    top:54px!important;
     height:calc(100vh - 54px)!important;
     width:80vw!important;
     max-width:300px!important;
-    transform:translateX(110%)!important;  /* fully hidden right */
-    transition:transform 0.28s ease!important;
+    right:-100vw!important;       /* hide: push completely off screen */
+    transform:none!important;
+    transition:right 0.28s ease!important;
     z-index:500!important;
     box-shadow:-6px 0 24px rgba(0,0,0,0.4)!important;
     overflow-y:auto!important;
@@ -600,7 +601,7 @@ textarea{min-height:80px;resize:vertical;}
 
   /* Sidebar open */
   #crm-panel .sidebar.mobile-open{
-    transform:translateX(0)!important;
+    right:0!important;            /* show: snap back to edge */
   }
 
   /* All labels visible inside open sidebar */
