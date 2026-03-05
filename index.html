@@ -131,6 +131,48 @@ body{
   font-size:11px; color:var(--text3);
   margin-top:3px; font-weight:400;
 }
+
+/* ══ QUOTES PAGE ══════════════════════════════════════════ */
+.quotes-toolbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:18px;}
+.quotes-toolbar select,.quotes-toolbar input[type=text]{padding:8px 14px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;background:white;font-family:inherit;color:var(--text1);}
+.quote-card{background:white;border-radius:14px;box-shadow:0 2px 12px rgba(0,0,0,0.07);border:1.5px solid var(--border);margin-bottom:16px;overflow:hidden;}
+.quote-card-header{display:flex;align-items:center;justify-content:space-between;padding:14px 20px;background:linear-gradient(135deg,#1a3d5c 0%,#2d6a9f 100%);color:white;cursor:pointer;gap:12px;}
+.quote-card-header .qh-title{font-size:15px;font-weight:700;flex:1;}
+.quote-card-header .qh-project{font-size:12px;opacity:0.8;margin-top:2px;}
+.quote-card-header .qh-total{font-size:18px;font-weight:800;color:#ffd966;white-space:nowrap;}
+.quote-card-header .qh-status{font-size:11px;padding:3px 10px;border-radius:20px;background:rgba(255,255,255,0.2);font-weight:600;}
+.quote-card-header .qh-toggle{font-size:18px;transition:transform 0.2s;}
+.quote-card-header.open .qh-toggle{transform:rotate(180deg);}
+.quote-card-body{display:none;padding:0;}
+.quote-card-body.open{display:block;}
+.quote-items-table{width:100%;border-collapse:collapse;font-size:13px;}
+.quote-items-table th{background:#f4f7fb;padding:10px 10px;text-align:right;font-weight:700;color:var(--text2);border-bottom:2px solid var(--border);white-space:nowrap;}
+.quote-items-table td{padding:9px 10px;border-bottom:1px solid var(--border);vertical-align:middle;color:var(--text1);}
+.quote-items-table tr:last-child td{border-bottom:none;}
+.quote-items-table tr:hover td{background:#f9fbff;}
+.quote-items-table td input,.quote-items-table td select,.quote-items-table td textarea{width:100%;border:1px solid #dde3ec;border-radius:6px;padding:5px 7px;font-size:12px;font-family:inherit;background:#fafbfd;color:var(--text1);}
+.quote-items-table td input:focus,.quote-items-table td select:focus{outline:none;border-color:#2d6a9f;background:white;}
+.quote-total-row td{background:#eef5ff;font-weight:800;font-size:14px;color:#1a3d5c;border-top:2px solid #2d6a9f;}
+.quote-add-row td{background:#f9fbff;padding:8px 10px;}
+.quote-card-footer{display:flex;justify-content:space-between;align-items:center;padding:12px 20px;background:#f8fafc;border-top:1px solid var(--border);gap:8px;}
+.btn-quote-add-item{background:#2d6a9f;color:white;border:none;border-radius:8px;padding:7px 16px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;}
+.btn-quote-add-item:hover{background:#1a3d5c;}
+.btn-quote-delete{background:#fee;color:#c00;border:1px solid #fcc;border-radius:8px;padding:7px 14px;font-size:12px;cursor:pointer;font-family:inherit;}
+.btn-quote-delete:hover{background:#fcc;}
+.btn-quote-save{background:#1e6b30;color:white;border:none;border-radius:8px;padding:7px 18px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;}
+.btn-quote-save:hover{background:#145223;}
+.btn-quote-pdf{background:#9a6f00;color:white;border:none;border-radius:8px;padding:7px 16px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;}
+.btn-quote-pdf:hover{background:#7a5800;}
+.quote-empty{text-align:center;padding:60px 20px;color:var(--text3);}
+.quote-empty .empty-icon{font-size:48px;margin-bottom:12px;}
+.quotes-header-bar{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;flex-wrap:wrap;gap:10px;}
+.qstatus-draft{background:#fff3cd;color:#856404;}
+.qstatus-sent{background:#cce5ff;color:#004085;}
+.qstatus-approved{background:#d4edda;color:#155724;}
+.qstatus-rejected{background:#f8d7da;color:#721c24;}
+/* projects table הצעות מחיר column */
+.col-quote-sum{color:#9a6f00;font-weight:700;}
+
 .sidebar-clock{
   margin-top:10px;
   text-align:right;
@@ -681,6 +723,7 @@ button:active{transform:scale(0.98)}
   </div>
           <div class="nav-item" onclick="showPage('forecast')" id="nav-forecast"><span class="nav-icon">📈</span><span>תחזית הכנסות</span></div>
           <div class="nav-item" onclick="showPage('gantt')" id="nav-gantt"><span class="nav-icon">📅</span><span>גאנט פרויקטים</span></div>
+          <div class="nav-item" onclick="showPage('quotes')" id="nav-quotes"><span class="nav-icon">📋</span><span>הצעות מחיר</span></div>
   <a href="#" onclick="switchTab('journal')" style="text-decoration:none;">
     <div class="nav-item" style="background:linear-gradient(90deg,rgba(154,111,0,0.18),transparent);color:#9a6f00;border-right:3px solid #9a6f00;margin-top:8px;">
       <span class="nav-icon">📝</span>
@@ -849,16 +892,80 @@ button:active{transform:scale(0.98)}
             <th>לקוח</th>
             <th>כתובת</th>
             <th>תאריך התחלה</th>
-            <th>תקציב</th><th>רווח צפוי</th>
+            <th>תקציב</th><th>הצעות מחיר</th><th>רווח צפוי</th>
             <th>דוחות</th>
             <th>סטטוס</th>
             <th class="td-actions">פעולות</th>
           </tr>
         </thead>
         <tbody id="projects-tbody">
-          <tr><td colspan="8"><div class="empty-state"><div class="empty-icon">🏗️</div><h3>אין פרויקטים עדיין</h3></div></td></tr>
+          <tr><td colspan="9"><div class="empty-state"><div class="empty-icon">🏗️</div><h3>אין פרויקטים עדיין</h3></div></td></tr>
         </tbody>
       </table>
+    </div>
+  </div>
+
+
+  <!-- ══ PAGE: QUOTES ══ -->
+  <div class="page" id="page-quotes" style="display:none">
+    <div class="topbar">
+      <div class="page-title">קבלנים <span>הצעות מחיר</span></div>
+      <div class="topbar-actions">
+        <button class="btn btn-primary" onclick="openNewQuoteModal()">➕ הצעה חדשה</button>
+      </div>
+    </div>
+
+    <div class="quotes-toolbar">
+      <select id="quotes-filter-project" onchange="filterQuotes()">
+        <option value="">כל הפרויקטים</option>
+      </select>
+      <select id="quotes-filter-status" onchange="filterQuotes()">
+        <option value="">כל הסטטוסים</option>
+        <option value="draft">טיוטה</option>
+        <option value="sent">נשלחה</option>
+        <option value="approved">אושרה</option>
+        <option value="rejected">נדחתה</option>
+      </select>
+      <input type="text" id="quotes-search" placeholder="חיפוש..." oninput="filterQuotes()" style="min-width:200px;">
+    </div>
+
+    <div id="quotes-list">
+      <div class="quote-empty"><div class="empty-icon">📋</div><h3>טוען הצעות מחיר...</h3></div>
+    </div>
+  </div>
+
+  <!-- Modal: New Quote Header -->
+  <div class="modal-overlay" id="modal-new-quote" style="display:none" onclick="closeModalOnOverlay(event,'modal-new-quote')">
+    <div class="modal" style="max-width:480px">
+      <div class="modal-header">
+        <span>📋 הצעת מחיר חדשה</span>
+        <button class="modal-close" onclick="closeModal('modal-new-quote')">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label>פרויקט *</label>
+          <select id="nq-project" style="width:100%;padding:9px;border:1.5px solid var(--border);border-radius:8px;font-size:14px;font-family:inherit;">
+            <option value="">בחר פרויקט...</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>כותרת הצעה</label>
+          <input type="text" id="nq-title" placeholder="לדוגמה: הצעה ראשונית - ריצוף" style="width:100%;padding:9px;border:1.5px solid var(--border);border-radius:8px;font-size:14px;font-family:inherit;">
+        </div>
+        <div class="form-group">
+          <label>סטטוס</label>
+          <select id="nq-status" style="width:100%;padding:9px;border:1.5px solid var(--border);border-radius:8px;font-size:14px;font-family:inherit;">
+            <option value="draft">טיוטה</option>
+            <option value="sent">נשלחה</option>
+            <option value="approved">אושרה</option>
+            <option value="rejected">נדחתה</option>
+          </select>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-ghost" onclick="closeModal('modal-new-quote')">ביטול</button>
+        <button class="btn btn-primary" onclick="saveNewQuote()">➕ צור הצעה</button>
+      </div>
     </div>
   </div>
 
@@ -1907,6 +2014,19 @@ async function loadContractors() {
 }
 
 async function loadProjects() {
+  // Load quotes summary for projects table
+  const {data: quotesData} = await sb.from('quotes').select('id,project_id,title,status');
+  const {data: quoteItemsData} = await sb.from('quote_items').select('quote_id,unit_cost,quantity');
+  window.allQuotes = quotesData || [];
+  window.allQuoteItems = quoteItemsData || [];
+  // Build quoteSum: project_id -> total of all approved/draft items
+  window.quoteSum = {};
+  (window.allQuotes).forEach(q=>{
+    const items = (window.allQuoteItems).filter(i=>i.quote_id===q.id);
+    const sum = items.reduce((a,i)=>a+(parseFloat(i.unit_cost||0)*parseFloat(i.quantity||1)),0);
+    window.quoteSum[q.project_id] = (window.quoteSum[q.project_id]||0) + sum;
+  });
+
   const {data,error} = await sb.from('projects').select('*').order('created_at',{ascending:false});
   if(error) throw error;
   allProjects = data || [];
@@ -1953,6 +2073,12 @@ function showPage(page) {
     document.getElementById('page-gantt').style.display = 'block';
     document.getElementById('nav-gantt').classList.add('active');
     loadGantt();
+    return;
+  }
+  if(page === 'quotes') {
+    document.getElementById('page-quotes').style.display = 'block';
+    document.getElementById('nav-quotes').classList.add('active');
+    loadQuotes();
     return;
   }
   if(page === 'forecast') {
@@ -2168,18 +2294,20 @@ function renderProjects(list) {
   const data = list || allProjects;
   const tbody = document.getElementById('projects-tbody');
   if(!data.length) {
-    tbody.innerHTML = '<tr><td colspan="8"><div class="empty-state"><div class="empty-icon">🏗️</div><h3>אין פרויקטים</h3></div></td></tr>';
+    tbody.innerHTML = '<tr><td colspan="9"><div class="empty-state"><div class="empty-icon">🏗️</div><h3>אין פרויקטים</h3></div></td></tr>';
     return;
   }
   const reportCount = {};
   allReports.forEach(r=>{ if(r.project_id) reportCount[r.project_id]=(reportCount[r.project_id]||0)+1; });
 
+  const quoteSum = window.quoteSum || {};
   tbody.innerHTML = data.map(p=>`<tr>
     <td><strong>${esc(p.project_name)}</strong></td>
     <td>${esc(p.client_name||'—')}</td>
     <td style="font-size:13px;color:var(--text3)">${esc(p.city||p.address||'—')}</td>
     <td style="font-size:13px">${p.start_date?fmtDate(p.start_date):'—'}</td>
     <td>${p.total_budget?'₪'+fmtMoney(p.total_budget):'—'}</td>
+    <td class="col-quote-sum">${quoteSum[p.id]?'₪'+fmtMoney(quoteSum[p.id]):'—'}</td>
     <td style="text-align:center"><span class="badge badge-blue">${reportCount[p.id]||0}</span></td>
     <td><span class="badge ${STATUS_BADGE[p.status]||'badge-gray'}">${STATUS_HE[p.status]||p.status}</span></td>
     <td class="td-actions"><div class="btn-group">
@@ -2491,6 +2619,380 @@ function esc(str) {
 }
 
 console.log('✅ Stonhard CRM loaded — v3 GANTT BUILD');
+
+// ══════════════════════════════════════════════════════════════
+//  QUOTES MODULE — קבלנים הצעות מחיר
+// ══════════════════════════════════════════════════════════════
+
+const QSTATUS_HE = {draft:'טיוטה', sent:'נשלחה', approved:'אושרה', rejected:'נדחתה'};
+const QSTATUS_CSS = {draft:'qstatus-draft', sent:'qstatus-sent', approved:'qstatus-approved', rejected:'qstatus-rejected'};
+
+async function loadQuotes() {
+  const list = document.getElementById('quotes-list');
+  list.innerHTML = '<div class="quote-empty"><div class="empty-icon">⏳</div><h3>טוען...</h3></div>';
+
+  // Populate project filter dropdown
+  const psel = document.getElementById('quotes-filter-project');
+  psel.innerHTML = '<option value="">כל הפרויקטים</option>';
+  (allProjects||[]).forEach(p=>{
+    psel.innerHTML += `<option value="${p.id}">${esc(p.project_name)}</option>`;
+  });
+
+  // Populate new quote modal project list
+  const nqsel = document.getElementById('nq-project');
+  nqsel.innerHTML = '<option value="">בחר פרויקט...</option>';
+  (allProjects||[]).forEach(p=>{
+    nqsel.innerHTML += `<option value="${p.id}">${esc(p.project_name)}</option>`;
+  });
+
+  const {data: quotes, error} = await sb.from('quotes')
+    .select('*').order('created_at',{ascending:false});
+  if(error){ list.innerHTML='<div class="quote-empty"><div class="empty-icon">❌</div><h3>שגיאה בטעינה</h3></div>'; return; }
+
+  const {data: items} = await sb.from('quote_items')
+    .select('*').order('sort_order',{ascending:true});
+
+  window._quotesAll = quotes || [];
+  window._quoteItemsAll = items || [];
+  renderQuotesList(window._quotesAll, window._quoteItemsAll);
+}
+
+function filterQuotes() {
+  const proj = document.getElementById('quotes-filter-project').value;
+  const status = document.getElementById('quotes-filter-status').value;
+  const q = document.getElementById('quotes-search').value.toLowerCase();
+  let filtered = (window._quotesAll||[]).filter(qt=>{
+    const proj_name = (allProjects||[]).find(p=>p.id===qt.project_id)?.project_name||'';
+    const match = (qt.title||'').toLowerCase().includes(q) || proj_name.toLowerCase().includes(q);
+    return (!proj || qt.project_id===proj) && (!status || qt.status===status) && (!q || match);
+  });
+  renderQuotesList(filtered, window._quoteItemsAll||[]);
+}
+
+function renderQuotesList(quotes, allItems) {
+  const list = document.getElementById('quotes-list');
+  if(!quotes.length){
+    list.innerHTML = '<div class="quote-empty"><div class="empty-icon">📋</div><h3>אין הצעות מחיר עדיין</h3><p>לחץ על ״הצעה חדשה״ להתחלה</p></div>';
+    return;
+  }
+  list.innerHTML = quotes.map(q => renderQuoteCard(q, allItems.filter(i=>i.quote_id===q.id))).join('');
+}
+
+function renderQuoteCard(q, items) {
+  const proj = (allProjects||[]).find(p=>p.id===q.project_id);
+  const projName = proj ? esc(proj.project_name) : '—';
+  const total = items.reduce((a,i)=>a+(parseFloat(i.unit_cost||0)*parseFloat(i.quantity||1)),0);
+  const statusCss = QSTATUS_CSS[q.status]||'qstatus-draft';
+  const statusHe = QSTATUS_HE[q.status]||q.status;
+
+  const rows = items.map((item,idx) => `
+    <tr id="qrow-${item.id}">
+      <td style="min-width:160px">
+        <select onchange="qItemChange('${item.id}','contractor_id',this.value)" style="width:100%">
+          <option value="">בחר קבלן...</option>
+          ${(allContractors||[]).map(c=>`<option value="${c.id}" ${item.contractor_id===c.id?'selected':''}>${esc(c.company_name)}</option>`).join('')}
+        </select>
+      </td>
+      <td style="min-width:180px">
+        <input type="text" value="${esc(item.description||'')}" placeholder="תיאור סעיף..." onchange="qItemChange('${item.id}','description',this.value)">
+      </td>
+      <td style="min-width:100px">
+        <input type="number" value="${item.unit_cost||''}" placeholder="0" min="0" step="0.01"
+          oninput="qItemChange('${item.id}','unit_cost',this.value); updateQuoteTotal('${q.id}')">
+      </td>
+      <td style="min-width:70px">
+        <input type="number" value="${item.quantity||1}" placeholder="1" min="1" step="1"
+          oninput="qItemChange('${item.id}','quantity',this.value); updateQuoteTotal('${q.id}')">
+      </td>
+      <td style="min-width:110px;font-weight:700;color:#1a3d5c" id="qrow-total-${item.id}">
+        ₪${fmtMoney((parseFloat(item.unit_cost||0)*parseFloat(item.quantity||1)))}
+      </td>
+      <td style="min-width:110px">
+        <input type="date" value="${item.start_date||''}" onchange="qItemChange('${item.id}','start_date',this.value)">
+      </td>
+      <td style="min-width:110px">
+        <input type="date" value="${item.end_date||''}" onchange="qItemChange('${item.id}','end_date',this.value)">
+      </td>
+      <td style="min-width:150px">
+        <input type="text" value="${esc(item.remarks||'')}" placeholder="הערות..." onchange="qItemChange('${item.id}','remarks',this.value)">
+      </td>
+      <td style="text-align:center">
+        <button onclick="deleteQuoteItem('${item.id}','${q.id}')" style="background:none;border:none;cursor:pointer;font-size:16px;" title="מחק שורה">🗑️</button>
+      </td>
+    </tr>`).join('');
+
+  return `
+  <div class="quote-card" id="qcard-${q.id}">
+    <div class="quote-card-header" onclick="toggleQuoteCard('${q.id}')" id="qhdr-${q.id}">
+      <div>
+        <div class="qh-title">${esc(q.title||'הצעה ללא כותרת')}</div>
+        <div class="qh-project">📁 ${projName}</div>
+      </div>
+      <span class="qh-status ${statusCss}">${statusHe}</span>
+      <div class="qh-total" id="qtotal-${q.id}">₪${fmtMoney(total)}</div>
+      <span class="qh-toggle">▼</span>
+    </div>
+    <div class="quote-card-body" id="qbody-${q.id}">
+      <div style="overflow-x:auto">
+        <table class="quote-items-table">
+          <thead>
+            <tr>
+              <th>שם קבלן</th>
+              <th>תיאור סעיף</th>
+              <th>עלות יחידה (₪)</th>
+              <th>כמות</th>
+              <th>סה״כ שורה</th>
+              <th>תאריך התחלה</th>
+              <th>תאריך סיום</th>
+              <th>הערות</th>
+              <th>🗑️</th>
+            </tr>
+          </thead>
+          <tbody id="qitems-${q.id}">
+            ${rows}
+          </tbody>
+          <tfoot>
+            <tr class="quote-total-row">
+              <td colspan="4" style="text-align:left;padding-right:16px">סה״כ הצעה</td>
+              <td id="qtfoot-${q.id}">₪${fmtMoney(total)}</td>
+              <td colspan="4"></td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+      <div class="quote-card-footer">
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn-quote-add-item" onclick="addQuoteItem('${q.id}')">➕ הוסף שורה</button>
+          <select onchange="updateQuoteStatus('${q.id}',this.value)" style="padding:7px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:12px;font-family:inherit;">
+            <option value="draft" ${q.status==='draft'?'selected':''}>טיוטה</option>
+            <option value="sent" ${q.status==='sent'?'selected':''}>נשלחה</option>
+            <option value="approved" ${q.status==='approved'?'selected':''}>אושרה</option>
+            <option value="rejected" ${q.status==='rejected'?'selected':''}>נדחתה</option>
+          </select>
+        </div>
+        <div style="display:flex;gap:8px">
+          <button class="btn-quote-pdf" onclick="printQuote('${q.id}')">🖨️ הדפס</button>
+          <button class="btn-quote-delete" onclick="deleteQuote('${q.id}')">🗑️ מחק הצעה</button>
+        </div>
+      </div>
+    </div>
+  </div>`;
+}
+
+function toggleQuoteCard(qid) {
+  const body = document.getElementById('qbody-'+qid);
+  const hdr = document.getElementById('qhdr-'+qid);
+  const isOpen = body.classList.contains('open');
+  body.classList.toggle('open', !isOpen);
+  hdr.classList.toggle('open', !isOpen);
+}
+
+// Track pending changes per item
+window._qPending = {};
+function qItemChange(itemId, field, value) {
+  if(!window._qPending[itemId]) window._qPending[itemId] = {};
+  window._qPending[itemId][field] = value;
+  // Update local cache
+  const cached = (window._quoteItemsAll||[]).find(i=>i.id===itemId);
+  if(cached) cached[field] = field==='unit_cost'||field==='quantity' ? parseFloat(value)||0 : value;
+  // Debounce save
+  clearTimeout(window._qPending[itemId]._timer);
+  window._qPending[itemId]._timer = setTimeout(()=>saveQuoteItem(itemId), 800);
+  // Update row total immediately
+  if(field==='unit_cost'||field==='quantity') {
+    const item = (window._quoteItemsAll||[]).find(i=>i.id===itemId);
+    if(item) {
+      const rowTotal = document.getElementById('qrow-total-'+itemId);
+      if(rowTotal) rowTotal.textContent = '₪'+fmtMoney(parseFloat(item.unit_cost||0)*parseFloat(item.quantity||1));
+    }
+  }
+}
+
+async function saveQuoteItem(itemId) {
+  const changes = {...window._qPending[itemId]};
+  delete changes._timer;
+  if(!Object.keys(changes).length) return;
+  await sb.from('quote_items').update(changes).eq('id',itemId);
+  delete window._qPending[itemId];
+}
+
+function updateQuoteTotal(qid) {
+  const items = (window._quoteItemsAll||[]).filter(i=>i.quote_id===qid);
+  const total = items.reduce((a,i)=>a+(parseFloat(i.unit_cost||0)*parseFloat(i.quantity||1)),0);
+  const el = document.getElementById('qtotal-'+qid);
+  const ft = document.getElementById('qtfoot-'+qid);
+  if(el) el.textContent = '₪'+fmtMoney(total);
+  if(ft) ft.textContent = '₪'+fmtMoney(total);
+  // Update quoteSum for projects page
+  if(!window.quoteSum) window.quoteSum = {};
+  const q = (window._quotesAll||[]).find(x=>x.id===qid);
+  if(q) {
+    window.quoteSum[q.project_id] = (window._quotesAll||[])
+      .filter(x=>x.project_id===q.project_id)
+      .reduce((a,x)=>{
+        const its = (window._quoteItemsAll||[]).filter(i=>i.quote_id===x.id);
+        return a + its.reduce((b,i)=>b+(parseFloat(i.unit_cost||0)*parseFloat(i.quantity||1)),0);
+      },0);
+  }
+}
+
+async function addQuoteItem(qid) {
+  const maxOrder = Math.max(0, ...(window._quoteItemsAll||[]).filter(i=>i.quote_id===qid).map(i=>i.sort_order||0));
+  const {data:newItem, error} = await sb.from('quote_items').insert({
+    quote_id: qid, description:'', unit_cost:0, quantity:1, sort_order: maxOrder+1
+  }).select().single();
+  if(error||!newItem) return;
+  window._quoteItemsAll = [...(window._quoteItemsAll||[]), newItem];
+  // Re-render just this card's tbody
+  const q = (window._quotesAll||[]).find(x=>x.id===qid);
+  const items = (window._quoteItemsAll||[]).filter(i=>i.quote_id===qid);
+  const tbody = document.getElementById('qitems-'+qid);
+  if(tbody) {
+    const fakeQ = q||{id:qid};
+    tbody.innerHTML = items.map((item,idx) => {
+      return renderQuoteItemRow(item, fakeQ);
+    }).join('');
+  }
+  updateQuoteTotal(qid);
+}
+
+function renderQuoteItemRow(item, q) {
+  return `<tr id="qrow-${item.id}">
+    <td style="min-width:160px">
+      <select onchange="qItemChange('${item.id}','contractor_id',this.value)" style="width:100%">
+        <option value="">בחר קבלן...</option>
+        ${(allContractors||[]).map(c=>`<option value="${c.id}" ${item.contractor_id===c.id?'selected':''}>${esc(c.company_name)}</option>`).join('')}
+      </select>
+    </td>
+    <td style="min-width:180px"><input type="text" value="${esc(item.description||'')}" placeholder="תיאור סעיף..." onchange="qItemChange('${item.id}','description',this.value)"></td>
+    <td style="min-width:100px"><input type="number" value="${item.unit_cost||''}" placeholder="0" min="0" step="0.01" oninput="qItemChange('${item.id}','unit_cost',this.value); updateQuoteTotal('${q.id}')"></td>
+    <td style="min-width:70px"><input type="number" value="${item.quantity||1}" placeholder="1" min="1" oninput="qItemChange('${item.id}','quantity',this.value); updateQuoteTotal('${q.id}')"></td>
+    <td style="min-width:110px;font-weight:700;color:#1a3d5c" id="qrow-total-${item.id}">₪${fmtMoney(parseFloat(item.unit_cost||0)*parseFloat(item.quantity||1))}</td>
+    <td style="min-width:110px"><input type="date" value="${item.start_date||''}" onchange="qItemChange('${item.id}','start_date',this.value)"></td>
+    <td style="min-width:110px"><input type="date" value="${item.end_date||''}" onchange="qItemChange('${item.id}','end_date',this.value)"></td>
+    <td style="min-width:150px"><input type="text" value="${esc(item.remarks||'')}" placeholder="הערות..." onchange="qItemChange('${item.id}','remarks',this.value)"></td>
+    <td style="text-align:center"><button onclick="deleteQuoteItem('${item.id}','${q.id}')" style="background:none;border:none;cursor:pointer;font-size:16px;" title="מחק שורה">🗑️</button></td>
+  </tr>`;
+}
+
+async function deleteQuoteItem(itemId, qid) {
+  if(!confirm('מחק שורה זו?')) return;
+  await sb.from('quote_items').delete().eq('id', itemId);
+  window._quoteItemsAll = (window._quoteItemsAll||[]).filter(i=>i.id!==itemId);
+  const row = document.getElementById('qrow-'+itemId);
+  if(row) row.remove();
+  updateQuoteTotal(qid);
+}
+
+async function updateQuoteStatus(qid, newStatus) {
+  await sb.from('quotes').update({status: newStatus}).eq('id', qid);
+  const q = (window._quotesAll||[]).find(x=>x.id===qid);
+  if(q) q.status = newStatus;
+  // Update badge in header
+  const hdr = document.getElementById('qhdr-'+qid);
+  if(hdr) {
+    const badge = hdr.querySelector('.qh-status');
+    if(badge) {
+      badge.className = 'qh-status ' + (QSTATUS_CSS[newStatus]||'qstatus-draft');
+      badge.textContent = QSTATUS_HE[newStatus]||newStatus;
+    }
+  }
+}
+
+async function deleteQuote(qid) {
+  if(!confirm('מחק הצעה זו לגמרי? כל הסעיפים יימחקו.')) return;
+  await sb.from('quote_items').delete().eq('quote_id', qid);
+  await sb.from('quotes').delete().eq('id', qid);
+  window._quotesAll = (window._quotesAll||[]).filter(q=>q.id!==qid);
+  window._quoteItemsAll = (window._quoteItemsAll||[]).filter(i=>i.quote_id!==qid);
+  const card = document.getElementById('qcard-'+qid);
+  if(card) card.remove();
+  if(!(window._quotesAll||[]).length) {
+    document.getElementById('quotes-list').innerHTML =
+      '<div class="quote-empty"><div class="empty-icon">📋</div><h3>אין הצעות מחיר עדיין</h3></div>';
+  }
+}
+
+function openNewQuoteModal() {
+  // Refresh project list in modal
+  const nqsel = document.getElementById('nq-project');
+  nqsel.innerHTML = '<option value="">בחר פרויקט...</option>';
+  (allProjects||[]).forEach(p=>{
+    nqsel.innerHTML += `<option value="${p.id}">${esc(p.project_name)}</option>`;
+  });
+  document.getElementById('nq-title').value = '';
+  document.getElementById('nq-status').value = 'draft';
+  document.getElementById('modal-new-quote').style.display = 'flex';
+}
+
+async function saveNewQuote() {
+  const project_id = document.getElementById('nq-project').value;
+  const title = document.getElementById('nq-title').value.trim();
+  const status = document.getElementById('nq-status').value;
+  if(!project_id) { alert('יש לבחור פרויקט'); return; }
+  const {data:newQ, error} = await sb.from('quotes').insert({project_id, title:title||'הצעה חדשה', status}).select().single();
+  if(error||!newQ) { alert('שגיאה ביצירת הצעה'); return; }
+  window._quotesAll = [newQ, ...(window._quotesAll||[])];
+  closeModal('modal-new-quote');
+  // Render new card at top (open by default)
+  const list = document.getElementById('quotes-list');
+  const emptyMsg = list.querySelector('.quote-empty');
+  if(emptyMsg) list.innerHTML = '';
+  const div = document.createElement('div');
+  div.innerHTML = renderQuoteCard(newQ, []);
+  list.prepend(div.firstElementChild);
+  toggleQuoteCard(newQ.id);
+}
+
+function printQuote(qid) {
+  const q = (window._quotesAll||[]).find(x=>x.id===qid);
+  const items = (window._quoteItemsAll||[]).filter(i=>i.quote_id===qid);
+  const proj = (allProjects||[]).find(p=>p.id===q?.project_id);
+  const total = items.reduce((a,i)=>a+(parseFloat(i.unit_cost||0)*parseFloat(i.quantity||1)),0);
+  const rows = items.map((item,i)=>{
+    const con = (allContractors||[]).find(c=>c.id===item.contractor_id);
+    const rowTotal = parseFloat(item.unit_cost||0)*parseFloat(item.quantity||1);
+    return `<tr style="background:${i%2?'#f9f9f9':'white'}">
+      <td>${i+1}</td>
+      <td>${esc(con?.company_name||'—')}</td>
+      <td>${esc(item.description||'')}</td>
+      <td style="text-align:left">₪${fmtMoney(item.unit_cost||0)}</td>
+      <td style="text-align:center">${item.quantity||1}</td>
+      <td style="text-align:left;font-weight:700">₪${fmtMoney(rowTotal)}</td>
+      <td>${item.start_date||'—'}</td>
+      <td>${item.end_date||'—'}</td>
+      <td>${esc(item.remarks||'')}</td>
+    </tr>`;
+  }).join('');
+  const win = window.open('','_blank');
+  win.document.write(`<!DOCTYPE html><html dir="rtl"><head><meta charset="UTF-8">
+    <title>הצעת מחיר — ${esc(q?.title||'')}</title>
+    <style>
+      body{font-family:Arial,sans-serif;padding:30px;direction:rtl;color:#111}
+      h1{color:#1a3d5c;margin-bottom:4px}
+      .sub{color:#666;font-size:14px;margin-bottom:20px}
+      table{width:100%;border-collapse:collapse;font-size:13px;margin-top:16px}
+      th{background:#1a3d5c;color:white;padding:9px 8px;text-align:right}
+      td{padding:8px;border-bottom:1px solid #ddd}
+      .total-row{background:#eef5ff;font-weight:800;font-size:15px}
+      .footer{margin-top:24px;font-size:12px;color:#999;text-align:center}
+      @media print{button{display:none}}
+    </style></head><body>
+    <h1>📋 ${esc(q?.title||'הצעת מחיר')}</h1>
+    <div class="sub">פרויקט: ${esc(proj?.project_name||'—')} | תאריך: ${new Date().toLocaleDateString('he-IL')} | סטטוס: ${QSTATUS_HE[q?.status]||''}</div>
+    <button onclick="window.print()" style="background:#1a3d5c;color:white;border:none;padding:8px 20px;border-radius:6px;cursor:pointer;font-size:14px">🖨️ הדפס</button>
+    <table>
+      <thead><tr><th>#</th><th>קבלן</th><th>תיאור סעיף</th><th>עלות יחידה</th><th>כמות</th><th>סה״כ</th><th>התחלה</th><th>סיום</th><th>הערות</th></tr></thead>
+      <tbody>${rows}</tbody>
+      <tfoot><tr class="total-row"><td colspan="5" style="text-align:right;padding-left:12px">סה״כ הצעה</td><td>₪${fmtMoney(total)}</td><td colspan="3"></td></tr></tfoot>
+    </table>
+    <div class="footer">Stonhard CRM | בני פרסקי | ${new Date().toLocaleDateString('he-IL')}</div>
+    </body></html>`);
+  win.document.close();
+}
+
+// ══════════════════════════════════════════════════════════════
+
 // ── Digital Clock ──────────────────────────────
 function updateSidebarClock() {
   var now = new Date();
