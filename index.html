@@ -6053,7 +6053,7 @@ function buildGcalUrl(poNum, projName, contrName, startDate, endDate, grand) {
 }
 
 // ── Print official PO document ───────────────────────────
-function printPO(po, items, sigData, gcalUrl, sbUrl, sbKey, contrEmail) {
+function printPO(po, items, sigData, gcalUrl, _unused1, _unused2, contrEmail) {
   const subtotal = parseFloat(po.subtotal||0);
   const vat      = parseFloat(po.vat_amount||0);
   const grand    = parseFloat(po.grand_total||0);
@@ -6078,8 +6078,6 @@ function printPO(po, items, sigData, gcalUrl, sbUrl, sbKey, contrEmail) {
   // Safe JS values baked into the print window
   const RESEND_KEY  = 're_EztSpcQk_Jy9J5VoafrRPZv9b1aAdzQQQ';
   // JSON.stringify for safe JS embedding; _RAW for HTML display
-  const SB_URL_J    = JSON.stringify('https://vmcipofovheztbjmhwsl.supabase.co');
-  const SB_KEY_J    = JSON.stringify('eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZtY2lwb2ZvdmhlenRiam1od3NsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE0NjE2MTcsImV4cCI6MjA4NzAzNzYxN30.LPq5N2Xo8iEqjgz2UhmdzUdh5tpGT3EYzSxJcYBEJ1w');
   const PO_ID_J     = JSON.stringify(po.id||'');
   const PO_NUM_J    = JSON.stringify(po.po_number||'');
   const PROJ_J      = JSON.stringify(po.project_name||'');
@@ -6235,8 +6233,8 @@ function loadScript(src, cb) {
 }
 // ── Constants baked in ────────────────────────────────────
 const RESEND_KEY  = 're_EztSpcQk_Jy9J5VoafrRPZv9b1aAdzQQQ';
-const SB_URL      = ${SB_URL_J};
-const SB_KEY_VAL  = ${SB_KEY_J};
+const SB_URL      = 'https://vmcipofovheztbjmhwsl.supabase.co';
+const SB_KEY_VAL  = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZtY2lwb2ZvdmhlenRiam1od3NsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE0NjE2MTcsImV4cCI6MjA4NzAzNzYxN30.LPq5N2Xo8iEqjgz2UhmdzUdh5tpGT3EYzSxJcYBEJ1w';
 const PO_ID_VAL   = ${PO_ID_J};
 const PO_NUM_VAL  = ${PO_NUM_J};
 const PROJ_NAME   = ${PROJ_J};
