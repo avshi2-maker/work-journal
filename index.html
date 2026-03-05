@@ -133,6 +133,43 @@ body{
 }
 
 /* ══ QUOTES PAGE ══════════════════════════════════════════ */
+
+/* ══ CHANGE ORDERS ══════════════════════════════════════════ */
+.co-section{border-top:2px dashed #e8b84b;margin-top:0;background:#fffdf4;}
+.co-section-header{display:flex;align-items:center;justify-content:space-between;padding:10px 20px;background:linear-gradient(135deg,#7a4f00,#c9860a);cursor:pointer;gap:10px;}
+.co-section-header .co-title{color:white;font-weight:800;font-size:14px;}
+.co-section-header .co-badge{background:rgba(255,255,255,0.25);color:white;padding:2px 10px;border-radius:12px;font-size:11px;font-weight:700;}
+.co-section-header .co-total-badge{color:#ffd966;font-weight:900;font-size:16px;}
+.co-body{display:none;padding:0;}
+.co-body.open{display:block;}
+.co-card{background:white;border:1.5px solid #f0d080;border-radius:10px;margin:12px 16px;overflow:hidden;}
+.co-card-hdr{display:flex;align-items:center;gap:10px;padding:10px 14px;background:#fff8e1;border-bottom:1px solid #f0d080;cursor:pointer;}
+.co-card-hdr .co-card-title{font-weight:700;font-size:13px;color:#7a4f00;flex:1;}
+.co-card-hdr .co-status{font-size:11px;padding:2px 9px;border-radius:10px;font-weight:600;}
+.costatus-open{background:#fff3cd;color:#856404;}
+.costatus-negotiating{background:#cce5ff;color:#004085;}
+.costatus-approved{background:#d4edda;color:#155724;}
+.costatus-rejected{background:#f8d7da;color:#721c24;}
+.co-items-table{width:100%;border-collapse:collapse;font-size:12px;}
+.co-items-table th{background:#fef3c7;padding:8px 8px;text-align:right;font-weight:700;color:#7a4f00;border-bottom:2px solid #f0d080;white-space:nowrap;}
+.co-items-table td{padding:7px 8px;border-bottom:1px solid #fde68a;vertical-align:top;}
+.co-items-table tr:last-child td{border-bottom:none;}
+.co-items-table td input,.co-items-table td select,.co-items-table td textarea{width:100%;border:1px solid #dde3ec;border-radius:5px;padding:4px 6px;font-size:12px;font-family:inherit;background:#fafbfd;}
+.co-approved-row{background:#f0fdf4!important;}
+.co-rejected-row{background:#fff5f5!important;opacity:0.7;}
+.co-beni-panel{background:#f0fdf4;border:1.5px solid #86efac;border-radius:6px;padding:8px 10px;margin-top:4px;}
+.co-summary-table{width:100%;border-collapse:collapse;font-size:13px;margin:12px 16px;width:calc(100% - 32px);}
+.co-summary-table th{background:#7a4f00;color:white;padding:9px 12px;text-align:right;}
+.co-summary-table td{padding:9px 12px;border-bottom:1px solid #fde68a;}
+.co-summary-total{background:#fff8e1;font-weight:800;font-size:14px;}
+.co-final-price{background:linear-gradient(135deg,#1e6b30,#22c55e);color:white;font-weight:900;font-size:16px;}
+.btn-co-add{background:#c9860a;color:white;border:none;border-radius:8px;padding:7px 15px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;}
+.btn-co-add:hover{background:#7a4f00;}
+.btn-co-report{background:#1a3d5c;color:white;border:none;border-radius:8px;padding:7px 15px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;}
+.btn-co-report:hover{background:#0f2440;}
+.btn-co-new{background:linear-gradient(135deg,#c9860a,#e8b84b);color:white;border:none;border-radius:8px;padding:8px 16px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;}
+.co-add-bar{padding:10px 16px;background:#fffdf4;border-top:1px solid #fde68a;display:flex;gap:8px;flex-wrap:wrap;align-items:center;}
+
 .quotes-toolbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:18px;}
 .quotes-toolbar select,.quotes-toolbar input[type=text]{padding:8px 14px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;background:white;font-family:inherit;color:var(--text1);}
 .quote-card{background:white;border-radius:14px;box-shadow:0 2px 12px rgba(0,0,0,0.07);border:1.5px solid var(--border);margin-bottom:16px;overflow:hidden;}
@@ -1354,6 +1391,49 @@ button:active{transform:scale(0.98)}
         <button class="btn btn-primary" id="send-modal-btn" onclick="executeSendReports()">
           <span id="send-modal-btn-label">📧 שלח</span>
         </button>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- Modal: New Change Order ══════════════════════════════ -->
+  <div class="modal-overlay" id="modal-new-co" style="display:none" onclick="closeModalOnOverlay(event,'modal-new-co')">
+    <div class="modal" style="max-width:500px">
+      <div class="modal-header" style="background:linear-gradient(135deg,#7a4f00,#c9860a);color:white;">
+        <span>⚡ פקודת שינוי חדשה</span>
+        <button class="modal-close" onclick="closeModal('modal-new-co')" style="color:white;">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label>כותרת פקודת השינוי *</label>
+          <input type="text" id="co-title" placeholder="לדוגמה: תוספות ריצוף קומה 2" style="width:100%;padding:9px;border:1.5px solid var(--border);border-radius:8px;font-size:14px;font-family:inherit;">
+        </div>
+        <div class="form-group">
+          <label>קבלן</label>
+          <select id="co-contractor" style="width:100%;padding:9px;border:1.5px solid var(--border);border-radius:8px;font-size:14px;font-family:inherit;">
+            <option value="">בחר קבלן...</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>הסבר / נימוק הקבלן</label>
+          <textarea id="co-contractor-notes" rows="3" placeholder="מה טוען הקבלן כסיבה לתוספת..." style="width:100%;padding:9px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit;resize:vertical;"></textarea>
+        </div>
+        <div class="form-group">
+          <label>סטטוס</label>
+          <select id="co-status" style="width:100%;padding:9px;border:1.5px solid var(--border);border-radius:8px;font-size:14px;font-family:inherit;">
+            <option value="open">פתוח למשא ומתן</option>
+            <option value="negotiating">במשא ומתן</option>
+            <option value="approved">אושר</option>
+            <option value="rejected">נדחה</option>
+          </select>
+        </div>
+        <div style="background:#fff8e1;border:1.5px solid #f0d080;border-radius:8px;padding:10px 14px;font-size:12px;color:#7a4f00;">
+          <strong>💡 אחרי יצירה:</strong> תוכל להעתיק שורות מהצעת המחיר המקורית ולהוסיף את דרישות הקבלן החדשות
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-ghost" onclick="closeModal('modal-new-co')">ביטול</button>
+        <button class="btn btn-primary" style="background:#c9860a;" onclick="saveNewCO()">⚡ צור פקודת שינוי</button>
       </div>
     </div>
   </div>
@@ -2843,6 +2923,7 @@ async function loadQuotes() {
 
   window._quotesAll = quotes || [];
   window._quoteItemsAll = items || [];
+  await loadAllChangeOrders();
   renderQuotesList(window._quotesAll, window._quoteItemsAll);
 }
 
@@ -2865,6 +2946,20 @@ function renderQuotesList(quotes, allItems) {
     return;
   }
   list.innerHTML = quotes.map(q => renderQuoteCard(q, allItems.filter(i=>i.quote_id===q.id))).join('');
+  // Init CO badges for all quote cards
+  quotes.forEach(q => {
+    const cos = (window._allCOs||[]).filter(c=>c.quote_id===q.id);
+    const countEl = document.getElementById('co-count-'+q.id);
+    const totalEl = document.getElementById('co-total-'+q.id);
+    if(countEl) countEl.textContent = cos.length ? cos.length+' פקודות' : 'אין פקודות';
+    if(totalEl) {
+      const approved = cos.reduce((a,co)=>{
+        return a+(window._allCOItems||[]).filter(i=>i.change_order_id===co.id&&i.approved)
+          .reduce((b,i)=>b+parseFloat(i.approved_amount||0),0);
+      },0);
+      if(cos.length) totalEl.textContent = '₪'+fmtMoney(approved)+' מאושר';
+    }
+  });
 }
 
 function renderQuoteCard(q, items) {
@@ -2960,8 +3055,24 @@ function renderQuoteCard(q, items) {
           </select>
         </div>
         <div style="display:flex;gap:8px">
+          <button class="btn-co-new" onclick="openNewCOModal('${q.id}','${q.project_id}')">⚡ פקודת שינוי חדשה</button>
           <button class="btn-quote-pdf" onclick="printQuote('${q.id}')">🖨️ הדפס</button>
           <button class="btn-quote-delete" onclick="deleteQuote('${q.id}')">🗑️ מחק הצעה</button>
+        </div>
+      </div>
+    </div>
+    <!-- Change Orders Section -->
+    <div class="co-section" id="co-section-${q.id}">
+      <div class="co-section-header" onclick="toggleCOSection('${q.id}')">
+        <span class="co-title">⚡ שינויים ותוספות למשא ומתן</span>
+        <span class="co-badge" id="co-count-${q.id}">טוען...</span>
+        <span class="co-total-badge" id="co-total-${q.id}"></span>
+        <span style="color:white;font-size:16px;" id="co-toggle-${q.id}">▼</span>
+      </div>
+      <div class="co-body" id="co-body-${q.id}">
+        <div id="co-cards-${q.id}"><div style="padding:16px;color:#999;text-align:center">טוען פקודות שינוי...</div></div>
+        <div class="co-add-bar">
+          <button class="btn-co-new" onclick="openNewCOModal('${q.id}','${q.project_id}')">➕ פקודת שינוי חדשה</button>
         </div>
       </div>
     </div>
@@ -3319,6 +3430,464 @@ function updateModalProfitDisplay() {
   el.textContent = '₪' + fmtMoney(profit) + (qs ? ' (תקציב ₪'+fmtMoney(budget)+' − הצעות ₪'+fmtMoney(qs)+')' : ' (אין הצעות מחיר עדיין)');
   el.style.color = profit >= 0 ? '#22c55e' : '#ef4444';
 }
+
+
+// ══════════════════════════════════════════════════════════════
+//  CHANGE ORDERS MODULE — עלויות ביצוע בפועל / שינויים ותוספות
+// ══════════════════════════════════════════════════════════════
+
+const CO_STATUS_HE  = {open:'פתוח',negotiating:'במו"מ',approved:'אושר',rejected:'נדחה'};
+const CO_STATUS_CSS = {open:'costatus-open',negotiating:'costatus-negotiating',approved:'costatus-approved',rejected:'costatus-rejected'};
+
+window._allCOs     = [];   // change_orders
+window._allCOItems = [];   // change_order_items
+window._newCOquoteId   = null;
+window._newCOprojectId = null;
+
+// ── Load all change orders when quotes page opens ──────────────
+async function loadAllChangeOrders() {
+  const {data: cos}   = await sb.from('change_orders').select('*').order('created_at',{ascending:false});
+  const {data: items} = await sb.from('change_order_items').select('*').order('sort_order',{ascending:true});
+  window._allCOs     = cos   || [];
+  window._allCOItems = items || [];
+}
+
+// ── Toggle CO section ──────────────────────────────────────────
+function toggleCOSection(qid) {
+  const body    = document.getElementById('co-body-'+qid);
+  const toggle  = document.getElementById('co-toggle-'+qid);
+  const isOpen  = body.classList.contains('open');
+  if(!isOpen) {
+    body.classList.add('open');
+    toggle.textContent = '▲';
+    renderCOCards(qid);
+  } else {
+    body.classList.remove('open');
+    toggle.textContent = '▼';
+  }
+}
+
+// ── Render all CO cards for a quote ───────────────────────────
+function renderCOCards(qid) {
+  const cos   = window._allCOs.filter(c => c.quote_id === qid);
+  const countEl = document.getElementById('co-count-'+qid);
+  const totalEl = document.getElementById('co-total-'+qid);
+  const container = document.getElementById('co-cards-'+qid);
+  if(!container) return;
+
+  // Update badge
+  const totalDemand = cos.reduce((a,co) => {
+    const items = window._allCOItems.filter(i=>i.change_order_id===co.id);
+    return a + items.reduce((b,i)=>b+(parseFloat(i.unit_cost||0)*parseFloat(i.quantity||1)),0);
+  },0);
+  const totalApproved = cos.reduce((a,co) => {
+    const items = window._allCOItems.filter(i=>i.change_order_id===co.id && i.approved);
+    return a + items.reduce((b,i)=>b+(parseFloat(i.approved_amount||0)),0);
+  },0);
+
+  if(countEl) countEl.textContent = cos.length + ' פקודות';
+  if(totalEl && cos.length) totalEl.textContent = '₪'+fmtMoney(totalApproved)+' מאושר';
+
+  if(!cos.length) {
+    container.innerHTML = '<div style="padding:20px;text-align:center;color:#9a6f00;">אין פקודות שינוי עדיין — לחץ על ״➕ פקודת שינוי חדשה״</div>';
+    return;
+  }
+  container.innerHTML = cos.map(co => renderCOCard(co, qid)).join('');
+}
+
+// ── Render single CO card ──────────────────────────────────────
+function renderCOCard(co, qid) {
+  const items   = window._allCOItems.filter(i=>i.change_order_id===co.id);
+  const qItems  = (window._quoteItemsAll||[]).filter(i=>i.quote_id===qid);
+  const contr   = (allContractors||[]).find(c=>c.id===co.contractor_id);
+  const demand  = items.reduce((a,i)=>a+(parseFloat(i.unit_cost||0)*parseFloat(i.quantity||1)),0);
+  const approved= items.reduce((a,i)=>i.approved?(a+parseFloat(i.approved_amount||0)):a,0);
+  const origTotal = qItems.reduce((a,i)=>a+(parseFloat(i.unit_cost||0)*parseFloat(i.quantity||1)),0);
+  const finalPrice = origTotal + approved;
+
+  const statusCss = CO_STATUS_CSS[co.status]||'costatus-open';
+  const statusHe  = CO_STATUS_HE[co.status]||co.status;
+
+  // Original quote reference (read-only)
+  const origRows = qItems.map(i => {
+    const c = (allContractors||[]).find(x=>x.id===i.contractor_id);
+    return `<tr style="background:#f8faff;">
+      <td style="color:#666;font-style:italic">${esc(c?.company_name||'—')}</td>
+      <td style="color:#444">${esc(i.description||'')}</td>
+      <td style="color:#1a3d5c;font-weight:700">₪${fmtMoney(i.unit_cost||0)}</td>
+      <td style="text-align:center">${i.quantity||1}</td>
+      <td style="color:#1a3d5c;font-weight:700">₪${fmtMoney((parseFloat(i.unit_cost||0)*parseFloat(i.quantity||1)))}</td>
+      <td colspan="3" style="color:#aaa;font-style:italic">הצעה מקורית — לא ניתן לעריכה</td>
+    </tr>`;
+  }).join('');
+
+  // Demand rows (editable)
+  const demandRows = items.map(item => {
+    const rowBg = item.approved ? '#f0fdf4' : '#fffdf4';
+    return `<tr id="corow-${item.id}" style="background:${rowBg}">
+      <td colspan="2" style="min-width:220px">
+        <input type="text" value="${esc(item.description||'')}" placeholder="תיאור דרישה..." 
+          onchange="coItemChange('${item.id}','description',this.value)"
+          style="width:100%;border:1px solid #dde3ec;border-radius:5px;padding:5px 7px;font-size:12px;font-family:inherit;">
+      </td>
+      <td style="min-width:90px">
+        <input type="number" value="${item.unit_cost||''}" placeholder="0" min="0" step="0.01"
+          oninput="coItemChange('${item.id}','unit_cost',this.value);updateCOTotals('${co.id}','${qid}')"
+          style="width:100%;border:1px solid #dde3ec;border-radius:5px;padding:5px;font-size:12px;">
+      </td>
+      <td style="min-width:60px">
+        <input type="number" value="${item.quantity||1}" placeholder="1" min="1"
+          oninput="coItemChange('${item.id}','quantity',this.value);updateCOTotals('${co.id}','${qid}')"
+          style="width:100%;border:1px solid #dde3ec;border-radius:5px;padding:5px;font-size:12px;">
+      </td>
+      <td style="min-width:90px;font-weight:700;color:#c9860a" id="corow-total-${item.id}">
+        ₪${fmtMoney(parseFloat(item.unit_cost||0)*parseFloat(item.quantity||1))}
+      </td>
+      <td style="min-width:130px">
+        <input type="text" value="${esc(item.contractor_remarks||'')}" placeholder="הסבר קבלן..."
+          onchange="coItemChange('${item.id}','contractor_remarks',this.value)"
+          style="width:100%;border:1px solid #dde3ec;border-radius:5px;padding:5px;font-size:12px;">
+      </td>
+      <td style="text-align:center;min-width:60px">
+        <input type="checkbox" ${item.approved?'checked':''} title="אשר סעיף זה"
+          onchange="coBeniApprove('${item.id}','${co.id}','${qid}',this.checked)"
+          style="width:16px;height:16px;cursor:pointer;accent-color:#1e6b30;">
+      </td>
+      <td style="min-width:200px" id="cobeni-panel-${item.id}">
+        ${item.approved ? renderBeniPanel(item) : '<span style="color:#aaa;font-size:11px">סמן לאישור</span>'}
+      </td>
+      <td style="text-align:center">
+        <button onclick="deleteCOItem('${item.id}','${co.id}','${qid}')" 
+          style="background:none;border:none;cursor:pointer;font-size:15px;" title="מחק">🗑️</button>
+      </td>
+    </tr>`;
+  }).join('');
+
+  return `<div class="co-card" id="cocard-${co.id}">
+    <div class="co-card-hdr" onclick="toggleCOCard('${co.id}')">
+      <div>
+        <div class="co-card-title">⚡ ${esc(co.title||'פקודת שינוי')}</div>
+        ${co.contractor_notes?`<div style="font-size:11px;color:#9a6f00;margin-top:2px">${esc(co.contractor_notes)}</div>`:''}
+      </div>
+      ${contr?`<span style="font-size:12px;color:#666;">👷 ${esc(contr.company_name)}</span>`:''}
+      <span class="co-status ${statusCss}">${statusHe}</span>
+      <span style="font-size:13px;font-weight:800;color:#c9860a;">דרישה: ₪${fmtMoney(demand)}</span>
+      <span style="font-size:13px;font-weight:800;color:#1e6b30;">מאושר: ₪${fmtMoney(approved)}</span>
+      <span style="font-size:14px;color:#888;" id="cotoggle-${co.id}">▼</span>
+    </div>
+    <div class="co-body" id="cobody-${co.id}">
+      <div style="overflow-x:auto">
+        <table class="co-items-table">
+          <thead>
+            <tr>
+              <th colspan="2">תיאור סעיף</th>
+              <th>עלות יחידה</th>
+              <th>כמות</th>
+              <th>סה״כ דרישה</th>
+              <th>הסבר קבלן</th>
+              <th>✅ אישור</th>
+              <th>הערות בני + סכום מאושר</th>
+              <th></th>
+            </tr>
+            <tr style="background:#e8f0fe;">
+              <td colspan="9" style="padding:5px 10px;font-size:11px;font-weight:700;color:#1a3d5c;">
+                📋 הצעה מקורית (לעיון בלבד)
+              </td>
+            </tr>
+          </thead>
+          <tbody>
+            ${origRows}
+            <tr style="background:#fef3c7;">
+              <td colspan="9" style="padding:5px 10px;font-size:11px;font-weight:700;color:#7a4f00;">
+                ⚡ דרישות השינוי של הקבלן
+              </td>
+            </tr>
+            ${demandRows}
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Summary comparison table -->
+      <table class="co-summary-table" id="cosummary-${co.id}">
+        <thead>
+          <tr>
+            <th>סעיף</th>
+            <th style="text-align:left">סכום</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td>📋 הצעה מקורית</td><td style="font-weight:700;color:#1a3d5c" id="cosum-orig-${co.id}">₪${fmtMoney(origTotal)}</td></tr>
+          <tr><td>⚡ דרישת שינויים</td><td style="font-weight:700;color:#c9860a" id="cosum-demand-${co.id}">₪${fmtMoney(demand)}</td></tr>
+          <tr><td>✅ סה״כ מאושר לתוספת</td><td style="font-weight:700;color:#1e6b30" id="cosum-approved-${co.id}">₪${fmtMoney(approved)}</td></tr>
+          <tr class="co-final-price">
+            <td>💰 מחיר חוזה סופי לתשלום</td>
+            <td id="cosum-final-${co.id}">₪${fmtMoney(finalPrice)}</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="co-add-bar">
+        <button class="btn-co-add" onclick="addCOItem('${co.id}','${qid}')">➕ הוסף דרישה</button>
+        <select onchange="updateCOStatus('${co.id}','${qid}',this.value)" 
+          style="padding:6px 10px;border:1.5px solid #f0d080;border-radius:7px;font-size:12px;font-family:inherit;background:#fffdf4;">
+          <option value="open" ${co.status==='open'?'selected':''}>פתוח למשא ומתן</option>
+          <option value="negotiating" ${co.status==='negotiating'?'selected':''}>במשא ומתן</option>
+          <option value="approved" ${co.status==='approved'?'selected':''}>אושר</option>
+          <option value="rejected" ${co.status==='rejected'?'selected':''}>נדחה</option>
+        </select>
+        <button class="btn-co-report" onclick="printCOReport('${co.id}','${qid}')">📊 דוח השוואה</button>
+        <button onclick="deleteCO('${co.id}','${qid}')" 
+          style="background:#fee;color:#c00;border:1px solid #fcc;border-radius:7px;padding:6px 12px;font-size:12px;cursor:pointer;font-family:inherit;">
+          🗑️ מחק פקודה
+        </button>
+      </div>
+    </div>
+  </div>`;
+}
+
+function renderBeniPanel(item) {
+  return `<div class="co-beni-panel">
+    <textarea placeholder="הערות בני..." rows="2"
+      onchange="coItemChange('${item.id}','beni_remarks',this.value)"
+      style="width:100%;border:1px solid #86efac;border-radius:5px;padding:4px;font-size:11px;font-family:inherit;resize:none;">${esc(item.beni_remarks||'')}</textarea>
+    <input type="number" value="${item.approved_amount||''}" placeholder="סכום מאושר ₪" min="0" step="0.01"
+      oninput="coItemChange('${item.id}','approved_amount',this.value);updateCOTotals('${item.change_order_id}',null)"
+      style="width:100%;margin-top:4px;border:1.5px solid #86efac;border-radius:5px;padding:4px;font-size:12px;font-weight:700;color:#1e6b30;">
+  </div>`;
+}
+
+function toggleCOCard(coid) {
+  const body   = document.getElementById('cobody-'+coid);
+  const toggle = document.getElementById('cotoggle-'+coid);
+  const isOpen = body.classList.contains('open');
+  body.classList.toggle('open',!isOpen);
+  toggle.textContent = isOpen ? '▼' : '▲';
+}
+
+// ── New CO Modal ───────────────────────────────────────────────
+function openNewCOModal(qid, projectId) {
+  window._newCOquoteId   = qid;
+  window._newCOprojectId = projectId;
+  document.getElementById('co-title').value = '';
+  document.getElementById('co-contractor-notes').value = '';
+  document.getElementById('co-status').value = 'open';
+  const sel = document.getElementById('co-contractor');
+  sel.innerHTML = '<option value="">בחר קבלן...</option>' +
+    (allContractors||[]).filter(c=>c.is_active).map(c=>`<option value="${c.id}">${esc(c.company_name)}</option>`).join('');
+  document.getElementById('modal-new-co').style.display = 'flex';
+}
+
+async function saveNewCO() {
+  const title = document.getElementById('co-title').value.trim();
+  if(!title) { alert('יש להזין כותרת לפקודת השינוי'); return; }
+  const {data:co, error} = await sb.from('change_orders').insert({
+    quote_id:         window._newCOquoteId,
+    project_id:       window._newCOprojectId,
+    contractor_id:    document.getElementById('co-contractor').value || null,
+    title,
+    contractor_notes: document.getElementById('co-contractor-notes').value.trim(),
+    status:           document.getElementById('co-status').value,
+  }).select().single();
+  if(error||!co) { alert('שגיאה ביצירת פקודת שינוי'); return; }
+  window._allCOs.unshift(co);
+  closeModal('modal-new-co');
+  // Open section and re-render
+  const body = document.getElementById('co-body-'+co.quote_id);
+  if(body && !body.classList.contains('open')) toggleCOSection(co.quote_id);
+  else renderCOCards(co.quote_id);
+}
+
+// ── Item CRUD ──────────────────────────────────────────────────
+window._coPending = {};
+function coItemChange(itemId, field, value) {
+  if(!window._coPending[itemId]) window._coPending[itemId] = {};
+  window._coPending[itemId][field] = value;
+  const cached = window._allCOItems.find(i=>i.id===itemId);
+  if(cached) cached[field] = value;
+  clearTimeout(window._coPending[itemId]._t);
+  window._coPending[itemId]._t = setTimeout(async()=>{
+    const ch = {...window._coPending[itemId]}; delete ch._t;
+    if(Object.keys(ch).length) { await sb.from('change_order_items').update(ch).eq('id',itemId); }
+    delete window._coPending[itemId];
+  }, 800);
+  if(field==='unit_cost'||field==='quantity') {
+    const item = window._allCOItems.find(i=>i.id===itemId);
+    if(item) {
+      const el = document.getElementById('corow-total-'+itemId);
+      if(el) el.textContent = '₪'+fmtMoney(parseFloat(item.unit_cost||0)*parseFloat(item.quantity||1));
+    }
+  }
+}
+
+async function coBeniApprove(itemId, coId, qid, checked) {
+  window._allCOItems.find(i=>i.id===itemId).approved = checked;
+  await sb.from('change_order_items').update({approved:checked}).eq('id',itemId);
+  // Re-render beni panel
+  const panelEl = document.getElementById('cobeni-panel-'+itemId);
+  if(panelEl) {
+    const item = window._allCOItems.find(i=>i.id===itemId);
+    panelEl.innerHTML = checked ? renderBeniPanel(item) : '<span style="color:#aaa;font-size:11px">סמן לאישור</span>';
+    const row = document.getElementById('corow-'+itemId);
+    if(row) row.style.background = checked ? '#f0fdf4' : '#fffdf4';
+  }
+  updateCOTotals(coId, qid);
+}
+
+async function addCOItem(coId, qid) {
+  const maxOrd = Math.max(0,...window._allCOItems.filter(i=>i.change_order_id===coId).map(i=>i.sort_order||0));
+  const {data:item,error} = await sb.from('change_order_items').insert({
+    change_order_id:coId, description:'', unit_cost:0, quantity:1, sort_order:maxOrd+1
+  }).select().single();
+  if(error||!item) return;
+  window._allCOItems.push(item);
+  const co = window._allCOs.find(c=>c.id===coId);
+  if(co) renderCOCards(co.quote_id);
+}
+
+async function deleteCOItem(itemId, coId, qid) {
+  if(!confirm('מחק שורה זו?')) return;
+  await sb.from('change_order_items').delete().eq('id',itemId);
+  window._allCOItems = window._allCOItems.filter(i=>i.id!==itemId);
+  const co = window._allCOs.find(c=>c.id===coId);
+  if(co) renderCOCards(co.quote_id);
+}
+
+async function updateCOStatus(coId, qid, status) {
+  await sb.from('change_orders').update({status}).eq('id',coId);
+  const co = window._allCOs.find(c=>c.id===coId);
+  if(co) co.status = status;
+}
+
+async function deleteCO(coId, qid) {
+  if(!confirm('מחק פקודת שינוי זו לגמרי?')) return;
+  await sb.from('change_order_items').delete().eq('change_order_id',coId);
+  await sb.from('change_orders').delete().eq('id',coId);
+  window._allCOs     = window._allCOs.filter(c=>c.id!==coId);
+  window._allCOItems = window._allCOItems.filter(i=>i.change_order_id!==coId);
+  renderCOCards(qid);
+}
+
+function updateCOTotals(coId, qid) {
+  const items = window._allCOItems.filter(i=>i.change_order_id===coId);
+  const demand   = items.reduce((a,i)=>a+(parseFloat(i.unit_cost||0)*parseFloat(i.quantity||1)),0);
+  const approved = items.filter(i=>i.approved).reduce((a,i)=>a+parseFloat(i.approved_amount||0),0);
+  // Get original quote total
+  const co = window._allCOs.find(c=>c.id===coId);
+  const origQid = co ? co.quote_id : qid;
+  const qItems = (window._quoteItemsAll||[]).filter(i=>i.quote_id===origQid);
+  const origTotal = qItems.reduce((a,i)=>a+(parseFloat(i.unit_cost||0)*parseFloat(i.quantity||1)),0);
+  const finalPrice = origTotal + approved;
+  const upd = (id,val) => { const el=document.getElementById(id); if(el) el.textContent=val; };
+  upd('cosum-demand-'+coId,   '₪'+fmtMoney(demand));
+  upd('cosum-approved-'+coId, '₪'+fmtMoney(approved));
+  upd('cosum-final-'+coId,    '₪'+fmtMoney(finalPrice));
+  if(origQid) upd('co-total-'+origQid, '₪'+fmtMoney(approved)+' מאושר');
+}
+
+// ── Print comparison report ────────────────────────────────────
+function printCOReport(coId, qid) {
+  const co     = window._allCOs.find(c=>c.id===coId);
+  const items  = window._allCOItems.filter(i=>i.change_order_id===coId);
+  const qItems = (window._quoteItemsAll||[]).filter(i=>i.quote_id===qid);
+  const q      = (window._quotesAll||[]).find(x=>x.id===qid);
+  const proj   = (allProjects||[]).find(p=>p.id===(co?.project_id||q?.project_id));
+  const contr  = (allContractors||[]).find(c=>c.id===co?.contractor_id);
+
+  const origTotal   = qItems.reduce((a,i)=>a+(parseFloat(i.unit_cost||0)*parseFloat(i.quantity||1)),0);
+  const demandTotal = items.reduce((a,i)=>a+(parseFloat(i.unit_cost||0)*parseFloat(i.quantity||1)),0);
+  const approvedTotal = items.filter(i=>i.approved).reduce((a,i)=>a+parseFloat(i.approved_amount||0),0);
+  const finalPrice  = origTotal + approvedTotal;
+
+  const origRows = qItems.map((i,idx) => {
+    const c = (allContractors||[]).find(x=>x.id===i.contractor_id);
+    return `<tr style="background:${idx%2===0?'#f8faff':'white'}">
+      <td>${esc(i.description||'')}</td>
+      <td>${esc(c?.company_name||'—')}</td>
+      <td style="text-align:left">₪${fmtMoney(i.unit_cost||0)}</td>
+      <td style="text-align:center">${i.quantity||1}</td>
+      <td style="text-align:left;font-weight:700">₪${fmtMoney(parseFloat(i.unit_cost||0)*parseFloat(i.quantity||1))}</td>
+    </tr>`;
+  }).join('');
+
+  const demandRows = items.map((i,idx) => {
+    const rowColor = i.approved ? '#f0fdf4' : idx%2===0?'#fffdf4':'white';
+    const approvedBadge = i.approved
+      ? `<span style="background:#d4edda;color:#155724;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:700">✅ אושר ₪${fmtMoney(i.approved_amount||0)}</span>`
+      : `<span style="background:#f8d7da;color:#721c24;padding:2px 8px;border-radius:10px;font-size:11px;">❌ לא אושר</span>`;
+    return `<tr style="background:${rowColor}">
+      <td>${esc(i.description||'')}</td>
+      <td style="text-align:left">₪${fmtMoney(i.unit_cost||0)}</td>
+      <td style="text-align:center">${i.quantity||1}</td>
+      <td style="text-align:left;color:#c9860a;font-weight:700">₪${fmtMoney(parseFloat(i.unit_cost||0)*parseFloat(i.quantity||1))}</td>
+      <td>${approvedBadge}</td>
+      <td style="font-size:11px;color:#666">${esc(i.beni_remarks||'')}</td>
+      <td style="font-size:11px;color:#666">${esc(i.contractor_remarks||'')}</td>
+    </tr>`;
+  }).join('');
+
+  const win = window.open('','_blank');
+  win.document.write(`<!DOCTYPE html><html dir="rtl"><head><meta charset="UTF-8">
+    <title>דוח פקודת שינוי — ${esc(co?.title||'')}</title>
+    <style>
+      body{font-family:Arial,sans-serif;padding:30px;direction:rtl;color:#111;font-size:13px}
+      h1{color:#7a4f00;margin-bottom:4px;font-size:20px}
+      h2{color:#1a3d5c;font-size:15px;margin:20px 0 8px;}
+      .meta{color:#666;font-size:12px;margin-bottom:20px}
+      table{width:100%;border-collapse:collapse;margin-bottom:20px}
+      th{padding:9px 8px;text-align:right;font-weight:700}
+      td{padding:8px;border-bottom:1px solid #eee}
+      .orig-header{background:#1a3d5c;color:white}
+      .demand-header{background:#7a4f00;color:white}
+      .summary{background:#fff8e1;border:2px solid #f0d080;border-radius:10px;padding:16px;margin-top:20px}
+      .summary table{margin:0}
+      .final{background:linear-gradient(135deg,#1e6b30,#22c55e);color:white;font-weight:900;font-size:16px}
+      .final td{border:none}
+      @media print{button{display:none}}
+    </style></head><body>
+    <button onclick="window.print()" style="background:#1a3d5c;color:white;border:none;padding:8px 20px;border-radius:6px;cursor:pointer;margin-bottom:16px;font-size:14px">🖨️ הדפס דוח</button>
+    <h1>⚡ דוח פקודת שינוי — ${esc(co?.title||'')}</h1>
+    <div class="meta">
+      פרויקט: ${esc(proj?.project_name||'—')} | 
+      קבלן: ${esc(contr?.company_name||'—')} | 
+      תאריך: ${new Date().toLocaleDateString('he-IL')} |
+      ${co?.contractor_notes ? 'נימוק קבלן: '+esc(co.contractor_notes) : ''}
+    </div>
+
+    <h2>📋 הצעה מקורית</h2>
+    <table><thead><tr class="orig-header">
+      <th>תיאור סעיף</th><th>קבלן</th><th>עלות יחידה</th><th>כמות</th><th>סה״כ</th>
+    </tr></thead><tbody>${origRows}
+    <tr style="background:#e8f0fe;font-weight:800">
+      <td colspan="4" style="text-align:right">סה״כ הצעה מקורית</td>
+      <td>₪${fmtMoney(origTotal)}</td>
+    </tr></tbody></table>
+
+    <h2>⚡ דרישות השינוי של הקבלן</h2>
+    <table><thead><tr class="demand-header">
+      <th>תיאור דרישה</th><th>עלות יחידה</th><th>כמות</th><th>סה״כ דרישה</th><th>סטטוס בני</th><th>הערות בני</th><th>נימוק קבלן</th>
+    </tr></thead><tbody>${demandRows}
+    <tr style="background:#fef3c7;font-weight:800">
+      <td colspan="3" style="text-align:right">סה״כ דרישת שינויים</td>
+      <td>₪${fmtMoney(demandTotal)}</td>
+      <td colspan="3"></td>
+    </tr></tbody></table>
+
+    <div class="summary">
+      <h2 style="margin-top:0">💰 סיכום ומחיר חוזה סופי</h2>
+      <table>
+        <tr><td><strong>📋 הצעה מקורית</strong></td><td style="text-align:left;color:#1a3d5c;font-weight:700">₪${fmtMoney(origTotal)}</td></tr>
+        <tr><td><strong>⚡ דרישת שינויים כוללת</strong></td><td style="text-align:left;color:#c9860a;font-weight:700">₪${fmtMoney(demandTotal)}</td></tr>
+        <tr><td><strong>✅ סה״כ מאושר לתוספת</strong></td><td style="text-align:left;color:#1e6b30;font-weight:700">₪${fmtMoney(approvedTotal)}</td></tr>
+        <tr class="final"><td>💰 מחיר חוזה סופי לתשלום</td><td style="text-align:left">₪${fmtMoney(finalPrice)}</td></tr>
+      </table>
+    </div>
+    <div style="margin-top:24px;font-size:11px;color:#999;text-align:center">
+      Stonhard CRM | בני פרסקי | ${new Date().toLocaleDateString('he-IL')}
+    </div>
+    </body></html>`);
+  win.document.close();
+}
+// ══════════════════════════════════════════════════════════════
 
 // ── Digital Clock ──────────────────────────────
 function updateSidebarClock() {
