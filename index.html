@@ -710,7 +710,7 @@ button:active{transform:scale(0.98)}
   </div>
   <div class="nav-item" onclick="showPage('quotes')" id="nav-quotes">
     <span class="nav-icon">📋</span>
-    <span>הצעות מחיר</span>
+    <span>הצעות מחיר מקבלנים</span>
   </div>
   <div class="nav-item" onclick="showPage('projects')" id="nav-projects">
     <span class="nav-icon">🏗️</span>
@@ -810,6 +810,12 @@ button:active{transform:scale(0.98)}
         <div class="stat-sub">יומנים שנשמרו</div>
         <div class="stat-icon">📄</div>
       </div>
+      <div class="stat-card" style="--accent-color:#22c55e">
+        <div class="stat-label">רווח צפוי כולל</div>
+        <div class="stat-value" id="stat-total-profit">—</div>
+        <div class="stat-sub">₪ מכל הפרויקטים</div>
+        <div class="stat-icon">📈</div>
+      </div>
     </div>
 
     <!-- Active Projects -->
@@ -908,7 +914,7 @@ button:active{transform:scale(0.98)}
           </tr>
         </thead>
         <tbody id="projects-tbody">
-          <tr><td colspan="9"><div class="empty-state"><div class="empty-icon">🏗️</div><h3>אין פרויקטים עדיין</h3></div></td></tr>
+          <tr><td colspan="10"><div class="empty-state"><div class="empty-icon">🏗️</div><h3>אין פרויקטים עדיין</h3></div></td></tr>
         </tbody>
       </table>
     </div>
@@ -918,7 +924,7 @@ button:active{transform:scale(0.98)}
   <!-- ══ PAGE: QUOTES ══ -->
   <div class="page" id="page-quotes" style="display:none">
     <div class="topbar">
-      <div class="page-title">קבלנים <span>הצעות מחיר</span></div>
+      <div class="page-title">הצעות מחיר <span>מקבלנים</span></div>
       <div class="topbar-actions">
         <button class="btn btn-primary" onclick="openNewQuoteModal()">➕ הצעה חדשה</button>
       </div>
@@ -1492,11 +1498,15 @@ button:active{transform:scale(0.98)}
       </div>
       <div class="form-group">
         <label>תקציב כולל (₪)</label>
-        <input type="number" id="p-budget" placeholder="0">
+        <input type="number" id="p-budget" placeholder="0" oninput="updateModalProfitDisplay()">
       </div>
       <div class="form-group">
         <label>סכום חוזה (₪)</label>
         <input type="number" id="p-contract" placeholder="0">
+      </div>
+      <div class="form-group">
+        <label>רווח צפוי (₪)</label>
+        <div style="padding:9px 12px;background:#f0fdf4;border:1.5px solid #22c55e;border-radius:8px;font-size:14px;font-weight:700;color:#22c55e;" id="p-profit-display">מחושב אוטומטית מתקציב − הצעות מחיר</div>
       </div>
 
       <div class="form-group span2"><span class="form-section-title">תיאור</span></div>
@@ -2215,6 +2225,10 @@ function renderDashboard() {
   document.getElementById('stat-active-contractors').textContent = activeContractors.length;
   document.getElementById('stat-total-sent').textContent = fmtMoney(totalSent);
   document.getElementById('stat-reports-month').textContent = monthReports.length;
+  const totalBudgetAll = allProjects.reduce((s,p)=>s+(p.total_budget||0),0);
+  const totalQuotesAll = allProjects.reduce((s,p)=>s+(window.quoteSum&&window.quoteSum[p.id]||0),0);
+  const totalProfit = totalBudgetAll - totalQuotesAll;
+  document.getElementById('stat-total-profit').textContent = totalBudgetAll ? '₪'+fmtMoney(totalProfit) : '—';
 
   // Projects list
   const plist = document.getElementById('dashboard-projects-list');
@@ -2228,7 +2242,10 @@ function renderDashboard() {
           <div class="contractor-name">${esc(p.project_name)}</div>
           <div class="contractor-role">${esc(p.client_name||'')} ${p.start_date?'| '+fmtDate(p.start_date):''}</div>
         </div>
-        ${p.total_budget?`<div style="font-size:13px;color:var(--text3)">₪${fmtMoney(p.total_budget)}</div>`:''}
+        <div style="text-align:left;font-size:12px;">
+          ${p.total_budget?`<div style="color:var(--text3)">תקציב: ₪${fmtMoney(p.total_budget)}</div>`:''}
+          ${(()=>{const qs=window.quoteSum&&window.quoteSum[p.id]||0;const bud=p.total_budget||0;if(!bud)return '';const pr=bud-qs;return `<div style="color:${pr>=0?'#22c55e':'#ef4444'};font-weight:700">רווח: ₪${fmtMoney(pr)}</div>`})()}
+        </div>
       </div>`).join('');
   }
 
@@ -2391,7 +2408,7 @@ function renderProjects(list) {
   const data = list || allProjects;
   const tbody = document.getElementById('projects-tbody');
   if(!data.length) {
-    tbody.innerHTML = '<tr><td colspan="9"><div class="empty-state"><div class="empty-icon">🏗️</div><h3>אין פרויקטים</h3></div></td></tr>';
+    tbody.innerHTML = '<tr><td colspan="10"><div class="empty-state"><div class="empty-icon">🏗️</div><h3>אין פרויקטים</h3></div></td></tr>';
     return;
   }
   const reportCount = {};
@@ -2405,6 +2422,13 @@ function renderProjects(list) {
     <td style="font-size:13px">${p.start_date?fmtDate(p.start_date):'—'}</td>
     <td>${p.total_budget?'₪'+fmtMoney(p.total_budget):'—'}</td>
     <td class="col-quote-sum">${quoteSum[p.id]?'₪'+fmtMoney(quoteSum[p.id]):'—'}</td>
+    <td style="color:#22c55e;font-weight:700">${(()=>{
+      const qs=quoteSum[p.id]||0;
+      const bud=p.total_budget||0;
+      if(!bud && !qs) return '—';
+      const profit=bud-qs;
+      return (profit>=0?'':'<span style="color:#ef4444">') + '₪'+fmtMoney(profit) + (profit>=0?'':'</span>');
+    })()}</td>
     <td style="text-align:center"><span class="badge badge-blue">${reportCount[p.id]||0}</span></td>
     <td><span class="badge ${STATUS_BADGE[p.status]||'badge-gray'}">${STATUS_HE[p.status]||p.status}</span></td>
     <td class="td-actions"><div class="btn-group">
@@ -2427,7 +2451,9 @@ function openProjectModal(id=null) {
   editingProjectId = id;
   const fields = ['name','client','client-mobile','address','city','status','start','end','budget','contract','scope'];
   fields.forEach(f=>{ const el=document.getElementById('p-'+f); if(el) el.value=''; });
+  window._editingProjectId = null;
   document.getElementById('p-status').value = 'active';
+
   document.getElementById('btn-delete-project').style.display = id ? 'block' : 'none';
   document.getElementById('modal-project-title').textContent = id ? 'עריכת פרויקט' : 'פרויקט חדש';
   if(id) {
@@ -2441,8 +2467,11 @@ function openProjectModal(id=null) {
       document.getElementById('p-status').value        = p.status||'active';
       document.getElementById('p-start').value         = p.start_date||'';
       document.getElementById('p-end').value           = p.planned_end_date||'';
+      window._editingProjectId = id;
       document.getElementById('p-budget').value        = p.total_budget||'';
       document.getElementById('p-contract').value      = p.contract_amount||'';
+      updateModalProfitDisplay();
+
       document.getElementById('p-scope').value         = p.scope_of_work||'';
     }
   }
@@ -3274,6 +3303,23 @@ async function executeSendReports() {
 }
 // ══════════════════════════════════════════════════════════════
 
+
+function updateModalProfitDisplay() {
+  const budget = parseFloat(document.getElementById('p-budget').value) || 0;
+  // Find the project id being edited to get its quoteSum
+  const qs = window._editingProjectId && window.quoteSum ? (window.quoteSum[window._editingProjectId]||0) : 0;
+  const profit = budget - qs;
+  const el = document.getElementById('p-profit-display');
+  if(!el) return;
+  if(!budget) {
+    el.textContent = 'מחושב אוטומטית מתקציב − הצעות מחיר';
+    el.style.color = '#22c55e';
+    return;
+  }
+  el.textContent = '₪' + fmtMoney(profit) + (qs ? ' (תקציב ₪'+fmtMoney(budget)+' − הצעות ₪'+fmtMoney(qs)+')' : ' (אין הצעות מחיר עדיין)');
+  el.style.color = profit >= 0 ? '#22c55e' : '#ef4444';
+}
+
 // ── Digital Clock ──────────────────────────────
 function updateSidebarClock() {
   var now = new Date();
@@ -3453,21 +3499,137 @@ function clearSignature(){if(signaturePad){const c=signaturePad.getContext('2d')
 function clearOwnerSignature(){if(ownerSignaturePad){const c=ownerSignaturePad.getContext('2d');c.clearRect(0,0,ownerSignaturePad.width,ownerSignaturePad.height);}}
 
 // ── DYNAMIC ROWS ────────────────────────────────
-function addWorkerRow() {
+
+// ── Worker & Activity roles/phases lists ──────────────────────
+const WORKER_ROLES = [
+  '',
+  // ── ניהול ופיקוח ──
+  'מנהל עבודה','מהנדס אתר','מפקח בנייה','מנהל פרויקט','מהנדס בטיחות','מהנדס קונסטרוקציה',
+  // ── עבודות עפר ויסודות ──
+  'עובד עפר','חופר','מפעיל מחפר','מפעיל דחפור','מפעיל בולדוזר','מפעיל גריידר',
+  'בנאי יסודות','עובד ביסוס','פועל קידוחים',
+  // ── בטון ושלד ──
+  'נגר בטון','קשרן ברזל','מסגר','יוצק בטון','מפעיל משאבת בטון','עובד שלד',
+  'בנאי בלוקים','אומן טיח','עובד טיח',
+  // ── ריצוף וחיפוי ──
+  'מרציף','מרצף','מניח אריחים','עובד פרקט','מניח אבן טבעית','מניח טרצו',
+  // ── אינסטלציה ──
+  'אינסטלטור','שרברב','מניח צנרת','טכנאי חימום','טכנאי מיזוג אוויר','טכנאי קירור',
+  // ── חשמל ──
+  'חשמלאי','עוזר חשמלאי','טכנאי חשמל','מניח קווים','מתקין לוחות חשמל',
+  // ── גבס וחלוקות ──
+  'גבסן','מתקין קירות גבס','מתקין תקרות גבס','עובד בנייה קלה',
+  // ── צביעה וגמר ──
+  'צבעי','מטייח','עובד גמר','מתקין חלונות','מתקין דלתות','מתקין אלומיניום',
+  'נגר נגרות אתר','מתקין מטבחים','מתקין ארונות',
+  // ── פיתוח ועזר ──
+  'פועל עזר','עובד פיתוח','גנן','מפעיל מנוף','מפעיל פיגום','מתקין פיגומים',
+  'עובד ניקיון אתר','נהג משאית','נהג עגורן',
+  // ── בטיחות ──
+  'ממונה בטיחות','עובד בטיחות','מגיש עזרה ראשונה',
+  // ── אחר (פתוח) ──
+  'אחר — הזן ידנית'
+];
+
+const ACTIVITY_PHASES = [
+  '',
+  // ── עבודות עפר ──
+  'חפירת יסודות','חפירה כללית','פינוי עפר','מילוי והדבדה','עבודות ניקוז','הנחת צנרת ניקוז','עבודות ביסוס',
+  // ── שלד ──
+  'יציקת יסודות','יציקת רצפה','יציקת עמודים','יציקת קורות','יציקת גג','יציקת מדרגות',
+  'קשירת ברזל','הקמת תבניות בטון','פירוק תבניות','בניית קירות בלוקים','בניית קירות לבנים',
+  // ── ריצוף וחיפוי ──
+  'הנחת ריצוף','הנחת אריחי קיר','הנחת פרקט','הנחת טרצו','חיפוי חוץ','הנחת אבן טבעית',
+  'הכנת בסיס לריצוף','שיוף ריצוף','אטימת ריצוף',
+  // ── טיח וגמר ──
+  'טיח פנים','טיח חוץ','גמר קירות','גמר תקרות','שפכטל וצביעה','עבודות גבס',
+  'התקנת תקרת גבס','התקנת קירות גבס','עבודות צביעה פנים','עבודות צביעה חוץ',
+  // ── אינסטלציה ──
+  'הנחת צנרת מים','הנחת צנרת ביוב','התקנת נקודות מים','התקנת אסלות ואמבטיות',
+  'בדיקת לחץ מים','הנחת צנרת גז','בדיקות אינסטלציה',
+  // ── חשמל ──
+  'הנחת קווי חשמל','התקנת לוח חשמל','התקנת נקודות חשמל','הנחת תעלות חשמל',
+  'התקנת תאורה','בדיקות חשמל','הנחת כבלי אינטרנט ותקשורת',
+  // ── מיזוג ──
+  'הנחת תעלות מיזוג','התקנת יחידות מיזוג','בדיקות מיזוג',
+  // ── עבודות מסגרות ──
+  'התקנת חלונות','התקנת דלתות','התקנת פרגולות','התקנת גדרות','התקנת מעקות',
+  'עבודות אלומיניום','התקנת תריסים',
+  // ── פיתוח ──
+  'עבודות פיתוח חוץ','ריצוף חצרות','הנחת מדרכות','נטיעות וגינון','תאורת חוץ',
+  'הקמת חניה','הכנת כביש גישה',
+  // ── ניהול ובטיחות ──
+  'בדיקת בטיחות','ישיבת ביטחון','הקמת גדרות בטיחות','סידור אתר','פינוי פסולת',
+  'קבלת חומרים','בדיקת איכות','בדיקת מפקח','ישיבת פרויקט','תיאום קבלנים',
+  // ── אחר ──
+  'אחר — הזן ידנית'
+];
+
+function buildRoleSelect(selectedVal) {
+  const opts = WORKER_ROLES.map(r =>
+    `<option value="${r}" ${r===selectedVal?'selected':''}>${r || '— בחר תפקיד —'}</option>`
+  ).join('');
+  return `<select class="worker-role" style="flex:2;padding:7px 10px;border:1.5px solid #dde3ec;border-radius:8px;font-size:13px;font-family:inherit;background:#fafbfd;">${opts}
+    <option value="__custom__">✏️ הזן ידנית...</option>
+  </select>`;
+}
+
+function buildActivitySelect(selectedVal) {
+  const opts = ACTIVITY_PHASES.map(a =>
+    `<option value="${a}" ${a===selectedVal?'selected':''}>${a || '— בחר פעילות —'}</option>`
+  ).join('');
+  return `<select class="activity-desc" style="flex:2;padding:7px 10px;border:1.5px solid #dde3ec;border-radius:8px;font-size:13px;font-family:inherit;background:#fafbfd;">${opts}
+    <option value="__custom__">✏️ הזן ידנית...</option>
+  </select>`;
+}
+
+function handleCustomOption(sel, placeholder) {
+  if(sel.value === '__custom__') {
+    const val = prompt(placeholder) || '';
+    if(val.trim()) {
+      const opt = document.createElement('option');
+      opt.value = val.trim();
+      opt.textContent = val.trim();
+      // Insert before the last option (custom option)
+      sel.insertBefore(opt, sel.lastElementChild);
+      sel.value = val.trim();
+    } else {
+      sel.value = '';
+    }
+  }
+}
+
+function addWorkerRow(prefillRole) {
   const c=document.getElementById('workersContainer');
   const r=document.createElement('div'); r.className='form-row';
-  r.innerHTML='<input type="text" placeholder="תפקיד" class="worker-role"><input type="number" placeholder="מספר" class="worker-count" value="1"><input type="number" placeholder="שעות" step="0.5" class="worker-hours" value="8">';
+  r.style.cssText='display:flex;gap:8px;align-items:center;margin-bottom:8px;';
+  r.innerHTML=
+    buildRoleSelect(prefillRole||'') +
+    '<input type="number" placeholder="כמות" class="worker-count" value="1" style="width:70px;padding:7px;border:1.5px solid #dde3ec;border-radius:8px;font-size:13px;">' +
+    '<input type="number" placeholder="שעות" step="0.5" class="worker-hours" value="8" style="width:70px;padding:7px;border:1.5px solid #dde3ec;border-radius:8px;font-size:13px;">' +
+    '<button type="button" onclick="this.closest(\'.form-row\').remove();calculateTotalWorkerHours();" style="background:none;border:none;font-size:18px;cursor:pointer;color:#aaa;padding:0 4px;" title="הסר">🗑️</button>';
   c.appendChild(r);
+  const sel = r.querySelector('.worker-role');
+  sel.addEventListener('change', () => handleCustomOption(sel, 'הזן תפקיד חדש'));
   r.querySelector('.worker-count').addEventListener('input',calculateTotalWorkerHours);
   r.querySelector('.worker-hours').addEventListener('input',calculateTotalWorkerHours);
   calculateTotalWorkerHours();
 }
-function addActivityRow() {
+
+function addActivityRow(prefillDesc) {
   const c=document.getElementById('activitiesContainer');
   const r=document.createElement('div'); r.className='form-row';
-  r.innerHTML='<input type="text" placeholder="תיאור" class="activity-desc"><input type="text" placeholder="מיקום" class="activity-location"><input type="text" placeholder="כמות" class="activity-quantity">';
+  r.style.cssText='display:flex;gap:8px;align-items:center;margin-bottom:8px;';
+  r.innerHTML=
+    buildActivitySelect(prefillDesc||'') +
+    '<input type="text" placeholder="מיקום" class="activity-location" style="flex:1;padding:7px;border:1.5px solid #dde3ec;border-radius:8px;font-size:13px;">' +
+    '<input type="text" placeholder="כמות/יחידה" class="activity-quantity" style="width:90px;padding:7px;border:1.5px solid #dde3ec;border-radius:8px;font-size:13px;">' +
+    '<button type="button" onclick="this.closest(\'.form-row\').remove();" style="background:none;border:none;font-size:18px;cursor:pointer;color:#aaa;padding:0 4px;" title="הסר">🗑️</button>';
   c.appendChild(r);
+  const sel = r.querySelector('.activity-desc');
+  sel.addEventListener('change', () => handleCustomOption(sel, 'הזן פעילות חדשה'));
 }
+
 function addMaterialRow(prefill) {
   const container = document.getElementById('materialsContainer');
   if(!container) return;
@@ -3611,8 +3773,8 @@ function collectContractors() {
 
 function collectFormData() {
   const workers=[],activities=[],materials=[],equipment=[],safety=[],inspections=[],delays=[];
-  document.querySelectorAll('#workersContainer .form-row').forEach(r=>{const role=r.querySelector('.worker-role').value;if(role)workers.push({role,worker_count:parseInt(r.querySelector('.worker-count').value)||0,hours_worked:parseFloat(r.querySelector('.worker-hours').value)||0});});
-  document.querySelectorAll('#activitiesContainer .form-row').forEach(r=>{const d=r.querySelector('.activity-desc').value;if(d)activities.push({description:d,location:r.querySelector('.activity-location').value,quantity:r.querySelector('.activity-quantity').value});});
+  document.querySelectorAll('#workersContainer .form-row').forEach(r=>{const role=r.querySelector('.worker-role')?.value?.trim();if(role&&role!=='__custom__')workers.push({role,worker_count:parseInt(r.querySelector('.worker-count').value)||0,hours_worked:parseFloat(r.querySelector('.worker-hours').value)||0});});
+  document.querySelectorAll('#activitiesContainer .form-row').forEach(r=>{const d=r.querySelector('.activity-desc')?.value?.trim();if(d&&d!=='__custom__')activities.push({description:d,location:r.querySelector('.activity-location')?.value||'',quantity:r.querySelector('.activity-quantity')?.value||''});});
   document.querySelectorAll('#materialsContainer .dynamic-row').forEach(r=>{const t=r.querySelector('.material-type').value,q=r.querySelector('.material-quantity').value;if(t&&q)materials.push({material_type:t,quantity:q,unit:r.querySelector('.material-unit').value,supplier:r.querySelector('.material-supplier').value,delivery_time:r.querySelector('.material-delivery-time').value||null});});
   document.querySelectorAll('#equipmentContainer .dynamic-row').forEach(r=>{const t=r.querySelector('.equipment-type').value;if(t)equipment.push({equipment_type:t,hours_used:parseFloat(r.querySelector('.equipment-hours').value)||0,rental:r.querySelector('.equipment-rental').value==='true',issues:r.querySelector('.equipment-issues').value});});
   document.querySelectorAll('#safetyContainer .dynamic-row').forEach(r=>{const t=r.querySelector('.safety-type').value,d=r.querySelector('.safety-description').value;if(t&&d)safety.push({incident_type:t,severity:r.querySelector('.safety-severity').value,description:d,corrective_action:r.querySelector('.safety-corrective').value});});
@@ -4103,7 +4265,9 @@ async function renderForecast() {
     });
     const rows = (projects||[]);
     const totalBudget  = rows.reduce((s,p) => s+(p.total_budget||p.budget||0), 0);
-    const totalProfit  = rows.reduce((s,p) => s+(p.expected_profit||0), 0);
+    // Profit = budget - quotes (auto-calculated, not stored)
+    const _fqSum = window.quoteSum || {};
+    const totalProfit  = rows.reduce((s,p) => s+(( (p.total_budget||p.budget||0) - (_fqSum[p.id]||0) )), 0);
     const totalExpense = rows.reduce((s,p) => s+(expMap[p.id]||0), 0);
     const totalROI     = totalBudget ? ((totalProfit/totalBudget)*100).toFixed(1) : 0;
     const cards = [
@@ -4125,26 +4289,28 @@ async function renderForecast() {
       const maxVal = Math.max(...rows.map(p => p.total_budget||p.budget||0), 1);
       chartEl.innerHTML = rows.map(p => {
         const bp = ((p.total_budget||p.budget||0)/maxVal*100).toFixed(1);
-        const pp = ((p.expected_profit||0)/maxVal*100).toFixed(1);
-        const roi = (p.total_budget||p.budget) ? (((p.expected_profit||0)/(p.total_budget||p.budget||1))*100).toFixed(1) : 0;
+        const _pProfit = (p.total_budget||p.budget||0) - (_fqSum[p.id]||0);
+        const pp = (Math.max(_pProfit,0)/maxVal*100).toFixed(1);
+        const roi = (p.total_budget||p.budget) ? ((_pProfit/(p.total_budget||p.budget||1))*100).toFixed(1) : 0;
         return '<div style="margin-bottom:14px">'
           +'<div style="display:flex;justify-content:space-between;font-size:12px;font-weight:700;color:#1a3d5c;margin-bottom:4px"><span>'+p.project_name+'</span><span>ROI: '+roi+'%</span></div>'
           +'<div style="background:#f0f0f0;border-radius:6px;height:12px;margin-bottom:3px;overflow:hidden"><div style="background:#3b82f6;height:100%;width:'+bp+'%;border-radius:6px"></div></div>'
           +'<div style="background:#f0f0f0;border-radius:6px;height:12px;overflow:hidden"><div style="background:#22c55e;height:100%;width:'+pp+'%;border-radius:6px"></div></div>'
-          +'<div style="display:flex;gap:12px;font-size:10px;color:#888;margin-top:2px"><span>🔵 '+fmtMoney(p.budget||0)+'</span><span>🟢 '+fmtMoney(p.expected_profit||0)+'</span></div></div>';
+          +'<div style="display:flex;gap:12px;font-size:10px;color:#888;margin-top:2px"><span>🔵 '+fmtMoney(p.total_budget||p.budget||0)+'</span><span>🟢 '+fmtMoney(_pProfit)+'</span></div></div>';
       }).join('');
     }
     const tbody = document.getElementById('forecast-tbody');
     if(tbody) tbody.innerHTML = rows.map(p => {
       const exp = expMap[p.id]||0;
-      const actual = (p.total_budget||p.budget||0) - exp;
-      const roi = (p.total_budget||p.budget) ? (((p.expected_profit||0)/(p.total_budget||p.budget||1))*100).toFixed(1) : '—';
+      const actual = _tProfit - exp;
+      const _tProfit = (p.total_budget||p.budget||0) - (_fqSum[p.id]||0);
+      const roi = (p.total_budget||p.budget) ? ((_tProfit/(p.total_budget||p.budget||1))*100).toFixed(1) : '—';
       const rc = Number(roi) > 20 ? '#22c55e' : Number(roi) > 10 ? '#f59e0b' : '#ef4444';
       const sc = p.status==='active'?'#22c55e':p.status==='completed'?'#3b82f6':'#f59e0b';
       return '<tr style="border-bottom:1px solid #f0f0f0">'
         +'<td style="padding:10px 12px;font-weight:700">'+p.project_name+'</td>'
         +'<td style="padding:10px 12px">'+fmtMoney(p.total_budget||p.budget||0)+'</td>'
-        +'<td style="padding:10px 12px;color:#22c55e;font-weight:700">'+fmtMoney(p.expected_profit||0)+'</td>'
+        +'<td style="padding:10px 12px;color:'+(((p.total_budget||0)-(_fqSum[p.id]||0))>=0?'#22c55e':'#ef4444')+';font-weight:700">'+fmtMoney((p.total_budget||0)-(_fqSum[p.id]||0))+'</td>'
         +'<td style="padding:10px 12px;font-weight:900;color:'+rc+'">'+roi+'%</td>'
         +'<td style="padding:10px 12px;color:#ef4444">'+fmtMoney(exp)+'</td>'
         +'<td style="padding:10px 12px;color:'+(actual>=0?'#22c55e':'#ef4444')+';font-weight:700">'+fmtMoney(actual)+'</td>'
