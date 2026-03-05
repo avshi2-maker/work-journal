@@ -189,29 +189,7 @@ body{
 .co-add-bar{padding:10px 16px;background:#fffdf4;border-top:1px solid #fde68a;display:flex;gap:8px;flex-wrap:wrap;align-items:center;}
 
 
-/* Sidebar slide-in on 768px (hamburger mode) */
-@media(min-width:481px) and (max-width:768px){
-  .sidebar{transition:width 0.25s ease;}
-  .sidebar.mobile-open{
-    width:220px!important;
-    z-index:150;
-  }
-  .sidebar.mobile-open .sidebar-logo,
-  .sidebar.mobile-open .sidebar-clock,
-  .sidebar.mobile-open .nav-item span,
-  .sidebar.mobile-open .user-name,
-  .sidebar.mobile-open .user-role,
-  .sidebar.mobile-open .sidebar-bottom .user-chip > *:not(.user-avatar){
-    display:block!important;
-  }
-  .sidebar.mobile-open .nav-item{justify-content:flex-start;padding:12px 16px;}
-}
-
-
-@media(min-width:481px) and (max-width:768px){
-  #btn-hamburger{display:block!important;}
-  .nav-item{position:relative;}
-}
+/* mobile drawer — handled in @media(max-width:768px) above */
 
 
 @media(max-width:480px){
@@ -591,37 +569,88 @@ textarea{min-height:80px;resize:vertical;}
 
 /* ═══════════════════════════════════════════════════════════
    FULL MOBILE RESPONSIVE — Android & iOS
-   Breakpoints: 1100 tablet | 768 mobile-landscape | 480 mobile
+   Breakpoints: 1100 tablet | 768 mobile | 480 small-phone
    ═══════════════════════════════════════════════════════════ */
 
-/* Tablet */
+/* ── Tablet ──────────────────────────────────────────── */
 @media(max-width:1100px){
   .stats-grid{grid-template-columns:repeat(2,1fr);}
   .form-grid.three{grid-template-columns:1fr 1fr;}
 }
 
-/* Mobile landscape + small tablets 768px */
+/* ── Mobile (≤768px): slide-out drawer sidebar ────────── */
 @media(max-width:768px){
-  /* Sidebar: icon-only strip */
-  .sidebar{
-    width:56px;
-    overflow:visible;
-    padding-top:env(safe-area-inset-top,0);
-  }
-  .sidebar-logo,.sidebar-clock,.nav-item span,
-  .user-name,.user-role,
-  .sidebar-bottom .user-chip > *:not(.user-avatar){display:none;}
-  .nav-item{justify-content:center;padding:12px 0;border-radius:0;}
-  .nav-item .nav-icon{font-size:20px;margin:0;}
-  .nav-badge{position:absolute;top:6px;right:6px;font-size:9px;min-width:16px;height:16px;line-height:16px;}
-  .user-avatar{width:32px;height:32px;font-size:13px;margin:auto;}
 
-  /* Main content */
+  /* Sidebar: hidden off-screen by default */
+  .sidebar{
+    position:fixed;
+    top:0; right:0;
+    width:260px!important;
+    height:100vh;
+    z-index:300;
+    transform:translateX(100%);
+    transition:transform 0.28s cubic-bezier(0.4,0,0.2,1);
+    overflow-y:auto;
+    overflow-x:hidden;
+    padding-top:env(safe-area-inset-top,0);
+    box-shadow:-4px 0 24px rgba(0,0,0,0.35);
+  }
+
+  /* Sidebar open: slide in */
+  .sidebar.mobile-open{
+    transform:translateX(0)!important;
+  }
+
+  /* Show all sidebar content when open */
+  .sidebar .sidebar-logo,
+  .sidebar .sidebar-clock,
+  .sidebar .nav-item span,
+  .sidebar .user-name,
+  .sidebar .user-role,
+  .sidebar .sidebar-bottom{
+    display:flex!important;
+  }
+  .sidebar .sidebar-bottom .user-chip > *{display:block!important;}
+  .sidebar .nav-item{
+    justify-content:flex-start!important;
+    padding:12px 16px!important;
+    border-radius:0!important;
+  }
+  .sidebar .nav-item .nav-icon{margin-left:10px;}
+
+  /* Hamburger button: always visible top-right */
+  #btn-hamburger{
+    display:flex!important;
+    position:fixed;
+    top:12px;
+    right:12px;
+    z-index:400;
+    width:44px; height:44px;
+    background:linear-gradient(135deg,#1a3d5c,#2d6a9f);
+    color:white;
+    border:none;
+    border-radius:10px;
+    font-size:20px;
+    align-items:center;
+    justify-content:center;
+    box-shadow:0 2px 10px rgba(0,0,0,0.3);
+    cursor:pointer;
+    touch-action:manipulation;
+  }
+
+  /* Main: full width, top padding for hamburger */
   .main{
-    margin-right:56px;
-    padding:16px 12px 80px;
+    margin-right:0!important;
+    padding:56px 12px 80px!important;
     min-height:100vh;
   }
+
+  /* Overlay behind open sidebar */
+  #crm-overlay{z-index:299!important;}
+  /* Show fixed hamburger */
+  #btn-hamburger-fixed{display:flex!important;}
+  /* Hide the in-sidebar hamburger to avoid confusion */
+  #btn-hamburger{display:none!important;}
 
   /* Stats 2-col */
   .stats-grid{grid-template-columns:1fr 1fr;gap:10px;}
@@ -637,12 +666,12 @@ textarea{min-height:80px;resize:vertical;}
   /* Forms */
   .form-grid,.form-grid.three,.form-grid.two{grid-template-columns:1fr;}
   .form-group.span2,.form-group.span3{grid-column:span 1;}
-  .topbar{flex-wrap:wrap;gap:8px;}
+  .topbar{flex-wrap:wrap;gap:8px;padding-right:56px;}
   .page-title{font-size:18px;}
   .search-bar{flex-wrap:wrap;gap:8px;}
   .search-bar input,.search-bar select{width:100%;}
 
-  /* Modals: full screen */
+  /* Modals: slide up from bottom */
   .modal-overlay{align-items:flex-end;padding:0;}
   .modal{
     width:100%!important;
@@ -663,61 +692,17 @@ textarea{min-height:80px;resize:vertical;}
 
   /* Buttons: larger touch targets */
   .btn,.btn-primary,.btn-ghost,.btn-add,.btn-co-new,.btn-quote-add-item{
-    min-height:40px;padding:9px 14px;font-size:13px;
+    min-height:44px;padding:10px 16px;font-size:14px;
   }
-  button{min-height:36px;touch-action:manipulation;}
+  button{min-height:40px;touch-action:manipulation;}
 
-  /* Forecast chart */
+  /* Forecast */
   #forecast-chart{overflow-x:auto;-webkit-overflow-scrolling:touch;}
 }
 
-/* Mobile portrait 480px */
+/* ── Small phone (≤480px): same drawer, slightly tighter ─ */
 @media(max-width:480px){
-  /* Sidebar becomes bottom nav on smallest screens */
-  .sidebar{
-    position:fixed;
-    top:auto!important;
-    bottom:0;
-    right:0;
-    left:0;
-    width:100%!important;
-    height:56px;
-    flex-direction:row;
-    overflow-x:auto;
-    overflow-y:hidden;
-    -webkit-overflow-scrolling:touch;
-    z-index:200;
-    padding:0;
-    padding-bottom:env(safe-area-inset-bottom,0);
-    border-top:1px solid rgba(255,255,255,0.2);
-    border-right:none;
-    justify-content:space-around;
-    align-items:center;
-    background:linear-gradient(180deg,#1a3d5c,#0f2440);
-  }
-  .sidebar-logo,.sidebar-clock,.sidebar-bottom{display:none!important;}
-  .nav-item{
-    flex:0 0 auto;
-    flex-direction:column;
-    padding:4px 10px;
-    border-radius:8px;
-    min-width:48px;
-    align-items:center;
-    border-right:none!important;
-    background:none!important;
-  }
-  .nav-item .nav-icon{font-size:18px;margin:0 0 2px;}
-  .nav-item span:last-of-type{display:block!important;font-size:9px;color:rgba(255,255,255,0.7);white-space:nowrap;max-width:52px;overflow:hidden;text-overflow:ellipsis;}
-  .nav-item.active{background:rgba(255,255,255,0.15)!important;}
-  .nav-badge{position:absolute;top:2px;right:4px;font-size:8px;min-width:14px;height:14px;line-height:14px;}
-
-  /* Main: no right margin, bottom padding for nav */
-  .main{
-    margin-right:0!important;
-    padding:12px 10px 72px!important;
-  }
-
-  /* Stats 1-col on very small */
+  .main{padding:56px 10px 80px!important;}
   .stats-grid{grid-template-columns:1fr 1fr;gap:8px;}
   .stat-card{padding:12px 8px;}
   .stat-value{font-size:16px;}
@@ -2667,6 +2652,13 @@ let supabaseClient = sb; // journal uses this name
 //  TAB SWITCHER
 // ══════════════════════════════════════════
 function switchTab(tab) {
+  // Auto-close sidebar on mobile
+  var sb = document.querySelector('#crm-panel .sidebar');
+  if(sb && sb.classList.contains('mobile-open')) {
+    sb.classList.remove('mobile-open');
+    var ov = document.getElementById('crm-overlay');
+    if(ov) ov.style.display = 'none';
+  }
   ['crm','notes','gcal','journal'].forEach(t => {
     const panel = document.getElementById(t+'-panel');
     const btn   = document.getElementById('tab-'+t);
@@ -2792,6 +2784,13 @@ async function loadReports() {
 
 // ── NAVIGATION ───────────────────────────────────────────
 function showPage(page) {
+  // Auto-close sidebar on mobile after navigation
+  var sb = document.querySelector('#crm-panel .sidebar');
+  if(sb && sb.classList.contains('mobile-open')) {
+    sb.classList.remove('mobile-open');
+    var ov = document.getElementById('crm-overlay');
+    if(ov) ov.style.display = 'none';
+  }
   // Step 1: Reset ALL pages — clear both inline styles AND classes
   var main = document.querySelector('#crm-panel .main');
   if(main) Array.from(main.children).forEach(function(c){
@@ -4694,7 +4693,11 @@ function toggleMobileSidebar() {
   if(!sidebar) return;
   const isOpen = sidebar.classList.contains('mobile-open');
   sidebar.classList.toggle('mobile-open', !isOpen);
-  document.getElementById('crm-overlay').style.display = isOpen ? 'none' : 'block';
+  const ov = document.getElementById('crm-overlay');
+  if(ov) ov.style.display = isOpen ? 'none' : 'block';
+  // Update hamburger icon
+  const btn = document.getElementById('btn-hamburger-fixed');
+  if(btn) btn.textContent = isOpen ? '☰' : '✕';
 }
 document.addEventListener('DOMContentLoaded', function() {
   // Create overlay
