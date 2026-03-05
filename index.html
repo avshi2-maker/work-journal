@@ -1049,10 +1049,16 @@ input,select,textarea,button { -webkit-appearance:none; font-size:16px; }
         <div class="stat-icon">👷</div>
       </div>
       <div class="stat-card" style="--accent-color:var(--red)">
-        <div class="stat-label">סה"כ שולם</div>
+        <div class="stat-label">סה״כ שולם לקבלנים</div>
         <div class="stat-value" id="stat-total-sent">—</div>
-        <div class="stat-sub">₪ תשלומים יצאו</div>
+        <div class="stat-sub">₪ הוצאות</div>
         <div class="stat-icon">💸</div>
+      </div>
+      <div class="stat-card" style="--accent-color:#1e6b30">
+        <div class="stat-label">הכנסות מלקוחות</div>
+        <div class="stat-value" id="stat-total-income">—</div>
+        <div class="stat-sub">₪ תקבולים</div>
+        <div class="stat-icon">🏦</div>
       </div>
       <div class="stat-card" style="--accent-color:var(--amber)">
         <div class="stat-label">דוחות החודש</div>
@@ -1247,6 +1253,7 @@ input,select,textarea,button { -webkit-appearance:none; font-size:16px; }
     <div class="tabs">
       <div class="tab active" onclick="showFinanceTab('balances')" id="ftab-balances">יתרות קבלנים</div>
       <div class="tab" onclick="showFinanceTab('transactions')" id="ftab-transactions">כל התנועות</div>
+      <div class="tab" onclick="showFinanceTab('pnl')" id="ftab-pnl">📊 הכנסות ורווח</div>
     </div>
 
     <!-- Balances -->
@@ -1278,8 +1285,9 @@ input,select,textarea,button { -webkit-appearance:none; font-size:16px; }
         </div>
         <select id="transaction-filter-type" onchange="filterTransactions()" style="width:160px;">
           <option value="">כל הסוגים</option>
-          <option value="sent">שולם לקבלן</option>
-          <option value="received">התקבל</option>
+          <option value="sent">💸 שולם לקבלן</option>
+          <option value="received">✅ התקבל מקבלן</option>
+          <option value="client_income">🏦 הכנסה מלקוח</option>
         </select>
       </div>
       <div class="table-wrap">
@@ -1300,6 +1308,76 @@ input,select,textarea,button { -webkit-appearance:none; font-size:16px; }
             <tr><td colspan="8"><div class="empty-state"><div class="empty-icon">📋</div><h3>אין תנועות עדיין</h3></div></td></tr>
           </tbody>
         </table>
+      </div>
+    </div>
+
+    <!-- P&L Panel -->
+    <div id="finance-pnl" style="display:none;">
+      <!-- Summary cards row -->
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:20px;">
+        <div style="background:linear-gradient(135deg,#1e6b30,#22c55e);color:white;border-radius:12px;padding:18px 20px;">
+          <div style="font-size:12px;opacity:0.85;margin-bottom:6px;">💰 סה״כ הכנסות מלקוחות</div>
+          <div style="font-size:26px;font-weight:900;" id="pnl-income">—</div>
+          <div style="font-size:11px;opacity:0.7;margin-top:4px;">תקבולים שנכנסו</div>
+        </div>
+        <div style="background:linear-gradient(135deg,#b52a1d,#ef4444);color:white;border-radius:12px;padding:18px 20px;">
+          <div style="font-size:12px;opacity:0.85;margin-bottom:6px;">💸 סה״כ הוצאות לקבלנים</div>
+          <div style="font-size:26px;font-weight:900;" id="pnl-expense">—</div>
+          <div style="font-size:11px;opacity:0.7;margin-top:4px;">תשלומים שיצאו</div>
+        </div>
+        <div style="border-radius:12px;padding:18px 20px;" id="pnl-balance-card">
+          <div style="font-size:12px;opacity:0.85;margin-bottom:6px;">📈 מאזן נקי</div>
+          <div style="font-size:26px;font-weight:900;" id="pnl-balance">—</div>
+          <div style="font-size:11px;opacity:0.7;margin-top:4px;">הכנסות פחות הוצאות</div>
+        </div>
+      </div>
+
+      <!-- Per-project breakdown -->
+      <div style="background:white;border-radius:12px;box-shadow:0 2px 12px rgba(0,0,0,0.07);overflow:hidden;">
+        <div style="padding:14px 18px;background:#f8fafc;border-bottom:2px solid #e1e8ed;font-weight:800;font-size:15px;color:#1a3d5c;">
+          פירוט לפי פרויקט
+        </div>
+        <div style="overflow-x:auto;">
+          <table style="width:100%;border-collapse:collapse;font-size:13px;">
+            <thead>
+              <tr style="background:#f8fafc;">
+                <th style="padding:10px 14px;text-align:right;border-bottom:1px solid #e1e8ed;font-weight:700;">פרויקט</th>
+                <th style="padding:10px 14px;text-align:right;border-bottom:1px solid #e1e8ed;font-weight:700;color:#1e6b30;">הכנסות</th>
+                <th style="padding:10px 14px;text-align:right;border-bottom:1px solid #e1e8ed;font-weight:700;color:#b52a1d;">הוצאות</th>
+                <th style="padding:10px 14px;text-align:right;border-bottom:1px solid #e1e8ed;font-weight:700;color:#1a3d5c;">מאזן</th>
+                <th style="padding:10px 14px;text-align:right;border-bottom:1px solid #e1e8ed;font-weight:700;">תקציב</th>
+                <th style="padding:10px 14px;text-align:right;border-bottom:1px solid #e1e8ed;font-weight:700;">% ביצוע</th>
+              </tr>
+            </thead>
+            <tbody id="pnl-projects-tbody">
+              <tr><td colspan="6" style="text-align:center;padding:30px;color:#aaa;">טוען...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Income transactions list -->
+      <div style="background:white;border-radius:12px;box-shadow:0 2px 12px rgba(0,0,0,0.07);overflow:hidden;margin-top:18px;">
+        <div style="padding:14px 18px;background:#f0fdf4;border-bottom:2px solid #86efac;font-weight:800;font-size:15px;color:#1e6b30;">
+          🏦 תנועות הכנסה מלקוחות
+        </div>
+        <div style="overflow-x:auto;">
+          <table style="width:100%;border-collapse:collapse;font-size:13px;">
+            <thead>
+              <tr style="background:#f0fdf4;">
+                <th style="padding:9px 12px;text-align:right;border-bottom:1px solid #86efac;">תאריך</th>
+                <th style="padding:9px 12px;text-align:right;border-bottom:1px solid #86efac;">פרויקט</th>
+                <th style="padding:9px 12px;text-align:right;border-bottom:1px solid #86efac;">לקוח</th>
+                <th style="padding:9px 12px;text-align:right;border-bottom:1px solid #86efac;">סכום</th>
+                <th style="padding:9px 12px;text-align:right;border-bottom:1px solid #86efac;">תיאור</th>
+                <th style="padding:9px 12px;text-align:right;border-bottom:1px solid #86efac;">אסמכתא</th>
+              </tr>
+            </thead>
+            <tbody id="pnl-income-tbody">
+              <tr><td colspan="6" style="text-align:center;padding:30px;color:#aaa;">אין הכנסות עדיין</td></tr>
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   </div>
@@ -1441,6 +1519,10 @@ input,select,textarea,button { -webkit-appearance:none; font-size:16px; }
               <option value="month" selected>חודש</option>
               <option value="quarter">רבעון</option>
             </select>
+            <button onclick="openImportFromQuoteModal()"
+              style="background:linear-gradient(135deg,#9a6f00,#e8b84b);border:none;color:#fff;padding:9px 18px;border-radius:8px;cursor:pointer;font-family:Heebo,sans-serif;font-size:13px;font-weight:700;">
+              📋 ייבא מהצעה
+            </button>
             <button onclick="openAddTaskModal()" style="background:linear-gradient(135deg,#667eea,#764ba2);border:none;color:#fff;padding:9px 18px;border-radius:8px;cursor:pointer;font-family:Heebo,sans-serif;font-size:13px;font-weight:700">
               ➕ הוסף משימה
             </button>
@@ -1609,7 +1691,50 @@ input,select,textarea,button { -webkit-appearance:none; font-size:16px; }
   </div>
 
 
-  <!-- Modal: New Change Order ══════════════════════════════ -->
+  
+  <!-- Modal: Import tasks from quote ═══════════════════════ -->
+  <div class="modal-overlay" id="modal-import-quote" style="display:none" onclick="closeModalOnOverlay(event,'modal-import-quote')">
+    <div class="modal" style="max-width:600px">
+      <div class="modal-header" style="background:linear-gradient(135deg,#7a4f00,#e8b84b);color:white;">
+        <span>📋 ייבא משימות מהצעת מחיר</span>
+        <button class="modal-close" onclick="closeModal('modal-import-quote')" style="color:white;">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label>בחר פרויקט</label>
+          <select id="iq-project" onchange="loadQuotesForImport()"
+            style="width:100%;padding:10px;border:1.5px solid var(--border);border-radius:8px;font-size:14px;font-family:inherit;">
+            <option value="">— בחר פרויקט —</option>
+          </select>
+        </div>
+        <div class="form-group" id="iq-quote-row" style="display:none">
+          <label>בחר הצעת מחיר</label>
+          <select id="iq-quote" onchange="loadItemsForImport()"
+            style="width:100%;padding:10px;border:1.5px solid var(--border);border-radius:8px;font-size:14px;font-family:inherit;">
+            <option value="">— בחר הצעה —</option>
+          </select>
+        </div>
+        <div id="iq-items-wrap" style="display:none;">
+          <div style="font-size:13px;font-weight:700;color:#7a4f00;margin-bottom:8px;">סעיפים לייבוא (רק אלו עם תאריכים):</div>
+          <div style="max-height:280px;overflow-y:auto;border:1.5px solid #f0d080;border-radius:8px;background:#fffdf4;" id="iq-items-list"></div>
+          <div style="margin-top:10px;background:#fff8e1;border:1px solid #f0d080;border-radius:8px;padding:10px 14px;font-size:12px;color:#7a4f00;">
+            💡 כל סעיף שיובחר ייהפך למשימת גאנט. ניתן לערוך תאריכים אחרי הייבוא.
+          </div>
+        </div>
+        <div id="iq-no-dates" style="display:none;text-align:center;padding:20px;color:#aaa;">
+          <div style="font-size:32px;margin-bottom:8px;">📅</div>
+          <div>אין סעיפים עם תאריכים בהצעה זו.</div>
+          <div style="font-size:12px;margin-top:4px;">הוסף תאריכי התחלה וסיום לסעיפים בהצעת המחיר.</div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-ghost" onclick="closeModal('modal-import-quote')">ביטול</button>
+        <button class="btn btn-primary" style="background:#c9860a;" id="btn-do-import" onclick="executeImportFromQuote()" disabled>📥 ייבא משימות נבחרות</button>
+      </div>
+    </div>
+  </div>
+
+<!-- Modal: New Change Order ══════════════════════════════ -->
   <div class="modal-overlay" id="modal-new-co" style="display:none" onclick="closeModalOnOverlay(event,'modal-new-co')">
     <div class="modal" style="max-width:500px">
       <div class="modal-header" style="background:linear-gradient(135deg,#7a4f00,#c9860a);color:white;">
@@ -1838,10 +1963,15 @@ input,select,textarea,button { -webkit-appearance:none; font-size:16px; }
       </div>
       <div class="form-group">
         <label>סוג תנועה *</label>
-        <select id="t-type">
+        <select id="t-type" onchange="onTransactionTypeChange(this)">
           <option value="sent">💸 שולם לקבלן</option>
           <option value="received">✅ התקבל מקבלן</option>
+          <option value="client_income">🏦 הכנסה מלקוח</option>
         </select>
+        <div id="t-client-row" style="display:none;margin-top:8px;">
+          <input type="text" id="t-client-name" placeholder="שם הלקוח / מקור הכנסה"
+            style="width:100%;padding:10px;border:1.5px solid #86efac;border-radius:8px;font-size:14px;font-family:inherit;">
+        </div>
       </div>
       <div class="form-group">
         <label>תאריך *</label>
@@ -2512,17 +2642,21 @@ function showPage(page) {
 }
 
 function showFinanceTab(tab) {
-  document.getElementById('finance-balances').style.display = tab==='balances' ? 'block' : 'none';
-  document.getElementById('finance-transactions').style.display = tab==='transactions' ? 'block' : 'none';
-  document.getElementById('ftab-balances').classList.toggle('active', tab==='balances');
+  document.getElementById('finance-balances').style.display    = tab==='balances'     ? 'block' : 'none';
+  document.getElementById('finance-transactions').style.display = tab==='transactions'  ? 'block' : 'none';
+  document.getElementById('finance-pnl').style.display          = tab==='pnl'           ? 'block' : 'none';
+  document.getElementById('ftab-balances').classList.toggle('active',    tab==='balances');
   document.getElementById('ftab-transactions').classList.toggle('active', tab==='transactions');
+  document.getElementById('ftab-pnl').classList.toggle('active',         tab==='pnl');
+  if(tab==='pnl') renderPnL();
 }
 
 // ── DASHBOARD ────────────────────────────────────────────
 function renderDashboard() {
   const activeProjects = allProjects.filter(p=>p.status==='active');
   const activeContractors = allContractors.filter(c=>c.is_active);
-  const totalSent = allTransactions.filter(t=>t.type==='sent').reduce((s,t)=>s+Number(t.amount),0);
+  const totalSent   = allTransactions.filter(t=>t.type==='sent').reduce((s,t)=>s+Number(t.amount),0);
+  const totalIncome = allTransactions.filter(t=>t.type==='client_income').reduce((s,t)=>s+Number(t.amount),0);
   const now = new Date();
   const monthReports = allReports.filter(r=>{
     const d = new Date(r.report_date||r.created_at);
@@ -2532,7 +2666,9 @@ function renderDashboard() {
   document.getElementById('stat-active-projects').textContent = activeProjects.length;
   document.getElementById('stat-total-projects').textContent = allProjects.length;
   document.getElementById('stat-active-contractors').textContent = activeContractors.length;
-  document.getElementById('stat-total-sent').textContent = fmtMoney(totalSent);
+  document.getElementById('stat-total-sent').textContent   = '₪'+fmtMoney(totalSent);
+  const incEl = document.getElementById('stat-total-income');
+  if(incEl) incEl.textContent = totalIncome ? '₪'+fmtMoney(totalIncome) : '—';
   document.getElementById('stat-reports-month').textContent = monthReports.length;
   const totalBudgetAll  = allProjects.reduce((s,p)=>s+(p.total_budget||0),0);
   const totalQuotesAll  = allProjects.reduce((s,p)=>s+(window.quoteSum&&window.quoteSum[p.id]||0),0);
@@ -2877,6 +3013,91 @@ async function deleteProject() {
 }
 
 // ── FINANCE ──────────────────────────────────────────────
+
+// ── P&L / Income Module ────────────────────────────────────
+function onTransactionTypeChange(sel) {
+  const row = document.getElementById('t-client-row');
+  if(!row) return;
+  row.style.display = sel.value === 'client_income' ? 'block' : 'none';
+}
+
+function renderPnL() {
+  const income  = allTransactions.filter(t => t.type === 'client_income');
+  const expense = allTransactions.filter(t => t.type === 'sent');
+
+  const totalInc = income.reduce((s,t)  => s + Number(t.amount), 0);
+  const totalExp = expense.reduce((s,t) => s + Number(t.amount), 0);
+  const balance  = totalInc - totalExp;
+
+  // Update summary cards
+  const upd = (id, v) => { const el=document.getElementById(id); if(el) el.textContent=v; };
+  upd('pnl-income',  totalInc  ? '₪'+fmtMoney(totalInc)  : '—');
+  upd('pnl-expense', totalExp  ? '₪'+fmtMoney(totalExp)  : '—');
+  upd('pnl-balance', balance!==0 ? (balance>0?'+':'')+'₪'+fmtMoney(Math.abs(balance)) : '—');
+
+  const balCard = document.getElementById('pnl-balance-card');
+  if(balCard) {
+    balCard.style.background = balance >= 0
+      ? 'linear-gradient(135deg,#1e6b30,#22c55e)'
+      : 'linear-gradient(135deg,#7f1d1d,#ef4444)';
+    balCard.style.color = 'white';
+  }
+
+  // Per-project breakdown
+  const projInc = {}, projExp = {};
+  income.forEach(t  => { if(t.project_id) projInc[t.project_id] = (projInc[t.project_id]||0) + Number(t.amount); });
+  expense.forEach(t => { if(t.project_id) projExp[t.project_id] = (projExp[t.project_id]||0) + Number(t.amount); });
+
+  const projTbody = document.getElementById('pnl-projects-tbody');
+  if(projTbody) {
+    const rows = allProjects.map(p => {
+      const inc  = projInc[p.id]  || 0;
+      const exp  = projExp[p.id]  || 0;
+      const bal  = inc - exp;
+      const bud  = p.total_budget || 0;
+      const pct  = bud ? Math.round((exp / bud) * 100) : null;
+      if(!inc && !exp) return '';
+      return `<tr>
+        <td style="padding:9px 14px;font-weight:700">${esc(p.project_name)}</td>
+        <td style="padding:9px 14px;color:#1e6b30;font-weight:700">${inc?'₪'+fmtMoney(inc):'—'}</td>
+        <td style="padding:9px 14px;color:#b52a1d;font-weight:700">${exp?'₪'+fmtMoney(exp):'—'}</td>
+        <td style="padding:9px 14px;font-weight:800;color:${bal>=0?'#1e6b30':'#b52a1d'}">${bal===0?'—':(bal>0?'+':'')+'₪'+fmtMoney(Math.abs(bal))}</td>
+        <td style="padding:9px 14px;color:#666">${bud?'₪'+fmtMoney(bud):'—'}</td>
+        <td style="padding:9px 14px">
+          ${pct!==null
+            ? `<div style="display:flex;align-items:center;gap:8px;">
+                <div style="flex:1;background:#f0f0f0;border-radius:4px;height:8px;">
+                  <div style="width:${Math.min(pct,100)}%;background:${pct>100?'#ef4444':'#3b82f6'};height:8px;border-radius:4px;"></div>
+                </div>
+                <span style="font-size:12px;font-weight:700;color:${pct>100?'#ef4444':'#666'}">${pct}%</span>
+              </div>`
+            : '—'}
+        </td>
+      </tr>`;
+    }).filter(Boolean);
+    projTbody.innerHTML = rows.length
+      ? rows.join('')
+      : '<tr><td colspan="6" style="text-align:center;padding:24px;color:#aaa;">אין נתונים לפי פרויקט עדיין</td></tr>';
+  }
+
+  // Income transactions list
+  const incTbody = document.getElementById('pnl-income-tbody');
+  if(incTbody) {
+    incTbody.innerHTML = income.length ? income.map(t => {
+      const proj = allProjects.find(p=>p.id===t.project_id);
+      return `<tr>
+        <td style="padding:8px 12px;font-size:13px">${fmtDate(t.transaction_date)}</td>
+        <td style="padding:8px 12px;font-weight:700">${esc(proj?.project_name||'—')}</td>
+        <td style="padding:8px 12px;color:#666">${esc(t.description||'—')}</td>
+        <td style="padding:8px 12px;color:#1e6b30;font-weight:800">₪${fmtMoney(t.amount)}</td>
+        <td style="padding:8px 12px;font-size:13px;color:#888">${esc(t.description||'—')}</td>
+        <td style="padding:8px 12px;font-size:12px;color:#aaa">${esc(t.reference_number||'—')}</td>
+      </tr>`;
+    }).join('')
+    : '<tr><td colspan="6" style="text-align:center;padding:24px;color:#aaa;">אין תנועות הכנסה עדיין<br><small>הוסף תנועה מסוג "🏦 הכנסה מלקוח"</small></td></tr>';
+  }
+}
+
 function renderBalances() {
   const tbody = document.getElementById('balances-tbody');
   if(!allContractors.length) {
@@ -2884,7 +3105,7 @@ function renderBalances() {
     return;
   }
   const balMap = {};
-  allTransactions.forEach(t=>{
+  allTransactions.filter(t=>t.type!=='client_income').forEach(t=>{
     if(!balMap[t.contractor_id]) balMap[t.contractor_id]={sent:0,received:0};
     if(t.type==='sent') balMap[t.contractor_id].sent+=Number(t.amount);
     else balMap[t.contractor_id].received+=Number(t.amount);
@@ -2917,8 +3138,8 @@ function renderTransactions(list) {
     <td style="font-size:13px">${fmtDate(t.transaction_date)}</td>
     <td><strong>${esc(t.contractors_master?.company_name||'—')}</strong></td>
     <td style="font-size:13px;color:var(--text3)">${esc(t.projects?.project_name||'—')}</td>
-    <td><span class="badge ${t.type==='sent'?'badge-red':'badge-green'}">${t.type==='sent'?'💸 שולם':'✅ התקבל'}</span></td>
-    <td class="${t.type==='sent'?'amount-sent':'amount-received'}" style="font-weight:700">₪${fmtMoney(t.amount)}</td>
+    <td><span class="badge ${t.type==='sent'?'badge-red':t.type==='client_income'?'badge-green':'badge-blue'}">${t.type==='sent'?'💸 שולם':t.type==='client_income'?'🏦 הכנסה':'✅ התקבל'}</span></td>
+    <td class="${t.type==='sent'?'amount-sent':'amount-received'}" style="font-weight:700">${t.type==='sent'?'':'+'} ₪${fmtMoney(t.amount)}</td>
     <td style="font-size:13px;color:var(--text3)">${esc(t.description||'—')}</td>
     <td style="font-size:12px;color:var(--text3)">${esc(t.reference_number||'—')}</td>
     <td class="td-actions"><div class="btn-group">
@@ -2943,6 +3164,10 @@ function openTransactionModal(id=null) {
     const el=document.getElementById('t-'+f); if(el) el.value='';
   });
   document.getElementById('t-type').value = 'sent';
+  const clientRow = document.getElementById('t-client-row');
+  if(clientRow) clientRow.style.display = 'none';
+  const clientName = document.getElementById('t-client-name');
+  if(clientName) clientName.value = '';
   document.getElementById('t-date').value = new Date().toISOString().split('T')[0];
   document.getElementById('btn-delete-transaction').style.display = id ? 'block' : 'none';
   document.getElementById('modal-transaction-title').textContent = id ? 'עריכת תנועה' : 'תנועה כספית חדשה';
@@ -5327,6 +5552,142 @@ const CONTRACTOR_PALETTE = [
   '#6366f1','#0ea5e9','#10b981','#f59e0b','#ef4444',
   '#8b5cf6','#06b6d4','#84cc16','#f43f5e','#14b8a6'
 ];
+
+
+// ── Import from Quote → Gantt ───────────────────────────────
+function openImportFromQuoteModal() {
+  // Populate project dropdown
+  const psel = document.getElementById('iq-project');
+  psel.innerHTML = '<option value="">— בחר פרויקט —</option>' +
+    (allProjects||[]).map(p => `<option value="${p.id}">${esc(p.project_name)}</option>`).join('');
+  document.getElementById('iq-quote-row').style.display  = 'none';
+  document.getElementById('iq-items-wrap').style.display = 'none';
+  document.getElementById('iq-no-dates').style.display   = 'none';
+  document.getElementById('iq-quote').innerHTML = '<option value="">— בחר הצעה —</option>';
+  document.getElementById('btn-do-import').disabled = true;
+  document.getElementById('modal-import-quote').style.display = 'flex';
+}
+
+async function loadQuotesForImport() {
+  const pid = document.getElementById('iq-project').value;
+  document.getElementById('iq-quote-row').style.display  = 'none';
+  document.getElementById('iq-items-wrap').style.display = 'none';
+  document.getElementById('iq-no-dates').style.display   = 'none';
+  document.getElementById('btn-do-import').disabled = true;
+  if(!pid) return;
+
+  // Load quotes for this project
+  const {data: quotes} = await sb.from('quotes')
+    .select('id,title,status').eq('project_id', pid).order('created_at',{ascending:false});
+  const qsel = document.getElementById('iq-quote');
+  qsel.innerHTML = '<option value="">— בחר הצעה —</option>' +
+    (quotes||[]).map(q => `<option value="${q.id}">${esc(q.title||'הצעה')} [${q.status||''}]</option>`).join('');
+  document.getElementById('iq-quote-row').style.display = 'block';
+}
+
+async function loadItemsForImport() {
+  const qid = document.getElementById('iq-quote').value;
+  document.getElementById('iq-items-wrap').style.display = 'none';
+  document.getElementById('iq-no-dates').style.display   = 'none';
+  document.getElementById('btn-do-import').disabled = true;
+  if(!qid) return;
+
+  const {data: items} = await sb.from('quote_items')
+    .select('*').eq('quote_id', qid).order('sort_order',{ascending:true});
+
+  const withDates = (items||[]).filter(i => i.start_date && i.end_date);
+
+  if(!withDates.length) {
+    document.getElementById('iq-no-dates').style.display = 'block';
+    return;
+  }
+
+  const pid = document.getElementById('iq-project').value;
+  const proj = (allProjects||[]).find(p=>p.id===pid);
+
+  const listEl = document.getElementById('iq-items-list');
+  listEl.innerHTML = withDates.map((item, idx) => {
+    const contr = (allContractors||[]).find(c=>c.id===item.contractor_id);
+    const days = Math.ceil((new Date(item.end_date)-new Date(item.start_date))/86400000);
+    return `<label style="display:flex;align-items:flex-start;gap:10px;padding:10px 12px;border-bottom:1px solid #fde68a;cursor:pointer;">
+      <input type="checkbox" class="iq-item-cb" value="${item.id}"
+        data-desc="${esc(item.description||'סעיף '+(idx+1))}"
+        data-start="${item.start_date}" data-end="${item.end_date}"
+        data-contractor="${item.contractor_id||''}"
+        data-project="${pid}"
+        checked style="margin-top:3px;width:16px;height:16px;accent-color:#c9860a;">
+      <div style="flex:1;">
+        <div style="font-weight:700;font-size:13px;">${esc(item.description||'סעיף '+(idx+1))}</div>
+        <div style="font-size:11px;color:#888;margin-top:2px;">
+          📅 ${item.start_date} → ${item.end_date} (${days} ימים)
+          ${contr ? ' | 👷 '+esc(contr.company_name) : ''}
+          ${item.unit_cost ? ' | ₪'+fmtMoney(item.unit_cost*item.quantity) : ''}
+        </div>
+      </div>
+    </label>`;
+  }).join('');
+
+  document.getElementById('iq-items-wrap').style.display = 'block';
+  document.getElementById('btn-do-import').disabled = false;
+
+  // Enable/disable import button based on checkboxes
+  listEl.querySelectorAll('.iq-item-cb').forEach(cb => {
+    cb.addEventListener('change', () => {
+      const anyChecked = listEl.querySelectorAll('.iq-item-cb:checked').length > 0;
+      document.getElementById('btn-do-import').disabled = !anyChecked;
+    });
+  });
+}
+
+async function executeImportFromQuote() {
+  const checked = [...document.querySelectorAll('.iq-item-cb:checked')];
+  if(!checked.length) return;
+
+  const btn = document.getElementById('btn-do-import');
+  btn.textContent = '⏳ מייבא...';
+  btn.disabled = true;
+
+  let imported = 0, skipped = 0;
+  for(const cb of checked) {
+    const taskName = cb.dataset.desc;
+    const start    = cb.dataset.start;
+    const end      = cb.dataset.end;
+    const cid      = cb.dataset.contractor || null;
+    const pid      = cb.dataset.project    || null;
+
+    // Check if task already exists (same name + project + dates)
+    const exists = ganttTasks.some(t =>
+      t.task_name === taskName && t.project_id === pid &&
+      t.start_date === start   && t.end_date === end);
+    if(exists) { skipped++; continue; }
+
+    const {data, error} = await sb.from('gantt_tasks').insert({
+      task_name:     taskName,
+      project_id:    pid,
+      contractor_id: cid,
+      start_date:    start,
+      end_date:      end,
+      progress:      0,
+      notes:         'יובא מהצעת מחיר',
+    }).select().single();
+
+    if(!error && data) {
+      ganttTasks.push(data);
+      imported++;
+    }
+  }
+
+  closeModal('modal-import-quote');
+
+  // Set project filter to the imported project and render
+  const pid = document.getElementById('iq-project').value;
+  const pfilter = document.getElementById('gantt-project-filter');
+  if(pfilter) { pfilter.value = pid; ganttProjectFilter = pid; }
+  renderGantt();
+
+  const msg = `✅ יובאו ${imported} משימות לגאנט` + (skipped ? ` (${skipped} כבר קיימות)` : '');
+  showToast(msg, 'success');
+}
 
 let ganttTasks = [];
 let ganttView = 'combined'; // 'combined' or 'individual'
