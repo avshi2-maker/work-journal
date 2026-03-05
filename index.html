@@ -6077,24 +6077,24 @@ function printPO(po, items, sigData, gcalUrl, sbUrl, sbKey, contrEmail) {
 
   // Safe JS values baked into the print window
   const RESEND_KEY  = 're_EztSpcQk_Jy9J5VoafrRPZv9b1aAdzQQQ';
-  const SB_URL      = (sbUrl||'').replace(/'/g,"\\'");
-  const SB_KEY      = (sbKey||'').replace(/'/g,"\\'");
-  const PO_ID       = (po.id||'').replace(/'/g,"\\'");
-  const PO_NUM      = (po.po_number||'').replace(/'/g,"\\'");
-  const PROJ_NAME   = (po.project_name||'').replace(/'/g,"\\'");
-  const CONTR_NAME  = (po.contractor_name||'').replace(/'/g,"\\'");
-  const CONTR_EMAIL = (contrEmail||'').replace(/'/g,"\\'");
-  const START_D     = (po.start_date||'').replace(/'/g,"\\'");
-  const END_D       = (po.end_date||'').replace(/'/g,"\\'");
+  // JSON.stringify for safe JS embedding; _RAW for HTML display
+  const SB_URL_J    = JSON.stringify(sbUrl||'');
+  const SB_KEY_J    = JSON.stringify(sbKey||'');
+  const PO_ID_J     = JSON.stringify(po.id||'');
+  const PO_NUM_J    = JSON.stringify(po.po_number||'');
+  const PROJ_J      = JSON.stringify(po.project_name||'');
+  const CONTR_J     = JSON.stringify(po.contractor_name||'');
+  const EMAIL_J     = JSON.stringify(contrEmail||'');
+  const START_J     = JSON.stringify(po.start_date||'');
+  const END_J       = JSON.stringify(po.end_date||'');
   const grandFmt    = grand.toLocaleString('he-IL',{minimumFractionDigits:2,maximumFractionDigits:2});
-
+  const GRAND_J     = JSON.stringify(grandFmt);
+  const PO_NUM_RAW  = (po.po_number||'');
   const html = `<!DOCTYPE html>
 <html dir="rtl" lang="he">
 <head>
 <meta charset="UTF-8">
-<title>הזמנת עבודה ${PO_NUM}</title>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"><\/script>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"><\/script>
+<title>הזמנת עבודה ${PO_NUM_J}</title>
 <style>
 @page{size:A4;margin:18mm 15mm;}
 *{box-sizing:border-box;}
@@ -6125,7 +6125,7 @@ th{padding:10px 12px;text-align:right;font-size:12px;}
 
 <!-- TOOLBAR -->
 <div class="no-print" style="background:#1a3d5c;color:white;padding:12px 20px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;position:sticky;top:0;z-index:999;">
-  <span style="font-weight:800;font-size:14px;">📋 ${PO_NUM}</span>
+  <span style="font-weight:800;font-size:14px;">📋 ${PO_NUM_RAW}</span>
   <button onclick="doPrint()" style="background:#22c55e;color:#fff;border:none;padding:8px 14px;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;">🖨️ הדפס</button>
   <button id="btn-gen-pdf" onclick="generateAndUpload()" style="background:#9a6f00;color:#fff;border:none;padding:8px 14px;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;">⏳ מכין PDF...</button>
   <button id="btn-wa"    onclick="doWhatsApp()"  disabled style="background:#25D366;color:#fff;border:none;padding:8px 14px;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;opacity:.45;">💬 WhatsApp</button>
@@ -6146,7 +6146,7 @@ th{padding:10px 12px;text-align:right;font-size:12px;}
     </div>
     <div class="stamp">
       <div class="stamp-title">הזמנת עבודה</div>
-      <div class="stamp-num">${PO_NUM}</div>
+      <div class="stamp-num">${PO_NUM_RAW}</div>
       <div style="font-size:11px;color:#1a3d5c;margin-top:2px;">${po.po_date ? fmtDate(po.po_date) : new Date().toLocaleDateString('he-IL')}</div>
     </div>
   </div>
@@ -6165,7 +6165,7 @@ th{padding:10px 12px;text-align:right;font-size:12px;}
 
   <div class="info-grid">
     <div><div class="info-label">פרויקט</div><div class="info-value">${esc(po.project_name||'—')}</div></div>
-    <div><div class="info-label">מספר הזמנה</div><div class="info-value" style="font-family:monospace;color:#1a3d5c;">${PO_NUM}</div></div>
+    <div><div class="info-label">מספר הזמנה</div><div class="info-value" style="font-family:monospace;color:#1a3d5c;">${PO_NUM_RAW}</div></div>
     <div><div class="info-label">תאריך תחילת עבודה</div><div class="info-value" style="color:#1e6b30;">${po.start_date ? fmtDate(po.start_date) : '—'}</div></div>
     <div><div class="info-label">תאריך סיום עבודה</div><div class="info-value" style="color:#b52a1d;">${po.end_date ? fmtDate(po.end_date) : '—'}</div></div>
   </div>
@@ -6221,23 +6221,30 @@ th{padding:10px 12px;text-align:right;font-size:12px;}
 
   <div class="footer">
     מסמך זה מהווה הזמנת עבודה רשמית לצורכי מס ערך מוסף — יש לשמור עותק זה לצרכי ביקורת מס.
-    הזמנה מספר ${PO_NUM} | הופקה: ${new Date().toLocaleDateString('he-IL')} ${new Date().toLocaleTimeString('he-IL',{hour:'2-digit',minute:'2-digit'})}
+    הזמנה מספר ${PO_NUM_RAW} | הופקה: ${new Date().toLocaleDateString('he-IL')} ${new Date().toLocaleTimeString('he-IL',{hour:'2-digit',minute:'2-digit'})}
   </div>
 </div><!-- /po-doc -->
 
 <script>
+// ── Dynamic script loader ─────────────────────────────────
+function loadScript(src, cb) {
+  var s = document.createElement('script');
+  s.src = src; s.async = false;
+  s.onload = cb; s.onerror = cb;
+  document.head.appendChild(s);
+}
 // ── Constants baked in ────────────────────────────────────
-const RESEND_KEY  = '${RESEND_KEY}';
-const SB_URL      = '${SB_URL}';
-const SB_KEY_VAL  = '${SB_KEY}';
-const PO_ID_VAL   = '${PO_ID}';
-const PO_NUM_VAL  = '${PO_NUM}';
-const PROJ_NAME   = '${PROJ_NAME}';
-const CONTR_NAME  = '${CONTR_NAME}';
-const CONTR_EMAIL = '${CONTR_EMAIL}';
-const START_DATE  = '${START_D}';
-const END_DATE    = '${END_D}';
-const GRAND_FMT   = '${grandFmt}';
+const RESEND_KEY  = 're_EztSpcQk_Jy9J5VoafrRPZv9b1aAdzQQQ';
+const SB_URL      = ${SB_URL_J};
+const SB_KEY_VAL  = ${SB_KEY_J};
+const PO_ID_VAL   = ${PO_ID_J};
+const PO_NUM_VAL  = ${PO_NUM_J};
+const PROJ_NAME   = ${PROJ_J};
+const CONTR_NAME  = ${CONTR_J};
+const CONTR_EMAIL = ${EMAIL_J};
+const START_DATE  = ${START_J};
+const END_DATE    = ${END_J};
+const GRAND_FMT   = ${GRAND_J};
 
 // ── Helpers ───────────────────────────────────────────────
 function fmtDate(d){if(!d)return'—';try{const dt=new Date(d+'T12:00:00');return dt.toLocaleDateString('he-IL',{day:'2-digit',month:'2-digit',year:'numeric'});}catch(e){return d;}}
@@ -6250,7 +6257,13 @@ let _pdfBlob = null;
 let _pdfUrl  = null;
 
 // ── Auto-run on load ──────────────────────────────────────
-window.addEventListener('load', () => { setTimeout(generateAndUpload, 1000); });
+window.addEventListener('load', function() {
+  loadScript('https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js', function() {
+    loadScript('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js', function() {
+      setTimeout(generateAndUpload, 400);
+    });
+  });
+});
 
 async function generateAndUpload() {
   const btn = document.getElementById('btn-gen-pdf');
