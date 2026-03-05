@@ -2407,22 +2407,20 @@ async function loadContractors() {
 }
 
 async function loadProjects() {
-  // Load quotes summary for projects table
-  const {data: quotesData} = await sb.from('quotes').select('id,project_id,title,status');
-  const {data: quoteItemsData} = await sb.from('quote_items').select('quote_id,unit_cost,quantity');
-  window.allQuotes = quotesData || [];
-  window.allQuoteItems = quoteItemsData || [];
-  // Build quoteSum: project_id -> total of all approved/draft items
-  window.quoteSum = {};
-  (window.allQuotes).forEach(q=>{
-    const items = (window.allQuoteItems).filter(i=>i.quote_id===q.id);
-    const sum = items.reduce((a,i)=>a+(parseFloat(i.unit_cost||0)*parseFloat(i.quantity||1)),0);
-    window.quoteSum[q.project_id] = (window.quoteSum[q.project_id]||0) + sum;
-  });
-
-  const {data,error} = await sb.from('projects').select('*').order('created_at',{ascending:false});
+  // Load projects + quotes summary in parallel
+  const [
+    {data, error},
+    {data: quotesData},
+    {data: quoteItemsData}
+  ] = await Promise.all([
+    sb.from('projects').select('*').order('created_at',{ascending:false}),
+    sb.from('quotes').select('id,project_id,title,status'),
+    sb.from('quote_items').select('quote_id,unit_cost,quantity'),
+  ]);
   if(error) throw error;
-  allProjects = data || [];
+  allProjects      = data           || [];
+  window.allQuotes     = quotesData     || [];
+  window.allQuoteItems = quoteItemsData || [];
   document.getElementById('badge-projects').textContent = allProjects.filter(p=>p.status==='active').length;
   // Rebuild quoteSum now that both quotes and projects are loaded
   window.quoteSum = {};
@@ -2431,6 +2429,8 @@ async function loadProjects() {
     const sum = items.reduce((a,i)=>a+(parseFloat(i.unit_cost||0)*parseFloat(i.quantity||1)),0);
     window.quoteSum[q.project_id] = (window.quoteSum[q.project_id]||0) + sum;
   });
+  // Build coApprovedSum: project_id -> total approved CO amounts
+  rebuildCoApprovedSum();
   renderProjects();
   populateProjectSelects();
 }
@@ -2518,9 +2518,10 @@ function renderDashboard() {
   document.getElementById('stat-active-contractors').textContent = activeContractors.length;
   document.getElementById('stat-total-sent').textContent = fmtMoney(totalSent);
   document.getElementById('stat-reports-month').textContent = monthReports.length;
-  const totalBudgetAll = allProjects.reduce((s,p)=>s+(p.total_budget||0),0);
-  const totalQuotesAll = allProjects.reduce((s,p)=>s+(window.quoteSum&&window.quoteSum[p.id]||0),0);
-  const totalProfit = totalBudgetAll - totalQuotesAll;
+  const totalBudgetAll  = allProjects.reduce((s,p)=>s+(p.total_budget||0),0);
+  const totalQuotesAll  = allProjects.reduce((s,p)=>s+(window.quoteSum&&window.quoteSum[p.id]||0),0);
+  const totalCOApproved = allProjects.reduce((s,p)=>s+(window.coApprovedSum&&window.coApprovedSum[p.id]||0),0);
+  const totalProfit = totalBudgetAll - totalQuotesAll - totalCOApproved;
   document.getElementById('stat-total-profit').textContent = totalBudgetAll ? '₪'+fmtMoney(totalProfit) : '—';
 
   // Projects list
@@ -2537,7 +2538,14 @@ function renderDashboard() {
         </div>
         <div style="text-align:left;font-size:12px;">
           ${p.total_budget?`<div style="color:var(--text3)">תקציב: ₪${fmtMoney(p.total_budget)}</div>`:''}
-          ${(()=>{const qs=window.quoteSum&&window.quoteSum[p.id]||0;const bud=p.total_budget||0;if(!bud)return '';const pr=bud-qs;return `<div style="color:${pr>=0?'#22c55e':'#ef4444'};font-weight:700">רווח: ₪${fmtMoney(pr)}</div>`})()}
+          ${(()=>{
+            const qs  = window.quoteSum&&window.quoteSum[p.id]||0;
+            const cos = window.coApprovedSum&&window.coApprovedSum[p.id]||0;
+            const bud = p.total_budget||0;
+            if(!bud) return '';
+            const pr = bud - qs - cos;
+            return '<div style="color:'+(pr>=0?'#22c55e':'#ef4444')+';font-weight:700">רווח: ₪'+fmtMoney(pr)+(cos>0?' <span style="font-size:10px;opacity:0.7">(כולל CO)</span>':'')+'</div>';
+          })()}
         </div>
       </div>`).join('');
   }
@@ -2581,10 +2589,35 @@ function renderContractors(list) {
     const balance = bal.sent - bal.received;
     const balClass = balance>0?'balance-positive':balance<0?'balance-negative':'balance-zero';
     const balText = balance===0 ? '—' : (balance>0?'-':'+')+' ₪'+fmtMoney(Math.abs(balance));
+    const phone = c.mobile || '';
+    const phoneIntl = phone.replace(/[^0-9]/g,'').replace(/^0/,'972');
+    const phoneBtns = phone ? `
+      <div style="display:flex;align-items:center;gap:6px;flex-wrap:nowrap;">
+        <span style="font-weight:600;color:#1a3d5c;min-width:80px">${esc(phone)}</span>
+        <a href="tel:${esc(phone)}"
+          onclick="event.stopPropagation()"
+          title="חייג"
+          style="display:inline-flex;align-items:center;justify-content:center;
+                 background:#2d6a9f;color:white;border-radius:20px;
+                 padding:4px 10px;font-size:12px;font-weight:700;
+                 text-decoration:none;gap:4px;white-space:nowrap;">
+          📞 חייג
+        </a>
+        <a href="https://wa.me/${phoneIntl}?text=${encodeURIComponent('שלום '+esc(c.contact_name||c.company_name)+',')}"
+          target="_blank" rel="noopener"
+          onclick="event.stopPropagation()"
+          title="WhatsApp"
+          style="display:inline-flex;align-items:center;justify-content:center;
+                 background:#25D366;color:white;border-radius:20px;
+                 padding:4px 10px;font-size:12px;font-weight:700;
+                 text-decoration:none;gap:4px;white-space:nowrap;">
+          💬 WA
+        </a>
+      </div>` : '<span style="color:#aaa">—</span>';
     return `<tr style="cursor:pointer" onclick="openContractorModal('${c.id}')">
       <td><strong>${esc(c.company_name)}</strong></td>
-      <td>${esc(c.contact_name)}</td>
-      <td><a href="tel:${esc(c.mobile||'')}" style="color:var(--accent);text-decoration:none;font-weight:600" onclick="event.stopPropagation()">${esc(c.mobile||'—')}</a></td>
+      <td>${esc(c.contact_name||'—')}</td>
+      <td>${phoneBtns}</td>
       <td>${esc(c.main_occupation||'—')}</td>
     </tr>`;
   }).join('');
@@ -2716,11 +2749,13 @@ function renderProjects(list) {
     <td>${p.total_budget?'₪'+fmtMoney(p.total_budget):'—'}</td>
     <td class="col-quote-sum">${quoteSum[p.id]?'₪'+fmtMoney(quoteSum[p.id]):'—'}</td>
     <td style="color:#22c55e;font-weight:700">${(()=>{
-      const qs=quoteSum[p.id]||0;
-      const bud=p.total_budget||0;
-      if(!bud && !qs) return '—';
-      const profit=bud-qs;
-      return (profit>=0?'':'<span style="color:#ef4444">') + '₪'+fmtMoney(profit) + (profit>=0?'':'</span>');
+      const qs  = quoteSum[p.id]||0;
+      const cos = window.coApprovedSum&&window.coApprovedSum[p.id]||0;
+      const bud = p.total_budget||0;
+      if(!bud && !qs && !cos) return '—';
+      const profit = bud - qs - cos;
+      const tip = cos>0 ? ` title="תקציב ₪${fmtMoney(bud)} − הצעות ₪${fmtMoney(qs)} − CO מאושר ₪${fmtMoney(cos)}"` : '';
+      return '<span'+tip+' style="color:'+(profit>=0?'#22c55e':'#ef4444')+'">₪'+fmtMoney(profit)+'</span>';
     })()}</td>
     <td style="text-align:center"><span class="badge badge-blue">${reportCount[p.id]||0}</span></td>
     <td><span class="badge ${STATUS_BADGE[p.status]||'badge-gray'}">${STATUS_HE[p.status]||p.status}</span></td>
@@ -3631,8 +3666,9 @@ async function executeSendReports() {
 function updateModalProfitDisplay() {
   const budget = parseFloat(document.getElementById('p-budget').value) || 0;
   // Find the project id being edited to get its quoteSum
-  const qs = window._editingProjectId && window.quoteSum ? (window.quoteSum[window._editingProjectId]||0) : 0;
-  const profit = budget - qs;
+  const qs  = window._editingProjectId && window.quoteSum ? (window.quoteSum[window._editingProjectId]||0) : 0;
+  const cos = window._editingProjectId && window.coApprovedSum ? (window.coApprovedSum[window._editingProjectId]||0) : 0;
+  const profit = budget - qs - cos;
   const el = document.getElementById('p-profit-display');
   if(!el) return;
   if(!budget) {
@@ -3640,7 +3676,10 @@ function updateModalProfitDisplay() {
     el.style.color = '#22c55e';
     return;
   }
-  el.textContent = '₪' + fmtMoney(profit) + (qs ? ' (תקציב ₪'+fmtMoney(budget)+' − הצעות ₪'+fmtMoney(qs)+')' : ' (אין הצעות מחיר עדיין)');
+  const parts = [];
+  if(qs)  parts.push('הצעות ₪'+fmtMoney(qs));
+  if(cos) parts.push('CO מאושר ₪'+fmtMoney(cos));
+  el.textContent = '₪' + fmtMoney(profit) + (parts.length ? ' (תקציב ₪'+fmtMoney(budget)+' − '+parts.join(' − ')+')' : ' (אין הצעות עדיין)');
   el.style.color = profit >= 0 ? '#22c55e' : '#ef4444';
 }
 
@@ -3663,6 +3702,7 @@ async function loadAllChangeOrders() {
   const {data: items} = await sb.from('change_order_items').select('*').order('sort_order',{ascending:true});
   window._allCOs     = cos   || [];
   window._allCOItems = items || [];
+  rebuildCoApprovedSum();
 }
 
 // ── Toggle CO section ──────────────────────────────────────────
@@ -3935,6 +3975,7 @@ function coItemChange(itemId, field, value) {
 async function coBeniApprove(itemId, coId, qid, checked) {
   window._allCOItems.find(i=>i.id===itemId).approved = checked;
   await sb.from('change_order_items').update({approved:checked}).eq('id',itemId);
+  rebuildCoApprovedSum();
   // Re-render beni panel
   const panelEl = document.getElementById('cobeni-panel-'+itemId);
   if(panelEl) {
@@ -3978,6 +4019,20 @@ async function deleteCO(coId, qid) {
   window._allCOs     = window._allCOs.filter(c=>c.id!==coId);
   window._allCOItems = window._allCOItems.filter(i=>i.change_order_id!==coId);
   renderCOCards(qid);
+}
+
+function rebuildCoApprovedSum() {
+  window.coApprovedSum = {};
+  const cos   = window._allCOs   || [];
+  const items = window._allCOItems || [];
+  cos.forEach(co => {
+    const projId = co.project_id;
+    if(!projId) return;
+    const approved = items
+      .filter(i => i.change_order_id === co.id && i.approved)
+      .reduce((a,i) => a + parseFloat(i.approved_amount||0), 0);
+    window.coApprovedSum[projId] = (window.coApprovedSum[projId]||0) + approved;
+  });
 }
 
 function updateCOTotals(coId, qid) {
@@ -5065,9 +5120,10 @@ async function renderForecast() {
     });
     const rows = (projects||[]);
     const totalBudget  = rows.reduce((s,p) => s+(p.total_budget||p.budget||0), 0);
-    // Profit = budget - quotes (auto-calculated, not stored)
-    const _fqSum = window.quoteSum || {};
-    const totalProfit  = rows.reduce((s,p) => s+(( (p.total_budget||p.budget||0) - (_fqSum[p.id]||0) )), 0);
+    // Profit = budget - quotes - CO approved (auto-calculated, not stored)
+    const _fqSum  = window.quoteSum     || {};
+    const _coSum  = window.coApprovedSum || {};
+    const totalProfit  = rows.reduce((s,p) => s+(( (p.total_budget||p.budget||0) - (_fqSum[p.id]||0) - (_coSum[p.id]||0) )), 0);
     const totalExpense = rows.reduce((s,p) => s+(expMap[p.id]||0), 0);
     const totalROI     = totalBudget ? ((totalProfit/totalBudget)*100).toFixed(1) : 0;
     const cards = [
@@ -5089,7 +5145,7 @@ async function renderForecast() {
       const maxVal = Math.max(...rows.map(p => p.total_budget||p.budget||0), 1);
       chartEl.innerHTML = rows.map(p => {
         const bp = ((p.total_budget||p.budget||0)/maxVal*100).toFixed(1);
-        const _pProfit = (p.total_budget||p.budget||0) - (_fqSum[p.id]||0);
+        const _pProfit = (p.total_budget||p.budget||0) - (_fqSum[p.id]||0) - (_coSum[p.id]||0);
         const pp = (Math.max(_pProfit,0)/maxVal*100).toFixed(1);
         const roi = (p.total_budget||p.budget) ? ((_pProfit/(p.total_budget||p.budget||1))*100).toFixed(1) : 0;
         return '<div style="margin-bottom:14px">'
@@ -5103,7 +5159,7 @@ async function renderForecast() {
     if(tbody) tbody.innerHTML = rows.map(p => {
       const exp = expMap[p.id]||0;
       const actual = _tProfit - exp;
-      const _tProfit = (p.total_budget||p.budget||0) - (_fqSum[p.id]||0);
+      const _tProfit = (p.total_budget||p.budget||0) - (_fqSum[p.id]||0) - (_coSum[p.id]||0);
       const roi = (p.total_budget||p.budget) ? ((_tProfit/(p.total_budget||p.budget||1))*100).toFixed(1) : '—';
       const rc = Number(roi) > 20 ? '#22c55e' : Number(roi) > 10 ? '#f59e0b' : '#ef4444';
       const sc = p.status==='active'?'#22c55e':p.status==='completed'?'#3b82f6':'#f59e0b';
