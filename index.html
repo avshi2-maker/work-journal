@@ -136,6 +136,22 @@ body{
 
 /* ══ QUOTES PAGE ══════════════════════════════════════════ */
 
+
+/* ═══════════════════════════════════════════════════
+   PURCHASE ORDER MODULE
+   ═══════════════════════════════════════════════════ */
+.btn-po-new{background:linear-gradient(135deg,#1a3d5c,#2d6a9f);color:white;border:none;border-radius:8px;padding:8px 16px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;}
+.btn-po-new:hover{background:#0f2440;}
+.po-stamp{display:inline-block;border:3px solid #1a3d5c;border-radius:8px;padding:6px 16px;color:#1a3d5c;font-weight:900;font-size:13px;letter-spacing:1px;transform:rotate(-2deg);opacity:0.85;}
+.po-number{font-family:monospace;font-size:22px;font-weight:900;color:#1a3d5c;letter-spacing:2px;}
+
+
+/* ═══ PURCHASE ORDER MODULE ═══════════════════════ */
+.btn-po-new{background:linear-gradient(135deg,#1a3d5c,#2d6a9f);color:white;border:none;border-radius:8px;padding:7px 16px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;}
+.btn-po-new:hover{opacity:0.88;}
+.po-badge{display:inline-block;background:#e8f0fa;color:#1a3d5c;border:1.5px solid #2d6a9f;border-radius:20px;padding:2px 10px;font-size:11px;font-weight:700;margin-right:6px;}
+@keyframes pulse-badge{0%,100%{opacity:1}50%{opacity:.5}}
+
 /* ══ CHANGE ORDERS ══════════════════════════════════════════ */
 .co-section{border-top:2px dashed #e8b84b;margin-top:0;background:#fffdf4;}
 .co-section-header{display:flex;align-items:center;justify-content:space-between;padding:10px 20px;background:linear-gradient(135deg,#7a4f00,#c9860a);cursor:pointer;gap:10px;}
@@ -1697,7 +1713,93 @@ input,select,textarea,button { -webkit-appearance:none; font-size:16px; }
 
 
   
-  <!-- Modal: Import tasks from quote ═══════════════════════ -->
+  
+  <!-- ══ MODAL: PURCHASE ORDER ══════════════════════════════ -->
+  <div class="modal-overlay" id="modal-po" style="display:none" onclick="closeModalOnOverlay(event,'modal-po')">
+    <div class="modal" style="max-width:680px">
+      <div class="modal-header" style="background:linear-gradient(135deg,#1a3d5c,#0f2440);color:white;">
+        <span>📋 הזמנת עבודה רשמית — הכנסת פרטים</span>
+        <button class="modal-close" onclick="closeModal('modal-po')" style="color:white">✕</button>
+      </div>
+      <div class="modal-body" style="max-height:78vh;overflow-y:auto;">
+
+        <!-- Quote summary banner -->
+        <div id="po-quote-banner" style="background:#eef4fb;border:1.5px solid #2d6a9f;border-radius:10px;padding:14px 16px;margin-bottom:16px;">
+          <div style="font-weight:800;color:#1a3d5c;font-size:14px;" id="po-banner-title">—</div>
+          <div style="font-size:12px;color:#666;margin-top:4px;" id="po-banner-details">—</div>
+        </div>
+
+        <!-- Fields -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+          <div class="form-group">
+            <label>תאריך הזמנה *</label>
+            <input type="date" id="po-date" required>
+          </div>
+          <div class="form-group">
+            <label>מספר הזמנה (אוטומטי)</label>
+            <input type="text" id="po-number" readonly
+              style="background:#f8fafc;font-family:monospace;font-weight:700;color:#1a3d5c;font-size:15px;">
+          </div>
+          <div class="form-group">
+            <label>תאריך תחילת עבודה *</label>
+            <input type="date" id="po-start-date" required>
+          </div>
+          <div class="form-group">
+            <label>תאריך סיום עבודה *</label>
+            <input type="date" id="po-end-date" required>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>הערות בני / תנאים מיוחדים</label>
+          <textarea id="po-remarks" rows="3" placeholder="לדוג׳: התשלום יבוצע תוך 30 יום מסיום העבודה. יש להגיע עם כל הציוד הדרוש..."
+            style="width:100%;padding:10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit;resize:vertical;"></textarea>
+        </div>
+
+        <!-- Items preview -->
+        <div style="font-size:13px;font-weight:700;color:#1a3d5c;margin-bottom:8px;">פרטי ההזמנה (מהצעת המחיר):</div>
+        <div style="overflow-x:auto;border:1px solid #e1e8ed;border-radius:8px;margin-bottom:12px;">
+          <table style="width:100%;border-collapse:collapse;font-size:12px;">
+            <thead>
+              <tr style="background:#f0f4fa;">
+                <th style="padding:8px 10px;text-align:right;border-bottom:1px solid #e1e8ed;">תיאור</th>
+                <th style="padding:8px 10px;text-align:right;border-bottom:1px solid #e1e8ed;">כמות</th>
+                <th style="padding:8px 10px;text-align:right;border-bottom:1px solid #e1e8ed;">מחיר יחידה</th>
+                <th style="padding:8px 10px;text-align:right;border-bottom:1px solid #e1e8ed;">סה״כ</th>
+              </tr>
+            </thead>
+            <tbody id="po-items-preview"></tbody>
+            <tfoot id="po-totals-preview"></tfoot>
+          </table>
+        </div>
+
+        <!-- Signature -->
+        <div class="form-group">
+          <label>חתימת בני פרסקי ✍️</label>
+          <div style="border:2px solid #1a3d5c;border-radius:8px;background:#fff;cursor:crosshair;position:relative;">
+            <canvas id="po-signature-canvas" style="display:block;width:100%;height:90px;"></canvas>
+            <div style="position:absolute;bottom:4px;left:8px;font-size:10px;color:#aaa;">חתום כאן</div>
+          </div>
+          <button type="button" onclick="clearPOSignature()"
+            style="margin-top:6px;background:none;border:1px solid #ccc;border-radius:6px;padding:4px 12px;font-size:12px;cursor:pointer;font-family:inherit;">
+            🗑️ נקה חתימה
+          </button>
+        </div>
+
+        <div style="background:#fff8e1;border:1px solid #f0d080;border-radius:8px;padding:10px 14px;font-size:11px;color:#7a5c00;line-height:1.7;">
+          ⚠️ <strong>הערה חשובה:</strong> לאחר יצירת הזמנת העבודה תוכל לשלוח אותה לקבלן ב-WhatsApp, דוא״ל, ולהדפיסה לחתימה ידנית.<br>
+          ההזמנה תתווסף אוטומטית ל<strong>גאנט</strong> ול<strong>Google Calendar</strong>.
+        </div>
+
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-ghost" onclick="closeModal('modal-po')">ביטול</button>
+        <button class="btn btn-primary" style="background:#1a3d5c;" onclick="savePurchaseOrder()">💾 שמור והפק הזמנה</button>
+      </div>
+    </div>
+  </div>
+
+<!-- Modal: Import tasks from quote ═══════════════════════ -->
   <div class="modal-overlay" id="modal-import-quote" style="display:none" onclick="closeModalOnOverlay(event,'modal-import-quote')">
     <div class="modal" style="max-width:600px">
       <div class="modal-header" style="background:linear-gradient(135deg,#7a4f00,#e8b84b);color:white;">
@@ -3638,9 +3740,10 @@ function renderQuoteCard(q, items) {
             <option value="rejected" ${q.status==='rejected'?'selected':''}>נדחתה</option>
           </select>
         </div>
-        <div style="display:flex;gap:8px">
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
           <button class="btn-co-new" onclick="openNewCOModal('${q.id}','${q.project_id}')">⚡ פקודת שינוי חדשה</button>
-          <button class="btn-quote-pdf" onclick="printQuote('${q.id}')">🖨️ הדפס</button>
+          <button class="btn-po-new" onclick="openPOModal('${q.id}')">📋 הזמנת עבודה רשמית</button>
+          <button class="btn-quote-pdf" onclick="printQuote('${q.id}')">🖨️ הדפס הצעה</button>
           <button class="btn-quote-delete" onclick="deleteQuote('${q.id}')">🗑️ מחק הצעה</button>
         </div>
       </div>
@@ -5642,6 +5745,429 @@ const CONTRACTOR_PALETTE = [
   '#8b5cf6','#06b6d4','#84cc16','#f43f5e','#14b8a6'
 ];
 
+
+
+// ════════════════════════════════════════════════════════
+//  PURCHASE ORDER MODULE
+// ════════════════════════════════════════════════════════
+let _poSignaturePad = null;
+let _poCurrentQuoteId = null;
+let _poCurrentQuoteData = null;
+
+// ── Open modal ───────────────────────────────────────────
+async function openPOModal(quoteId) {
+  _poCurrentQuoteId = quoteId;
+  const q = (window._quotesAll||[]).find(x => x.id === quoteId);
+  if(!q) { showToast('לא נמצאה הצעת מחיר','error'); return; }
+
+  const items = (window._quoteItemsAll||[]).filter(i => i.quote_id === quoteId);
+  const proj  = (allProjects||[]).find(p => p.id === q.project_id);
+  const contr = items.length
+    ? (allContractors||[]).find(c => c.id === items[0].contractor_id)
+    : null;
+
+  _poCurrentQuoteData = { q, items, proj, contr };
+
+  // Auto PO number
+  const poNum = await generatePONumber();
+  document.getElementById('po-number').value = poNum;
+
+  // Today
+  document.getElementById('po-date').valueAsDate = new Date();
+  document.getElementById('po-start-date').value = '';
+  document.getElementById('po-end-date').value   = '';
+  document.getElementById('po-remarks').value    = '';
+
+  // Banner
+  const contrName = contr ? contr.company_name : (q.contractor_name||'הקבלן');
+  document.getElementById('po-banner-title').textContent =
+    `📁 ${proj?.project_name||'—'}  |  👷 ${contrName}`;
+  document.getElementById('po-banner-details').textContent =
+    `הצעת מחיר: "${q.title||'ללא כותרת'}"  |  תאריך: ${q.created_at?fmtDate(q.created_at):'—'}  |  ${items.length} סעיפים`;
+
+  // Items preview
+  renderPOItemsPreview(items);
+
+  // Signature pad
+  document.getElementById('modal-po').style.display = 'flex';
+  setTimeout(() => initPOSignaturePad(), 120);
+}
+
+async function generatePONumber() {
+  // Fetch count of existing POs from Supabase to generate sequential number
+  try {
+    const { count } = await sb.from('purchase_orders')
+      .select('*', { count: 'exact', head: true });
+    const next = (count||0) + 1;
+    const year = new Date().getFullYear();
+    return `PO-${year}-${String(next).padStart(4,'0')}`;
+  } catch(e) {
+    // Fallback: timestamp-based
+    return 'PO-' + Date.now().toString().slice(-6);
+  }
+}
+
+function renderPOItemsPreview(items) {
+  const tbody = document.getElementById('po-items-preview');
+  const tfoot = document.getElementById('po-totals-preview');
+  const subtotal = items.reduce((a,i) => a + parseFloat(i.unit_cost||0)*parseFloat(i.quantity||1), 0);
+  const vat      = subtotal * 0.18;
+  const grand    = subtotal + vat;
+
+  tbody.innerHTML = items.map((item, idx) => `
+    <tr style="background:${idx%2===0?'#fff':'#f9fafb'}">
+      <td style="padding:7px 10px">${esc(item.description||'—')}</td>
+      <td style="padding:7px 10px;text-align:center">${item.quantity||1}</td>
+      <td style="padding:7px 10px;text-align:left">₪${fmtMoney(parseFloat(item.unit_cost||0))}</td>
+      <td style="padding:7px 10px;text-align:left;font-weight:700">₪${fmtMoney(parseFloat(item.unit_cost||0)*parseFloat(item.quantity||1))}</td>
+    </tr>`).join('');
+
+  tfoot.innerHTML = `
+    <tr style="border-top:2px solid #e1e8ed">
+      <td colspan="3" style="padding:7px 10px;font-weight:700;text-align:right">סכום לפני מע״מ</td>
+      <td style="padding:7px 10px;font-weight:700;text-align:left">₪${fmtMoney(subtotal)}</td>
+    </tr>
+    <tr>
+      <td colspan="3" style="padding:7px 10px;color:#666;text-align:right">מע״מ 18%</td>
+      <td style="padding:7px 10px;color:#666;text-align:left">₪${fmtMoney(vat)}</td>
+    </tr>
+    <tr style="background:#1a3d5c">
+      <td colspan="3" style="padding:9px 10px;font-weight:900;color:white;text-align:right">סה״כ לתשלום כולל מע״מ</td>
+      <td style="padding:9px 10px;font-weight:900;color:white;text-align:left;font-size:15px">₪${fmtMoney(grand)}</td>
+    </tr>`;
+}
+
+function initPOSignaturePad() {
+  const canvas = document.getElementById('po-signature-canvas');
+  if(!canvas || canvas._poInited) return;
+  canvas._poInited = true;
+  const ctx = canvas.getContext('2d');
+  canvas.width  = canvas.offsetWidth  || 500;
+  canvas.height = 90;
+  let drawing = false, lx = 0, ly = 0;
+  const getPos = e => {
+    const r = canvas.getBoundingClientRect();
+    const t = e.touches ? e.touches[0] : e;
+    return { x:(t.clientX-r.left)*(canvas.width/r.width), y:(t.clientY-r.top)*(canvas.height/r.height) };
+  };
+  canvas.addEventListener('mousedown',  e=>{ drawing=true; const p=getPos(e); lx=p.x; ly=p.y; });
+  canvas.addEventListener('mousemove',  e=>{ if(!drawing)return; const p=getPos(e); ctx.beginPath(); ctx.moveTo(lx,ly); ctx.lineTo(p.x,p.y); ctx.strokeStyle='#1a3d5c'; ctx.lineWidth=2; ctx.stroke(); lx=p.x; ly=p.y; });
+  canvas.addEventListener('mouseup',    ()=>{ drawing=false; });
+  canvas.addEventListener('mouseout',   ()=>{ drawing=false; });
+  canvas.addEventListener('touchstart', e=>{ e.preventDefault(); drawing=true; const p=getPos(e); lx=p.x; ly=p.y; }, {passive:false});
+  canvas.addEventListener('touchmove',  e=>{ e.preventDefault(); if(!drawing)return; const p=getPos(e); ctx.beginPath(); ctx.moveTo(lx,ly); ctx.lineTo(p.x,p.y); ctx.strokeStyle='#1a3d5c'; ctx.lineWidth=2; ctx.stroke(); lx=p.x; ly=p.y; }, {passive:false});
+  canvas.addEventListener('touchend',   ()=>{ drawing=false; });
+  _poSignaturePad = canvas;
+}
+
+function clearPOSignature() {
+  if(!_poSignaturePad) return;
+  _poSignaturePad.getContext('2d').clearRect(0,0,_poSignaturePad.width,_poSignaturePad.height);
+}
+
+// ── Save PO ──────────────────────────────────────────────
+async function savePurchaseOrder() {
+  const poNum    = document.getElementById('po-number').value;
+  const poDate   = document.getElementById('po-date').value;
+  const startD   = document.getElementById('po-start-date').value;
+  const endD     = document.getElementById('po-end-date').value;
+  const remarks  = document.getElementById('po-remarks').value.trim();
+
+  if(!poDate || !startD || !endD) {
+    showToast('נא למלא תאריך הזמנה, תחילת וסיום עבודה','error'); return;
+  }
+
+  const { q, items, proj, contr } = _poCurrentQuoteData;
+  const subtotal = items.reduce((a,i)=>a+parseFloat(i.unit_cost||0)*parseFloat(i.quantity||1),0);
+  const vat      = subtotal * 0.18;
+  const grand    = subtotal + vat;
+
+  // Signature as base64
+  let sigData = null;
+  if(_poSignaturePad) {
+    const blank = document.createElement('canvas');
+    blank.width  = _poSignaturePad.width;
+    blank.height = _poSignaturePad.height;
+    const isSigned = _poSignaturePad.toDataURL() !== blank.toDataURL();
+    if(isSigned) sigData = _poSignaturePad.toDataURL('image/png');
+  }
+
+  showLoading(true);
+  try {
+    // Save to Supabase
+    const payload = {
+      po_number:        poNum,
+      quote_id:         q.id,
+      project_id:       q.project_id,
+      contractor_id:    contr?.id || null,
+      contractor_name:  contr?.company_name || '',
+      contractor_contact: contr?.contact_name || '',
+      project_name:     proj?.project_name || '',
+      quote_title:      q.title || '',
+      quote_date:       q.created_at ? q.created_at.slice(0,10) : null,
+      po_date:          poDate,
+      start_date:       startD,
+      end_date:         endD,
+      subtotal:         subtotal,
+      vat_amount:       vat,
+      grand_total:      grand,
+      remarks:          remarks,
+      signature_data:   sigData,
+      status:           'active',
+      items_json:       JSON.stringify(items),
+    };
+
+    const { data: savedPO, error } = await sb
+      .from('purchase_orders').insert(payload).select().single();
+    if(error) throw error;
+
+    // Add to Gantt
+    await sb.from('gantt_tasks').insert({
+      task_name:    `🏷️ ${poNum} — ${contr?.company_name||'קבלן'}`,
+      project_id:   q.project_id,
+      contractor_id: contr?.id || null,
+      start_date:   startD,
+      end_date:     endD,
+      progress:     0,
+      notes:        `הזמנת עבודה ${poNum} | ₪${fmtMoney(grand)} כולל מע״מ`,
+    });
+
+    // Add to Google Calendar (deep link)
+    const gcalUrl = buildGcalUrl(poNum, proj?.project_name||'', contr?.company_name||'', startD, endD, grand);
+
+    closeModal('modal-po');
+    showToast(`✅ הזמנת עבודה ${poNum} נשמרה ונוספה לגאנט`, 'success');
+
+    // Print / share options
+    setTimeout(() => {
+      printPO(savedPO, items, sigData, gcalUrl);
+    }, 400);
+
+  } catch(e) {
+    showToast('שגיאה: '+e.message, 'error');
+  } finally {
+    showLoading(false);
+  }
+}
+
+function buildGcalUrl(poNum, projName, contrName, startDate, endDate, grand) {
+  const title = encodeURIComponent(`🏷️ ${poNum} — ${contrName} | ${projName}`);
+  const details = encodeURIComponent(`הזמנת עבודה מספר ${poNum}\nסכום: ₪${fmtMoney(grand)} כולל מע״מ\nקבלן: ${contrName}`);
+  const start = startDate.replace(/-/g,'');
+  const end   = endDate.replace(/-/g,'');
+  return `https://calendar.google.com/calendar/r/eventedit?text=${title}&dates=${start}/${end}&details=${details}`;
+}
+
+// ── Print official PO document ───────────────────────────
+function printPO(po, items, sigData, gcalUrl) {
+  const subtotal = parseFloat(po.subtotal||0);
+  const vat      = parseFloat(po.vat_amount||0);
+  const grand    = parseFloat(po.grand_total||0);
+
+  const itemRows = items.map((item,i) => `
+    <tr style="background:${i%2===0?'#fff':'#f7f9ff'}">
+      <td style="padding:9px 12px;border:1px solid #dce4f5">${i+1}</td>
+      <td style="padding:9px 12px;border:1px solid #dce4f5">${esc(item.description||'—')}</td>
+      <td style="padding:9px 12px;border:1px solid #dce4f5;text-align:center">${item.quantity||1}</td>
+      <td style="padding:9px 12px;border:1px solid #dce4f5;text-align:left">₪${fmtMoney(parseFloat(item.unit_cost||0))}</td>
+      <td style="padding:9px 12px;border:1px solid #dce4f5;text-align:left;font-weight:700">₪${fmtMoney(parseFloat(item.unit_cost||0)*parseFloat(item.quantity||1))}</td>
+    </tr>`).join('');
+
+  const sigImg = sigData
+    ? `<img src="${sigData}" style="height:70px;display:block;margin-top:8px;border-bottom:2px solid #1a3d5c;" alt="חתימה">`
+    : '<div style="height:50px;border-bottom:2px solid #1a3d5c;width:200px;margin-top:8px;"></div>';
+
+  const gcalBtn = gcalUrl
+    ? `<div style="margin:16px 0;text-align:center;">
+         <a href="${gcalUrl}" target="_blank"
+           style="background:#1a73e8;color:white;padding:10px 22px;border-radius:8px;text-decoration:none;font-weight:700;font-size:14px;display:inline-block;">
+           📅 הוסף ל-Google Calendar
+         </a>
+       </div>` : '';
+
+  const html = `<!DOCTYPE html>
+<html dir="rtl" lang="he">
+<head>
+<meta charset="UTF-8">
+<title>הזמנת עבודה ${esc(po.po_number)}</title>
+<style>
+  @page { size: A4; margin: 18mm 15mm; }
+  * { box-sizing: border-box; }
+  body { font-family: 'Arial', sans-serif; font-size: 13px; color: #1a1a1a; direction: rtl; margin: 0; }
+  h1 { font-size: 22px; color: #1a3d5c; margin: 0 0 4px; }
+  .header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 3px solid #1a3d5c; padding-bottom: 14px; margin-bottom: 18px; }
+  .stamp { border: 3px solid #1a3d5c; border-radius: 8px; padding: 8px 18px; text-align: center; transform: rotate(-2deg); display: inline-block; }
+  .stamp-title { font-weight: 900; font-size: 13px; color: #1a3d5c; letter-spacing: 1px; }
+  .stamp-num { font-family: monospace; font-size: 20px; font-weight: 900; color: #1a3d5c; }
+  .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 24px; margin-bottom: 18px; }
+  .info-label { font-size: 11px; color: #888; margin-bottom: 2px; }
+  .info-value { font-weight: 700; font-size: 13px; }
+  table { width: 100%; border-collapse: collapse; margin: 12px 0; }
+  thead tr { background: #1a3d5c; color: white; }
+  th { padding: 10px 12px; text-align: right; font-size: 12px; }
+  .totals-table td { padding: 8px 12px; border: 1px solid #dce4f5; }
+  .grand-row td { background: #1a3d5c; color: white; font-weight: 900; font-size: 15px; }
+  .remarks { background: #eef4fb; border: 1.5px solid #2d6a9f; border-radius: 8px; padding: 12px 16px; margin: 14px 0; }
+  .safety { background: #fff8e1; border: 2px solid #f59e0b; border-radius: 8px; padding: 12px 16px; margin: 16px 0; font-size: 12px; line-height: 1.8; }
+  .footer { text-align: center; font-size: 10px; color: #999; border-top: 1px solid #e5e7eb; padding-top: 10px; margin-top: 20px; }
+  .sig-section { display: flex; justify-content: space-between; align-items: flex-end; margin-top: 24px; gap: 40px; }
+  .sig-block { flex: 1; }
+  .sig-line { border-bottom: 2px solid #1a3d5c; width: 100%; margin-top: 10px; }
+  @media print { .no-print { display: none !important; } }
+</style>
+</head>
+<body>
+
+<!-- PRINT TOOLBAR (hidden on print) -->
+<div class="no-print" style="background:#1a3d5c;color:white;padding:12px 20px;display:flex;gap:12px;align-items:center;flex-wrap:wrap;position:sticky;top:0;z-index:999;">
+  <span style="font-weight:800;font-size:15px;">📋 הזמנת עבודה ${esc(po.po_number)}</span>
+  <button onclick="window.print()" style="background:#22c55e;color:white;border:none;padding:8px 18px;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;">🖨️ הדפס / PDF</button>
+  <button onclick="shareByWhatsApp()" style="background:#25D366;color:white;border:none;padding:8px 18px;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;">💬 שלח WhatsApp</button>
+  <button onclick="shareByEmail()" style="background:#4285f4;color:white;border:none;padding:8px 18px;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;">📧 שלח Email</button>
+  ${gcalBtn.replace(/\n/g,' ')}
+  <button onclick="window.close()" style="background:rgba(255,255,255,0.15);color:white;border:1px solid rgba(255,255,255,0.3);padding:8px 14px;border-radius:8px;font-size:13px;cursor:pointer;">✕ סגור</button>
+</div>
+
+<!-- DOCUMENT -->
+<div style="max-width:760px;margin:24px auto;padding:0 10px;">
+
+  <!-- Header -->
+  <div class="header">
+    <div>
+      <h1>הזמנת עבודה רשמית</h1>
+      <div style="font-size:12px;color:#666;margin-top:4px;">Official Work Order / Purchase Order</div>
+    </div>
+    <div class="stamp">
+      <div class="stamp-title">הזמנת עבודה</div>
+      <div class="stamp-num">${esc(po.po_number)}</div>
+      <div style="font-size:11px;color:#1a3d5c;margin-top:2px;">${po.po_date ? fmtDate(po.po_date) : new Date().toLocaleDateString('he-IL')}</div>
+    </div>
+  </div>
+
+  <!-- To / From -->
+  <div style="margin-bottom:18px;">
+    <div style="font-size:12px;color:#888;margin-bottom:6px;">לכבוד:</div>
+    <div style="font-size:16px;font-weight:900;color:#1a3d5c;">${esc(po.contractor_name||'הקבלן')}</div>
+    ${po.contractor_contact ? `<div style="font-size:13px;color:#555;">${esc(po.contractor_contact)}</div>` : ''}
+    <div style="margin-top:10px;font-size:13px;line-height:1.9;">
+      <strong>שלום,</strong><br>
+      בהמשך להצעת המחיר שלך מתאריך <strong>${po.quote_date ? fmtDate(po.quote_date) : '—'}</strong>
+      בנושא <strong>"${esc(po.quote_title||po.project_name||'')}"</strong>,
+      אנו שמחים לאשר את הזמנת העבודה הרשמית על פי הפרטים המפורטים להלן:
+    </div>
+  </div>
+
+  <!-- Info grid -->
+  <div class="info-grid">
+    <div><div class="info-label">פרויקט</div><div class="info-value">${esc(po.project_name||'—')}</div></div>
+    <div><div class="info-label">מספר הזמנה</div><div class="info-value" style="font-family:monospace;color:#1a3d5c;">${esc(po.po_number)}</div></div>
+    <div><div class="info-label">תאריך תחילת עבודה</div><div class="info-value" style="color:#1e6b30;">${po.start_date ? fmtDate(po.start_date) : '—'}</div></div>
+    <div><div class="info-label">תאריך סיום עבודה</div><div class="info-value" style="color:#b52a1d;">${po.end_date ? fmtDate(po.end_date) : '—'}</div></div>
+  </div>
+
+  <!-- Items table -->
+  <div style="font-weight:800;color:#1a3d5c;font-size:14px;margin-bottom:6px;">פירוט עבודות:</div>
+  <table>
+    <thead>
+      <tr>
+        <th style="width:40px">#</th>
+        <th>תיאור</th>
+        <th style="width:70px;text-align:center">כמות</th>
+        <th style="width:110px;text-align:left">מחיר יחידה</th>
+        <th style="width:120px;text-align:left">סה״כ</th>
+      </tr>
+    </thead>
+    <tbody>${itemRows}</tbody>
+  </table>
+
+  <!-- Totals -->
+  <table class="totals-table" style="width:340px;margin-right:auto;">
+    <tr>
+      <td style="text-align:right;font-weight:700;">סכום לפני מע״מ</td>
+      <td style="text-align:left;font-weight:700;">₪${fmtMoney(subtotal)}</td>
+    </tr>
+    <tr>
+      <td style="text-align:right;color:#666;">מע״מ 18%</td>
+      <td style="text-align:left;color:#666;">₪${fmtMoney(vat)}</td>
+    </tr>
+    <tr class="grand-row">
+      <td style="text-align:right;">סה״כ לתשלום כולל מע״מ</td>
+      <td style="text-align:left;font-size:16px;">₪${fmtMoney(grand)}</td>
+    </tr>
+  </table>
+
+  <!-- Beni remarks -->
+  ${po.remarks ? `
+  <div class="remarks">
+    <div style="font-weight:800;color:#1a3d5c;margin-bottom:6px;">הוראות ותנאים מיוחדים:</div>
+    <div style="line-height:1.8;">${esc(po.remarks).replace(/\n/g,'<br>')}</div>
+  </div>` : ''}
+
+  <!-- Start / complete instruction -->
+  <div style="font-size:14px;margin:18px 0;line-height:2;background:#f0fdf4;border:1.5px solid #86efac;border-radius:8px;padding:14px 18px;">
+    נבקשך להתחיל את העבודה ביום <strong style="color:#1e6b30;">${po.start_date ? fmtDate(po.start_date) : '—'}</strong>
+    ולסיימה עד ליום <strong style="color:#b52a1d;">${po.end_date ? fmtDate(po.end_date) : '—'}</strong>.<br>
+    יש לפנות אלינו לתיאום כניסה לאתר לפני תחילת העבודה.
+  </div>
+
+  <!-- Safety footer (mandatory) -->
+  <div class="safety">
+    <div style="font-weight:900;font-size:13px;color:#7a5c00;margin-bottom:8px;">⚠️ הוראות בטיחות חובה — Safety Regulations (Mandatory)</div>
+    <div>הקבלן מתחייב לפעול בהתאם לכל דרישות הבטיחות על פי <strong>חוק הבטיחות בעבודה תשי״ד-1954</strong>
+    ותקנות הבטיחות בעבודה (עבודות בנייה) תשמ״ח-1988 ותיקוניהן.<br>
+    בפרט: שימוש בציוד מגן אישי (קסדה, אפוד, נעלי בטיחות), גידור אתר, שילוט אזהרה, בדיקת ביטוח
+    עובדים ואחריות כלפי צד שלישי בתוקף לכל תקופת העבודה.<br>
+    <strong>אין להיכנס לאתר ללא הצגת ביטוח בתוקף ואישור הזמנת עבודה זה.</strong></div>
+  </div>
+
+  <!-- Signature -->
+  <div class="sig-section">
+    <div class="sig-block">
+      <div style="font-weight:700;color:#1a3d5c;margin-bottom:4px;">חתימת המזמין:</div>
+      ${sigImg}
+      <div style="margin-top:6px;font-weight:800;">בני פרסקי</div>
+      <div style="font-size:11px;color:#666;">מנהל עבודה / מפקח</div>
+    </div>
+    <div class="sig-block">
+      <div style="font-weight:700;color:#1a3d5c;margin-bottom:4px;">אישור הקבלן:</div>
+      <div class="sig-line" style="height:50px;"></div>
+      <div style="margin-top:6px;font-weight:800;">${esc(po.contractor_name||'')}</div>
+      <div style="font-size:11px;color:#666;">חתימה + חותמת</div>
+    </div>
+  </div>
+
+  <!-- Document footer -->
+  <div class="footer">
+    מסמך זה מהווה הזמנת עבודה רשמית לצורכי מס ערך מוסף — יש לשמור עותק זה לצרכי ביקורת מס.
+    הזמנה מספר ${esc(po.po_number)} | הופקה: ${new Date().toLocaleDateString('he-IL')} ${new Date().toLocaleTimeString('he-IL',{hour:'2-digit',minute:'2-digit'})}
+  </div>
+</div>
+
+<script>
+function fmtDate(d){if(!d)return'—';try{const dt=new Date(d+'T12:00:00');return dt.toLocaleDateString('he-IL',{day:'2-digit',month:'2-digit',year:'numeric'});}catch(e){return d;}}
+function fmtMoney(n){return Number(n||0).toLocaleString('he-IL',{minimumFractionDigits:2,maximumFractionDigits:2});}
+function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function shareByWhatsApp(){
+  const msg = 'הזמנת עבודה מספר ${esc(po.po_number)}\\nפרויקט: ${esc(po.project_name||'')}\\nקבלן: ${esc(po.contractor_name||'')}\\nתאריך תחילה: ${po.start_date||''}\\nסה״כ: ₪${fmtMoney(grand)} כולל מע״מ\\n\\nנא לאשר קבלת הזמנה זו.';
+  window.open('https://wa.me/?text='+encodeURIComponent(msg));
+}
+function shareByEmail(){
+  const subj = encodeURIComponent('הזמנת עבודה ${esc(po.po_number)} — ${esc(po.project_name||'')}');
+  const body = encodeURIComponent('שלום,\\n\\nמצורפת הזמנת עבודה מספר ${esc(po.po_number)}.\\nנא לאשר קבלה.\\n\\nבני פרסקי');
+  window.open('mailto:?subject='+subj+'&body='+body);
+}
+<\/script>
+</body>
+</html>`;
+
+  const win = window.open('', '_blank');
+  if(win) {
+    win.document.write(html);
+    win.document.close();
+  } else {
+    showToast('הרשה חלונות קופצים להדפסת ההזמנה','error');
+  }
+}
 
 // ── Import from Quote → Gantt ───────────────────────────────
 function openImportFromQuoteModal() {
