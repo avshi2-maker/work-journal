@@ -131,6 +131,23 @@ body{
   font-size:11px; color:var(--text3);
   margin-top:3px; font-weight:400;
 }
+.sidebar-clock{
+  margin-top:10px;
+  text-align:right;
+  font-family:'Rubik',sans-serif;
+  direction:ltr;
+}
+.sidebar-clock .clock-time{
+  font-size:22px; font-weight:700;
+  color:var(--accent);
+  letter-spacing:2px;
+  line-height:1.1;
+}
+.sidebar-clock .clock-date{
+  font-size:10px; color:var(--text3);
+  margin-top:2px; font-weight:400;
+  letter-spacing:0.3px;
+}
 .nav-item{
   display:flex; align-items:center; gap:10px;
   padding:9px 16px; cursor:pointer;
@@ -635,6 +652,10 @@ button:active{transform:scale(0.98)}
   <div class="sidebar-logo">
     <div class="brand">יומן פעילות</div>
     <div class="sub">מנוהל AI | בני פרסקי</div>
+    <div class="sidebar-clock">
+      <div class="clock-time" id="sidebar-clock-time">00:00:00</div>
+      <div class="clock-date" id="sidebar-clock-date"></div>
+    </div>
   </div>
   <div class="nav-item active" onclick="showPage('dashboard')" id="nav-dashboard">
     <span class="nav-icon">📊</span>
@@ -2470,6 +2491,24 @@ function esc(str) {
 }
 
 console.log('✅ Stonhard CRM loaded — v3 GANTT BUILD');
+// ── Digital Clock ──────────────────────────────
+function updateSidebarClock() {
+  var now = new Date();
+  var h = String(now.getHours()).padStart(2,'0');
+  var m = String(now.getMinutes()).padStart(2,'0');
+  var s = String(now.getSeconds()).padStart(2,'0');
+  var timeEl = document.getElementById('sidebar-clock-time');
+  if(timeEl) timeEl.textContent = h + ':' + m + ':' + s;
+  var days = ['ראשון','שני','שלישי','רביעי','חמישי','שישי','שבת'];
+  var months = ['ינואר','פברואר','מרץ','אפריל','מאי','יוני','יולי','אוגוסט','ספטמבר','אוקטובר','נובמבר','דצמבר'];
+  var dateStr = 'יום ' + days[now.getDay()] + ', ' + now.getDate() + ' ' + months[now.getMonth()] + ' ' + now.getFullYear();
+  var dateEl = document.getElementById('sidebar-clock-date');
+  if(dateEl) dateEl.textContent = dateStr;
+}
+updateSidebarClock();
+setInterval(updateSidebarClock, 1000);
+// ───────────────────────────────────────────────
+
 
 
 // ══════════════════════════════════════════
