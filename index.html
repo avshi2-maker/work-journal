@@ -5902,6 +5902,7 @@ async function savePurchaseOrder() {
       contractor_id:    contr?.id || null,
       contractor_name:  contr?.company_name || '',
       contractor_contact: contr?.contact_name || '',
+      contractor_email: contr?.email || '',
       project_name:     proj?.project_name || '',
       quote_title:      q.title || '',
       quote_date:       q.created_at ? q.created_at.slice(0,10) : null,
@@ -5940,7 +5941,9 @@ async function savePurchaseOrder() {
 
     // Print / share options
     setTimeout(() => {
-      printPO(savedPO, items, sigData, gcalUrl);
+      printPO(savedPO, items, sigData, gcalUrl,
+        window._sbUrl||'', window._sbKey||'',
+        contr?.email||'');
     }, 400);
 
   } catch(e) {
@@ -5959,7 +5962,7 @@ function buildGcalUrl(poNum, projName, contrName, startDate, endDate, grand) {
 }
 
 // ── Print official PO document ───────────────────────────
-function printPO(po, items, sigData, gcalUrl) {
+function printPO(po, items, sigData, gcalUrl, sbUrl, sbKey, contrEmail) {
   const subtotal = parseFloat(po.subtotal||0);
   const vat      = parseFloat(po.vat_amount||0);
   const grand    = parseFloat(po.grand_total||0);
@@ -5977,61 +5980,74 @@ function printPO(po, items, sigData, gcalUrl) {
     ? `<img src="${sigData}" style="height:70px;display:block;margin-top:8px;border-bottom:2px solid #1a3d5c;" alt="חתימה">`
     : '<div style="height:50px;border-bottom:2px solid #1a3d5c;width:200px;margin-top:8px;"></div>';
 
-  const gcalBtn = gcalUrl
-    ? `<div style="margin:16px 0;text-align:center;">
-         <a href="${gcalUrl}" target="_blank"
-           style="background:#1a73e8;color:white;padding:10px 22px;border-radius:8px;text-decoration:none;font-weight:700;font-size:14px;display:inline-block;">
-           📅 הוסף ל-Google Calendar
-         </a>
-       </div>` : '';
+  const gcalLink = gcalUrl
+    ? `<a href="${gcalUrl}" target="_blank" style="background:#1a73e8;color:white;padding:8px 16px;border-radius:8px;text-decoration:none;font-weight:700;font-size:13px;">📅 Google Calendar</a>`
+    : '';
+
+  // Safe JS values baked into the print window
+  const RESEND_KEY  = 're_EztSpcQk_Jy9J5VoafrRPZv9b1aAdzQQQ';
+  const SB_URL      = (sbUrl||'').replace(/'/g,"\\'");
+  const SB_KEY      = (sbKey||'').replace(/'/g,"\\'");
+  const PO_ID       = (po.id||'').replace(/'/g,"\\'");
+  const PO_NUM      = (po.po_number||'').replace(/'/g,"\\'");
+  const PROJ_NAME   = (po.project_name||'').replace(/'/g,"\\'");
+  const CONTR_NAME  = (po.contractor_name||'').replace(/'/g,"\\'");
+  const CONTR_EMAIL = (contrEmail||'').replace(/'/g,"\\'");
+  const START_D     = (po.start_date||'').replace(/'/g,"\\'");
+  const END_D       = (po.end_date||'').replace(/'/g,"\\'");
+  const grandFmt    = grand.toLocaleString('he-IL',{minimumFractionDigits:2,maximumFractionDigits:2});
 
   const html = `<!DOCTYPE html>
 <html dir="rtl" lang="he">
 <head>
 <meta charset="UTF-8">
-<title>הזמנת עבודה ${esc(po.po_number)}</title>
+<title>הזמנת עבודה ${PO_NUM}</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"><\/script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"><\/script>
 <style>
-  @page { size: A4; margin: 18mm 15mm; }
-  * { box-sizing: border-box; }
-  body { font-family: 'Arial', sans-serif; font-size: 13px; color: #1a1a1a; direction: rtl; margin: 0; }
-  h1 { font-size: 22px; color: #1a3d5c; margin: 0 0 4px; }
-  .header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 3px solid #1a3d5c; padding-bottom: 14px; margin-bottom: 18px; }
-  .stamp { border: 3px solid #1a3d5c; border-radius: 8px; padding: 8px 18px; text-align: center; transform: rotate(-2deg); display: inline-block; }
-  .stamp-title { font-weight: 900; font-size: 13px; color: #1a3d5c; letter-spacing: 1px; }
-  .stamp-num { font-family: monospace; font-size: 20px; font-weight: 900; color: #1a3d5c; }
-  .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 24px; margin-bottom: 18px; }
-  .info-label { font-size: 11px; color: #888; margin-bottom: 2px; }
-  .info-value { font-weight: 700; font-size: 13px; }
-  table { width: 100%; border-collapse: collapse; margin: 12px 0; }
-  thead tr { background: #1a3d5c; color: white; }
-  th { padding: 10px 12px; text-align: right; font-size: 12px; }
-  .totals-table td { padding: 8px 12px; border: 1px solid #dce4f5; }
-  .grand-row td { background: #1a3d5c; color: white; font-weight: 900; font-size: 15px; }
-  .remarks { background: #eef4fb; border: 1.5px solid #2d6a9f; border-radius: 8px; padding: 12px 16px; margin: 14px 0; }
-  .safety { background: #fff8e1; border: 2px solid #f59e0b; border-radius: 8px; padding: 12px 16px; margin: 16px 0; font-size: 12px; line-height: 1.8; }
-  .footer { text-align: center; font-size: 10px; color: #999; border-top: 1px solid #e5e7eb; padding-top: 10px; margin-top: 20px; }
-  .sig-section { display: flex; justify-content: space-between; align-items: flex-end; margin-top: 24px; gap: 40px; }
-  .sig-block { flex: 1; }
-  .sig-line { border-bottom: 2px solid #1a3d5c; width: 100%; margin-top: 10px; }
-  @media print { .no-print { display: none !important; } }
+@page{size:A4;margin:18mm 15mm;}
+*{box-sizing:border-box;}
+body{font-family:Arial,sans-serif;font-size:13px;color:#1a1a1a;direction:rtl;margin:0;}
+h1{font-size:22px;color:#1a3d5c;margin:0 0 4px;}
+.header{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:3px solid #1a3d5c;padding-bottom:14px;margin-bottom:18px;}
+.stamp{border:3px solid #1a3d5c;border-radius:8px;padding:8px 18px;text-align:center;transform:rotate(-2deg);display:inline-block;}
+.stamp-title{font-weight:900;font-size:13px;color:#1a3d5c;letter-spacing:1px;}
+.stamp-num{font-family:monospace;font-size:20px;font-weight:900;color:#1a3d5c;}
+.info-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px 24px;margin-bottom:18px;}
+.info-label{font-size:11px;color:#888;margin-bottom:2px;}
+.info-value{font-weight:700;font-size:13px;}
+table{width:100%;border-collapse:collapse;margin:12px 0;}
+thead tr{background:#1a3d5c;color:white;}
+th{padding:10px 12px;text-align:right;font-size:12px;}
+.totals-table td{padding:8px 12px;border:1px solid #dce4f5;}
+.grand-row td{background:#1a3d5c;color:white;font-weight:900;font-size:15px;}
+.remarks{background:#eef4fb;border:1.5px solid #2d6a9f;border-radius:8px;padding:12px 16px;margin:14px 0;}
+.safety{background:#fff8e1;border:2px solid #f59e0b;border-radius:8px;padding:12px 16px;margin:16px 0;font-size:12px;line-height:1.8;}
+.footer{text-align:center;font-size:10px;color:#999;border-top:1px solid #e5e7eb;padding-top:10px;margin-top:20px;}
+.sig-section{display:flex;justify-content:space-between;align-items:flex-end;margin-top:24px;gap:40px;}
+.sig-block{flex:1;}
+.sig-line{border-bottom:2px solid #1a3d5c;width:100%;margin-top:10px;}
+@media print{.no-print{display:none!important;}}
 </style>
 </head>
 <body>
 
-<!-- PRINT TOOLBAR (hidden on print) -->
-<div class="no-print" style="background:#1a3d5c;color:white;padding:12px 20px;display:flex;gap:12px;align-items:center;flex-wrap:wrap;position:sticky;top:0;z-index:999;">
-  <span style="font-weight:800;font-size:15px;">📋 הזמנת עבודה ${esc(po.po_number)}</span>
-  <button onclick="window.print()" style="background:#22c55e;color:white;border:none;padding:8px 18px;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;">🖨️ הדפס / PDF</button>
-  <button onclick="shareByWhatsApp()" style="background:#25D366;color:white;border:none;padding:8px 18px;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;">💬 שלח WhatsApp</button>
-  <button onclick="shareByEmail()" style="background:#4285f4;color:white;border:none;padding:8px 18px;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;">📧 שלח Email</button>
-  ${gcalBtn.replace(/\n/g,' ')}
-  <button onclick="window.close()" style="background:rgba(255,255,255,0.15);color:white;border:1px solid rgba(255,255,255,0.3);padding:8px 14px;border-radius:8px;font-size:13px;cursor:pointer;">✕ סגור</button>
+<!-- TOOLBAR -->
+<div class="no-print" style="background:#1a3d5c;color:white;padding:12px 20px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;position:sticky;top:0;z-index:999;">
+  <span style="font-weight:800;font-size:14px;">📋 ${PO_NUM}</span>
+  <button onclick="window.print()" style="background:#22c55e;color:#fff;border:none;padding:8px 14px;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;">🖨️ הדפס</button>
+  <button id="btn-gen-pdf" onclick="generateAndUpload()" style="background:#9a6f00;color:#fff;border:none;padding:8px 14px;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;">⏳ מכין PDF...</button>
+  <button id="btn-wa"    onclick="doWhatsApp()"  disabled style="background:#25D366;color:#fff;border:none;padding:8px 14px;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;opacity:.45;">💬 WhatsApp</button>
+  <button id="btn-email" onclick="doEmail()"     disabled style="background:#4285f4;color:#fff;border:none;padding:8px 14px;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;opacity:.45;">📧 Email</button>
+  <button id="btn-dl"    onclick="doDl()"        disabled style="background:#e8b84b;color:#111;border:none;padding:8px 14px;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;opacity:.45;">📥 הורד PDF</button>
+  ${gcalLink}
+  <div id="pdf-status" style="font-size:11px;color:#f59e0b;"></div>
+  <button onclick="window.close()" style="margin-right:auto;background:rgba(255,255,255,.15);color:#fff;border:1px solid rgba(255,255,255,.3);padding:8px 12px;border-radius:8px;font-size:12px;cursor:pointer;">✕</button>
 </div>
 
 <!-- DOCUMENT -->
-<div style="max-width:760px;margin:24px auto;padding:0 10px;">
+<div id="po-doc" style="max-width:760px;margin:24px auto;padding:0 14px;">
 
-  <!-- Header -->
   <div class="header">
     <div>
       <h1>הזמנת עבודה רשמית</h1>
@@ -6039,12 +6055,11 @@ function printPO(po, items, sigData, gcalUrl) {
     </div>
     <div class="stamp">
       <div class="stamp-title">הזמנת עבודה</div>
-      <div class="stamp-num">${esc(po.po_number)}</div>
+      <div class="stamp-num">${PO_NUM}</div>
       <div style="font-size:11px;color:#1a3d5c;margin-top:2px;">${po.po_date ? fmtDate(po.po_date) : new Date().toLocaleDateString('he-IL')}</div>
     </div>
   </div>
 
-  <!-- To / From -->
   <div style="margin-bottom:18px;">
     <div style="font-size:12px;color:#888;margin-bottom:6px;">לכבוד:</div>
     <div style="font-size:16px;font-weight:900;color:#1a3d5c;">${esc(po.contractor_name||'הקבלן')}</div>
@@ -6057,60 +6072,38 @@ function printPO(po, items, sigData, gcalUrl) {
     </div>
   </div>
 
-  <!-- Info grid -->
   <div class="info-grid">
     <div><div class="info-label">פרויקט</div><div class="info-value">${esc(po.project_name||'—')}</div></div>
-    <div><div class="info-label">מספר הזמנה</div><div class="info-value" style="font-family:monospace;color:#1a3d5c;">${esc(po.po_number)}</div></div>
+    <div><div class="info-label">מספר הזמנה</div><div class="info-value" style="font-family:monospace;color:#1a3d5c;">${PO_NUM}</div></div>
     <div><div class="info-label">תאריך תחילת עבודה</div><div class="info-value" style="color:#1e6b30;">${po.start_date ? fmtDate(po.start_date) : '—'}</div></div>
     <div><div class="info-label">תאריך סיום עבודה</div><div class="info-value" style="color:#b52a1d;">${po.end_date ? fmtDate(po.end_date) : '—'}</div></div>
   </div>
 
-  <!-- Items table -->
   <div style="font-weight:800;color:#1a3d5c;font-size:14px;margin-bottom:6px;">פירוט עבודות:</div>
   <table>
-    <thead>
-      <tr>
-        <th style="width:40px">#</th>
-        <th>תיאור</th>
-        <th style="width:70px;text-align:center">כמות</th>
-        <th style="width:110px;text-align:left">מחיר יחידה</th>
-        <th style="width:120px;text-align:left">סה״כ</th>
-      </tr>
-    </thead>
+    <thead><tr>
+      <th style="width:36px">#</th><th>תיאור</th>
+      <th style="width:65px;text-align:center">כמות</th>
+      <th style="width:105px;text-align:left">מחיר יחידה</th>
+      <th style="width:115px;text-align:left">סה״כ</th>
+    </tr></thead>
     <tbody>${itemRows}</tbody>
   </table>
 
-  <!-- Totals -->
-  <table class="totals-table" style="width:340px;margin-right:auto;">
-    <tr>
-      <td style="text-align:right;font-weight:700;">סכום לפני מע״מ</td>
-      <td style="text-align:left;font-weight:700;">₪${fmtMoney(subtotal)}</td>
-    </tr>
-    <tr>
-      <td style="text-align:right;color:#666;">מע״מ 18%</td>
-      <td style="text-align:left;color:#666;">₪${fmtMoney(vat)}</td>
-    </tr>
-    <tr class="grand-row">
-      <td style="text-align:right;">סה״כ לתשלום כולל מע״מ</td>
-      <td style="text-align:left;font-size:16px;">₪${fmtMoney(grand)}</td>
-    </tr>
+  <table class="totals-table" style="width:320px;margin-right:auto;">
+    <tr><td style="text-align:right;font-weight:700;">סכום לפני מע״מ</td><td style="text-align:left;font-weight:700;">₪${fmtMoney(subtotal)}</td></tr>
+    <tr><td style="text-align:right;color:#666;">מע״מ 18%</td><td style="text-align:left;color:#666;">₪${fmtMoney(vat)}</td></tr>
+    <tr class="grand-row"><td style="text-align:right;">סה״כ לתשלום כולל מע״מ</td><td style="text-align:left;font-size:16px;">₪${fmtMoney(grand)}</td></tr>
   </table>
 
-  <!-- Beni remarks -->
-  ${po.remarks ? `
-  <div class="remarks">
-    <div style="font-weight:800;color:#1a3d5c;margin-bottom:6px;">הוראות ותנאים מיוחדים:</div>
-    <div style="line-height:1.8;">${esc(po.remarks).replace(/\n/g,'<br>')}</div>
-  </div>` : ''}
+  ${po.remarks ? `<div class="remarks"><div style="font-weight:800;color:#1a3d5c;margin-bottom:6px;">הוראות ותנאים מיוחדים:</div><div style="line-height:1.8;">${esc(po.remarks).replace(/\n/g,'<br>')}</div></div>` : ''}
 
-  <!-- Start / complete instruction -->
   <div style="font-size:14px;margin:18px 0;line-height:2;background:#f0fdf4;border:1.5px solid #86efac;border-radius:8px;padding:14px 18px;">
     נבקשך להתחיל את העבודה ביום <strong style="color:#1e6b30;">${po.start_date ? fmtDate(po.start_date) : '—'}</strong>
     ולסיימה עד ליום <strong style="color:#b52a1d;">${po.end_date ? fmtDate(po.end_date) : '—'}</strong>.<br>
     יש לפנות אלינו לתיאום כניסה לאתר לפני תחילת העבודה.
   </div>
 
-  <!-- Safety footer (mandatory) -->
   <div class="safety">
     <div style="font-weight:900;font-size:13px;color:#7a5c00;margin-bottom:8px;">⚠️ הוראות בטיחות חובה — Safety Regulations (Mandatory)</div>
     <div>הקבלן מתחייב לפעול בהתאם לכל דרישות הבטיחות על פי <strong>חוק הבטיחות בעבודה תשי״ד-1954</strong>
@@ -6120,7 +6113,6 @@ function printPO(po, items, sigData, gcalUrl) {
     <strong>אין להיכנס לאתר ללא הצגת ביטוח בתוקף ואישור הזמנת עבודה זה.</strong></div>
   </div>
 
-  <!-- Signature -->
   <div class="sig-section">
     <div class="sig-block">
       <div style="font-weight:700;color:#1a3d5c;margin-bottom:4px;">חתימת המזמין:</div>
@@ -6136,38 +6128,183 @@ function printPO(po, items, sigData, gcalUrl) {
     </div>
   </div>
 
-  <!-- Document footer -->
   <div class="footer">
     מסמך זה מהווה הזמנת עבודה רשמית לצורכי מס ערך מוסף — יש לשמור עותק זה לצרכי ביקורת מס.
-    הזמנה מספר ${esc(po.po_number)} | הופקה: ${new Date().toLocaleDateString('he-IL')} ${new Date().toLocaleTimeString('he-IL',{hour:'2-digit',minute:'2-digit'})}
+    הזמנה מספר ${PO_NUM} | הופקה: ${new Date().toLocaleDateString('he-IL')} ${new Date().toLocaleTimeString('he-IL',{hour:'2-digit',minute:'2-digit'})}
   </div>
-</div>
+</div><!-- /po-doc -->
 
 <script>
+// ── Constants baked in ────────────────────────────────────
+const RESEND_KEY  = '${RESEND_KEY}';
+const SB_URL      = '${SB_URL}';
+const SB_KEY_VAL  = '${SB_KEY}';
+const PO_ID_VAL   = '${PO_ID}';
+const PO_NUM_VAL  = '${PO_NUM}';
+const PROJ_NAME   = '${PROJ_NAME}';
+const CONTR_NAME  = '${CONTR_NAME}';
+const CONTR_EMAIL = '${CONTR_EMAIL}';
+const START_DATE  = '${START_D}';
+const END_DATE    = '${END_D}';
+const GRAND_FMT   = '${grandFmt}';
+
+// ── Helpers ───────────────────────────────────────────────
 function fmtDate(d){if(!d)return'—';try{const dt=new Date(d+'T12:00:00');return dt.toLocaleDateString('he-IL',{day:'2-digit',month:'2-digit',year:'numeric'});}catch(e){return d;}}
 function fmtMoney(n){return Number(n||0).toLocaleString('he-IL',{minimumFractionDigits:2,maximumFractionDigits:2});}
 function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
-function shareByWhatsApp(){
-  const msg = 'הזמנת עבודה מספר ${esc(po.po_number)}\\nפרויקט: ${esc(po.project_name||'')}\\nקבלן: ${esc(po.contractor_name||'')}\\nתאריך תחילה: ${po.start_date||''}\\nסה״כ: ₪${fmtMoney(grand)} כולל מע״מ\\n\\nנא לאשר קבלת הזמנה זו.';
+function setStatus(msg,col){const el=document.getElementById('pdf-status');if(el){el.textContent=msg;el.style.color=col||'#f59e0b';}}
+function enableBtn(id){const b=document.getElementById(id);if(b){b.disabled=false;b.style.opacity='1';}}
+
+let _pdfBlob = null;
+let _pdfUrl  = null;
+
+// ── Auto-run on load ──────────────────────────────────────
+window.addEventListener('load', () => { setTimeout(generateAndUpload, 1000); });
+
+async function generateAndUpload() {
+  const btn = document.getElementById('btn-gen-pdf');
+  if(btn){btn.disabled=true;btn.textContent='⏳ מייצר PDF...';}
+  setStatus('מייצר PDF...','#f59e0b');
+  try {
+    const el  = document.getElementById('po-doc');
+    const opt = {
+      margin:[12,10,12,10], filename:PO_NUM_VAL+'.pdf',
+      image:{type:'jpeg',quality:0.95},
+      html2canvas:{scale:2,useCORS:true,logging:false},
+      jsPDF:{unit:'mm',format:'a4',orientation:'portrait',compress:true}
+    };
+    _pdfBlob = await html2pdf().set(opt).from(el).outputPdf('blob');
+    setStatus('מעלה ל-Storage...','#f59e0b');
+
+    // Upload to Supabase Storage
+    const sbClient   = window.supabase.createClient(SB_URL, SB_KEY_VAL);
+    const fileName   = 'po/' + PO_NUM_VAL + '_' + Date.now() + '.pdf';
+    const {error:upErr} = await sbClient.storage.from('purchase-orders')
+      .upload(fileName, _pdfBlob, {contentType:'application/pdf', upsert:true});
+    if(upErr) throw upErr;
+
+    const {data:urlData} = sbClient.storage.from('purchase-orders').getPublicUrl(fileName);
+    _pdfUrl = urlData.publicUrl;
+
+    // Save URL back to purchase_orders row
+    if(PO_ID_VAL) await sbClient.from('purchase_orders').update({pdf_url:_pdfUrl}).eq('id',PO_ID_VAL);
+
+    enableBtn('btn-wa');
+    enableBtn('btn-email');
+    enableBtn('btn-dl');
+    if(btn){btn.textContent='✅ PDF מוכן';btn.style.background='#22c55e';}
+    setStatus('✅ PDF מוכן — ניתן לשלוח','#86efac');
+  } catch(err) {
+    if(btn){btn.textContent='⚠️ נסה שוב';btn.disabled=false;}
+    setStatus('שגיאה: '+err.message,'#ef4444');
+    // Enable anyway so user isn't stuck
+    enableBtn('btn-wa'); enableBtn('btn-email'); enableBtn('btn-dl');
+    console.error('PDF/upload error:',err);
+  }
+}
+
+// ── Download PDF ──────────────────────────────────────────
+function doDl() {
+  if(_pdfBlob) {
+    const url = URL.createObjectURL(_pdfBlob);
+    const a   = Object.assign(document.createElement('a'),{href:url,download:PO_NUM_VAL+'.pdf'});
+    document.body.appendChild(a); a.click();
+    setTimeout(()=>{URL.revokeObjectURL(url);a.remove();},500);
+  } else if(_pdfUrl) {
+    window.open(_pdfUrl,'_blank');
+  }
+}
+
+// ── WhatsApp ──────────────────────────────────────────────
+function doWhatsApp() {
+  const link = _pdfUrl ? '\\n\\n📎 הזמנה מלאה להורדה:\\n' + _pdfUrl : '';
+  const msg  = 'שלום ' + CONTR_NAME + ',\\n\\n'
+    + '📋 הזמנת עבודה מספר *' + PO_NUM_VAL + '*\\n'
+    + 'פרויקט: ' + PROJ_NAME + '\\n'
+    + 'תאריך תחילה: ' + START_DATE + '\\n'
+    + 'תאריך סיום: '  + END_DATE   + '\\n'
+    + 'סה״כ: *₪' + GRAND_FMT + ' כולל מע״מ*\\n'
+    + '\\nנא לאשר קבלת ההזמנה.'
+    + link;
   window.open('https://wa.me/?text='+encodeURIComponent(msg));
 }
-function shareByEmail(){
-  const subj = encodeURIComponent('הזמנת עבודה ${esc(po.po_number)} — ${esc(po.project_name||'')}');
-  const body = encodeURIComponent('שלום,\\n\\nמצורפת הזמנת עבודה מספר ${esc(po.po_number)}.\\nנא לאשר קבלה.\\n\\nבני פרסקי');
-  window.open('mailto:?subject='+subj+'&body='+body);
+
+// ── Email via Resend API ──────────────────────────────────
+async function doEmail() {
+  const btn = document.getElementById('btn-email');
+  if(btn){btn.disabled=true;btn.textContent='📧 שולח...';}
+  setStatus('שולח דוא״ל...','#f59e0b');
+
+  if(!CONTR_EMAIL) {
+    alert('לא נמצאה כתובת דוא״ל לקבלן זה.\\nנא להוסיף דוא״ל בכרטיס הקבלן ולנסות שוב.');
+    if(btn){btn.disabled=false;btn.textContent='📧 Email';}
+    setStatus('','');
+    return;
+  }
+
+  try {
+    // Convert PDF blob to base64
+    const arrayBuf  = await _pdfBlob.arrayBuffer();
+    const uint8     = new Uint8Array(arrayBuf);
+    let binary = '';
+    uint8.forEach(b => binary += String.fromCharCode(b));
+    const b64 = btoa(binary);
+
+    const pdfLink = _pdfUrl ? '\\n\\nקישור לצפייה מקוונת: ' + _pdfUrl : '';
+
+    const payload = {
+      from: 'Beni Persky <onboarding@resend.dev>',
+      to:   [CONTR_EMAIL],
+      subject: 'הזמנת עבודה ' + PO_NUM_VAL + ' — ' + PROJ_NAME,
+      html: '<div dir="rtl" style="font-family:Arial,sans-serif;font-size:14px;color:#1a1a1a;">'
+        + '<h2 style="color:#1a3d5c;">הזמנת עבודה רשמית — ' + PO_NUM_VAL + '</h2>'
+        + '<p>שלום <strong>' + CONTR_NAME + '</strong>,</p>'
+        + '<p>מצורפת הזמנת עבודה רשמית מספר <strong>' + PO_NUM_VAL + '</strong> עבור פרויקט <strong>' + PROJ_NAME + '</strong>.</p>'
+        + '<table style="border-collapse:collapse;width:100%;max-width:420px;">'
+        + '<tr><td style="padding:7px 10px;background:#f0f4fa;font-weight:700;border:1px solid #dce4f5;">מספר הזמנה</td><td style="padding:7px 10px;border:1px solid #dce4f5;font-family:monospace;">' + PO_NUM_VAL + '</td></tr>'
+        + '<tr><td style="padding:7px 10px;background:#f0f4fa;font-weight:700;border:1px solid #dce4f5;">פרויקט</td><td style="padding:7px 10px;border:1px solid #dce4f5;">' + PROJ_NAME + '</td></tr>'
+        + '<tr><td style="padding:7px 10px;background:#f0f4fa;font-weight:700;border:1px solid #dce4f5;">תאריך תחילה</td><td style="padding:7px 10px;border:1px solid #dce4f5;color:#1e6b30;">' + START_DATE + '</td></tr>'
+        + '<tr><td style="padding:7px 10px;background:#f0f4fa;font-weight:700;border:1px solid #dce4f5;">תאריך סיום</td><td style="padding:7px 10px;border:1px solid #dce4f5;color:#b52a1d;">' + END_DATE + '</td></tr>'
+        + '<tr style="background:#1a3d5c;color:white;"><td style="padding:9px 10px;font-weight:900;border:1px solid #0f2440;">סה״כ כולל מע״מ</td><td style="padding:9px 10px;font-size:15px;font-weight:900;border:1px solid #0f2440;">₪' + GRAND_FMT + '</td></tr>'
+        + '</table>'
+        + '<p style="margin-top:18px;">ההזמנה המלאה עם כל הפרטים והחתימה מצורפת כ-PDF לדוא״ל זה.' + pdfLink + '</p>'
+        + '<p style="margin-top:16px;padding:12px;background:#fff8e1;border:1px solid #f0d080;border-radius:8px;font-size:12px;">'
+        + '⚠️ <strong>חובה:</strong> יש להגיע עם ביטוח בתוקף ולפעול על פי תקנות הבטיחות בעבודה תשי״ד-1954.</p>'
+        + '<p style="margin-top:18px;">נא לאשר קבלת הזמנה זו בהקדם.<br><br>בכבוד,<br><strong>בני פרסקי</strong><br>מנהל עבודה / מפקח</p>'
+        + '</div>',
+      attachments: [{
+        filename: PO_NUM_VAL + '.pdf',
+        content:  b64
+      }]
+    };
+
+    const res  = await fetch('https://api.resend.com/emails', {
+      method:  'POST',
+      headers: { 'Authorization': 'Bearer ' + RESEND_KEY, 'Content-Type': 'application/json' },
+      body:    JSON.stringify(payload)
+    });
+    const json = await res.json();
+
+    if(!res.ok) throw new Error(json.message || json.name || 'Resend error ' + res.status);
+
+    if(btn){btn.disabled=false;btn.textContent='✅ נשלח!';}
+    setStatus('✅ דוא״ל נשלח ל-' + CONTR_EMAIL,'#86efac');
+    setTimeout(()=>setStatus('',''),5000);
+  } catch(err) {
+    if(btn){btn.disabled=false;btn.textContent='📧 Email';}
+    setStatus('שגיאת דוא״ל: '+err.message,'#ef4444');
+    console.error('Resend error:',err);
+  }
 }
 <\/script>
 </body>
 </html>`;
 
   const win = window.open('', '_blank');
-  if(win) {
-    win.document.write(html);
-    win.document.close();
-  } else {
-    showToast('הרשה חלונות קופצים להדפסת ההזמנה','error');
-  }
+  if(win) { win.document.write(html); win.document.close(); }
+  else showToast('הרשה חלונות קופצים','error');
 }
+
 
 // ── Import from Quote → Gantt ───────────────────────────────
 function openImportFromQuoteModal() {
