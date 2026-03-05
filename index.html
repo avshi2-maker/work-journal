@@ -1914,40 +1914,37 @@ async function loadReports() {
 
 // ── NAVIGATION ───────────────────────────────────────────
 function showPage(page) {
+  // Step 1: Reset ALL pages — clear both inline styles AND classes
+  var main = document.querySelector('#crm-panel .main');
+  if(main) Array.from(main.children).forEach(function(c){
+    if(c.classList.contains('page')) {
+      c.classList.remove('active');
+      c.style.display = '';
+    }
+  });
+  // Step 2: Reset all nav items
+  document.querySelectorAll('.nav-item').forEach(function(n){ n.classList.remove('active'); });
+  // Step 3: Ensure CRM panel is visible
+  document.getElementById('crm-panel').classList.add('active');
+  document.getElementById('tab-crm').classList.add('active');
+  // Step 4: Show the requested page
   if(page === 'gantt') {
-    // Ensure CRM tab is visible
-    document.getElementById('crm-panel').classList.add('active');
-    document.getElementById('tab-crm').classList.add('active');
-    // Hide only direct .page children of .main
-    var main = document.querySelector('#crm-panel .main');
-    if(main) Array.from(main.children).forEach(function(c){if(c.classList.contains('page'))c.style.display='none';});
-    const gp = document.getElementById('page-gantt');
-    if(gp) gp.style.display = 'block';
-    document.querySelectorAll('.nav-item').forEach(function(n){n.classList.remove('active');});
-    const nav = document.getElementById('nav-gantt');
-    if(nav) nav.classList.add('active');
+    document.getElementById('page-gantt').style.display = 'block';
+    document.getElementById('nav-gantt').classList.add('active');
     loadGantt();
     return;
   }
   if(page === 'forecast') {
-    // Ensure CRM tab is visible
-    document.getElementById('crm-panel').classList.add('active');
-    document.getElementById('tab-crm').classList.add('active');
-    // Hide only direct .page children of .main
-    var main = document.querySelector('#crm-panel .main');
-    if(main) Array.from(main.children).forEach(function(c){if(c.classList.contains('page'))c.style.display='none';});
-    const fp = document.getElementById('page-forecast');
-    if(fp) fp.style.display = 'block';
-    document.querySelectorAll('.nav-item').forEach(function(n){n.classList.remove('active');});
-    const nav = document.getElementById('nav-forecast');
-    if(nav) nav.classList.add('active');
+    document.getElementById('page-forecast').style.display = 'block';
+    document.getElementById('nav-forecast').classList.add('active');
     renderForecast();
     return;
   }
-  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
-  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
-  document.getElementById('page-'+page).classList.add('active');
-  document.getElementById('nav-'+page).classList.add('active');
+  // Regular pages use .active class (CSS handles display)
+  var target = document.getElementById('page-'+page);
+  if(target) target.classList.add('active');
+  var nav = document.getElementById('nav-'+page);
+  if(nav) nav.classList.add('active');
   if(page==='finance') renderBalances();
 }
 
