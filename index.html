@@ -34,8 +34,8 @@ html{direction:rtl;font-size:15px}
 .tab-sep{width:1px;background:#c9a84c;margin:10px 0}
 
 /* ══ PANELS ══ */
-.app-panel{display:none;}
-.app-panel.active{display:block;min-height:100vh;}
+.app-panel{display:none!important;visibility:hidden;position:relative;}
+.app-panel.active{display:block!important;visibility:visible;min-height:100vh;}
 
 /* ══ CRM PANEL ══ */
 #crm-panel{background:#fdf6e3}
@@ -581,30 +581,38 @@ textarea{min-height:80px;resize:vertical;}
   .form-grid.three{grid-template-columns:1fr 1fr;}
 }
 
-/* ── Mobile (≤768px): full-screen drawer sidebar ─────── */
+/* ── MOBILE (≤768px) ─────────────────────────────────────
+   Sidebar is a drawer. Hidden off-screen. Full-width main.
+   ─────────────────────────────────────────────────────── */
 @media(max-width:768px){
 
-  /* Sidebar: hidden off right edge */
+  /* ── Kill sidebar from layout entirely when closed ── */
   #crm-panel .sidebar{
+    position:fixed!important;
     top:54px!important;
+    right:0!important;
+    width:75vw!important;
+    max-width:280px!important;
     height:calc(100vh - 54px)!important;
-    width:80vw!important;
-    max-width:300px!important;
-    right:-100vw!important;       /* hide: push completely off screen */
-    transform:none!important;
-    transition:right 0.28s ease!important;
     z-index:500!important;
-    box-shadow:-6px 0 24px rgba(0,0,0,0.4)!important;
+    visibility:hidden!important;
+    pointer-events:none!important;
+    opacity:0!important;
+    transition:opacity 0.25s ease, visibility 0.25s ease!important;
     overflow-y:auto!important;
     overflow-x:hidden!important;
+    box-shadow:none!important;
   }
 
-  /* Sidebar open */
+  /* ── Sidebar open: make visible ── */
   #crm-panel .sidebar.mobile-open{
-    right:0!important;            /* show: snap back to edge */
+    visibility:visible!important;
+    pointer-events:auto!important;
+    opacity:1!important;
+    box-shadow:-4px 0 20px rgba(0,0,0,0.4)!important;
   }
 
-  /* All labels visible inside open sidebar */
+  /* ── Show all text labels inside open sidebar ── */
   #crm-panel .sidebar .sidebar-logo,
   #crm-panel .sidebar .sidebar-clock,
   #crm-panel .sidebar .sidebar-bottom{ display:flex!important; }
@@ -614,134 +622,81 @@ textarea{min-height:80px;resize:vertical;}
   #crm-panel .sidebar .nav-item{
     justify-content:flex-start!important;
     padding:13px 18px!important;
-    border-radius:0!important;
-    font-size:15px!important;
   }
-  #crm-panel .sidebar .nav-icon{ margin-left:12px!important; }
 
-  /* Main: full width — NO right margin */
+  /* ── Main: full width, no sidebar margin ── */
   #crm-panel .main{
     margin-right:0!important;
-    padding:70px 12px 40px!important;  /* 70 = 54px tabs + 16 gap */
-    min-height:100vh;
+    padding:68px 12px 40px!important;
     width:100%!important;
+    box-sizing:border-box!important;
   }
 
-  /* Overlay: covers main when sidebar is open */
-  #crm-overlay{ z-index:499!important; }
-
-  /* Hamburger: fixed below tab bar, right side */
+  /* ── Hamburger ── */
   #btn-hamburger-fixed{
     display:flex!important;
-    position:fixed;
-    top:62px;      /* 54px tab bar + 8px gap */
-    right:10px;
-    z-index:600;
-    width:42px; height:42px;
-    background:#1a3d5c;
-    color:white;
-    border:none;
-    border-radius:10px;
-    font-size:20px;
-    align-items:center;
-    justify-content:center;
-    box-shadow:0 2px 8px rgba(0,0,0,0.35);
-    cursor:pointer;
-    touch-action:manipulation;
+    position:fixed!important;
+    top:62px!important;
+    right:8px!important;
+    z-index:600!important;
+    width:40px!important;
+    height:40px!important;
+    min-height:40px!important;
+    background:#1a3d5c!important;
+    color:white!important;
+    border:none!important;
+    border-radius:8px!important;
+    font-size:20px!important;
+    align-items:center!important;
+    justify-content:center!important;
+    box-shadow:0 2px 8px rgba(0,0,0,0.4)!important;
+    cursor:pointer!important;
+    touch-action:manipulation!important;
   }
-  /* Hide the old in-sidebar hamburger */
   #btn-hamburger{ display:none!important; }
 
-  /* Stats 2-col */
-  .stats-grid{ grid-template-columns:1fr 1fr; gap:10px; }
-  .stat-card{ padding:14px 10px; }
-  .stat-value{ font-size:18px; }
-  .stat-icon{ font-size:24px; }
+  /* ── Overlay ── */
+  #crm-overlay{ z-index:499!important; }
 
-  /* Tables: horizontal scroll */
-  .table-wrap{ overflow-x:auto; -webkit-overflow-scrolling:touch; border-radius:10px; }
+  /* ── Content layout ── */
+  .stats-grid{ grid-template-columns:1fr 1fr!important; gap:10px; }
+  .table-wrap{ overflow-x:auto; -webkit-overflow-scrolling:touch; }
   table{ min-width:520px; font-size:12px; }
   th,td{ padding:8px; white-space:nowrap; }
-
-  /* Forms: single column */
   .form-grid,.form-grid.three,.form-grid.two{ grid-template-columns:1fr; }
   .form-group.span2,.form-group.span3{ grid-column:span 1; }
   .topbar{ flex-wrap:wrap; gap:8px; padding-right:52px; }
   .page-title{ font-size:18px; }
   .search-bar{ flex-wrap:wrap; gap:8px; }
   .search-bar input,.search-bar select{ width:100%; }
-
-  /* Modals: slide up from bottom */
   .modal-overlay{ align-items:flex-end; padding:0; }
   .modal{
     width:100%!important; max-width:100%!important;
     max-height:92vh; border-radius:20px 20px 0 0;
     overflow-y:auto; -webkit-overflow-scrolling:touch;
-    padding-bottom:env(safe-area-inset-bottom,16px);
   }
-  .modal-body{ max-height:65vh; overflow-y:auto; -webkit-overflow-scrolling:touch; }
-
-  /* Cards + buttons */
-  .quote-card-header{ padding:12px 14px; flex-wrap:wrap; gap:6px; }
-  .quote-card-footer{ flex-wrap:wrap; gap:8px; padding:10px 12px; }
+  .modal-body{ max-height:65vh; overflow-y:auto; }
+  .quote-card-header{ flex-wrap:wrap; gap:6px; }
+  .quote-card-footer{ flex-wrap:wrap; gap:8px; }
   .co-items-table{ min-width:680px; }
-  .btn,.btn-primary,.btn-ghost,.btn-add,.btn-co-new,.btn-quote-add-item{
-    min-height:44px; padding:10px 16px; font-size:14px;
-  }
-  button{ min-height:40px; touch-action:manipulation; }
-  #forecast-chart{ overflow-x:auto; -webkit-overflow-scrolling:touch; }
+  .btn,.btn-primary,.btn-ghost{ min-height:44px; }
+  button{ touch-action:manipulation; }
 }
 
-/* ── Small phone (≤480px) ─────────────────────────────── */
+/* ── SMALL PHONE (≤480px) ──────────────────────────────── */
 @media(max-width:480px){
-  #crm-panel .main{ padding:70px 10px 40px!important; }
-  .stats-grid{grid-template-columns:1fr 1fr;gap:8px;}
-  .stat-card{padding:12px 8px;}
-  .stat-value{font-size:16px;}
-
-  /* Page title smaller */
-  .page-title{font-size:16px;}
-  .topbar{padding:0 0 12px;}
-  .topbar-actions .btn{padding:8px 12px;font-size:12px;}
-
-  /* Search bar stacked */
-  .search-bar{flex-direction:column;gap:8px;}
-
-  /* Cards: tighter */
-  .contractor-card{padding:14px 12px;}
-  .contractor-avatar{width:40px;height:40px;font-size:15px;}
-
-  /* Tables even more compact */
-  table{font-size:11px;}
-  th,td{padding:6px 6px;}
-
-  /* Modal full-height on mobile */
-  .modal{max-height:88vh;}
-  .modal-header{padding:14px 16px;}
-  .modal-body{max-height:60vh;}
-
-  /* Quotes */
-  .quote-card-footer{flex-direction:column;align-items:stretch;}
-  .quote-card-footer > div{justify-content:stretch;}
-  .quote-card-footer button,.quote-card-footer select{width:100%;}
-
-  /* CO section */
-  .co-card-hdr{flex-wrap:wrap;gap:6px;}
-  .co-add-bar{flex-direction:column;}
-  .co-add-bar button,.co-add-bar select{width:100%;}
-
-  /* Reports send toolbar */
-  #reports-send-toolbar{flex-direction:column;align-items:stretch;gap:8px;}
-  #reports-send-toolbar button{width:100%;}
-
-  /* Forecast manual update */
-  #forecast-project-sel,#forecast-budget,#forecast-profit{width:100%!important;}
-
-  /* Journal section */
-  .form-row{grid-template-columns:1fr!important;}
-  .section h2{font-size:15px;}
-  .tomorrow-row{flex-direction:column;align-items:flex-start;gap:6px;}
-  .tomorrow-label{min-width:unset;}
+  #crm-panel .main{ padding:68px 10px 40px!important; }
+  .stats-grid{ grid-template-columns:1fr 1fr!important; }
+  .page-title{ font-size:16px; }
+  .topbar{ padding:0 0 8px; }
+  .contractor-card{ padding:14px 12px; }
+  table{ font-size:11px; }
+  th,td{ padding:6px; }
+  .modal{ max-height:88vh; }
+  .quote-card-footer{ flex-direction:column; align-items:stretch; }
+  .quote-card-footer button,.quote-card-footer select{ width:100%; }
+  #reports-send-toolbar{ flex-direction:column; align-items:stretch; gap:8px; }
+  #reports-send-toolbar button{ width:100%; }
 }
 
 /* iOS safe area padding */
@@ -896,6 +851,25 @@ input,select,textarea,button { -webkit-appearance:none; font-size:16px; }
 .tomorrow-label{font-size:13px;font-weight:700;color:#1a3d5c;min-width:150px;white-space:nowrap}
 .tomorrow-detail{flex:1;padding:9px 12px;border:2px solid #e1e8ed;border-radius:8px;font-size:14px;font-family:inherit;direction:rtl}
 .tomorrow-detail:focus{outline:none;border-color:#667eea}
+
+/* ══ BENI TASKS WIDGET ══ */
+#beni-tasks-widget{margin-bottom:20px;}
+.beni-widget-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:0;}
+.beni-widget-title{display:flex;align-items:center;gap:10px;font-size:15px;font-weight:800;}
+.beni-avatar{width:34px;height:34px;border-radius:9px;background:linear-gradient(135deg,#f97316,#ea580c);display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0;}
+.beni-count-badge{background:#ef4444;color:white;border-radius:10px;padding:2px 8px;font-size:11px;font-weight:800;}
+.beni-task-row{display:flex;align-items:flex-start;gap:11px;padding:10px 0;border-bottom:1px solid var(--border);transition:opacity 0.3s;}
+.beni-task-row:last-child{border-bottom:none;}
+.beni-check{width:23px;height:23px;border-radius:50%;border:2.5px solid var(--border);display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;margin-top:1px;transition:all 0.18s;font-size:12px;}
+.beni-check:hover{border-color:#f97316;}
+.beni-check.done{background:#22c55e;border-color:#22c55e;color:white;}
+.beni-task-txt{flex:1;font-size:13px;line-height:1.45;}
+.beni-task-txt.done{text-decoration:line-through;color:var(--text3);}
+.beni-task-ago{font-size:10px;color:var(--text3);margin-top:2px;}
+.beni-src{font-size:10px;padding:2px 6px;border-radius:5px;font-weight:700;flex-shrink:0;margin-top:2px;}
+.beni-src-voice{background:rgba(249,115,22,0.15);color:#f97316;}
+.beni-src-manual{background:rgba(59,130,246,0.15);color:#3b82f6;}
+.beni-src-call{background:rgba(34,197,94,0.15);color:#22c55e;}
 </style>
 </head>
 <body>
@@ -1070,6 +1044,27 @@ input,select,textarea,button { -webkit-appearance:none; font-size:16px; }
         <div class="stat-value" id="stat-total-profit">—</div>
         <div class="stat-sub">₪ מכל הפרויקטים</div>
         <div class="stat-icon">📈</div>
+      </div>
+    </div>
+
+
+    <!-- ══ BENI TASKS WIDGET ══ -->
+    <div class="card" id="beni-tasks-widget">
+      <div class="beni-widget-header card-title" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+        <div class="beni-widget-title">
+          <div class="beni-avatar">👷</div>
+          <div>
+            <div>משימות בני פרסקי</div>
+            <div style="font-size:10px;font-weight:400;color:var(--text3);">מסונכרן מ-Beni Pocket · לחץ ✓ לסימון כבוצע</div>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span class="beni-count-badge" id="beni-count" style="display:none">0</span>
+          <button onclick="loadBeniTasks()" style="background:none;border:1px solid var(--border);color:var(--text3);padding:5px 10px;border-radius:7px;font-size:11px;cursor:pointer;font-family:'Heebo',sans-serif;">🔄</button>
+        </div>
+      </div>
+      <div id="beni-tasks-list">
+        <div style="text-align:center;padding:18px;color:var(--text3);font-size:13px;">טוען משימות...</div>
       </div>
     </div>
 
@@ -2842,6 +2837,7 @@ function showFinanceTab(tab) {
 
 // ── DASHBOARD ────────────────────────────────────────────
 function renderDashboard() {
+  loadBeniTasks();
   const activeProjects = allProjects.filter(p=>p.status==='active');
   const activeContractors = allContractors.filter(c=>c.is_active);
   const totalSent   = allTransactions.filter(t=>t.type==='sent').reduce((s,t)=>s+Number(t.amount),0);
@@ -7169,6 +7165,77 @@ async function updateGanttContractors() {
     + contractors.map(c => `<option value="${c.id}">${c.company_name||c.contact_name}</option>`).join('');
 }
 
+
+// ══ BENI TASKS WIDGET ════════════════════════════════════
+async function loadBeniTasks() {
+  const list  = document.getElementById('beni-tasks-list');
+  const badge = document.getElementById('beni-count');
+  if (!list) return;
+  list.innerHTML = '<div style="text-align:center;padding:16px;color:var(--text3);font-size:13px;">טוען...</div>';
+  try {
+    const res = await fetch(
+      SUPABASE_URL + '/rest/v1/reminders?is_done=eq.false&order=created_at.desc&limit=25',
+      { headers: { apikey: SUPABASE_ANON_KEY, Authorization: 'Bearer ' + SUPABASE_ANON_KEY } }
+    );
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const tasks = await res.json();
+    if (!Array.isArray(tasks) || tasks.length === 0) {
+      list.innerHTML = '<div style="text-align:center;padding:18px;color:var(--text3);font-size:13px;">✅ אין משימות פתוחות לבני</div>';
+      badge.style.display = 'none';
+      return;
+    }
+    badge.textContent  = tasks.length;
+    badge.style.display = 'inline';
+    list.innerHTML = tasks.map(t => {
+      const srcClass = t.source === 'voice' ? 'beni-src-voice' :
+                       t.source === 'call'  ? 'beni-src-call'  : 'beni-src-manual';
+      const srcLabel = t.source === 'voice' ? '🎙️ קול' :
+                       t.source === 'call'  ? '📞 שיחה' : '✍️ ידני';
+      const txt = (t.text||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+      const ago = _beniAgo(t.created_at);
+      return '<div class="beni-task-row" id="btr-' + t.id + '">' +
+        '<div class="beni-check" onclick="_beniDone(\'' + t.id + '\')" title="סמן כבוצע"></div>' +
+        '<div style="flex:1">' +
+          '<div class="beni-task-txt">' + txt + '</div>' +
+          '<div class="beni-task-ago">' + ago + '</div>' +
+        '</div>' +
+        '<span class="beni-src ' + srcClass + '">' + srcLabel + '</span>' +
+      '</div>';
+    }).join('');
+  } catch(e) {
+    list.innerHTML = '<div style="text-align:center;padding:16px;color:var(--red);font-size:13px;">שגיאה: ' + e.message + '</div>';
+  }
+}
+
+async function _beniDone(id) {
+  const row   = document.getElementById('btr-' + id);
+  const check = row && row.querySelector('.beni-check');
+  const txt   = row && row.querySelector('.beni-task-txt');
+  if (check) { check.classList.add('done'); check.textContent = '✓'; }
+  if (txt)   txt.classList.add('done');
+  try {
+    await fetch(SUPABASE_URL + '/rest/v1/reminders?id=eq.' + id, {
+      method: 'PATCH',
+      headers: {
+        apikey: SUPABASE_ANON_KEY, Authorization: 'Bearer ' + SUPABASE_ANON_KEY,
+        'Content-Type': 'application/json', Prefer: 'return=minimal'
+      },
+      body: JSON.stringify({ is_done: true, done_at: new Date().toISOString() })
+    });
+  } catch(e) { console.error(e); }
+  setTimeout(() => { if (row) row.style.opacity = '0.25'; }, 500);
+  setTimeout(loadBeniTasks, 1400);
+}
+
+function _beniAgo(iso) {
+  if (!iso) return '';
+  const d = Math.floor((Date.now() - new Date(iso)) / 1000);
+  if (d < 60)    return 'עכשיו';
+  if (d < 3600)  return Math.floor(d/60) + ' דק׳';
+  if (d < 86400) return Math.floor(d/3600) + ' שע׳';
+  return Math.floor(d/86400) + ' ימים';
+}
+// ══ END BENI TASKS ════════════════════════════════════════
 </script>
 </body>
 </html>
