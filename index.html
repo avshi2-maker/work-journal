@@ -852,6 +852,48 @@ input,select,textarea,button { -webkit-appearance:none; font-size:16px; }
 .tomorrow-detail{flex:1;padding:9px 12px;border:2px solid #e1e8ed;border-radius:8px;font-size:14px;font-family:inherit;direction:rtl}
 .tomorrow-detail:focus{outline:none;border-color:#667eea}
 
+/* ══ SITE PULSE WIDGET ══ */
+.sp-report-card{
+  border:1.5px solid var(--border);border-radius:12px;
+  padding:14px;margin-bottom:10px;background:var(--surface2);
+  transition:all 0.2s;animation:fadeIn 0.3s ease;
+}
+.sp-report-card:hover{border-color:var(--accent);}
+.sp-report-header{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:10px;}
+.sp-contractor{font-size:14px;font-weight:800;color:var(--text);}
+.sp-project{font-size:11px;color:var(--text3);margin-top:2px;}
+.sp-date{font-size:11px;color:var(--text3);white-space:nowrap;}
+.sp-stars{color:#f5c842;font-size:14px;letter-spacing:1px;}
+.sp-tasks{font-size:12px;color:var(--text2);line-height:1.6;margin-bottom:10px;}
+.sp-issues{
+  background:rgba(220,53,69,0.08);border:1px solid rgba(220,53,69,0.2);
+  border-radius:8px;padding:8px 10px;font-size:12px;color:#c0392b;
+  margin-bottom:10px;
+}
+.sp-workers{font-size:12px;color:var(--text3);margin-bottom:12px;}
+.sp-actions{display:flex;gap:8px;}
+.sp-btn{
+  flex:1;padding:10px;border:none;border-radius:8px;
+  font-family:'Heebo',sans-serif;font-size:13px;font-weight:800;
+  cursor:pointer;transition:all 0.15s;touch-action:manipulation;
+}
+.sp-btn:hover{transform:translateY(-1px);}
+.sp-btn-plug{background:linear-gradient(135deg,#1a7a3a,#22a84e);color:white;}
+.sp-btn-del{background:rgba(192,57,43,0.1);color:#c0392b;border:1.5px solid rgba(192,57,43,0.2);}
+.sp-badge-new{
+  background:#ef4444;color:white;
+  border-radius:10px;padding:2px 8px;
+  font-size:11px;font-weight:800;
+}
+.sp-empty{text-align:center;padding:20px;color:var(--text3);font-size:13px;}
+.sp-widget-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;}
+.sp-title-wrap{display:flex;align-items:center;gap:10px;font-size:15px;font-weight:800;}
+.sp-avatar{
+  width:34px;height:34px;border-radius:9px;
+  background:linear-gradient(135deg,#e8770a,#c45f00);
+  display:flex;align-items:center;justify-content:center;font-size:17px;
+}
+
 /* ══ BENI TASKS WIDGET ══ */
 #beni-tasks-widget{margin-bottom:20px;}
 .beni-widget-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:0;}
@@ -1044,6 +1086,27 @@ input,select,textarea,button { -webkit-appearance:none; font-size:16px; }
         <div class="stat-value" id="stat-total-profit">—</div>
         <div class="stat-sub">₪ מכל הפרויקטים</div>
         <div class="stat-icon">📈</div>
+      </div>
+    </div>
+
+
+    <!-- ══ SITE PULSE REPORTS WIDGET ══ -->
+    <div class="card" id="site-pulse-widget">
+      <div class="sp-widget-header card-title" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+        <div class="sp-title-wrap">
+          <div class="sp-avatar">🏗️</div>
+          <div>
+            <div>דוחות אתר — Site Pulse</div>
+            <div style="font-size:10px;font-weight:400;color:var(--text3);">דוחות ממתינים לאישורך</div>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span class="sp-badge-new" id="sp-badge" style="display:none">0</span>
+          <button onclick="loadSiteReports()" style="background:none;border:1px solid var(--border);color:var(--text3);padding:5px 10px;border-radius:7px;font-size:11px;cursor:pointer;font-family:'Heebo',sans-serif;">🔄</button>
+        </div>
+      </div>
+      <div id="sp-reports-list">
+        <div class="sp-empty">טוען דוחות...</div>
       </div>
     </div>
 
@@ -2837,7 +2900,6 @@ function showFinanceTab(tab) {
 
 // ── DASHBOARD ────────────────────────────────────────────
 function renderDashboard() {
-  loadBeniTasks();
   const activeProjects = allProjects.filter(p=>p.status==='active');
   const activeContractors = allContractors.filter(c=>c.is_active);
   const totalSent   = allTransactions.filter(t=>t.type==='sent').reduce((s,t)=>s+Number(t.amount),0);
@@ -7166,12 +7228,112 @@ async function updateGanttContractors() {
 }
 
 
+// ══ SITE PULSE REPORTS WIDGET ════════════════════════════
+const SP_BASE_URL = 'https://avshi2-maker.github.io/site-pulse/';
+
+async function loadSiteReports() {
+  const list  = document.getElementById('sp-reports-list');
+  const badge = document.getElementById('sp-badge');
+  if (!list) return;
+  list.innerHTML = '<div class="sp-empty">טוען דוחות...</div>';
+  try {
+    const res = await fetch(
+      SUPABASE_URL + '/rest/v1/site_reports?status=eq.pending&order=submitted_at.desc&limit=20',
+      { headers: { apikey: SUPABASE_ANON_KEY, Authorization: 'Bearer ' + SUPABASE_ANON_KEY } }
+    );
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const reports = await res.json();
+
+    if (!reports || reports.length === 0) {
+      list.innerHTML = '<div class="sp-empty">✅ אין דוחות ממתינים</div>';
+      badge.style.display = 'none';
+      return;
+    }
+    badge.textContent = reports.length;
+    badge.style.display = 'inline';
+
+    list.innerHTML = reports.map(r => {
+      const tasks   = _spParseTasks(r.tasks_done);
+      const stars   = r.day_rating > 0 ? '⭐'.repeat(r.day_rating) : '—';
+      const dateStr = r.report_date ? new Date(r.report_date).toLocaleDateString('he-IL') : '';
+      const name    = _spEsc(r.contractor_name || 'לא ידוע');
+      const proj    = r.project_name ? '🏗️ ' + _spEsc(r.project_name) : '';
+      const issues  = r.issues ? '<div class="sp-issues">🔴 ' + _spEsc(r.issues) + '</div>' : '';
+      const workers = '<div class="sp-workers">👷 ' + (r.workers_count||0) + ' עובדים' +
+        (r.workers_names ? ' — ' + _spEsc(r.workers_names) : '') + '</div>';
+      const taskHtml = tasks.length > 0
+        ? '<div class="sp-tasks">✅ ' + tasks.map(_spEsc).join(' · ') + '</div>'
+        : '<div class="sp-tasks" style="color:var(--text3);">לא דווחו משימות</div>';
+
+      return '<div class="sp-report-card" id="spr-' + r.id + '">' +
+        '<div class="sp-report-header">' +
+          '<div>' +
+            '<div class="sp-contractor">' + name + '</div>' +
+            (proj ? '<div class="sp-project">' + proj + '</div>' : '') +
+          '</div>' +
+          '<div style="text-align:left;">' +
+            '<div class="sp-date">' + dateStr + '</div>' +
+            '<div class="sp-stars">' + stars + '</div>' +
+          '</div>' +
+        '</div>' +
+        taskHtml + issues + workers +
+        '<div class="sp-actions">' +
+          '<button class="sp-btn sp-btn-plug" onclick="_spPlug(\'' + r.id + '\',\'' + (r.contractor_id||'') + '\',\'' + (r.project_id||'') + '\')">✅ אשר ושלב ב-CRM</button>' +
+          '<button class="sp-btn sp-btn-del"  onclick="_spDelete(\'' + r.id + '\')">🗑️ מחק</button>' +
+        '</div>' +
+      '</div>';
+    }).join('');
+  } catch(e) {
+    list.innerHTML = '<div class="sp-empty" style="color:var(--red);">שגיאה: ' + e.message + '</div>';
+  }
+}
+
+async function _spPlug(id, contractorId, projectId) {
+  const card = document.getElementById('spr-' + id);
+  if (card) card.style.opacity = '0.4';
+  try {
+    await fetch(SUPABASE_URL + '/rest/v1/site_reports?id=eq.' + id, {
+      method: 'PATCH',
+      headers: {
+        apikey: SUPABASE_ANON_KEY, Authorization: 'Bearer ' + SUPABASE_ANON_KEY,
+        'Content-Type': 'application/json', Prefer: 'return=minimal'
+      },
+      body: JSON.stringify({ status: 'approved', plugged_in: true, plugged_in_at: new Date().toISOString() })
+    });
+    setTimeout(loadSiteReports, 800);
+  } catch(e) { console.error(e); if(card) card.style.opacity='1'; }
+}
+
+async function _spDelete(id) {
+  if (!confirm('מחוק דוח זה לצמיתות?')) return;
+  const card = document.getElementById('spr-' + id);
+  if (card) { card.style.opacity='0.3'; card.style.transform='translateX(20px)'; }
+  try {
+    await fetch(SUPABASE_URL + '/rest/v1/site_reports?id=eq.' + id, {
+      method: 'PATCH',
+      headers: {
+        apikey: SUPABASE_ANON_KEY, Authorization: 'Bearer ' + SUPABASE_ANON_KEY,
+        'Content-Type': 'application/json', Prefer: 'return=minimal'
+      },
+      body: JSON.stringify({ status: 'deleted' })
+    });
+    setTimeout(loadSiteReports, 500);
+  } catch(e) { console.error(e); if(card) card.style.opacity='1'; }
+}
+
+function _spParseTasks(json) {
+  try { return JSON.parse(json||'[]'); } catch(e) { return []; }
+}
+function _spEsc(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+// ══ END SITE PULSE ════════════════════════════════════════
+
 // ══ BENI TASKS WIDGET ════════════════════════════════════
 async function loadBeniTasks() {
   const list  = document.getElementById('beni-tasks-list');
   const badge = document.getElementById('beni-count');
   if (!list) return;
-  list.innerHTML = '<div style="text-align:center;padding:16px;color:var(--text3);font-size:13px;">טוען...</div>';
   try {
     const res = await fetch(
       SUPABASE_URL + '/rest/v1/reminders?is_done=eq.false&order=created_at.desc&limit=25',
@@ -7181,59 +7343,50 @@ async function loadBeniTasks() {
     const tasks = await res.json();
     if (!Array.isArray(tasks) || tasks.length === 0) {
       list.innerHTML = '<div style="text-align:center;padding:18px;color:var(--text3);font-size:13px;">✅ אין משימות פתוחות לבני</div>';
-      badge.style.display = 'none';
+      if (badge) badge.style.display = 'none';
       return;
     }
-    badge.textContent  = tasks.length;
-    badge.style.display = 'inline';
+    if (badge) { badge.textContent = tasks.length; badge.style.display = 'inline'; }
     list.innerHTML = tasks.map(t => {
-      const srcClass = t.source === 'voice' ? 'beni-src-voice' :
-                       t.source === 'call'  ? 'beni-src-call'  : 'beni-src-manual';
-      const srcLabel = t.source === 'voice' ? '🎙️ קול' :
-                       t.source === 'call'  ? '📞 שיחה' : '✍️ ידני';
+      const srcClass = t.source==='voice'?'beni-src-voice':t.source==='call'?'beni-src-call':'beni-src-manual';
+      const srcLabel = t.source==='voice'?'🎙️ קול':t.source==='call'?'📞 שיחה':'✍️ ידני';
       const txt = (t.text||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
       const ago = _beniAgo(t.created_at);
-      return '<div class="beni-task-row" id="btr-' + t.id + '">' +
-        '<div class="beni-check" onclick="_beniDone(\'' + t.id + '\')" title="סמן כבוצע"></div>' +
-        '<div style="flex:1">' +
-          '<div class="beni-task-txt">' + txt + '</div>' +
-          '<div class="beni-task-ago">' + ago + '</div>' +
-        '</div>' +
-        '<span class="beni-src ' + srcClass + '">' + srcLabel + '</span>' +
+      return '<div class="beni-task-row" id="btr-'+t.id+'">' +
+        '<div class="beni-check" onclick="_beniDone(\''+t.id+'\')" title="סמן כבוצע"></div>' +
+        '<div style="flex:1"><div class="beni-task-txt">'+txt+'</div><div class="beni-task-ago">'+ago+'</div></div>' +
+        '<span class="beni-src '+srcClass+'">'+srcLabel+'</span>' +
       '</div>';
     }).join('');
   } catch(e) {
-    list.innerHTML = '<div style="text-align:center;padding:16px;color:var(--red);font-size:13px;">שגיאה: ' + e.message + '</div>';
+    list.innerHTML = '<div style="text-align:center;padding:16px;color:var(--red);font-size:13px;">שגיאה: '+e.message+'</div>';
   }
 }
 
 async function _beniDone(id) {
-  const row   = document.getElementById('btr-' + id);
-  const check = row && row.querySelector('.beni-check');
-  const txt   = row && row.querySelector('.beni-task-txt');
-  if (check) { check.classList.add('done'); check.textContent = '✓'; }
-  if (txt)   txt.classList.add('done');
+  const row=document.getElementById('btr-'+id);
+  const check=row&&row.querySelector('.beni-check');
+  const txt=row&&row.querySelector('.beni-task-txt');
+  if(check){check.classList.add('done');check.textContent='✓';}
+  if(txt)txt.classList.add('done');
   try {
-    await fetch(SUPABASE_URL + '/rest/v1/reminders?id=eq.' + id, {
-      method: 'PATCH',
-      headers: {
-        apikey: SUPABASE_ANON_KEY, Authorization: 'Bearer ' + SUPABASE_ANON_KEY,
-        'Content-Type': 'application/json', Prefer: 'return=minimal'
-      },
-      body: JSON.stringify({ is_done: true, done_at: new Date().toISOString() })
+    await fetch(SUPABASE_URL+'/rest/v1/reminders?id=eq.'+id,{
+      method:'PATCH',
+      headers:{apikey:SUPABASE_ANON_KEY,Authorization:'Bearer '+SUPABASE_ANON_KEY,'Content-Type':'application/json',Prefer:'return=minimal'},
+      body:JSON.stringify({is_done:true,done_at:new Date().toISOString()})
     });
-  } catch(e) { console.error(e); }
-  setTimeout(() => { if (row) row.style.opacity = '0.25'; }, 500);
-  setTimeout(loadBeniTasks, 1400);
+  } catch(e){console.error(e);}
+  setTimeout(()=>{if(row)row.style.opacity='0.25';},500);
+  setTimeout(loadBeniTasks,1400);
 }
 
 function _beniAgo(iso) {
-  if (!iso) return '';
-  const d = Math.floor((Date.now() - new Date(iso)) / 1000);
-  if (d < 60)    return 'עכשיו';
-  if (d < 3600)  return Math.floor(d/60) + ' דק׳';
-  if (d < 86400) return Math.floor(d/3600) + ' שע׳';
-  return Math.floor(d/86400) + ' ימים';
+  if(!iso)return'';
+  const d=Math.floor((Date.now()-new Date(iso))/1000);
+  if(d<60)return'עכשיו';
+  if(d<3600)return Math.floor(d/60)+' דק׳';
+  if(d<86400)return Math.floor(d/3600)+' שע׳';
+  return Math.floor(d/86400)+' ימים';
 }
 // ══ END BENI TASKS ════════════════════════════════════════
 </script>
