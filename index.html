@@ -2,6 +2,7 @@
 <html lang="he" dir="rtl">
 <head>
 <meta charset="UTF-8">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📊</text></svg>">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📋</text></svg>">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1105,6 +1106,29 @@ input,select,textarea,button { -webkit-appearance:none; font-size:16px; }
           <button onclick="loadSiteReports()" style="background:none;border:1px solid var(--border);color:var(--text3);padding:5px 10px;border-radius:7px;font-size:11px;cursor:pointer;font-family:'Heebo',sans-serif;">🔄</button>
         </div>
       </div>
+      <!-- LINK GENERATOR -->
+      <div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:14px;">
+        <div style="font-size:12px;font-weight:800;color:var(--text2);margin-bottom:10px;">📤 שלח טופס לקבלן</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;">
+          <div style="flex:1;min-width:140px;">
+            <div style="font-size:11px;color:var(--text3);margin-bottom:4px;">קבלן</div>
+            <select id="sp-contractor-sel" style="width:100%;padding:9px 10px;border:1.5px solid var(--border);border-radius:8px;font-family:'Heebo',sans-serif;font-size:13px;background:var(--surface);color:var(--text);cursor:pointer;">
+              <option value="">בחר קבלן...</option>
+            </select>
+          </div>
+          <div style="flex:1;min-width:120px;">
+            <div style="font-size:11px;color:var(--text3);margin-bottom:4px;">פרויקט (אופציונלי)</div>
+            <select id="sp-project-sel" style="width:100%;padding:9px 10px;border:1.5px solid var(--border);border-radius:8px;font-family:'Heebo',sans-serif;font-size:13px;background:var(--surface);color:var(--text);cursor:pointer;">
+              <option value="">כל הפרויקטים</option>
+            </select>
+          </div>
+          <button onclick="_spSendLink()" style="padding:9px 14px;background:linear-gradient(135deg,#16a34a,#15803d);color:white;border:none;border-radius:8px;font-family:'Heebo',sans-serif;font-size:13px;font-weight:800;cursor:pointer;white-space:nowrap;">
+            💬 שלח בוואטסאפ
+          </button>
+        </div>
+        <div id="sp-link-preview" style="display:none;margin-top:10px;padding:8px 12px;background:var(--surface);border:1px solid var(--border);border-radius:7px;font-size:12px;color:var(--text2);word-break:break-all;"></div>
+      </div>
+
       <div id="sp-reports-list">
         <div class="sp-empty">טוען דוחות...</div>
       </div>
@@ -7389,6 +7413,72 @@ function _beniAgo(iso) {
   return Math.floor(d/86400)+' ימים';
 }
 // ══ END BENI TASKS ════════════════════════════════════════
+
+// ══ SITE PULSE LINK GENERATOR ════════════════════════════
+const SP_FORM_URL = 'https://avshi2-maker.github.io/site-pulse/';
+
+async function _spLoadSelects() {
+  try {
+    // Load contractors
+    const cRes = await fetch(
+      SUPABASE_URL + '/rest/v1/contractors?select=id,name&order=name',
+      { headers: { apikey: SUPABASE_ANON_KEY, Authorization: 'Bearer ' + SUPABASE_ANON_KEY } }
+    );
+    const contractors = await cRes.json();
+    const cSel = document.getElementById('sp-contractor-sel');
+    if (cSel && Array.isArray(contractors)) {
+      contractors.forEach(c => {
+        const o = document.createElement('option');
+        o.value = c.id; o.textContent = c.name;
+        cSel.appendChild(o);
+      });
+    }
+    // Load projects
+    const pRes = await fetch(
+      SUPABASE_URL + '/rest/v1/projects?select=id,name&order=name',
+      { headers: { apikey: SUPABASE_ANON_KEY, Authorization: 'Bearer ' + SUPABASE_ANON_KEY } }
+    );
+    const projects = await pRes.json();
+    const pSel = document.getElementById('sp-project-sel');
+    if (pSel && Array.isArray(projects)) {
+      projects.forEach(p => {
+        const o = document.createElement('option');
+        o.value = p.id; o.textContent = p.name;
+        pSel.appendChild(o);
+      });
+    }
+  } catch(e) { console.error('sp selects:', e); }
+}
+
+function _spBuildLink() {
+  const cId = document.getElementById('sp-contractor-sel').value;
+  const pId = document.getElementById('sp-project-sel').value;
+  if (!cId) return null;
+  let url = SP_FORM_URL + '?c=' + cId;
+  if (pId) url += '&p=' + pId;
+  return url;
+}
+
+function _spSendLink() {
+  const cId   = document.getElementById('sp-contractor-sel').value;
+  const cName = document.getElementById('sp-contractor-sel').selectedOptions[0]?.text || '';
+  const pName = document.getElementById('sp-project-sel').selectedOptions[0]?.text || '';
+  if (!cId) { alert('בחר קבלן תחילה'); return; }
+  const url = _spBuildLink();
+  const preview = document.getElementById('sp-link-preview');
+  preview.textContent = url;
+  preview.style.display = 'block';
+  const today = new Date().toLocaleDateString('he-IL');
+  const msg =
+    'שלום ' + cName + ',\n' +
+    'אנא מלא את דוח היום דרך הקישור:\n' +
+    url + '\n\n' +
+    (pName && pName !== 'כל הפרויקטים' ? 'פרויקט: ' + pName + '\n' : '') +
+    'תאריך: ' + today + '\n' +
+    'תודה — בני';
+  window.open('https://wa.me/?text=' + encodeURIComponent(msg), '_blank');
+}
+// ══ END LINK GENERATOR ════════════════════════════════════
 </script>
 </body>
 </html>
