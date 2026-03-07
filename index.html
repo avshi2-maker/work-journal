@@ -913,6 +913,28 @@ input,select,textarea,button { -webkit-appearance:none; font-size:16px; }
 .beni-src-voice{background:rgba(249,115,22,0.15);color:#f97316;}
 .beni-src-manual{background:rgba(59,130,246,0.15);color:#3b82f6;}
 .beni-src-call{background:rgba(34,197,94,0.15);color:#22c55e;}
+
+/* ══ DAILY CALLS WIDGET ══ */
+.dc-stat-row{display:flex;gap:8px;margin-bottom:14px;}
+.dc-stat{flex:1;border-radius:8px;padding:8px;text-align:center;border:1px solid transparent;}
+.dc-stat-num{font-size:20px;font-weight:900;}
+.dc-stat-lbl{font-size:10px;font-weight:700;margin-top:1px;}
+.dc-in  {background:rgba(34,197,94,0.1); border-color:rgba(34,197,94,0.2); color:#15803d;}
+.dc-out {background:rgba(59,130,246,0.1);border-color:rgba(59,130,246,0.2);color:#1d4ed8;}
+.dc-miss{background:rgba(239,68,68,0.1); border-color:rgba(239,68,68,0.2); color:#dc2626;}
+.dc-wa  {background:rgba(37,211,102,0.1);border-color:rgba(37,211,102,0.2);color:#128c7e;}
+.dc-call-row{
+  display:flex;align-items:center;gap:10px;
+  padding:9px 0;border-bottom:1px solid var(--border);
+}
+.dc-call-row:last-child{border-bottom:none;}
+.dc-dir-icon{font-size:16px;flex-shrink:0;}
+.dc-name{font-size:13px;font-weight:700;flex:1;}
+.dc-phone{font-size:11px;color:var(--text3);direction:ltr;}
+.dc-time{font-size:11px;color:var(--text3);white-space:nowrap;}
+.dc-wa-dot{width:8px;height:8px;border-radius:50%;background:#22c55e;flex-shrink:0;}
+.dc-miss-dot{width:8px;height:8px;border-radius:50%;background:#ef4444;flex-shrink:0;}
+.dc-avatar{width:34px;height:34px;border-radius:9px;background:linear-gradient(135deg,#0ea5e9,#0284c7);display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0;}
 </style>
 </head>
 <body>
@@ -1152,6 +1174,38 @@ input,select,textarea,button { -webkit-appearance:none; font-size:16px; }
       </div>
       <div id="beni-tasks-list">
         <div style="text-align:center;padding:18px;color:var(--text3);font-size:13px;">טוען משימות...</div>
+      </div>
+    </div>
+
+
+    <!-- ══ DAILY CALLS WIDGET ══ -->
+    <div class="card" id="daily-calls-widget">
+      <div class="card-title" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+        <div style="display:flex;align-items:center;gap:10px;">
+          <div class="dc-avatar">📞</div>
+          <div>
+            <div>שיחות יומיות — בני פרסקי</div>
+            <div style="font-size:10px;font-weight:400;color:var(--text3);" id="dc-date-label">היום</div>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <input type="date" id="dc-date-picker" 
+            style="border:1px solid var(--border);border-radius:7px;padding:4px 8px;font-size:11px;background:var(--surface);color:var(--text);font-family:'Heebo',sans-serif;cursor:pointer;"
+            onchange="loadDailyCalls(this.value)">
+          <button onclick="loadDailyCalls()" style="background:none;border:1px solid var(--border);color:var(--text3);padding:5px 10px;border-radius:7px;font-size:11px;cursor:pointer;font-family:'Heebo',sans-serif;">🔄</button>
+        </div>
+      </div>
+
+      <!-- STATS ROW -->
+      <div class="dc-stat-row">
+        <div class="dc-stat dc-in" ><div class="dc-stat-num" id="dc-in">0</div><div class="dc-stat-lbl">נכנסות</div></div>
+        <div class="dc-stat dc-out"><div class="dc-stat-num" id="dc-out">0</div><div class="dc-stat-lbl">יוצאות</div></div>
+        <div class="dc-stat dc-miss"><div class="dc-stat-num" id="dc-miss">0</div><div class="dc-stat-lbl">לא נענו</div></div>
+        <div class="dc-stat dc-wa" ><div class="dc-stat-num" id="dc-wa">0</div><div class="dc-stat-lbl">וואטסאפ</div></div>
+      </div>
+
+      <div id="dc-calls-list">
+        <div style="text-align:center;padding:16px;color:var(--text3);font-size:13px;">טוען שיחות...</div>
       </div>
     </div>
 
@@ -2407,7 +2461,7 @@ input,select,textarea,button { -webkit-appearance:none; font-size:16px; }
       <div class="report-timestamp"></div>
     </div>
     <h1>📝 יומן עבודה יומי</h1>
-    <p>Stonhard Installation - אבשי ספיר</p>
+    <p>ביצוע פרויקטים - אבשי ספיר</p>
     <p class="legal-notice">⚖️ תיעוד משפטי מלא - תקנות התכנון והבניה 1992</p>
   </header>
   <main class="container">
@@ -2663,7 +2717,7 @@ input,select,textarea,button { -webkit-appearance:none; font-size:16px; }
   </header>
   <div class="print-header">
     <div class="print-logo">
-      <h1>Stonhard Installation</h1>
+      <h1>ביצוע פרויקטים</h1>
       <p>אבשי ספיר - קבלן רצפות תעשייתיות</p>
       <p>📱 050-5231042</p>
     </div>
@@ -2693,7 +2747,7 @@ input,select,textarea,button { -webkit-appearance:none; font-size:16px; }
   </main>
   <div class="print-footer">
     <p>דוח זה נוצר באופן דיגיטלי ועומד בתקנות התכנון והבניה (פיקוח עליון על הבניה), תשנ"ב-1992</p>
-    <p>Stonhard Installation | אבשי ספיר | 050-5231042</p>
+    <p>ביצוע פרויקטים | אבשי ספיר | 050-5231042</p>
   </div>
 </div>
 
@@ -3737,7 +3791,7 @@ function esc(str) {
   return String(str||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
-console.log('✅ Stonhard CRM loaded — v3 GANTT BUILD');
+console.log('✅ Work Journal CRM loaded — v3 GANTT BUILD');
 
 // ══════════════════════════════════════════════════════════════
 //  QUOTES MODULE — קבלנים הצעות מחיר
@@ -4137,7 +4191,7 @@ function printQuote(qid) {
       <tbody>${rows}</tbody>
       <tfoot><tr class="total-row"><td colspan="5" style="text-align:right;padding-left:12px">סה״כ הצעה</td><td>₪${fmtMoney(total)}</td><td colspan="3"></td></tr></tfoot>
     </table>
-    <div class="footer">Stonhard CRM | בני פרסקי | ${new Date().toLocaleDateString('he-IL')}</div>
+    <div class="footer">Work Journal | בני פרסקי | ${new Date().toLocaleDateString('he-IL')}</div>
     </body></html>`);
   win.document.close();
 }
@@ -4753,7 +4807,7 @@ function printCOReport(coId, qid) {
       </table>
     </div>
     <div style="margin-top:24px;font-size:11px;color:#999;text-align:center">
-      Stonhard CRM | בני פרסקי | ${new Date().toLocaleDateString('he-IL')}
+      Work Journal | בני פרסקי | ${new Date().toLocaleDateString('he-IL')}
     </div>
     </body></html>`);
   win.document.close();
@@ -5442,7 +5496,7 @@ async function approveReport() {
 
 function printReport(){window.print();}
 function journalShowLoading(show){ showLoading(show); }
-console.log('✅ Work Journal - Stonhard - Loaded OK');
+console.log('✅ Work Journal CRM - Loaded OK');
 
 
 
@@ -7479,6 +7533,75 @@ function _spSendLink() {
   window.open('https://wa.me/?text=' + encodeURIComponent(msg), '_blank');
 }
 // ══ END LINK GENERATOR ════════════════════════════════════
+
+// ══ DAILY CALLS WIDGET ════════════════════════════════════
+async function loadDailyCalls(dateStr) {
+  const list = document.getElementById('dc-calls-list');
+  if (!list) return;
+
+  // Default to today
+  const picker = document.getElementById('dc-date-picker');
+  if (!dateStr) {
+    dateStr = new Date().toISOString().split('T')[0];
+    if (picker) picker.value = dateStr;
+  }
+
+  // Update label
+  const label = document.getElementById('dc-date-label');
+  if (label) {
+    const d = new Date(dateStr + 'T00:00:00');
+    const isToday = dateStr === new Date().toISOString().split('T')[0];
+    label.textContent = isToday ? 'היום — ' + d.toLocaleDateString('he-IL',{day:'numeric',month:'long'}) :
+      d.toLocaleDateString('he-IL',{weekday:'long',day:'numeric',month:'long'});
+  }
+
+  const from = dateStr + 'T00:00:00.000Z';
+  const to   = dateStr + 'T23:59:59.999Z';
+
+  try {
+    const res = await fetch(
+      SUPABASE_URL + '/rest/v1/call_log?created_at=gte.' + from + '&created_at=lte.' + to + '&order=created_at.desc',
+      { headers: { apikey: SUPABASE_ANON_KEY, Authorization: 'Bearer ' + SUPABASE_ANON_KEY } }
+    );
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const calls = await res.json();
+
+    // Stats
+    document.getElementById('dc-in').textContent   = calls.filter(r=>r.direction==='incoming').length;
+    document.getElementById('dc-out').textContent  = calls.filter(r=>r.direction==='outgoing').length;
+    document.getElementById('dc-miss').textContent = calls.filter(r=>r.direction==='missed').length;
+    document.getElementById('dc-wa').textContent   = calls.filter(r=>r.wa_sent).length;
+
+    if (!calls || calls.length === 0) {
+      list.innerHTML = '<div style="text-align:center;padding:16px;color:var(--text3);font-size:13px;">אין שיחות מוקלטות ליום זה</div>';
+      return;
+    }
+
+    const dirIcon = {incoming:'📞', outgoing:'📲', missed:'📵'};
+    list.innerHTML = calls.map(r => {
+      const t    = new Date(r.created_at).toLocaleTimeString('he-IL',{hour:'2-digit',minute:'2-digit'});
+      const dir  = r.direction || 'incoming';
+      const name = (r.caller_name||'לא ידוע').replace(/&/g,'&amp;').replace(/</g,'&lt;');
+      const ph   = (r.phone||'').replace(/</g,'&lt;');
+      const dot  = r.wa_sent ? '<div class="dc-wa-dot" title="וואטסאפ נשלח"></div>' :
+                   dir==='missed' ? '<div class="dc-miss-dot" title="לא נענה"></div>' : '';
+      const reply = r.quick_reply ? ' · ' + r.quick_reply.replace(/</g,'&lt;') : '';
+      return '<div class="dc-call-row">' +
+        '<div class="dc-dir-icon">' + (dirIcon[dir]||'📞') + '</div>' +
+        '<div style="flex:1">' +
+          '<div class="dc-name">' + name + '</div>' +
+          '<div class="dc-phone">' + ph + reply + '</div>' +
+        '</div>' +
+        dot +
+        '<div class="dc-time">' + t + '</div>' +
+      '</div>';
+    }).join('');
+
+  } catch(e) {
+    list.innerHTML = '<div style="text-align:center;padding:16px;color:var(--red);font-size:13px;">שגיאה: ' + e.message + '</div>';
+  }
+}
+// ══ END DAILY CALLS ════════════════════════════════════════
 </script>
 </body>
 </html>
