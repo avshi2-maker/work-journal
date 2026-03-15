@@ -117,20 +117,20 @@ async function bootstrap() {
     // 1. Load CSS from Storage
     document.getElementById('app-css').href = `${STORAGE}/style.css`;
 
-    // 2. Load lookups + config from Supabase in parallel
-    const [lkpRes, cfgRes] = await Promise.all([
-      sb.from('lookup_values').select('category,value,group_name,sort_order').eq('is_active',true).order('sort_order'),
-      sb.from('app_config').select('key,value')
-    ]);
-
-    // Build lookup map  { category -> [{value, group_name}] }
-    (lkpRes.data||[]).forEach(r => {
-      if (!APP.lookup[r.category]) APP.lookup[r.category] = [];
-      APP.lookup[r.category].push({ value: r.value, group: r.group_name });
-    });
-
-    // Build config map  { key -> value }
-    (cfgRes.data||[]).forEach(r => { APP.config[r.key] = r.value; });
+    // 2. Load lookups + config — graceful if tables don't exist yet
+    try {
+      const [lkpRes, cfgRes] = await Promise.all([
+        sb.from('lookup_values').select('category,value,group_name,sort_order').eq('is_active',true).order('sort_order'),
+        sb.from('app_config').select('key,value')
+      ]);
+      (lkpRes.data||[]).forEach(r => {
+        if (!APP.lookup[r.category]) APP.lookup[r.category] = [];
+        APP.lookup[r.category].push({ value: r.value, group: r.group_name });
+      });
+      (cfgRes.data||[]).forEach(r => { APP.config[r.key] = r.value; });
+    } catch(e) {
+      console.warn('lookup_values/app_config not available yet:', e.message);
+    }
 
     // 3. Load CRM data
     await loadCRMData();
@@ -358,7 +358,35 @@ function selectNoteColor(color){currentNoteColor=color;document.querySelectorAll
 
 async function loadNotes(){const wall=document.getElementById('notes-wall');if(!wall)return;try{const{data,error}=await sb.from('beni_notes').select('*, projects(project_name)').eq('is_archived',false).order('created_at',{ascending:false});if(error)throw error;allNotes=data||[];renderNotes(allNotes);const sel=document.getElementById('note-project-select');if(sel&&window.allProjects&&window.allProjects.length){sel.innerHTML='<option value="">📁 כל הפרויקטים</option>'+(window.allProjects||[]).map(p=>'<option value="'+p.id+'">'+p.project_name+'</option>').join('');}}catch(e){console.error('loadNotes:',e);}}
 
-function renderNotes(notes){const wall=document.getElementById('notes-wall');if(!wall)return;if(!notes.length){wall.innerHTML='<div style="grid-column:1/-1;text-align:center;padding:60px 20px;color:#444"><div style="font-size:48px;margin-bottom:12px">📝</div><div style="font-size:14px">אין הערות עדיין</div></div>';return;}wall.innerHTML=notes.map(n=>{const c=NOTE_COLORS[n.color]||NOTE_COLORS.yellow;const date=new Date(n.created_at).toLocaleDateString('he-IL',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'});const proj=n.projects?'<span style="font-size:10px;color:#888;margin-top:4px;display:block">📁 '+n.projects.project_name+'</span>':'';return'<div style="background:'+c.light+';border:1px solid '+c.border+';border-right:4px solid '+c.bg+';border-radius:12px;padding:16px;position:relative;animation:fadeIn 0.3s ease"><div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:10px"><span style="background:'+c.bg+';color:#fff;border-radius:8px;padding:3px 10px;font-size:10px;font-weight:900;">'+c.label+'</span><div style="display:flex;gap:6px"><button onclick="editNote(''+n.id+'')" style="background:rgba(255,255,255,0.08);border:none;color:#aaa;width:28px;height:28px;border-radius:6px;cursor:pointer;font-size:13px">✏️</button><button onclick="deleteNote(''+n.id+'')" style="background:rgba(239,68,68,0.1);border:none;color:#ef4444;width:28px;height:28px;border-radius:6px;cursor:pointer;font-size:13px">🗑️</button><button onclick="printNote(''+n.id+'')" style="background:rgba(255,255,255,0.08);border:none;color:#aaa;width:28px;height:28px;border-radius:6px;cursor:pointer;font-size:13px">🖨️</button></div></div><p style="color:#fff;font-size:14px;line-height:1.8;white-space:pre-wrap;margin-bottom:10px">'+escNote(n.note_text)+'</p>'+proj+'<div style="font-size:10px;color:#555;margin-top:8px;border-top:1px solid rgba(255,255,255,0.06);padding-top:8px">'+date+'</div></div>';}).join('');}
+function renderNotes(notes){
+  const wall=document.getElementById('notes-wall');
+  if(!wall)return;
+  if(!notes.length){
+    wall.innerHTML='<div style="grid-column:1/-1;text-align:center;padding:60px 20px;color:#444"><div style="font-size:48px;margin-bottom:12px">📝</div><div style="font-size:14px">אין הערות עדיין</div></div>';
+    return;
+  }
+  wall.innerHTML=notes.map(function(n){
+    var c=NOTE_COLORS[n.color]||NOTE_COLORS.yellow;
+    var date=new Date(n.created_at).toLocaleDateString('he-IL',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'});
+    var proj=n.projects ? '<span style="font-size:10px;color:#888;margin-top:4px;display:block">📁 '+n.projects.project_name+'</span>' : '';
+    var id=n.id;
+    return [
+      '<div style="background:'+c.light+';border:1px solid '+c.border+';border-right:4px solid '+c.bg+';border-radius:12px;padding:16px;position:relative">',
+        '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:10px">',
+          '<span style="background:'+c.bg+';color:#fff;border-radius:8px;padding:3px 10px;font-size:10px;font-weight:900;">'+c.label+'</span>',
+          '<div style="display:flex;gap:6px">',
+            '<button onclick="editNote(this.dataset.id)" data-id="'+id+'" style="background:rgba(255,255,255,0.08);border:none;color:#aaa;width:28px;height:28px;border-radius:6px;cursor:pointer;font-size:13px">✏️</button>',
+            '<button onclick="deleteNote(this.dataset.id)" data-id="'+id+'" style="background:rgba(239,68,68,0.1);border:none;color:#ef4444;width:28px;height:28px;border-radius:6px;cursor:pointer;font-size:13px">🗑️</button>',
+            '<button onclick="printNote(this.dataset.id)" data-id="'+id+'" style="background:rgba(255,255,255,0.08);border:none;color:#aaa;width:28px;height:28px;border-radius:6px;cursor:pointer;font-size:13px">🖨️</button>',
+          '</div>',
+        '</div>',
+        '<p style="color:#fff;font-size:14px;line-height:1.8;white-space:pre-wrap;margin-bottom:10px">'+escNote(n.note_text)+'</p>',
+        proj,
+        '<div style="font-size:10px;color:#555;margin-top:8px;border-top:1px solid rgba(255,255,255,0.06);padding-top:8px">'+date+'</div>',
+      '</div>'
+    ].join('');
+  }).join('');
+}
 
 function escNote(t){return String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
 
@@ -411,8 +439,43 @@ function clearOwnerSignature(){if(ownerSignaturePad){const c=ownerSignaturePad.g
 function clearAllData(){if(!confirm('האם אתה בטוח שברצונך למחוק את כל הנתונים?'))return;['weather','startTime','endTime','generalNotes','tomorrowPlan'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});document.getElementById('breakHours').value='0';['workersContainer','activitiesContainer','materialsContainer','equipmentContainer','safetyContainer','inspectionsContainer','delaysContainer'].forEach(id=>{const e=document.getElementById(id);if(e)e.innerHTML='';});const cb=document.getElementById('contractorsBody');if(cb)cb.innerHTML='<tr><td colspan="7" class="contractors-empty">לחץ ״➕ הוסף קבלן״</td></tr>';selectedPhotos=[];document.getElementById('photoPreview').innerHTML='';if(signaturePad){const c=signaturePad.getContext('2d');c.clearRect(0,0,signaturePad.width,signaturePad.height);}document.getElementById('totalWorkHours').textContent='0';document.getElementById('totalWorkerHours').textContent='0';alert('כל הנתונים נמחקו!');}
 function startNewReport(){clearAllData();const today=new Date();document.getElementById('reportDate').valueAsDate=today;const tom=new Date(today);tom.setDate(tom.getDate()+1);document.getElementById('tomorrowDate').valueAsDate=tom;displayReportNumber();addWorkerRow();addActivityRow();window.scrollTo({top:0,behavior:'smooth'});alert('דוח חדש התחיל!\n\nמספר דוח: '+currentReportNumber);}
 
-function addWorkerRow(prefillRole){const c=document.getElementById('workersContainer');const r=document.createElement('div');r.className='form-row';r.style.cssText='display:flex;gap:8px;align-items:center;margin-bottom:8px;';r.innerHTML=buildRoleSelect(prefillRole||'')+'<input type="number" placeholder="כמות" class="worker-count" value="1" style="width:70px;padding:7px;border:1.5px solid #dde3ec;border-radius:8px;font-size:13px;">'+'<input type="number" placeholder="שעות" step="0.5" class="worker-hours" value="8" style="width:70px;padding:7px;border:1.5px solid #dde3ec;border-radius:8px;font-size:13px;">'+'<button type="button" onclick="this.closest('.form-row').remove();calculateTotalWorkerHours();" style="background:none;border:none;font-size:18px;cursor:pointer;color:#aaa;padding:0 4px;">🗑️</button>';c.appendChild(r);const sel=r.querySelector('.worker-role');sel.addEventListener('change',()=>handleCustomOption(sel,'הזן תפקיד חדש'));r.querySelector('.worker-count').addEventListener('input',calculateTotalWorkerHours);r.querySelector('.worker-hours').addEventListener('input',calculateTotalWorkerHours);calculateTotalWorkerHours();}
-function addActivityRow(prefillDesc){const c=document.getElementById('activitiesContainer');const r=document.createElement('div');r.className='form-row';r.style.cssText='display:flex;gap:8px;align-items:center;margin-bottom:8px;';r.innerHTML=buildActivitySelect(prefillDesc||'')+'<input type="text" placeholder="מיקום" class="activity-location" style="flex:1;padding:7px;border:1.5px solid #dde3ec;border-radius:8px;font-size:13px;">'+'<input type="text" placeholder="כמות/יחידה" class="activity-quantity" style="width:90px;padding:7px;border:1.5px solid #dde3ec;border-radius:8px;font-size:13px;">'+'<button type="button" onclick="this.closest('.form-row').remove();" style="background:none;border:none;font-size:18px;cursor:pointer;color:#aaa;padding:0 4px;">🗑️</button>';c.appendChild(r);const sel=r.querySelector('.activity-desc');sel.addEventListener('change',()=>handleCustomOption(sel,'הזן פעילות חדשה'));}
+function addWorkerRow(prefillRole){
+  const c=document.getElementById('workersContainer');
+  const r=document.createElement('div');
+  r.className='form-row';
+  r.style.cssText='display:flex;gap:8px;align-items:center;margin-bottom:8px;';
+  const delBtn=document.createElement('button');
+  delBtn.type='button';delBtn.textContent='🗑️';
+  delBtn.style.cssText='background:none;border:none;font-size:18px;cursor:pointer;color:#aaa;padding:0 4px;';
+  delBtn.onclick=function(){this.closest('.form-row').remove();calculateTotalWorkerHours();};
+  const html=buildRoleSelect(prefillRole||'')
+    +'<input type="number" placeholder="כמות" class="worker-count" value="1" style="width:70px;padding:7px;border:1.5px solid #dde3ec;border-radius:8px;font-size:13px;">'
+    +'<input type="number" placeholder="שעות" step="0.5" class="worker-hours" value="8" style="width:70px;padding:7px;border:1.5px solid #dde3ec;border-radius:8px;font-size:13px;">';
+  r.innerHTML=html;
+  r.appendChild(delBtn);
+  c.appendChild(r);
+  const sel=r.querySelector('.worker-role');
+  sel.addEventListener('change',function(){handleCustomOption(sel,'הזן תפקיד חדש');});
+  r.querySelector('.worker-count').addEventListener('input',calculateTotalWorkerHours);
+  r.querySelector('.worker-hours').addEventListener('input',calculateTotalWorkerHours);
+  calculateTotalWorkerHours();
+}
+function addActivityRow(prefillDesc){
+  const c=document.getElementById('activitiesContainer');
+  const r=document.createElement('div');r.className='form-row';
+  r.style.cssText='display:flex;gap:8px;align-items:center;margin-bottom:8px;';
+  const delBtn=document.createElement('button');
+  delBtn.type='button';delBtn.textContent='🗑️';
+  delBtn.style.cssText='background:none;border:none;font-size:18px;cursor:pointer;color:#aaa;padding:0 4px;';
+  delBtn.onclick=function(){this.closest('.form-row').remove();};
+  r.innerHTML=buildActivitySelect(prefillDesc||'')
+    +'<input type="text" placeholder="מיקום" class="activity-location" style="flex:1;padding:7px;border:1.5px solid #dde3ec;border-radius:8px;font-size:13px;">'
+    +'<input type="text" placeholder="כמות/יחידה" class="activity-quantity" style="width:90px;padding:7px;border:1.5px solid #dde3ec;border-radius:8px;font-size:13px;">';
+  r.appendChild(delBtn);
+  c.appendChild(r);
+  const sel=r.querySelector('.activity-desc');
+  sel.addEventListener('change',function(){handleCustomOption(sel,'הזן פעילות חדשה');});
+}
 function handleCustomOption(sel,placeholder){if(sel.value==='__custom__'){const val=prompt(placeholder)||'';if(val.trim()){const opt=document.createElement('option');opt.value=val.trim();opt.textContent=val.trim();sel.insertBefore(opt,sel.lastElementChild);sel.value=val.trim();}else{sel.value='';}}}
 function addMaterialRow(prefill){const container=document.getElementById('materialsContainer');if(!container)return;const row=document.createElement('div');row.className='form-row four-col';row.style.cssText='background:#f8f9fa;padding:10px;border-radius:8px;margin-bottom:8px;align-items:center;position:relative;';row.innerHTML='<input type="text" value="'+(prefill||'')+'" placeholder="שם חומר"><input type="number" placeholder="כמות" min="0" step="0.1"><select style="padding:10px;border:2px solid #e1e8ed;border-radius:8px;font-size:14px;font-family:inherit;direction:rtl"><option>יחידות</option><option>ק"ג</option><option>טון</option><option>מ"ר</option><option>מ"א</option><option>מ"ק</option><option>שקים</option><option>ארגזים</option><option>פלטות</option></select>';const delBtn=document.createElement('button');delBtn.type='button';delBtn.innerHTML='🗑️';delBtn.style.cssText='position:absolute;top:-10px;left:-10px;background:#e74c3c;color:#fff;border:none;border-radius:50%;width:28px;height:28px;cursor:pointer;font-size:14px;z-index:10;';delBtn.onclick=()=>row.remove();row.appendChild(delBtn);container.appendChild(row);row.scrollIntoView({behavior:'smooth',block:'nearest'});}
 function addEquipmentRow(prefill){const container=document.getElementById('equipmentContainer');if(!container)return;const row=document.createElement('div');row.className='form-row three-col';row.style.cssText='background:#f8f9fa;padding:10px;border-radius:8px;margin-bottom:8px;align-items:center;position:relative;';row.innerHTML='<input type="text" value="'+(prefill||'')+'" placeholder="סוג ציוד / מכונה"><input type="number" placeholder="שעות שימוש" min="0" step="0.5"><input type="text" placeholder="תקלות / הערות">';const delBtn=document.createElement('button');delBtn.type='button';delBtn.innerHTML='🗑️';delBtn.style.cssText='position:absolute;top:-10px;left:-10px;background:#e74c3c;color:#fff;border:none;border-radius:50%;width:28px;height:28px;cursor:pointer;font-size:14px;z-index:10;';delBtn.onclick=()=>row.remove();row.appendChild(delBtn);container.appendChild(row);}
@@ -421,7 +484,20 @@ function addEquipmentFromList(){const sel=document.getElementById('equipmentQuic
 function addSafetyRow(){const c=document.getElementById('safetyContainer');const r=document.createElement('div');r.className='dynamic-row critical-row';r.innerHTML='<button type="button" class="remove-row" onclick="this.parentElement.remove()">×</button><div class="form-row three-col"><select class="safety-type"><option value="">סוג אירוע</option><option value="near-miss">כמעט תאונה</option><option value="violation">הפרת בטיחות</option><option value="injury">פציעה קלה</option><option value="serious">אירוע חמור</option><option value="safe">הכל תקין</option></select><select class="safety-severity"><option value="low">נמוכה</option><option value="medium">בינונית</option><option value="high">גבוהה</option></select></div><textarea placeholder="תיאור האירוע" class="safety-description" rows="2" style="margin-top:8px"></textarea><textarea placeholder="פעולה מתקנת" class="safety-corrective" rows="2" style="margin-top:8px"></textarea>';c.appendChild(r);}
 function addInspectionRow(){const c=document.getElementById('inspectionsContainer');const r=document.createElement('div');r.className='dynamic-row critical-row';r.innerHTML='<button type="button" class="remove-row" onclick="this.parentElement.remove()">×</button><div class="form-row three-col"><input type="text" placeholder="שם המפקח" class="inspector-name"><select class="inspector-role"><option value="">תפקיד</option><option value="building">מפקח בניה</option><option value="safety">מפקח בטיחות</option><option value="client">נציג לקוח</option><option value="engineer">מהנדס</option></select><input type="datetime-local" class="inspection-time"></div><textarea placeholder="ממצאים" class="inspection-findings" rows="2" style="margin-top:8px"></textarea><textarea placeholder="תיקונים נדרשים" class="inspection-corrections" rows="2" style="margin-top:8px"></textarea>';c.appendChild(r);}
 function addDelayRow(){const c=document.getElementById('delaysContainer');const r=document.createElement('div');r.className='dynamic-row';r.innerHTML='<button type="button" class="remove-row" onclick="this.parentElement.remove()">×</button><div class="form-row three-col"><select class="delay-reason"><option value="">סיבת עיכוב</option><option value="weather">מזג אוויר</option><option value="materials">חוסר חומרים</option><option value="equipment">תקלת ציוד</option><option value="client">לקוח</option><option value="workers">כוח אדם</option><option value="other">אחר</option></select><select class="delay-responsible"><option value="">גורם אחראי</option><option value="client">לקוח</option><option value="contractor">קבלן</option><option value="supplier">ספק</option><option value="force-majeure">כוח עליון</option></select><input type="number" placeholder="השפעה (שעות)" step="0.5" class="delay-hours"></div><textarea placeholder="תיאור מפורט" class="delay-description" rows="2" style="margin-top:8px"></textarea>';c.appendChild(r);}
-function addTomorrowRow(){const container=document.getElementById('tomorrowExtraRows');if(!container)return;const row=document.createElement('div');row.className='tomorrow-row';row.innerHTML='<input type="text" placeholder="כותרת פריט" class="tomorrow-label" style="min-width:140px;border:2px solid #667eea;border-radius:8px;padding:8px;font-size:13px;font-weight:700;color:#1a3d5c;background:#fff"><input type="text" class="tomorrow-detail" placeholder="פרטים..."><button type="button" onclick="this.closest('.tomorrow-row').remove()" style="background:#e74c3c;color:#fff;border:none;border-radius:50%;width:28px;height:28px;cursor:pointer;font-size:14px;flex-shrink:0">×</button>';container.appendChild(row);row.scrollIntoView({behavior:'smooth',block:'nearest'});}
+function addTomorrowRow(){
+  const container=document.getElementById('tomorrowExtraRows');
+  if(!container)return;
+  const row=document.createElement('div');
+  row.className='tomorrow-row';
+  const delBtn=document.createElement('button');
+  delBtn.type='button';delBtn.textContent='×';
+  delBtn.style.cssText='background:#e74c3c;color:#fff;border:none;border-radius:50%;width:28px;height:28px;cursor:pointer;font-size:14px;flex-shrink:0;';
+  delBtn.onclick=function(){this.closest('.tomorrow-row').remove();};
+  row.innerHTML='<input type="text" placeholder="כותרת פריט" class="tomorrow-label" style="min-width:140px;border:2px solid #667eea;border-radius:8px;padding:8px;font-size:13px;font-weight:700;color:#1a3d5c;background:#fff"><input type="text" class="tomorrow-detail" placeholder="פרטים...">';
+  row.appendChild(delBtn);
+  container.appendChild(row);
+  row.scrollIntoView({behavior:'smooth',block:'nearest'});
+}
 
 function onJournalProjectChange(sel){const customRow=document.getElementById('project-custom-name-row');if(!customRow)return;if(sel.value==='__custom__'){customRow.style.display='block';document.getElementById('projectNameCustom').focus();}else{customRow.style.display='none';}}
 function syncProjectNameToSelect(){}
@@ -478,7 +554,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 // ══════════════════════════════════════════════════════════════
 
 // Alias supabaseClient → sb (journal uses supabaseClient name)
-var supabaseClient = window.sb;
+supabaseClient = window.sb; // alias
 
 // ── STATE ────────────────────────────────────────────────
 let allContractors = [], allProjects = [], allTransactions = [], allReports = [];
