@@ -156,7 +156,7 @@ async function bootstrap() {
 // ══════════════════════════════════════════════════════
 async function loadPanel(name) {
   if (APP.loaded[name]) return;
-  const res = await fetch(`${STORAGE}/panels/${name}.html`);
+  const res = await fetch(`${STORAGE}/${name}.html`);
   if (!res.ok) {
     console.error(`Panel ${name} failed to load: HTTP ${res.status}`);
     document.getElementById(`${name}-content`).innerHTML =
