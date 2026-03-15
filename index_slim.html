@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#f5e9c4">
+<title>יומן פעילות — בני פרסקי</title>
+<link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;600;700;800;900&family=Rubik:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" id="app-css" href=""><!-- loaded from Supabase Storage -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+
+<!-- ══ GLOBAL LOADING ══ -->
+<div id="global-loading">
+  <div class="g-spin"></div>
+  <div style="font-family:Heebo,sans-serif;font-size:14px;color:#9a6f00;font-weight:700;letter-spacing:1px">טוען מערכת...</div>
+</div>
+
+<!-- ══ TOP TAB BAR ══ -->
+<div id="top-tabs">
+  <div class="top-tab active" id="tab-crm"     onclick="switchTab('crm')">    <span>📊</span><span>לוח בקרה</span></div>
+  <div class="tab-sep"></div>
+  <div class="top-tab"        id="tab-notes"   onclick="switchTab('notes')">  <span>📝</span><span>מזכרים-בני</span></div>
+  <div class="tab-sep"></div>
+  <div class="top-tab"        id="tab-gcal"    onclick="switchTab('gcal')">   <span>📅</span><span>יומן Google</span></div>
+  <div class="tab-sep"></div>
+  <div class="top-tab"        id="tab-journal" onclick="switchTab('journal')"><span>📋</span><span>יומן עבודה יומי</span></div>
+</div>
+
+<!-- ══ PANELS — loaded dynamically from Supabase Storage ══ -->
+<div class="app-panel active" id="crm-panel">    <div id="crm-content"></div></div>
+<div class="app-panel"        id="notes-panel">  <div id="notes-content"></div></div>
+<div class="app-panel"        id="gcal-panel">   <div id="gcal-content"></div></div>
+<div class="app-panel"        id="journal-panel"><div id="journal-content"></div></div>
+
+<script>
+// ══════════════════════════════════════════════════════
+// CORE CONFIG
+// ══════════════════════════════════════════════════════
+const SB_URL = 'https://vmcipofovheztbjmhwsl.supabase.co';
+const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZtY2lwb2ZvdmhlenRiam1od3NsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE0NjE2MTcsImV4cCI6MjA4NzAzNzYxN30.LPq5N2Xo8iEqjgz2UhmdzUdh5tpGT3EYzSxJcYBEJ1w';
+const sb = window.supabase.createClient(SB_URL, SB_KEY);
+let supabaseClient = sb;
+
+// Storage base URL for panel HTML & CSS
+const STORAGE = `${SB_URL}/storage/v1/object/public/app-assets`;
+
+// ── GLOBAL STATE ──────────────────────────────────────
+window.APP = {
+  contractors: [], projects: [], transactions: [], reports: [],
+  lookup: {},   // { worker_role:[], activity_phase:[], material:[], equipment:[], occupation:[] }
+  config: {},   // { resend_api_key, vat_rate, manager_name, ... }
+  loaded: {}    // which panels have been loaded
+};
+
+// ══════════════════════════════════════════════════════
+// BOOTSTRAP — load CSS + lookups + config in parallel
+// ══════════════════════════════════════════════════════
+async function bootstrap() {
+  try {
+    // 1. Load CSS from Storage
+    document.getElementById('app-css').href = `${STORAGE}/style.css`;
+
+    // 2. Load lookups + config from Supabase in parallel
+    const [lkpRes, cfgRes] = await Promise.all([
+      sb.from('lookup_values').select('category,value,group_name,sort_order').eq('is_active',true).order('sort_order'),
+      sb.from('app_config').select('key,value')
+    ]);
+
+    // Build lookup map  { category -> [{value, group_name}] }
+    (lkpRes.data||[]).forEach(r => {
+      if (!APP.lookup[r.category]) APP.lookup[r.category] = [];
+      APP.lookup[r.category].push({ value: r.value, group: r.group_name });
+    });
+
+    // Build config map  { key -> value }
+    (cfgRes.data||[]).forEach(r => { APP.config[r.key] = r.value; });
+
+    // 3. Load CRM data
+    await loadCRMData();
+
+    // 4. Load CRM panel HTML from Storage, inject, then init
+    await loadPanel('crm');
+
+    // 5. Done
+    document.getElementById('global-loading').style.display = 'none';
+  } catch(e) {
+    console.error('Bootstrap error:', e);
+    document.getElementById('global-loading').innerHTML =
+      `<div style="color:#c00;font-family:Heebo;padding:20px;text-align:center">שגיאה בטעינה: ${e.message}<br><button onclick="location.reload()">נסה שוב</button></div>`;
+  }
+}
+
+// ══════════════════════════════════════════════════════
+// PANEL LOADER — fetches HTML from Supabase Storage
+// ══════════════════════════════════════════════════════
+async function loadPanel(name) {
+  if (APP.loaded[name]) return;
+  const res  = await fetch(`${STORAGE}/panels/${name}.html`);
+  const html = await res.text();
+  document.getElementById(`${name}-content`).innerHTML = html;
+  APP.loaded[name] = true;
+  // Run panel init if defined
+  if (typeof window[`init_${name}`] === 'function') window[`init_${name}`]();
+}
+
+// ══════════════════════════════════════════════════════
+// TAB SWITCHER
+// ══════════════════════════════════════════════════════
+async function switchTab(tab) {
+  // Close mobile sidebar
+  const sidebar = document.querySelector('#crm-panel .sidebar');
+  if (sidebar?.classList.contains('mobile-open')) {
+    sidebar.classList.remove('mobile-open');
+    const ov = document.getElementById('crm-overlay');
+    if (ov) ov.style.display = 'none';
+  }
+
+  ['crm','notes','gcal','journal'].forEach(t => {
+    document.getElementById(`${t}-panel`)?.classList.toggle('active', t===tab);
+    document.getElementById(`tab-${t}`)?.classList.toggle('active', t===tab);
+  });
+  window.scrollTo(0,0);
+  try { localStorage.setItem('beni_active_tab', tab); } catch(e){}
+
+  // Lazy-load panel HTML
+  await loadPanel(tab);
+
+  // Panel-specific post-init
+  if (tab === 'notes')   { if (typeof loadNotes   === 'function') loadNotes(); }
+  if (tab === 'gcal')    { if (typeof initGcal    === 'function') initGcal();  }
+  if (tab === 'journal') { if (typeof initJournalOnce === 'function') initJournalOnce(); }
+}
+
+// ══════════════════════════════════════════════════════
+// CRM DATA LOADER (shared across panels)
+// ══════════════════════════════════════════════════════
+async function loadCRMData() {
+  const [cRes, pRes, tRes, rRes] = await Promise.all([
+    sb.from('contractors_master').select('*').order('company_name'),
+    sb.from('projects').select('*').order('created_at',{ascending:false}),
+    sb.from('contractor_transactions')
+      .select('*, contractors_master(company_name), projects(project_name)')
+      .order('transaction_date',{ascending:false}),
+    sb.from('reports').select('*').order('report_date',{ascending:false}).limit(100)
+  ]);
+  APP.contractors  = cRes.data || [];
+  APP.projects     = pRes.data || [];
+  APP.transactions = tRes.data || [];
+  APP.reports      = rRes.data || [];
+
+  // Legacy aliases so existing panel JS still works
+  window.allContractors  = APP.contractors;
+  window.allProjects     = APP.projects;
+  window.allTransactions = APP.transactions;
+  window.allReports      = APP.reports;
+}
+
+// ══════════════════════════════════════════════════════
+// LOOKUP HELPERS — replace hardcoded arrays
+// ══════════════════════════════════════════════════════
+
+// Build <select> options from lookup category, grouped
+function buildLookupSelect(category, selected='', placeholder='— בחר —') {
+  const items = APP.lookup[category] || [];
+  const groups = {};
+  items.forEach(i => {
+    const g = i.group || '';
+    if (!groups[g]) groups[g] = [];
+    groups[g].push(i.value);
+  });
+  let html = `<option value="">${placeholder}</option>`;
+  Object.entries(groups).forEach(([g, vals]) => {
+    if (g) html += `<optgroup label="${g}">`;
+    vals.forEach(v => {
+      html += `<option value="${esc(v)}" ${v===selected?'selected':''}>${esc(v)}</option>`;
+    });
+    if (g) html += `</optgroup>`;
+  });
+  html += `<option value="__custom__">✏️ הזן ידנית...</option>`;
+  return html;
+}
+
+// Build worker role select
+function buildRoleSelect(selectedVal='') {
+  const opts = buildLookupSelect('worker_role', selectedVal, '— בחר תפקיד —');
+  return `<select class="worker-role" style="flex:2;padding:7px 10px;border:1.5px solid #dde3ec;border-radius:8px;font-size:13px;font-family:inherit;">${opts}</select>`;
+}
+
+// Build activity phase select
+function buildActivitySelect(selectedVal='') {
+  const opts = buildLookupSelect('activity_phase', selectedVal, '— בחר פעילות —');
+  return `<select class="activity-desc" style="flex:2;padding:7px 10px;border:1.5px solid #dde3ec;border-radius:8px;font-size:13px;font-family:inherit;">${opts}</select>`;
+}
+
+// Build occupation <select> for contractor modal
+function buildOccupationSelect(selectedVal='') {
+  const items = APP.lookup['occupation'] || [];
+  let html = '<option value="">— בחר —</option>';
+  items.forEach(i => {
+    html += `<option value="${esc(i.value)}" ${i.value===selectedVal?'selected':''}>${esc(i.value)}</option>`;
+  });
+  return html;
+}
+
+// Populate material quick-add <select> from Supabase lookup
+function populateMaterialSelect() {
+  const sel = document.getElementById('materialQuickSelect');
+  if (!sel) return;
+  sel.innerHTML = '<option value="">-- בחר חומר מהרשימה --</option>';
+  const items = APP.lookup['material'] || [];
+  const groups = {};
+  items.forEach(i => {
+    const g = i.group || 'כללי';
+    if (!groups[g]) groups[g] = [];
+    groups[g].push(i.value);
+  });
+  Object.entries(groups).forEach(([g, vals]) => {
+    sel.innerHTML += `<optgroup label="${g}">`;
+    vals.forEach(v => sel.innerHTML += `<option value="${esc(v)}">${esc(v)}</option>`);
+    sel.innerHTML += `</optgroup>`;
+  });
+  sel.innerHTML += '<option value="__other__">✏️ אחר — הוסף ידנית</option>';
+}
+
+// Populate equipment quick-add <select> from Supabase lookup
+function populateEquipmentSelect() {
+  const sel = document.getElementById('equipmentQuickSelect');
+  if (!sel) return;
+  sel.innerHTML = '<option value="">-- בחר ציוד/מכונה --</option>';
+  const items = APP.lookup['equipment'] || [];
+  const groups = {};
+  items.forEach(i => {
+    const g = i.group || 'כללי';
+    if (!groups[g]) groups[g] = [];
+    groups[g].push(i.value);
+  });
+  Object.entries(groups).forEach(([g, vals]) => {
+    sel.innerHTML += `<optgroup label="${g}">`;
+    vals.forEach(v => sel.innerHTML += `<option value="${esc(v)}">${esc(v)}</option>`);
+    sel.innerHTML += `</optgroup>`;
+  });
+  sel.innerHTML += '<option value="__other__">✏️ אחר — הוסף ידנית</option>';
+}
+
+// ══════════════════════════════════════════════════════
+// SHARED UTILITIES (used by all panels)
+// ══════════════════════════════════════════════════════
+function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function fmtMoney(n){ return Number(n||0).toLocaleString('he-IL',{maximumFractionDigits:0}); }
+function fmtDate(d){ if(!d)return'—'; try{return new Date(d).toLocaleDateString('he-IL',{day:'2-digit',month:'2-digit',year:'numeric'});}catch{return d;} }
+
+let _toastTimer;
+function showToast(msg, type='success'){
+  clearTimeout(_toastTimer);
+  let t = document.querySelector('.toast');
+  if(!t){t=document.createElement('div');t.className='toast';document.body.appendChild(t);}
+  t.className='toast '+(type==='error'?'error':'success');
+  t.textContent=msg; t.style.display='flex';
+  _toastTimer=setTimeout(()=>{t.style.display='none';},3200);
+}
+function showLoading(v){ const el=document.getElementById('global-loading'); if(el)el.style.display=v?'flex':'none'; }
+
+// Clock
+function updateClock(){
+  const n=new Date(),z=v=>String(v).padStart(2,'0');
+  const te=document.getElementById('sidebar-clock-time');
+  const de=document.getElementById('sidebar-clock-date');
+  if(te)te.textContent=`${z(n.getHours())}:${z(n.getMinutes())}:${z(n.getSeconds())}`;
+  const days=['ראשון','שני','שלישי','רביעי','חמישי','שישי','שבת'];
+  const months=['ינואר','פברואר','מרץ','אפריל','מאי','יוני','יולי','אוגוסט','ספטמבר','אוקטובר','נובמבר','דצמבר'];
+  if(de)de.textContent=`יום ${days[n.getDay()]}, ${n.getDate()} ${months[n.getMonth()]} ${n.getFullYear()}`;
+}
+setInterval(updateClock,1000); updateClock();
+
+// ══════════════════════════════════════════════════════
+// START
+// ══════════════════════════════════════════════════════
+document.addEventListener('DOMContentLoaded', async () => {
+  await bootstrap();
+  // Restore last tab
+  try {
+    const saved = localStorage.getItem('beni_active_tab');
+    if (saved && saved !== 'crm') await switchTab(saved);
+  } catch(e){}
+});
+</script>
+</body>
+</html>
