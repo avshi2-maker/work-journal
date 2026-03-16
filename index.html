@@ -132,22 +132,42 @@ async function bootstrap() {
       console.warn('lookup_values/app_config not available yet:', e.message);
     }
 
-    // 3. Load CRM data
-    await loadCRMData();
+    // 3. Load CRM data — graceful if tables missing
+    try {
+      await loadCRMData();
+    } catch(e) {
+      console.warn('loadCRMData failed:', e.message);
+    }
 
-    // 4. Load CRM panel HTML from Storage, inject
-    await loadPanel('crm');
+    // 4. Load CRM panel HTML from Storage, inject — graceful if Storage fails
+    try {
+      await loadPanel('crm');
+    } catch(e) {
+      console.warn('loadPanel crm failed:', e.message);
+      // Show inline fallback so app is not blank
+      const el = document.getElementById('crm-content');
+      if (el) el.innerHTML = '<div style="padding:40px;text-align:center;font-family:Heebo,sans-serif;">'
+        + '<div style="font-size:48px;margin-bottom:16px;">⚠️</div>'
+        + '<div style="font-size:16px;font-weight:700;color:#1a3d5c;margin-bottom:8px;">שגיאה בטעינת לוח הבקרה</div>'
+        + '<div style="font-size:13px;color:#666;margin-bottom:16px;">קובץ crm.html לא נמצא ב-Supabase Storage</div>'
+        + '<div style="font-size:12px;color:#999;">ודא שהקובץ crm.html הועלה לתיקיית app-assets ב-Supabase Storage</div>'
+        + '</div>';
+    }
 
-    // 5. Now run CRM init (JS is already in this file)
-    if (typeof crmInit === 'function') crmInit();
-    else if (typeof window._crmAutoInit === 'function') window._crmAutoInit();
+    // 5. Run CRM init
+    try {
+      if (typeof crmInit === 'function') crmInit();
+    } catch(e) {
+      console.warn('crmInit failed:', e.message);
+    }
 
-    // 6. Done
+    // 6. Done — always hide loading even if something failed
     document.getElementById('global-loading').style.display = 'none';
   } catch(e) {
     console.error('Bootstrap error:', e);
-    document.getElementById('global-loading').innerHTML =
-      `<div style="color:#c00;font-family:Heebo;padding:20px;text-align:center">שגיאה בטעינה: ${e.message}<br><button onclick="location.reload()">נסה שוב</button></div>`;
+    // Hide loading even on error — show partial UI
+    const gl = document.getElementById('global-loading');
+    if (gl) gl.style.display = 'none';
   }
 }
 
@@ -679,13 +699,14 @@ async function loadFieldIntel() {
 
 async function fiCreateTask(memoId, summary) {
   try {
+    // Save to reminders (Beni Pocket) regardless
     await fetch(SUPABASE_URL_CONST + '/rest/v1/reminders', {
       method: 'POST',
       headers: { apikey: SUPABASE_ANON_KEY_CONST, Authorization: 'Bearer ' + SUPABASE_ANON_KEY_CONST, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
       body: JSON.stringify({ text: summary, source: 'voice', is_done: false, created_at: new Date().toISOString() })
     });
     await fiMarkDone(memoId);
-    showToast('✅ משימה נוצרה — תופיע ב-Beni Pocket', 'success');
+    showToast('✅ משימה נוצרה — מסונכרן ב-Beni Pocket', 'success');
     loadBeniTasks();
   } catch(e) { showToast('שגיאה: ' + e.message, 'error'); }
 }
