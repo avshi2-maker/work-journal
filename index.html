@@ -758,6 +758,173 @@ async function fiMarkDone(memoId) {
 
 
 // ══════════════════════════════════════════════════════
+// PHOTO GALLERY — per project
+// ══════════════════════════════════════════════════════
+
+var _galleryProjectId   = null;
+var _galleryProjectName = '';
+var _galleryPhotos      = [];
+
+async function openPhotoGallery(projectId, projectName) {
+  _galleryProjectId   = projectId;
+  _galleryProjectName = projectName;
+  _galleryPhotos      = [];
+
+  document.getElementById('gallery-modal-title').textContent = '📸 ' + projectName;
+  document.getElementById('gallery-grid').innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:30px;color:var(--text3);">Loading photos...</div>';
+  document.getElementById('modal-gallery').style.display = 'flex';
+
+  await galleryLoad();
+}
+
+async function galleryLoad() {
+  try {
+    // Fetch photos from site_reports for this project
+    var res = await fetch(
+      SUPABASE_URL_CONST + '/rest/v1/site_reports?project_id=eq.' + _galleryProjectId +
+      '&status=eq.approved&select=id,report_date,submitted_by,photos,contractor_name',
+      { headers: { apikey: SUPABASE_ANON_KEY_CONST, Authorization: 'Bearer ' + SUPABASE_ANON_KEY_CONST } }
+    );
+    var reports = await res.json();
+
+    _galleryPhotos = [];
+
+    // Pull photos from approved site_reports
+    (reports || []).forEach(function(r) {
+      var photos = [];
+      try { photos = typeof r.photos === 'string' ? JSON.parse(r.photos) : (r.photos || []); } catch(e){}
+      photos.forEach(function(path) {
+        _galleryPhotos.push({
+          path:     path,
+          url:      SUPABASE_URL_CONST + '/storage/v1/object/public/photos/' + path,
+          date:     r.report_date,
+          source:   'site_pulse',
+          caption:  (r.contractor_name || '') + (r.report_date ? ' · ' + new Date(r.report_date+'T12:00:00').toLocaleDateString('he-IL') : '') + (r.submitted_by ? ' · by ' + r.submitted_by : '')
+        });
+      });
+    });
+
+    // Also fetch manually uploaded photos from Supabase Storage
+    // List files in photos/projects/<projectId>/
+    try {
+      var storRes = await sb.storage.from('photos').list('projects/' + _galleryProjectId, { limit: 100 });
+      if (storRes.data && storRes.data.length) {
+        storRes.data.forEach(function(f) {
+          var path = 'projects/' + _galleryProjectId + '/' + f.name;
+          _galleryPhotos.push({
+            path:    path,
+            url:     SUPABASE_URL_CONST + '/storage/v1/object/public/photos/' + path,
+            date:    f.created_at ? f.created_at.split('T')[0] : null,
+            source:  'manual',
+            caption: f.name.replace(/_/g,' ')
+          });
+        });
+      }
+    } catch(e) {}
+
+    renderGallery();
+
+  } catch(e) {
+    document.getElementById('gallery-grid').innerHTML =
+      '<div style="grid-column:1/-1;text-align:center;padding:20px;color:var(--red);">Error: ' + e.message + '</div>';
+  }
+}
+
+function renderGallery() {
+  var grid    = document.getElementById('gallery-grid');
+  var filter  = document.getElementById('gallery-filter-source')?.value || 'all';
+  var countEl = document.getElementById('gallery-count');
+
+  var filtered = filter === 'all' ? _galleryPhotos :
+    _galleryPhotos.filter(function(p){ return p.source === filter; });
+
+  if (countEl) countEl.textContent = filtered.length + ' photo' + (filtered.length !== 1 ? 's' : '');
+
+  if (!filtered.length) {
+    grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--text3);">' +
+      '<div style="font-size:40px;margin-bottom:10px;">📷</div>' +
+      '<div>No photos yet for this project</div>' +
+      '<div style="font-size:12px;margin-top:6px;">Upload photos above or approve Site Pulse reports with photos</div>' +
+      '</div>';
+    return;
+  }
+
+  grid.innerHTML = '';
+  filtered.forEach(function(ph, i) {
+    var div = document.createElement('div');
+    div.style.cssText = 'position:relative;aspect-ratio:1;border-radius:8px;overflow:hidden;border:1px solid var(--border);cursor:pointer;';
+
+    var img = document.createElement('img');
+    img.src = ph.url;
+    img.style.cssText = 'width:100%;height:100%;object-fit:cover;transition:transform 0.2s;';
+    img.onerror = function() { this.src = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text y="50" font-size="40">📷</text></svg>'; };
+    img.addEventListener('mouseenter', function(){ this.style.transform = 'scale(1.05)'; });
+    img.addEventListener('mouseleave', function(){ this.style.transform = 'scale(1)'; });
+
+    // Source badge
+    var badge = document.createElement('div');
+    badge.style.cssText = 'position:absolute;top:4px;right:4px;background:rgba(0,0,0,0.6);color:white;font-size:9px;padding:2px 5px;border-radius:4px;';
+    badge.textContent = ph.source === 'site_pulse' ? '🏗️' : '📤';
+
+    // Caption on hover
+    if (ph.date) {
+      var cap = document.createElement('div');
+      cap.style.cssText = 'position:absolute;bottom:0;left:0;right:0;background:linear-gradient(transparent,rgba(0,0,0,0.7));color:white;font-size:10px;padding:12px 4px 4px;text-align:center;';
+      cap.textContent = new Date(ph.date+'T12:00:00').toLocaleDateString('he-IL',{day:'2-digit',month:'2-digit'});
+      div.appendChild(cap);
+    }
+
+    div.addEventListener('click', function(){ openLightbox(ph.url, ph.caption); });
+    div.appendChild(img);
+    div.appendChild(badge);
+    grid.appendChild(div);
+  });
+}
+
+// ── Upload photos manually to project gallery ─────────────
+async function galleryUpload(input) {
+  var files = Array.from(input.files || []);
+  if (!files.length || !_galleryProjectId) return;
+  var statusEl = document.getElementById('gallery-upload-status');
+  if (statusEl) statusEl.textContent = 'Uploading...';
+
+  var uploaded = 0;
+  for (var i = 0; i < files.length; i++) {
+    try {
+      var f    = files[i];
+      var ext  = f.name.split('.').pop() || 'jpg';
+      var path = 'projects/' + _galleryProjectId + '/' + Date.now() + '_' + i + '.' + ext;
+      var { error } = await sb.storage.from('photos').upload(path, f, { upsert: false });
+      if (!error) uploaded++;
+    } catch(e) { console.error('upload:', e); }
+  }
+
+  input.value = '';
+  if (statusEl) statusEl.textContent = uploaded + ' uploaded ✅';
+  setTimeout(function() { if (statusEl) statusEl.textContent = ''; }, 3000);
+  await galleryLoad(); // Refresh
+}
+
+// ── Lightbox ──────────────────────────────────────────────
+function openLightbox(url, caption) {
+  document.getElementById('lightbox-img').src       = url;
+  document.getElementById('lightbox-caption').textContent = caption || '';
+  var lb = document.getElementById('photo-lightbox');
+  if (lb) { lb.style.display = 'flex'; }
+}
+
+function closeLightbox() {
+  var lb = document.getElementById('photo-lightbox');
+  if (lb) lb.style.display = 'none';
+}
+
+// Close lightbox on click outside image
+document.addEventListener('click', function(e) {
+  var lb = document.getElementById('photo-lightbox');
+  if (lb && lb.style.display === 'flex' && e.target === lb) closeLightbox();
+});
+
+// ══════════════════════════════════════════════════════
 // START
 // ══════════════════════════════════════════════════════
 document.addEventListener('DOMContentLoaded', async () => {
@@ -1011,7 +1178,7 @@ function renderProjects(list) {
     const qs=window.quoteSum&&window.quoteSum[p.id]||0;
     const cos=window.coApprovedSum&&window.coApprovedSum[p.id]||0;
     const profit=((p.total_budget||0)-qs-cos);
-    return`<tr><td><strong>${esc(p.project_name)}</strong></td><td>${esc(p.client_name||'—')}</td><td style="font-size:13px;color:var(--text3)">${esc(p.city||p.address||'—')}</td><td style="font-size:13px">${p.start_date?fmtDate(p.start_date):'—'}</td><td>${p.total_budget?'₪'+fmtMoney(p.total_budget):'—'}</td><td class="col-quote-sum">${qs?'₪'+fmtMoney(qs):'—'}</td><td style="color:${profit>=0?'#22c55e':'#ef4444'};font-weight:700">${p.total_budget?'₪'+fmtMoney(profit):'—'}</td><td style="text-align:center"><span class="badge badge-blue">${reportCount[p.id]||0} 📝</span></td><td><span class="badge ${STATUS_BADGE[p.status]||'badge-gray'}">${STATUS_HE[p.status]||p.status}</span></td><td>${(()=>{if(!p.start_date||!p.planned_end_date)return'<span style="color:#aaa;font-size:11px">ללא</span>';const start=new Date(p.start_date),end=new Date(p.planned_end_date),now=new Date();const pct=Math.min(100,Math.max(0,Math.round((now-start)/(end-start)*100)));return'<div style="background:#f0f0f0;border-radius:4px;height:7px;"><div style="width:'+pct+'%;background:#3b82f6;height:7px;border-radius:4px;"></div></div><div style="font-size:10px;color:#666">'+pct+'%</div>';})()}</td><td class="td-actions"><div class="btn-group"><button class="btn btn-ghost btn-sm btn-icon" onclick="openProjectModal('${p.id}')">✏️</button></div></td></tr>`;
+    return`<tr><td><strong>${esc(p.project_name)}</strong></td><td>${esc(p.client_name||'—')}</td><td style="font-size:13px;color:var(--text3)">${esc(p.city||p.address||'—')}</td><td style="font-size:13px">${p.start_date?fmtDate(p.start_date):'—'}</td><td>${p.total_budget?'₪'+fmtMoney(p.total_budget):'—'}</td><td class="col-quote-sum">${qs?'₪'+fmtMoney(qs):'—'}</td><td style="color:${profit>=0?'#22c55e':'#ef4444'};font-weight:700">${p.total_budget?'₪'+fmtMoney(profit):'—'}</td><td style="text-align:center"><span class="badge badge-blue">${reportCount[p.id]||0} 📝</span></td><td><span class="badge ${STATUS_BADGE[p.status]||'badge-gray'}">${STATUS_HE[p.status]||p.status}</span></td><td>${(()=>{if(!p.start_date||!p.planned_end_date)return'<span style="color:#aaa;font-size:11px">ללא</span>';const start=new Date(p.start_date),end=new Date(p.planned_end_date),now=new Date();const pct=Math.min(100,Math.max(0,Math.round((now-start)/(end-start)*100)));return'<div style="background:#f0f0f0;border-radius:4px;height:7px;"><div style="width:'+pct+'%;background:#3b82f6;height:7px;border-radius:4px;"></div></div><div style="font-size:10px;color:#666">'+pct+'%</div>';})()}</td><td class="td-actions"><div class="btn-group"><button class="btn btn-ghost btn-sm btn-icon" onclick="openProjectModal('${p.id}')">✏️</button><button class="btn btn-ghost btn-sm btn-icon" onclick="openPhotoGallery('${p.id}','${esc(p.project_name)}')">📸</button></div></td></tr>`;
   }).join('');
 }
 
@@ -1381,7 +1548,171 @@ async function deletePO(poId){if(!confirm('למחוק הזמנת עבודה זו
 const SUPABASE_URL_CONST = window.APP?.supabaseUrl || 'https://vmcipofovheztbjmhwsl.supabase.co';
 const SUPABASE_ANON_KEY_CONST = window.APP?.supabaseKey || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZtY2lwb2ZvdmhlenRiam1od3NsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE0NjE2MTcsImV4cCI6MjA4NzAzNzYxN30.LPq5N2Xo8iEqjgz2UhmdzUdh5tpGT3EYzSxJcYBEJ1w';
 
-async function loadSiteReports(){const list=document.getElementById('sp-reports-list');const badge=document.getElementById('sp-badge');if(!list)return;list.innerHTML='<div class="sp-empty">טוען דוחות...</div>';try{const res=await fetch(SUPABASE_URL_CONST+'/rest/v1/site_reports?status=eq.pending&order=submitted_at.desc&limit=20',{headers:{apikey:SUPABASE_ANON_KEY_CONST,Authorization:'Bearer '+SUPABASE_ANON_KEY_CONST}});if(!res.ok)throw new Error('HTTP '+res.status);const reports=await res.json();if(!reports||reports.length===0){list.innerHTML='<div class="sp-empty">✅ אין דוחות ממתינים</div>';badge.style.display='none';return;}badge.textContent=reports.length;badge.style.display='inline';list.innerHTML=reports.map(r=>{const stars=r.day_rating>0?'⭐'.repeat(r.day_rating):'—';const dateStr=r.report_date?new Date(r.report_date).toLocaleDateString('he-IL'):'';const name=(r.contractor_name||'לא ידוע').replace(/</g,'&lt;');const tasks=_spParseTasks(r.tasks_done);const taskHtml=tasks.length>0?'<div class="sp-tasks">✅ '+tasks.map(t=>t.replace(/</g,'&lt;')).join(' · ')+'</div>':'<div class="sp-tasks" style="color:var(--text3);">לא דווחו משימות</div>';const issues=r.issues?'<div class="sp-issues">🔴 '+r.issues.replace(/</g,'&lt;')+'</div>':'';const workers='<div class="sp-workers">👷 '+(r.workers_count||0)+' עובדים'+(r.workers_names?' — '+r.workers_names.replace(/</g,'&lt;'):'')+'</div>';return`<div class="sp-report-card" id="spr-${r.id}"><div class="sp-report-header"><div><div class="sp-contractor">${name}</div><div class="sp-project">${dateStr}</div></div><div style="text-align:left"><div class="sp-stars">${stars}</div></div></div>${taskHtml}${issues}${workers}<div class="sp-actions"><button class="sp-btn sp-btn-plug" onclick="_spPlug('${r.id}','','')">✅ אשר</button><button class="sp-btn sp-btn-del" onclick="_spDelete('${r.id}')">🗑️ מחק</button></div></div>`;}).join('');}catch(e){list.innerHTML='<div class="sp-empty" style="color:var(--red);">שגיאה: '+e.message+'</div>';}}
+async function loadSiteReports() {
+  var list  = document.getElementById('sp-reports-list');
+  var badge = document.getElementById('sp-badge');
+  if (!list) return;
+  list.innerHTML = '<div class="sp-empty">Loading reports...</div>';
+  try {
+    var res = await fetch(
+      SUPABASE_URL_CONST + '/rest/v1/site_reports?status=eq.pending&order=submitted_at.desc&limit=30',
+      { headers: { apikey: SUPABASE_ANON_KEY_CONST, Authorization: 'Bearer ' + SUPABASE_ANON_KEY_CONST } }
+    );
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    var reports = await res.json();
+
+    if (!reports || !reports.length) {
+      list.innerHTML = '<div class="sp-empty">✅ No pending reports</div>';
+      if (badge) badge.style.display = 'none';
+      return;
+    }
+
+    if (badge) { badge.textContent = reports.length; badge.style.display = 'inline'; }
+
+    list.innerHTML = '';
+    reports.forEach(function(r) {
+      var card = document.createElement('div');
+      card.className = 'sp-report-card';
+      card.id = 'spr-' + r.id;
+
+      // Parse workers
+      var workers = [];
+      try { workers = typeof r.workers === 'string' ? JSON.parse(r.workers) : (r.workers || []); } catch(e){}
+      var totalWorkers = workers.reduce(function(s,w){ return s+(w.count||1); }, 0);
+      var workerSummary = workers.map(function(w){ return (w.count||1)+'x '+w.role; }).join(', ');
+
+      // Parse photos
+      var photos = [];
+      try { photos = typeof r.photos === 'string' ? JSON.parse(r.photos) : (r.photos || []); } catch(e){}
+
+      // Rating stars
+      var stars = r.day_rating > 0 ? '⭐'.repeat(r.day_rating) : '';
+
+      // Date
+      var dateStr = r.report_date ? new Date(r.report_date+'T12:00:00').toLocaleDateString('he-IL',{day:'2-digit',month:'2-digit',year:'numeric'}) : '';
+
+      // Build card HTML using DOM
+      card.innerHTML = [
+        '<div class="sp-report-header" style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;">',
+          '<div>',
+            '<div style="font-size:14px;font-weight:900;color:var(--text);">' + esc(r.contractor_name||'Unknown Contractor') + '</div>',
+            '<div style="font-size:11px;color:var(--text3);margin-top:2px;">' +
+              (r.project_name ? '📁 ' + esc(r.project_name) + ' · ' : '') +
+              dateStr + (r.weather ? ' · ' + r.weather : '') +
+            '</div>',
+          '</div>',
+          '<div style="text-align:left;">',
+            stars ? '<div style="font-size:13px;">' + stars + '</div>' : '',
+            '<div style="font-size:10px;color:var(--text3);">by ' + esc(r.submitted_by||'') + '</div>',
+          '</div>',
+        '</div>',
+
+        // Workers
+        '<div style="background:rgba(59,130,246,0.08);border-radius:8px;padding:8px 10px;margin-bottom:8px;">',
+          '<div style="font-size:11px;font-weight:800;color:#3b82f6;margin-bottom:3px;">👷 WORKERS (' + totalWorkers + ')</div>',
+          '<div style="font-size:12px;color:var(--text2);">' + esc(workerSummary || 'Not specified') + '</div>',
+        '</div>',
+
+        // Activities
+        '<div style="background:rgba(34,197,94,0.08);border-radius:8px;padding:8px 10px;margin-bottom:8px;">',
+          '<div style="font-size:11px;font-weight:800;color:#16a34a;margin-bottom:3px;">🔨 WORK COMPLETED</div>',
+          '<div style="font-size:12px;color:var(--text2);line-height:1.6;white-space:pre-wrap;">' + esc(r.activities||'—') + '</div>',
+        '</div>',
+
+        // Tools (if any)
+        r.tools_equipment ? [
+          '<div style="background:rgba(245,158,11,0.08);border-radius:8px;padding:8px 10px;margin-bottom:8px;">',
+            '<div style="font-size:11px;font-weight:800;color:#d97706;margin-bottom:3px;">🔧 TOOLS & EQUIPMENT</div>',
+            '<div style="font-size:12px;color:var(--text2);">' + esc(r.tools_equipment) + '</div>',
+          '</div>'
+        ].join('') : '',
+
+        // Issues (highlighted if present)
+        r.issues ? [
+          '<div style="background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);border-radius:8px;padding:8px 10px;margin-bottom:8px;">',
+            '<div style="font-size:11px;font-weight:800;color:#dc2626;margin-bottom:3px;">⚠️ ISSUES / PROBLEMS</div>',
+            '<div style="font-size:12px;color:#dc2626;">' + esc(r.issues) + '</div>',
+          '</div>'
+        ].join('') : '',
+
+        // Remarks
+        r.remarks ? [
+          '<div style="font-size:12px;color:var(--text2);padding:6px 0;border-top:1px solid var(--border);margin-bottom:8px;">',
+            '<span style="font-weight:700;">📝 Notes: </span>' + esc(r.remarks),
+          '</div>'
+        ].join('') : '',
+
+        // Photos thumbnails
+        photos.length ? [
+          '<div style="margin-bottom:10px;">',
+            '<div style="font-size:11px;font-weight:800;color:var(--text3);margin-bottom:6px;">📸 PHOTOS (' + photos.length + ')</div>',
+            '<div style="display:flex;gap:6px;overflow-x:auto;">',
+              photos.slice(0,5).map(function(path) {
+                var url = SUPABASE_URL_CONST + '/storage/v1/object/public/photos/' + path;
+                return '<img src="' + url + '" style="width:60px;height:60px;object-fit:cover;border-radius:6px;border:1px solid var(--border);cursor:pointer;" onclick="window.open(\'' + url + '\',\'_blank\')">';
+              }).join(''),
+            '</div>',
+          '</div>'
+        ].join('') : '',
+
+        // Action buttons
+        '<div style="display:flex;gap:8px;margin-top:4px;">',
+          '<button data-id="' + r.id + '" onclick="spApprove(this.dataset.id)" ',
+            'style="flex:2;padding:9px;background:linear-gradient(135deg,#15803d,#16a34a);color:white;',
+            'border:none;border-radius:8px;font-family:Heebo,sans-serif;font-size:13px;font-weight:700;cursor:pointer;">',
+            '✅ Approve & Sync to CRM',
+          '</button>',
+          '<button data-id="' + r.id + '" onclick="spReject(this.dataset.id)" ',
+            'style="flex:1;padding:9px;background:rgba(220,38,38,0.1);color:var(--red);',
+            'border:1px solid rgba(220,38,38,0.3);border-radius:8px;font-family:Heebo,sans-serif;font-size:12px;cursor:pointer;">',
+            '❌ Reject',
+          '</button>',
+        '</div>',
+
+      ].join('');
+
+      list.appendChild(card);
+    });
+
+  } catch(e) {
+    list.innerHTML = '<div class="sp-empty" style="color:var(--red);">Error: ' + e.message + '</div>';
+  }
+}
+
+// ── Approve Site Pulse report ─────────────────────────────
+async function spApprove(reportId) {
+  try {
+    // Mark approved
+    await fetch(SUPABASE_URL_CONST + '/rest/v1/site_reports?id=eq.' + reportId, {
+      method: 'PATCH',
+      headers: { apikey: SUPABASE_ANON_KEY_CONST, Authorization: 'Bearer ' + SUPABASE_ANON_KEY_CONST,
+                 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+      body: JSON.stringify({ status: 'approved', approved_at: new Date().toISOString(), approved_by: 'Beni Persky' })
+    });
+    // Fade out card
+    var card = document.getElementById('spr-' + reportId);
+    if (card) { card.style.transition = 'all 0.4s'; card.style.opacity = '0'; card.style.maxHeight = '0'; }
+    setTimeout(function(){ loadSiteReports(); }, 500);
+    showToast('✅ Report approved and synced to CRM', 'success');
+  } catch(e) { showToast('Error: ' + e.message, 'error'); }
+}
+
+// ── Reject Site Pulse report ──────────────────────────────
+async function spReject(reportId) {
+  if (!confirm('Reject this report?')) return;
+  try {
+    await fetch(SUPABASE_URL_CONST + '/rest/v1/site_reports?id=eq.' + reportId, {
+      method: 'PATCH',
+      headers: { apikey: SUPABASE_ANON_KEY_CONST, Authorization: 'Bearer ' + SUPABASE_ANON_KEY_CONST,
+                 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+      body: JSON.stringify({ status: 'rejected' })
+    });
+    var card = document.getElementById('spr-' + reportId);
+    if (card) { card.style.opacity = '0'; card.style.transition = 'opacity 0.3s'; }
+    setTimeout(function(){ loadSiteReports(); }, 400);
+    showToast('Report rejected', 'success');
+  } catch(e) { showToast('Error: ' + e.message, 'error'); }
+}
 async function _spPlug(id,a,b){const card=document.getElementById('spr-'+id);if(card)card.style.opacity='0.4';try{await fetch(SUPABASE_URL_CONST+'/rest/v1/site_reports?id=eq.'+id,{method:'PATCH',headers:{apikey:SUPABASE_ANON_KEY_CONST,Authorization:'Bearer '+SUPABASE_ANON_KEY_CONST,'Content-Type':'application/json',Prefer:'return=minimal'},body:JSON.stringify({status:'approved',plugged_in:true,plugged_in_at:new Date().toISOString()})});setTimeout(loadSiteReports,800);}catch(e){console.error(e);if(card)card.style.opacity='1';}}
 async function _spDelete(id){if(!confirm('מחוק דוח זה?'))return;try{await fetch(SUPABASE_URL_CONST+'/rest/v1/site_reports?id=eq.'+id,{method:'PATCH',headers:{apikey:SUPABASE_ANON_KEY_CONST,Authorization:'Bearer '+SUPABASE_ANON_KEY_CONST,'Content-Type':'application/json',Prefer:'return=minimal'},body:JSON.stringify({status:'deleted'})});setTimeout(loadSiteReports,500);}catch(e){console.error(e);}}
 function _spParseTasks(json){try{return JSON.parse(json||'[]');}catch(e){return[];}}
