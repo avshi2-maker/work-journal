@@ -410,6 +410,21 @@ tbody tr:last-child td{border-bottom:none;}
       <div class="stat-card" style="--accent-color:#22c55e;cursor:pointer" onclick="showPage('forecast')"><div class="stat-label">רווח צפוי כולל</div><div class="stat-value" id="stat-total-profit">—</div><div class="stat-sub">₪ מכל הפרויקטים</div><div class="stat-icon">📈</div></div>
     </div>
 
+    <!-- ANNEXES WIDGET -->
+    <div class="card" id="annexes-widget" style="margin-bottom:20px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+        <div style="display:flex;align-items:center;gap:10px;">
+          <div style="width:34px;height:34px;border-radius:9px;background:linear-gradient(135deg,#7c3aed,#6d28d9);display:flex;align-items:center;justify-content:center;font-size:17px;">📋</div>
+          <div>
+            <div style="font-size:15px;font-weight:800;">נספחי בטיחות לקבלן משנה</div>
+            <div style="font-size:10px;font-weight:400;color:var(--text3);">שלח + עקוב אחר אישורי קבלה</div>
+          </div>
+        </div>
+        <button onclick="renderAnnexWidget()" style="background:none;border:1px solid var(--border);color:var(--text3);padding:5px 10px;border-radius:7px;font-size:11px;cursor:pointer;font-family:'Heebo',sans-serif;">🔄</button>
+      </div>
+      <div id="annexes-widget-inner"><div style="text-align:center;padding:18px;color:var(--text3);font-size:13px;">טוען...</div></div>
+    </div>
+
     <!-- SITE PULSE WIDGET -->
     <div class="card" id="site-pulse-widget">
       <div class="sp-widget-header card-title" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
@@ -446,25 +461,6 @@ tbody tr:last-child td{border-bottom:none;}
       <div id="inspections-list">
         <div style="text-align:center;padding:18px;color:var(--text3);font-size:13px;">Loading inspections...</div>
       </div>
-    </div>
-
-
-    <!-- ANNEXES WIDGET -->
-    <div class="card" id="annexes-widget" style="margin-bottom:20px;">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
-        <div style="display:flex;align-items:center;gap:10px;">
-          <div style="width:34px;height:34px;border-radius:9px;background:linear-gradient(135deg,#7c3aed,#6d28d9);display:flex;align-items:center;justify-content:center;font-size:17px;">📋</div>
-          <div>
-            <div style="font-size:15px;font-weight:800;">נספחי בטיחות לקבלן משנה</div>
-            <div style="font-size:10px;font-weight:400;color:var(--text3);">שלח + עקוב אחר אישורי קבלה</div>
-          </div>
-        </div>
-        <div style="display:flex;align-items:center;gap:8px;">
-          <span id="annex-pending-badge" style="display:none;background:#f59e0b;color:white;border-radius:10px;padding:2px 8px;font-size:11px;font-weight:800;">0 ממתינים</span>
-          <button onclick="renderAnnexWidget()" style="background:none;border:1px solid var(--border);color:var(--text3);padding:5px 10px;border-radius:7px;font-size:11px;cursor:pointer;font-family:'Heebo',sans-serif;">🔄</button>
-        </div>
-      </div>
-      <div id="annexes-widget-inner"><div style="text-align:center;padding:18px;color:var(--text3);font-size:13px;">טוען...</div></div>
     </div>
     <!-- BENI TASKS WIDGET -->
     <div class="card" id="beni-tasks-widget">
@@ -2032,9 +2028,6 @@ async function crmInit() {
   loadDailyCalls();
   loadFieldIntel();
   loadRecentInspections();
-  _spFillSelects();
-
-
 }
 
 async function loadAll() {
