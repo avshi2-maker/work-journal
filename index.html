@@ -1475,6 +1475,7 @@ async function fiMarkDone(memoId) {
 // PHOTO GALLERY — per project
 // ══════════════════════════════════════════════════════
 
+var _spReportCache = {};
 var _galleryProjectId   = null;
 var _galleryProjectName = '';
 var _galleryPhotos      = [];
@@ -2405,6 +2406,7 @@ async function loadSiteReports() {
       var card = document.createElement('div');
       card.className = 'sp-report-card';
       card.id = 'spr-' + r.id;
+      _spReportCache[r.id] = r;
 
       // Parse workers
       var workers = [];
@@ -2512,37 +2514,114 @@ async function loadSiteReports() {
 
 // ── Approve Site Pulse report ─────────────────────────────
 async function spApprove(reportId) {
+  var r = _spReportCache[reportId] || {};
+  var contractorName = r.contractor_name || '';
+  var projectName    = r.project_name   || '';
+  var reportDate     = r.report_date    || new Date().toISOString().slice(0,10);
+  var activities     = r.activities     || '';
+  var workers = [];
+  try { workers = typeof r.workers==='string' ? JSON.parse(r.workers) : (r.workers||[]); } catch(e2){}
+  var totalWorkers = workers.reduce(function(s,w){ return s+(parseInt(w.count)||1); }, 0);
+  var photos = [];
+  try { photos = typeof r.photos==='string' ? JSON.parse(r.photos) : (r.photos||[]); } catch(e3){}
+  var projectId    = r.project_id   || null;
+  var contractorId = r.contractor_id|| null;
+  var contractor   = (allContractors||[]).find(function(c){ return c.id===contractorId; });
+  var mobile       = contractor ? (contractor.mobile||'') : '';
   try {
-    // Mark approved
+    // 1. Mark approved in Supabase
     await fetch(SUPABASE_URL_CONST + '/rest/v1/site_reports?id=eq.' + reportId, {
       method: 'PATCH',
       headers: { apikey: SUPABASE_ANON_KEY_CONST, Authorization: 'Bearer ' + SUPABASE_ANON_KEY_CONST,
                  'Content-Type': 'application/json', Prefer: 'return=minimal' },
       body: JSON.stringify({ status: 'approved', approved_at: new Date().toISOString(), approved_by: 'Beni Persky' })
     });
-    // Fade out card
-    var card = document.getElementById('spr-' + reportId);
-    if (card) { card.style.transition = 'all 0.4s'; card.style.opacity = '0'; card.style.maxHeight = '0'; }
+    // 2. Auto-create daily journal entry
+    try {
+      await fetch(SUPABASE_URL_CONST + '/rest/v1/reports', {
+        method: 'POST',
+        headers: { apikey: SUPABASE_ANON_KEY_CONST, Authorization: 'Bearer ' + SUPABASE_ANON_KEY_CONST,
+                   'Content-Type': 'application/json', Prefer: 'return=minimal' },
+        body: JSON.stringify({
+          project_name: projectName || 'Site Pulse Report',
+          report_date:  reportDate,
+          manager_name: contractorName,
+          source:       'site_pulse',
+          status:       'approved',
+          general_notes: activities,
+          workers:      workers,
+          project_id:   projectId
+        })
+      });
+    } catch(e4) { console.warn('Journal entry non-critical:', e4.message); }
+    // 3. Photos appear in gallery automatically (galleryLoad reads approved site_reports)
+    // 4. Send WhatsApp confirmation to contractor
+    if (mobile) {
+      var NL    = '\n';
+      var phone = '972' + mobile.replace(/[^0-9]/g,'').replace(/^0/,'');
+      var dHe   = new Date(reportDate+'T12:00:00').toLocaleDateString('he-IL',{day:'2-digit',month:'2-digit',year:'numeric'});
+      var waMsg = 'Beni Persky approved your report' + NL +
+                  (projectName ? 'Project: '+projectName+NL : '') +
+                  'Date: '+dHe+NL +
+                  (totalWorkers>0 ? 'Workers: '+totalWorkers+NL : '') +
+                  NL + 'Report received and approved. Thank you!';
+      var waUrl = 'https://wa.me/'+phone+'?text='+encodeURIComponent(waMsg);
+      var _a=document.createElement('a'); _a.href=waUrl; _a.target='_blank'; _a.rel='noopener';
+      document.body.appendChild(_a); _a.click(); document.body.removeChild(_a);
+    }
+    var card = document.getElementById('spr-'+reportId);
+    if (card) { card.style.transition='all 0.4s'; card.style.opacity='0'; card.style.maxHeight='0'; }
     setTimeout(function(){ loadSiteReports(); }, 500);
-    showToast('✅ Report approved and synced to CRM', 'success');
-  } catch(e) { showToast('Error: ' + e.message, 'error'); }
+    showToast('Report approved — WA sent to contractor', 'success');
+  } catch(e) { showToast('Error: '+e.message, 'error'); console.error('spApprove:',e); }
 }
 
-// ── Reject Site Pulse report ──────────────────────────────
-async function spReject(reportId) {
-  if (!confirm('Reject this report?')) return;
+// ── Reject Site Pulse report — show reason modal ─────────
+function spReject(reportId) {
+  var r = _spReportCache[reportId] || {};
+  document.getElementById('sp-reject-id').value = reportId;
+  document.getElementById('sp-reject-contractor-label').textContent =
+    (r.contractor_name || 'Unknown') + (r.project_name ? ' | ' + r.project_name : '');
+  document.getElementById('sp-reject-report-label').textContent =
+    'Date: ' + (r.report_date || '') + (r.submitted_by ? ' | by: '+r.submitted_by : '');
+  document.getElementById('sp-reject-reason').value = '';
+  document.getElementById('modal-sp-reject').style.display = 'flex';
+}
+
+async function _spConfirmReject() {
+  var reportId = document.getElementById('sp-reject-id').value;
+  var reason   = document.getElementById('sp-reject-reason').value.trim();
+  if (!reason) { alert('Please enter rejection reason'); return; }
+  var r            = _spReportCache[reportId] || {};
+  var contractorId = r.contractor_id || null;
+  var contractor   = (allContractors||[]).find(function(c){ return c.id===contractorId; });
+  var mobile       = contractor ? (contractor.mobile||'') : '';
   try {
     await fetch(SUPABASE_URL_CONST + '/rest/v1/site_reports?id=eq.' + reportId, {
       method: 'PATCH',
       headers: { apikey: SUPABASE_ANON_KEY_CONST, Authorization: 'Bearer ' + SUPABASE_ANON_KEY_CONST,
                  'Content-Type': 'application/json', Prefer: 'return=minimal' },
-      body: JSON.stringify({ status: 'rejected' })
+      body: JSON.stringify({ status: 'rejected', rejection_reason: reason })
     });
-    var card = document.getElementById('spr-' + reportId);
-    if (card) { card.style.opacity = '0'; card.style.transition = 'opacity 0.3s'; }
+    if (mobile) {
+      var NL2   = '\n';
+      var phone = '972' + mobile.replace(/[^0-9]/g,'').replace(/^0/,'');
+      var dHe   = r.report_date ? new Date(r.report_date+'T12:00:00').toLocaleDateString('he-IL',{day:'2-digit',month:'2-digit',year:'numeric'}) : '';
+      var waMsg = 'Your site report was rejected by Beni Persky.' + NL2 +
+                  (r.project_name ? 'Project: '+r.project_name+NL2 : '') +
+                  (dHe ? 'Date: '+dHe+NL2 : '') +
+                  NL2 + 'Reason: '+reason+NL2+NL2 +
+                  'Please correct and resubmit. Thank you.';
+      var waUrl = 'https://wa.me/'+phone+'?text='+encodeURIComponent(waMsg);
+      var _a=document.createElement('a'); _a.href=waUrl; _a.target='_blank'; _a.rel='noopener';
+      document.body.appendChild(_a); _a.click(); document.body.removeChild(_a);
+    }
+    closeModal('modal-sp-reject');
+    var card = document.getElementById('spr-'+reportId);
+    if (card) { card.style.opacity='0'; card.style.transition='opacity 0.3s'; }
     setTimeout(function(){ loadSiteReports(); }, 400);
-    showToast('Report rejected', 'success');
-  } catch(e) { showToast('Error: ' + e.message, 'error'); }
+    showToast('Report rejected — WA sent to contractor', 'success');
+  } catch(e) { showToast('Error: '+e.message,'error'); console.error('spReject:',e); }
 }
 async function _spPlug(id,a,b){const card=document.getElementById('spr-'+id);if(card)card.style.opacity='0.4';try{await fetch(SUPABASE_URL_CONST+'/rest/v1/site_reports?id=eq.'+id,{method:'PATCH',headers:{apikey:SUPABASE_ANON_KEY_CONST,Authorization:'Bearer '+SUPABASE_ANON_KEY_CONST,'Content-Type':'application/json',Prefer:'return=minimal'},body:JSON.stringify({status:'approved',plugged_in:true,plugged_in_at:new Date().toISOString()})});setTimeout(loadSiteReports,800);}catch(e){console.error(e);if(card)card.style.opacity='1';}}
 async function _spDelete(id){if(!confirm('מחוק דוח זה?'))return;try{await fetch(SUPABASE_URL_CONST+'/rest/v1/site_reports?id=eq.'+id,{method:'PATCH',headers:{apikey:SUPABASE_ANON_KEY_CONST,Authorization:'Bearer '+SUPABASE_ANON_KEY_CONST,'Content-Type':'application/json',Prefer:'return=minimal'},body:JSON.stringify({status:'deleted'})});setTimeout(loadSiteReports,500);}catch(e){console.error(e);}}
@@ -2633,5 +2712,25 @@ console.log('✅ CRM Panel JS loaded OK');
 
 
 </script>
+
+<!-- ══ SITE PULSE REJECT MODAL ══ -->
+<div class="modal-overlay" id="modal-sp-reject" style="display:none;" onclick="closeModalOnOverlay(event,'modal-sp-reject')">
+  <div class="modal" style="max-width:460px;">
+    <div class="modal-title">Reject Report</div>
+    <input type="hidden" id="sp-reject-id">
+    <div style="margin-bottom:16px;">
+      <div style="font-size:13px;font-weight:800;color:var(--text2);margin-bottom:6px;" id="sp-reject-contractor-label"></div>
+      <div style="font-size:12px;color:var(--text3);" id="sp-reject-report-label"></div>
+    </div>
+    <div class="form-group" style="margin-bottom:16px;">
+      <label>Rejection reason (will be sent to contractor via WhatsApp) *</label>
+      <textarea id="sp-reject-reason" rows="3" placeholder="e.g. Missing work description, please attach photos..."></textarea>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modal-sp-reject')">Cancel</button>
+      <button onclick="_spConfirmReject()" style="background:#dc2626;color:white;border:none;padding:9px 18px;border-radius:8px;font-weight:700;cursor:pointer;font-family:Heebo,sans-serif;">Reject &amp; Send WA</button>
+    </div>
+  </div>
+</div>
 </body>
 </html>
