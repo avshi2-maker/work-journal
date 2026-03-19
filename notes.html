@@ -1,0 +1,65 @@
+<div style="padding:70px 24px 40px;min-height:100vh;background:#1a1a2e;font-family:Heebo,sans-serif;direction:rtl">
+
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;flex-wrap:wrap;gap:12px">
+    <div>
+      <div style="font-size:10px;letter-spacing:3px;color:#9a6f00;text-transform:uppercase;margin-bottom:4px">בני פרסקי</div>
+      <h1 style="font-size:26px;font-weight:900;color:#fff">📝 יומן חכם</h1>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button onclick="printNotes()" style="background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.15);color:#ccc;padding:8px 16px;border-radius:20px;cursor:pointer;font-family:Heebo,sans-serif;font-size:12px;font-weight:700">🖨️ הדפס</button>
+    </div>
+  </div>
+
+  <div style="background:#242438;border-radius:16px;padding:20px;margin-bottom:24px;border:1px solid rgba(255,255,255,0.08)">
+    <div style="display:flex;gap:10px;margin-bottom:12px;flex-wrap:wrap">
+      <div style="display:flex;gap:6px;align-items:center">
+        <span style="font-size:11px;color:#888">צבע:</span>
+        <button class="note-color-btn active-color" data-color="yellow"  onclick="selectNoteColor('yellow')"  title="כללי"    style="width:28px;height:28px;border-radius:50%;background:#f59e0b;border:3px solid transparent;cursor:pointer;transition:all 0.2s"></button>
+        <button class="note-color-btn"              data-color="red"     onclick="selectNoteColor('red')"     title="דחוף"    style="width:28px;height:28px;border-radius:50%;background:#ef4444;border:3px solid transparent;cursor:pointer;transition:all 0.2s"></button>
+        <button class="note-color-btn"              data-color="green"   onclick="selectNoteColor('green')"   title="בוצע"    style="width:28px;height:28px;border-radius:50%;background:#22c55e;border:3px solid transparent;cursor:pointer;transition:all 0.2s"></button>
+        <button class="note-color-btn"              data-color="blue"    onclick="selectNoteColor('blue')"    title="תכנון"   style="width:28px;height:28px;border-radius:50%;background:#3b82f6;border:3px solid transparent;cursor:pointer;transition:all 0.2s"></button>
+        <button class="note-color-btn"              data-color="purple"  onclick="selectNoteColor('purple')"  title="אישי"    style="width:28px;height:28px;border-radius:50%;background:#a855f7;border:3px solid transparent;cursor:pointer;transition:all 0.2s"></button>
+      </div>
+      <button id="note-voice-btn" onclick="toggleNoteVoice()" style="background:rgba(154,111,0,0.2);border:1px solid rgba(154,111,0,0.4);color:#f59e0b;padding:8px 14px;border-radius:20px;cursor:pointer;font-family:Heebo,sans-serif;font-size:12px;font-weight:700">🎤 הקלט</button>
+      <select id="note-project-select" style="background:#1a1a2e;border:1px solid rgba(255,255,255,0.12);color:#ccc;padding:7px 12px;border-radius:20px;font-family:Heebo,sans-serif;font-size:12px;direction:rtl">
+        <option value="">📁 כל הפרויקטים</option>
+      </select>
+    </div>
+
+    <textarea id="note-text-input" placeholder="כתוב הערה... (קול או הקלדה)" rows="4"
+      style="width:100%;background:#1a1a2e;border:1px solid rgba(255,255,255,0.1);color:#fff;
+             padding:14px;border-radius:10px;font-family:Heebo,sans-serif;font-size:15px;
+             resize:vertical;direction:rtl;outline:none;line-height:1.7"
+      oninput="this.style.borderColor='#9a6f00'"></textarea>
+
+    <div style="display:flex;gap:10px;margin-top:12px;justify-content:flex-end">
+      <button onclick="clearNoteForm()" style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);color:#888;padding:10px 20px;border-radius:10px;cursor:pointer;font-family:Heebo,sans-serif;font-size:13px">נקה</button>
+      <button onclick="saveNote()" style="background:linear-gradient(135deg,#9a6f00,#c9a84c);border:none;color:#1a1a2e;padding:10px 28px;border-radius:10px;cursor:pointer;font-family:Heebo,sans-serif;font-size:14px;font-weight:900">💾 שמור הערה</button>
+    </div>
+  </div>
+
+  <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px;align-items:center">
+    <span style="font-size:11px;color:#666;font-weight:700">סנן:</span>
+    <button class="note-filter active-filter" data-filter="all"    onclick="filterNotes('all')"    style="background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.15);color:#ccc;padding:6px 14px;border-radius:20px;cursor:pointer;font-family:Heebo,sans-serif;font-size:11px;font-weight:700">הכל</button>
+    <button class="note-filter" data-filter="yellow" onclick="filterNotes('yellow')" style="background:rgba(245,158,11,0.15);border:1px solid rgba(245,158,11,0.3);color:#f59e0b;padding:6px 14px;border-radius:20px;cursor:pointer;font-family:Heebo,sans-serif;font-size:11px;font-weight:700">🟡 כללי</button>
+    <button class="note-filter" data-filter="red"    onclick="filterNotes('red')"    style="background:rgba(239,68,68,0.15);border:1px solid rgba(239,68,68,0.3);color:#ef4444;padding:6px 14px;border-radius:20px;cursor:pointer;font-family:Heebo,sans-serif;font-size:11px;font-weight:700">🔴 דחוף</button>
+    <button class="note-filter" data-filter="green"  onclick="filterNotes('green')"  style="background:rgba(34,197,94,0.15);border:1px solid rgba(34,197,94,0.3);color:#22c55e;padding:6px 14px;border-radius:20px;cursor:pointer;font-family:Heebo,sans-serif;font-size:11px;font-weight:700">🟢 בוצע</button>
+    <button class="note-filter" data-filter="blue"   onclick="filterNotes('blue')"   style="background:rgba(59,130,246,0.15);border:1px solid rgba(59,130,246,0.3);color:#3b82f6;padding:6px 14px;border-radius:20px;cursor:pointer;font-family:Heebo,sans-serif;font-size:11px;font-weight:700">🔵 תכנון</button>
+    <button class="note-filter" data-filter="purple" onclick="filterNotes('purple')" style="background:rgba(168,85,247,0.15);border:1px solid rgba(168,85,247,0.3);color:#a855f7;padding:6px 14px;border-radius:20px;cursor:pointer;font-family:Heebo,sans-serif;font-size:11px;font-weight:700">🟣 אישי</button>
+    <input id="note-search" type="text" placeholder="🔍 חיפוש..." oninput="filterNotesByKeyword(this.value)"
+      style="background:#1a1a2e;border:1px solid rgba(255,255,255,0.12);color:#fff;padding:7px 14px;
+             border-radius:20px;font-family:Heebo,sans-serif;font-size:12px;direction:rtl;outline:none;min-width:160px">
+    <input id="note-date-from" type="date" oninput="filterNotesByDate()"
+      style="background:#1a1a2e;border:1px solid rgba(255,255,255,0.12);color:#ccc;padding:7px 10px;border-radius:20px;font-family:Heebo,sans-serif;font-size:11px">
+    <span style="color:#666;font-size:11px">עד</span>
+    <input id="note-date-to" type="date" oninput="filterNotesByDate()"
+      style="background:#1a1a2e;border:1px solid rgba(255,255,255,0.12);color:#ccc;padding:7px 10px;border-radius:20px;font-family:Heebo,sans-serif;font-size:11px">
+  </div>
+
+  <div id="notes-wall" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px">
+    <div style="grid-column:1/-1;text-align:center;padding:60px 20px;color:#444">
+      <div style="font-size:48px;margin-bottom:12px">📝</div>
+      <div style="font-size:14px">אין הערות עדיין — כתוב את ההערה הראשונה למעלה</div>
+    </div>
+  </div>
+</div>

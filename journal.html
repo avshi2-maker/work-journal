@@ -1,138 +1,3 @@
-<!DOCTYPE html>
-<html lang="he" dir="rtl">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>יומן עבודה - Stonhard</title>
-<style>
-*{margin:0;padding:0;box-sizing:border-box}
-body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Heebo',Arial,sans-serif;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);min-height:100vh;direction:rtl;padding:10px}
-.container{max-width:900px;margin:0 auto}
-.header{background:white;border-radius:16px;padding:25px;margin-bottom:20px;text-align:center;box-shadow:0 4px 20px rgba(0,0,0,0.1);position:relative}
-.report-number{background:linear-gradient(135deg,#667eea,#764ba2);color:white;padding:15px;border-radius:12px;margin-bottom:20px;text-align:center}
-.report-label{font-size:16px;font-weight:600;margin-bottom:5px}
-.report-id{font-size:24px;font-weight:700;font-family:monospace;letter-spacing:2px}
-.report-timestamp{font-size:12px;opacity:0.9;margin-top:5px}
-.header h1{font-size:24px;font-weight:700;background:linear-gradient(135deg,#667eea,#764ba2);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
-.legal-notice{margin-top:10px;padding:8px 16px;background:#fff3cd;border:2px solid #ffc107;border-radius:8px;color:#856404;font-size:13px;font-weight:600;display:inline-block}
-.section{background:white;border-radius:16px;padding:20px;margin-bottom:15px;box-shadow:0 2px 10px rgba(0,0,0,0.08)}
-.legal-section{border-right:4px solid #ffc107;background:linear-gradient(to left,#fffbf0,white)}
-.legal-section.critical{border-right:4px solid #dc3545;background:linear-gradient(to left,#fff5f5,white)}
-.legal-badge{display:inline-block;padding:4px 12px;background:#ffc107;color:#000;border-radius:12px;font-size:11px;font-weight:700;margin-right:8px}
-.legal-badge.critical{background:#dc3545;color:white;animation:pulse-badge 2s infinite}
-@keyframes pulse-badge{0%,100%{opacity:1}50%{opacity:0.7}}
-.section h2{font-size:18px;font-weight:700;margin-bottom:15px;color:#1a3d5c}
-.helper-text{font-size:14px;color:#666;margin-bottom:10px;font-style:italic}
-.total-hours{margin-top:15px;padding:12px;background:#f0f7ff;border-radius:8px;border-right:4px solid #667eea;font-size:16px}
-.total-hours strong{color:#1a3d5c}
-.total-hours span{color:#667eea;font-weight:700;font-size:18px}
-.form-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px}
-.form-row.three-col{grid-template-columns:1fr 1fr 1fr}
-.form-row.four-col{grid-template-columns:1fr 1fr 1fr 1fr}
-@media(max-width:600px){.form-row,.form-row.three-col,.form-row.four-col{grid-template-columns:1fr}}
-input,select,textarea{width:100%;padding:12px;border:2px solid #e1e8ed;border-radius:8px;font-size:15px;font-family:inherit}
-input:focus,select:focus,textarea:focus{outline:none;border-color:#667eea}
-textarea{min-height:100px;resize:vertical}
-.voice-textarea-container{position:relative;margin-bottom:15px}
-.voice-textarea-container textarea{padding-left:50px}
-.btn-voice{position:absolute;left:5px;top:5px;width:40px;height:40px;border:none;background:linear-gradient(135deg,#667eea,#764ba2);color:white;border-radius:50%;font-size:20px;cursor:pointer;transition:all 0.2s;z-index:10}
-.btn-voice:hover{transform:scale(1.1)}
-.btn-voice.recording{animation:pulse 1.5s infinite;background:#e74c3c}
-@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.6}}
-.voice-indicator{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:white;border-radius:20px;padding:40px;box-shadow:0 10px 40px rgba(0,0,0,0.3);z-index:10000;text-align:center}
-.voice-pulse{width:80px;height:80px;margin:0 auto 20px;background:#e74c3c;border-radius:50%;animation:pulse-grow 1.5s infinite}
-@keyframes pulse-grow{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(1.2);opacity:0.7}}
-.btn-stop{padding:12px 24px;border:none;border-radius:8px;background:#e74c3c;color:white;font-weight:700;cursor:pointer;margin-top:15px}
-.btn-print{position:absolute;top:20px;left:20px;padding:10px 20px;border:none;border-radius:8px;background:#3498db;color:white;font-weight:600;cursor:pointer}
-.btn-primary,.btn-success,.btn-secondary,.btn-add,.btn-warning,.btn-info{padding:14px 24px;border:none;border-radius:12px;font-size:16px;font-weight:700;cursor:pointer;width:100%;margin-bottom:10px;transition:all 0.2s}
-.btn-primary{background:linear-gradient(135deg,#667eea,#764ba2);color:white}
-.btn-success{background:#27ae60;color:white}
-.btn-secondary{background:#95a5a6;color:white}
-.btn-add{background:#3498db;color:white;padding:10px}
-.btn-warning{background:#f39c12;color:white}
-.btn-info{background:#17a2b8;color:white}
-button:active{transform:scale(0.98)}
-.action-buttons{border-top:3px solid #e1e8ed;margin-top:20px}
-.signature-pad{border:3px solid #667eea;border-radius:12px;width:100%;max-width:400px;height:100px;background:#fafafa;cursor:crosshair;display:block;margin:0 auto 10px}
-.photo-upload{border:3px dashed #667eea;border-radius:12px;padding:30px;text-align:center;cursor:pointer;margin-bottom:15px;background:#f8f9fa;transition:all 0.2s}
-.photo-upload:hover{background:#e8e9ea;border-color:#764ba2}
-.photo-preview{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;margin-top:10px}
-.photo-item{position:relative;border-radius:8px;overflow:hidden;border:2px solid #e1e8ed}
-.photo-item img{width:100%;height:150px;object-fit:cover}
-.remove-photo{position:absolute;top:5px;right:5px;background:#e74c3c;color:white;border:none;border-radius:50%;width:25px;height:25px;cursor:pointer;font-weight:bold}
-.security-badge{background:#27ae60;color:white;padding:8px 16px;border-radius:20px;display:inline-block;font-size:14px;font-weight:600;margin-bottom:10px}
-.loading{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.7);display:flex;flex-direction:column;align-items:center;justify-content:center;color:white;z-index:9999}
-.spinner{border:4px solid rgba(255,255,255,0.3);border-top:4px solid white;border-radius:50%;width:40px;height:40px;animation:spin 1s linear infinite}
-@keyframes spin{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}
-.btn-group{display:flex;gap:10px}
-.btn-group button{flex:1}
-.dynamic-row{background:#f8f9fa;border:2px solid #e1e8ed;border-radius:8px;padding:15px;margin-bottom:10px;position:relative}
-.dynamic-row.critical-row{border-color:#dc3545;background:#fff5f5}
-.remove-row{position:absolute;top:10px;left:10px;background:#e74c3c;color:white;border:none;border-radius:50%;width:30px;height:30px;cursor:pointer;font-weight:bold;font-size:18px}
-.remove-row:hover{background:#c0392b}
-
-/* ── CONTRACTORS TABLE ── */
-.contractors-table-wrap{overflow-x:auto;margin-top:10px;border-radius:10px;border:2px solid #e1e8ed}
-.contractors-table{width:100%;border-collapse:collapse;min-width:700px;font-size:14px}
-.contractors-table thead tr{background:linear-gradient(135deg,#1a3d5c,#2c5f7a);color:white}
-.contractors-table thead th{padding:10px 12px;text-align:right;font-weight:700;white-space:nowrap;font-size:13px}
-.contractors-table tbody tr{border-bottom:1px solid #e1e8ed;transition:background 0.15s}
-.contractors-table tbody tr:hover{background:#f0f7ff}
-.contractors-table tbody tr:nth-child(even){background:#fafbfc}
-.contractors-table tbody tr:nth-child(even):hover{background:#e8f0fa}
-.contractors-table td{padding:6px 8px;vertical-align:middle}
-.contractors-table td input,
-.contractors-table td select{padding:7px 10px;border:1.5px solid #e1e8ed;border-radius:6px;font-size:13px;width:100%;font-family:inherit;background:white;transition:border-color 0.2s}
-.contractors-table td input:focus,
-.contractors-table td select:focus{outline:none;border-color:#667eea;background:#f8f9ff}
-.contractors-table .td-actions{width:36px;text-align:center}
-.btn-remove-contractor{background:#e74c3c;color:white;border:none;border-radius:50%;width:28px;height:28px;font-size:16px;font-weight:bold;cursor:pointer;line-height:28px;padding:0;transition:background 0.2s}
-.btn-remove-contractor:hover{background:#c0392b}
-.btn-add-contractor{background:linear-gradient(135deg,#27ae60,#2ecc71);color:white;border:none;border-radius:8px;padding:9px 18px;font-size:14px;font-weight:700;cursor:pointer;margin-top:10px;transition:all 0.2s;display:inline-flex;align-items:center;gap:6px}
-.btn-add-contractor:hover{transform:scale(1.03);box-shadow:0 3px 12px rgba(39,174,96,0.35)}
-.contractors-empty{text-align:center;color:#aaa;padding:20px;font-style:italic;font-size:13px}
-@media(max-width:600px){
-  .contractors-table-wrap{border-radius:6px}
-  .contractors-table{min-width:560px;font-size:12px}
-  .contractors-table thead th,.contractors-table td{padding:6px 7px}
-}
-.print-header,.print-footer{display:none}
-@media print{
-  @page{size:A4;margin:15mm}
-  body{background:white;padding:0}
-  .no-print{display:none!important}
-  .print-header{display:block!important;border-bottom:3px solid #667eea;padding-bottom:15px;margin-bottom:20px}
-  .print-logo h1{font-size:24px;color:#667eea;margin-bottom:5px}
-  .print-logo p{margin:2px 0;color:#666}
-  .print-report-number{text-align:center;background:#f8f9fa;padding:10px;border-radius:8px;margin-top:10px;font-weight:bold;font-size:14px}
-  .print-footer{display:block!important;position:fixed;bottom:0;left:0;right:0;border-top:2px solid #667eea;padding:10px 15mm;background:white;font-size:10px;text-align:center;color:#666}
-  .print-footer p{margin:3px 0}
-  .container{max-width:100%;padding-bottom:50px}
-  .section{page-break-inside:avoid;box-shadow:none;border:1px solid #ddd;margin-bottom:15px;padding:15px}
-  .section h2{color:#000;font-size:16px;border-bottom:2px solid #667eea;padding-bottom:5px;margin-bottom:10px}
-  .legal-section{border-right:3px solid #ffc107}
-  .legal-section.critical{border-right:3px solid #dc3545}
-  .photo-preview{display:grid!important;grid-template-columns:repeat(3,1fr);gap:10px;page-break-inside:avoid}
-  .photo-item{page-break-inside:avoid;border:1px solid #ddd}
-  .photo-item img{width:100%;height:auto;max-height:200px;object-fit:contain}
-  .signature-pad{border:2px solid #000;background:white!important;page-break-inside:avoid}
-  .total-hours{background:#f8f9fa;border:1px solid #ddd;page-break-inside:avoid}
-  .dynamic-row{background:white;border:1px solid #ddd;page-break-inside:avoid}
-  .legal-badge{border:1px solid #000;background:white!important;color:#000!important}
-  .helper-text{display:none}
-  *{-webkit-print-color-adjust:exact;print-color-adjust:exact}
-}
-@media(max-width:768px){
-  .header h1{font-size:20px}
-  .legal-notice{font-size:11px;padding:6px 12px}
-  .btn-print{top:10px;left:10px;padding:8px 16px;font-size:14px}
-  .report-id{font-size:18px}
-}
-</style>
-</head>
-<body>
-
-<!-- Manager View -->
 <div id="managerView">
   <header class="header">
     <div class="report-number" id="reportNumber">
@@ -141,17 +6,28 @@ button:active{transform:scale(0.98)}
       <div class="report-timestamp"></div>
     </div>
     <h1>📝 יומן עבודה יומי</h1>
-    <p>Stonhard Installation - אבשי ספיר</p>
+    <p>ביצוע פרויקטים - אבשי ספיר</p>
     <p class="legal-notice">⚖️ תיעוד משפטי מלא - תקנות התכנון והבניה 1992</p>
   </header>
   <main class="container">
     <form id="reportForm">
-
       <section class="section">
         <h2>📋 פרטי פרוייקט</h2>
         <div class="form-row">
-          <input type="text" id="projectName" placeholder="שם פרוייקט" required>
+          <div style="position:relative;">
+            <select id="projectName" required
+              style="width:100%;padding:12px;border:2px solid #e1e8ed;border-radius:8px;font-size:16px;font-family:inherit;background:white;-webkit-appearance:none;appearance:none;"
+              onchange="onJournalProjectChange(this)">
+              <option value="">— בחר פרוייקט —</option>
+            </select>
+            <span style="position:absolute;left:12px;top:50%;transform:translateY(-50%);pointer-events:none;font-size:14px;">▼</span>
+          </div>
           <input type="date" id="reportDate" required>
+        </div>
+        <div id="project-custom-name-row" style="display:none;margin-top:8px;">
+          <input type="text" id="projectNameCustom" placeholder="הזן שם פרוייקט ידנית..."
+            style="width:100%;padding:12px;border:2px solid #667eea;border-radius:8px;font-size:16px;font-family:inherit;"
+            oninput="syncProjectNameToSelect()">
         </div>
         <div class="form-row">
           <select id="weather">
@@ -166,20 +42,15 @@ button:active{transform:scale(0.98)}
         </div>
       </section>
 
-      <!-- ══ קבלני הפרוייקט ══ -->
       <section class="section">
         <h2>🏗️ קבלני הפרוייקט</h2>
-        <p class="helper-text">בחר / הוסף קבלן — לחץ על שדה לעריכה. גלול ימינה לעמודות נוספות.</p>
+        <p class="helper-text">בחר / הוסף קבלן — לחץ על שדה לעריכה.</p>
         <div class="contractors-table-wrap">
           <table class="contractors-table" id="contractorsTable">
             <thead>
               <tr>
-                <th>שם חברה / קבלן</th>
-                <th>איש קשר</th>
-                <th>נייד</th>
-                <th>טל׳ משרד</th>
-                <th>עיסוק ראשי</th>
-                <th>פעילות בפרוייקט זה</th>
+                <th>שם חברה / קבלן</th><th>איש קשר</th><th>נייד</th>
+                <th>טל׳ משרד</th><th>עיסוק ראשי</th><th>פעילות בפרוייקט זה</th>
                 <th class="td-actions"></th>
               </tr>
             </thead>
@@ -194,7 +65,8 @@ button:active{transform:scale(0.98)}
       <section class="section">
         <h2>⏰ שעות עבודה</h2>
         <div class="form-row">
-          <input type="time" id="endTime">
+          <input type="time" id="startTime" placeholder="שעת התחלה">
+          <input type="time" id="endTime" placeholder="שעת סיום">
           <input type="number" id="breakHours" value="0" step="0.5" placeholder="הפסקות (שעות)">
         </div>
         <div class="total-hours"><strong>סה"כ שעות עבודה:</strong> <span id="totalWorkHours">0</span> שעות</div>
@@ -215,35 +87,42 @@ button:active{transform:scale(0.98)}
 
       <section class="section legal-section">
         <h2>📦 אספקות חומרים <span class="legal-badge">חובה לפי חוק</span></h2>
-        <p class="helper-text">תיעוד חומרים שהגיעו לאתר - נדרש להוכחת תשלום</p>
+        <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap;align-items:center">
+          <select id="materialQuickSelect" style="flex:2;padding:10px;border:2px solid #e1e8ed;border-radius:8px;font-size:14px;font-family:inherit;direction:rtl">
+            <option value="">-- בחר חומר מהרשימה --</option>
+          </select>
+          <button type="button" onclick="addMaterialFromList()" style="background:#667eea;color:#fff;border:none;border-radius:8px;padding:10px 18px;font-size:14px;font-weight:700;cursor:pointer;white-space:nowrap">➕ הוסף</button>
+        </div>
         <div id="materialsContainer"></div>
-        <button type="button" class="btn-add" onclick="addMaterialRow()">➕ הוסף חומר</button>
+        <button type="button" class="btn-add" onclick="addMaterialRow('')">➕ הוסף שורה ריקה</button>
       </section>
 
       <section class="section legal-section">
         <h2>🚜 ציוד ומכונות <span class="legal-badge">חובה לפי חוק</span></h2>
-        <p class="helper-text">רישום ציוד בשימוש - נדרש למעקב עלויות</p>
+        <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap;align-items:center">
+          <select id="equipmentQuickSelect" style="flex:2;padding:10px;border:2px solid #e1e8ed;border-radius:8px;font-size:14px;font-family:inherit;direction:rtl">
+            <option value="">-- בחר ציוד/מכונה --</option>
+          </select>
+          <button type="button" onclick="addEquipmentFromList()" style="background:#667eea;color:#fff;border:none;border-radius:8px;padding:10px 18px;font-size:14px;font-weight:700;cursor:pointer;white-space:nowrap">➕ הוסף</button>
+        </div>
         <div id="equipmentContainer"></div>
-        <button type="button" class="btn-add" onclick="addEquipmentRow()">➕ הוסף ציוד</button>
+        <button type="button" class="btn-add" onclick="addEquipmentRow('')">➕ הוסף שורה ריקה</button>
       </section>
 
       <section class="section legal-section critical">
         <h2>⚠️ בטיחות ואירועים <span class="legal-badge critical">קריטי</span></h2>
-        <p class="helper-text">תיעוד אירועי בטיחות - חובה לפי חוק הבטיחות בעבודה</p>
         <div id="safetyContainer"></div>
         <button type="button" class="btn-add" onclick="addSafetyRow()">➕ הוסף אירוע</button>
       </section>
 
       <section class="section legal-section critical">
         <h2>👮 ביקורות ופיקוח <span class="legal-badge critical">קריטי</span></h2>
-        <p class="helper-text">רישום ביקורות מפקחים - חובה לפי תקנות התכנון והבניה 1992</p>
         <div id="inspectionsContainer"></div>
         <button type="button" class="btn-add" onclick="addInspectionRow()">➕ הוסף ביקורת</button>
       </section>
 
       <section class="section legal-section">
         <h2>⏰ עיכובים והפסקות <span class="legal-badge">חובה לפי חוק</span></h2>
-        <p class="helper-text">תיעוד עיכובים - נדרש לקביעת אחריות ותשלומים</p>
         <div id="delaysContainer"></div>
         <button type="button" class="btn-add" onclick="addDelayRow()">➕ הוסף עיכוב</button>
       </section>
@@ -262,8 +141,32 @@ button:active{transform:scale(0.98)}
       <section class="section">
         <h2>📅 תוכנית עבודה למחר</h2>
         <div class="form-row"><input type="date" id="tomorrowDate"></div>
-        <div class="voice-textarea-container">
-          <textarea id="tomorrowPlan" placeholder="תוכנית עבודה למחר..."></textarea>
+        <div id="tomorrowContainer">
+          <div class="tomorrow-row" data-type="continue">
+            <div class="tomorrow-label">🔄 המשך מאתמול</div>
+            <input type="text" class="tomorrow-detail" placeholder="פרט את ההמשך...">
+          </div>
+          <div class="tomorrow-row" data-type="new">
+            <div class="tomorrow-label">🆕 עבודה חדשה</div>
+            <input type="text" class="tomorrow-detail" placeholder="תאר את העבודה החדשה...">
+          </div>
+          <div class="tomorrow-row" data-type="delivery">
+            <div class="tomorrow-label">🚚 אספקה צפויה</div>
+            <input type="text" class="tomorrow-detail" placeholder="ציין חומרים / ציוד שיגיע...">
+          </div>
+          <div class="tomorrow-row" data-type="crew">
+            <div class="tomorrow-label">👷 כוח אדם נדרש</div>
+            <input type="text" class="tomorrow-detail" placeholder="כמה פועלים / אילו בעלי מקצוע...">
+          </div>
+          <div class="tomorrow-row" data-type="safety">
+            <div class="tomorrow-label">⛑️ בטיחות / היתרים</div>
+            <input type="text" class="tomorrow-detail" placeholder="בדיקות בטיחות, היתרי כניסה...">
+          </div>
+          <div id="tomorrowExtraRows"></div>
+        </div>
+        <button type="button" class="btn-add" onclick="addTomorrowRow()">➕ הוסף פריט נוסף</button>
+        <div class="voice-textarea-container" style="margin-top:10px">
+          <textarea id="tomorrowPlan" placeholder="הערות כלליות לתוכנית מחר..." rows="2"></textarea>
           <button type="button" class="btn-voice" id="voiceTomorrowBtn">🎤</button>
         </div>
       </section>
@@ -287,21 +190,22 @@ button:active{transform:scale(0.98)}
           <button type="button" class="btn-info" onclick="startNewReport()">🆕 התחל דוח חדש</button>
         </div>
       </section>
-
     </form>
   </main>
 </div>
 
-<!-- Owner View -->
 <div id="ownerView" style="display:none">
   <header class="header no-print">
+    <button onclick="switchTab('crm')" style="background:linear-gradient(135deg,#1a3d5c,#2d6a9f);color:white;border:none;border-radius:10px;padding:9px 18px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;">
+      ◀ חזרה ללוח בקרה
+    </button>
     <div class="security-badge">🔒 דוח מאובטח</div>
     <h1>אישור דוח עבודה</h1>
     <button class="btn-print" onclick="printReport()">🖨️ הדפס</button>
   </header>
   <div class="print-header">
     <div class="print-logo">
-      <h1>Stonhard Installation</h1>
+      <h1>ביצוע פרויקטים</h1>
       <p>אבשי ספיר - קבלן רצפות תעשייתיות</p>
       <p>📱 050-5231042</p>
     </div>
@@ -310,7 +214,7 @@ button:active{transform:scale(0.98)}
   <main class="container" id="printableArea">
     <div id="reportDetails"></div>
     <section class="section no-print">
-      <h2>📸 הוסף תמונות שלך (אופציונלי)</h2>
+      <h2>📸 הוסף תמונות שלך</h2>
       <div class="photo-upload" onclick="document.getElementById('ownerPhotoInput').click()"><span>📷 לחץ להוספת תמונות</span></div>
       <input type="file" id="ownerPhotoInput" accept="image/*" capture="environment" multiple style="display:none">
       <div id="ownerPhotoPreview" class="photo-preview"></div>
@@ -330,428 +234,13 @@ button:active{transform:scale(0.98)}
     </section>
   </main>
   <div class="print-footer">
-    <p>דוח זה נוצר באופן דיגיטלי ועומד בתקנות התכנון והבניה (פיקוח עליון על הבניה), תשנ"ב-1992</p>
-    <p>Stonhard Installation | אבשי ספיר | 050-5231042</p>
+    <p>דוח זה נוצר באופן דיגיטלי ועומד בתקנות התכנון והבניה תשנ"ב-1992</p>
+    <p>ביצוע פרויקטים | אבשי ספיר | 050-5231042</p>
   </div>
 </div>
 
-<!-- Loading Overlay -->
-<div id="loading" class="loading" style="display:none">
-  <div class="spinner"></div>
-  <p>טוען...</p>
-</div>
-
-<!-- Voice Indicator -->
 <div id="voiceIndicator" class="voice-indicator" style="display:none">
   <div class="voice-pulse"></div>
   <p>🎤 מקליט... דבר עכשיו</p>
   <button onclick="stopVoiceRecording()" class="btn-stop">⏹️ עצור</button>
 </div>
-
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script>
-// ── CONFIG ──────────────────────────────────────
-const SUPABASE_URL = 'https://vmcipofovheztbjmhwsl.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZtY2lwb2ZvdmhlenRiam1od3NsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE0NjE2MTcsImV4cCI6MjA4NzAzNzYxN30.LPq5N2Xo8iEqjgz2UhmdzUdh5tpGT3EYzSxJcYBEJ1w';
-let supabaseClient;
-try { supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY); } catch(e) { console.error(e); }
-
-// ── STATE ───────────────────────────────────────
-let currentReport=null, signaturePad=null, ownerSignaturePad=null;
-let selectedPhotos=[], selectedOwnerPhotos=[], voiceRecognition=null;
-let currentVoiceTarget=null, currentReportNumber=null;
-
-// ── REPORT NUMBER ───────────────────────────────
-function generateReportNumber() {
-  const n=new Date(), z=v=>String(v).padStart(2,'0');
-  return {
-    reportNum: `STH-${n.getFullYear()}${z(n.getMonth()+1)}${z(n.getDate())}-${z(n.getHours())}${z(n.getMinutes())}${z(n.getSeconds())}`,
-    timestamp: `${z(n.getDate())}/${z(n.getMonth()+1)}/${n.getFullYear()} ${z(n.getHours())}:${z(n.getMinutes())}:${z(n.getSeconds())}`
-  };
-}
-function displayReportNumber() {
-  const {reportNum,timestamp} = generateReportNumber();
-  currentReportNumber = reportNum;
-  const d = document.querySelector('.report-number');
-  if(d) { d.querySelector('.report-id').textContent=reportNum; d.querySelector('.report-timestamp').textContent=timestamp; }
-}
-
-// ── CLEAR / NEW ─────────────────────────────────
-function clearAllData() {
-  if(!confirm('האם אתה בטוח שברצונך למחוק את כל הנתונים?')) return;
-  ['projectName','weather','startTime','endTime','generalNotes','tomorrowPlan'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
-  document.getElementById('breakHours').value='0';
-  ['workersContainer','activitiesContainer','materialsContainer','equipmentContainer','safetyContainer','inspectionsContainer','delaysContainer'].forEach(id=>{const e=document.getElementById(id);if(e)e.innerHTML='';});
-  const cb=document.getElementById('contractorsBody');if(cb){cb.innerHTML='<tr><td colspan="7" class="contractors-empty">לחץ ״➕ הוסף קבלן״ להוספת שורה</td></tr>';}
-  selectedPhotos=[]; document.getElementById('photoPreview').innerHTML='';
-  if(signaturePad){const c=signaturePad.getContext('2d');c.clearRect(0,0,signaturePad.width,signaturePad.height);}
-  document.getElementById('totalWorkHours').textContent='0';
-  document.getElementById('totalWorkerHours').textContent='0';
-  alert('כל הנתונים נמחקו!');
-}
-function startNewReport() {
-  clearAllData();
-  const today=new Date(); document.getElementById('reportDate').valueAsDate=today;
-  const tom=new Date(today); tom.setDate(tom.getDate()+1); document.getElementById('tomorrowDate').valueAsDate=tom;
-  displayReportNumber(); addWorkerRow(); addActivityRow();
-  window.scrollTo({top:0,behavior:'smooth'});
-  alert('דוח חדש התחיל!\n\nמספר דוח: '+currentReportNumber);
-}
-
-// ── INIT ────────────────────────────────────────
-document.addEventListener('DOMContentLoaded', () => {
-  const token = new URLSearchParams(window.location.search).get('token');
-  if(token) loadReportForOwner(token);
-  else initializeManagerView();
-  initializeVoiceRecognition();
-});
-
-function initializeManagerView() {
-  document.getElementById('managerView').style.display='block';
-  document.getElementById('ownerView').style.display='none';
-  displayReportNumber();
-  const today=new Date(); document.getElementById('reportDate').valueAsDate=today;
-  const tom=new Date(today); tom.setDate(tom.getDate()+1); document.getElementById('tomorrowDate').valueAsDate=tom;
-  initSignaturePad('signatureCanvas');
-  addWorkerRow(); addActivityRow();
-  document.getElementById('photoInput').addEventListener('change', handlePhotoSelection);
-  document.getElementById('saveBtn').addEventListener('click', saveDraft);
-  document.getElementById('sendBtn').addEventListener('click', sendReport);
-  document.getElementById('voiceNotesBtn').addEventListener('click', ()=>startVoiceRecording('generalNotes'));
-  document.getElementById('voiceTomorrowBtn').addEventListener('click', ()=>startVoiceRecording('tomorrowPlan'));
-  document.getElementById('startTime').addEventListener('change', calculateWorkHours);
-  document.getElementById('endTime').addEventListener('change', calculateWorkHours);
-  document.getElementById('breakHours').addEventListener('input', calculateWorkHours);
-}
-
-// ── CALCULATIONS ────────────────────────────────
-function calculateWorkHours() {
-  const s=document.getElementById('startTime').value, e=document.getElementById('endTime').value;
-  const b=parseFloat(document.getElementById('breakHours').value)||0;
-  if(!s||!e){document.getElementById('totalWorkHours').textContent='0';return;}
-  const [sh,sm]=s.split(':').map(Number),[eh,em]=e.split(':').map(Number);
-  let m=(eh*60+em)-(sh*60+sm); if(m<0)m+=1440;
-  document.getElementById('totalWorkHours').textContent=((m/60)-b).toFixed(1);
-}
-function calculateTotalWorkerHours() {
-  let t=0;
-  document.querySelectorAll('#workersContainer .form-row').forEach(r=>{
-    t+=(parseInt(r.querySelector('.worker-count').value)||0)*(parseFloat(r.querySelector('.worker-hours').value)||0);
-  });
-  document.getElementById('totalWorkerHours').textContent=t.toFixed(1);
-}
-
-// ── VOICE ───────────────────────────────────────
-function initializeVoiceRecognition() {
-  if(!('webkitSpeechRecognition' in window||'SpeechRecognition' in window)) return;
-  const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
-  voiceRecognition=new SR();
-  voiceRecognition.lang='he-IL'; voiceRecognition.continuous=true; voiceRecognition.interimResults=true;
-  voiceRecognition.onresult=e=>{
-    let final='';
-    for(let i=e.resultIndex;i<e.results.length;i++) if(e.results[i].isFinal) final+=e.results[i][0].transcript+' ';
-    if(currentVoiceTarget&&final){const el=document.getElementById(currentVoiceTarget);if(el)el.value+=final;}
-  };
-  voiceRecognition.onerror=e=>{
-    if(e.error==='no-speech') alert('לא זוהה דיבור. נסה שוב.');
-    else if(e.error==='not-allowed') alert('נא לאשר גישה למיקרופון.');
-    stopVoiceRecording();
-  };
-  voiceRecognition.onend=()=>{
-    setTimeout(()=>{
-      if(document.getElementById('voiceIndicator').style.display==='flex'){
-        try{voiceRecognition.start();}catch(e){stopVoiceRecording();}
-      }
-    },100);
-  };
-}
-function startVoiceRecording(targetId) {
-  if(!voiceRecognition){alert('הקלטה קולית לא נתמכת');return;}
-  currentVoiceTarget=targetId;
-  document.getElementById('voiceIndicator').style.display='flex';
-  try{voiceRecognition.start();}catch(e){stopVoiceRecording();}
-}
-function stopVoiceRecording() {
-  if(voiceRecognition){try{voiceRecognition.stop();}catch(e){}}
-  document.getElementById('voiceIndicator').style.display='none';
-  setTimeout(()=>{currentVoiceTarget=null;},1000);
-}
-
-// ── SIGNATURE ───────────────────────────────────
-function initSignaturePad(canvasId) {
-  const canvas=document.getElementById(canvasId); if(!canvas)return;
-  const ctx=canvas.getContext('2d'); canvas.width=400; canvas.height=100;
-  let drawing=false,lx=0,ly=0;
-  function getPos(e){const r=canvas.getBoundingClientRect(),t=e.touches?e.touches[0]:e;return{x:(t.clientX-r.left)*(canvas.width/r.width),y:(t.clientY-r.top)*(canvas.height/r.height)};}
-  function start(e){e.preventDefault();drawing=true;const p=getPos(e);lx=p.x;ly=p.y;}
-  function draw(e){if(!drawing)return;e.preventDefault();const p=getPos(e);ctx.beginPath();ctx.moveTo(lx,ly);ctx.lineTo(p.x,p.y);ctx.strokeStyle='#000';ctx.lineWidth=2;ctx.stroke();lx=p.x;ly=p.y;}
-  function stop(){drawing=false;}
-  canvas.addEventListener('mousedown',start);canvas.addEventListener('mousemove',draw);canvas.addEventListener('mouseup',stop);canvas.addEventListener('mouseout',stop);
-  canvas.addEventListener('touchstart',start,{passive:false});canvas.addEventListener('touchmove',draw,{passive:false});canvas.addEventListener('touchend',stop);
-  if(canvasId==='signatureCanvas') signaturePad=canvas; else ownerSignaturePad=canvas;
-}
-function clearSignature(){if(signaturePad){const c=signaturePad.getContext('2d');c.clearRect(0,0,signaturePad.width,signaturePad.height);}}
-function clearOwnerSignature(){if(ownerSignaturePad){const c=ownerSignaturePad.getContext('2d');c.clearRect(0,0,ownerSignaturePad.width,ownerSignaturePad.height);}}
-
-// ── DYNAMIC ROWS ────────────────────────────────
-function addWorkerRow() {
-  const c=document.getElementById('workersContainer');
-  const r=document.createElement('div'); r.className='form-row';
-  r.innerHTML='<input type="text" placeholder="תפקיד" class="worker-role"><input type="number" placeholder="מספר" class="worker-count" value="1"><input type="number" placeholder="שעות" step="0.5" class="worker-hours" value="8">';
-  c.appendChild(r);
-  r.querySelector('.worker-count').addEventListener('input',calculateTotalWorkerHours);
-  r.querySelector('.worker-hours').addEventListener('input',calculateTotalWorkerHours);
-  calculateTotalWorkerHours();
-}
-function addActivityRow() {
-  const c=document.getElementById('activitiesContainer');
-  const r=document.createElement('div'); r.className='form-row';
-  r.innerHTML='<input type="text" placeholder="תיאור" class="activity-desc"><input type="text" placeholder="מיקום" class="activity-location"><input type="text" placeholder="כמות" class="activity-quantity">';
-  c.appendChild(r);
-}
-function addMaterialRow() {
-  const c=document.getElementById('materialsContainer');
-  const r=document.createElement('div'); r.className='dynamic-row';
-  r.innerHTML='<button type="button" class="remove-row" onclick="this.parentElement.remove()">×</button><div class="form-row four-col"><input type="text" placeholder="סוג חומר" class="material-type"><input type="text" placeholder="כמות" class="material-quantity"><input type="text" placeholder="יחידה (ק״ג/מ״ר/יח׳)" class="material-unit"><input type="text" placeholder="ספק" class="material-supplier"></div><input type="datetime-local" class="material-delivery-time" style="margin-top:8px">';
-  c.appendChild(r);
-}
-function addEquipmentRow() {
-  const c=document.getElementById('equipmentContainer');
-  const r=document.createElement('div'); r.className='dynamic-row';
-  r.innerHTML='<button type="button" class="remove-row" onclick="this.parentElement.remove()">×</button><div class="form-row three-col"><input type="text" placeholder="סוג ציוד/מכונה" class="equipment-type"><input type="number" placeholder="שעות שימוש" step="0.5" class="equipment-hours"><select class="equipment-rental"><option value="false">בבעלות</option><option value="true">השכרה</option></select></div><textarea placeholder="תקלות/בעיות (אופציונלי)" class="equipment-issues" rows="2" style="margin-top:8px"></textarea>';
-  c.appendChild(r);
-}
-function addSafetyRow() {
-  const c=document.getElementById('safetyContainer');
-  const r=document.createElement('div'); r.className='dynamic-row critical-row';
-  r.innerHTML='<button type="button" class="remove-row" onclick="this.parentElement.remove()">×</button><div class="form-row three-col"><select class="safety-type"><option value="">סוג אירוע</option><option value="near-miss">כמעט תאונה</option><option value="violation">הפרת בטיחות</option><option value="injury">פציעה קלה</option><option value="serious">אירוע חמור</option><option value="safe">אין אירועים - הכל תקין</option></select><select class="safety-severity"><option value="low">חומרה נמוכה</option><option value="medium">חומרה בינונית</option><option value="high">חומרה גבוהה</option></select></div><textarea placeholder="תיאור האירוע" class="safety-description" rows="2" style="margin-top:8px"></textarea><textarea placeholder="פעולה מתקנת שבוצעה" class="safety-corrective" rows="2" style="margin-top:8px"></textarea>';
-  c.appendChild(r);
-}
-function addInspectionRow() {
-  const c=document.getElementById('inspectionsContainer');
-  const r=document.createElement('div'); r.className='dynamic-row critical-row';
-  r.innerHTML='<button type="button" class="remove-row" onclick="this.parentElement.remove()">×</button><div class="form-row three-col"><input type="text" placeholder="שם המפקח" class="inspector-name"><select class="inspector-role"><option value="">תפקיד</option><option value="building">מפקח בניה</option><option value="safety">מפקח בטיחות</option><option value="quality">בקרת איכות</option><option value="client">נציג לקוח</option><option value="engineer">מהנדס</option></select><input type="datetime-local" class="inspection-time"></div><textarea placeholder="ממצאים" class="inspection-findings" rows="2" style="margin-top:8px"></textarea><textarea placeholder="תיקונים נדרשים" class="inspection-corrections" rows="2" style="margin-top:8px"></textarea>';
-  c.appendChild(r);
-}
-function addDelayRow() {
-  const c=document.getElementById('delaysContainer');
-  const r=document.createElement('div'); r.className='dynamic-row';
-  r.innerHTML='<button type="button" class="remove-row" onclick="this.parentElement.remove()">×</button><div class="form-row three-col"><select class="delay-reason"><option value="">סיבת עיכוב</option><option value="weather">מזג אוויר</option><option value="materials">חוסר חומרים</option><option value="equipment">תקלת ציוד</option><option value="client">לקוח</option><option value="permits">היתרים/אישורים</option><option value="workers">כוח אדם</option><option value="other">אחר</option></select><select class="delay-responsible"><option value="">גורם אחראי</option><option value="client">לקוח</option><option value="contractor">קבלן</option><option value="supplier">ספק</option><option value="authority">רשות</option><option value="force-majeure">כוח עליון</option></select><input type="number" placeholder="השפעה (שעות)" step="0.5" class="delay-hours"></div><textarea placeholder="תיאור מפורט" class="delay-description" rows="2" style="margin-top:8px"></textarea>';
-  c.appendChild(r);
-}
-
-// ── PHOTOS ──────────────────────────────────────
-function handlePhotoSelection(e){selectedPhotos=[...selectedPhotos,...Array.from(e.target.files)];renderPhotos('photoPreview',selectedPhotos,'removePhoto');}
-function handleOwnerPhotoSelection(e){selectedOwnerPhotos=[...selectedOwnerPhotos,...Array.from(e.target.files)];renderPhotos('ownerPhotoPreview',selectedOwnerPhotos,'removeOwnerPhoto');}
-function renderPhotos(containerId,photos,removeFn){
-  const p=document.getElementById(containerId); p.innerHTML='';
-  photos.forEach((f,i)=>{const r=new FileReader();r.onload=e=>{const d=document.createElement('div');d.className='photo-item';d.innerHTML=`<img src="${e.target.result}"><button class="remove-photo" onclick="${removeFn}(${i})">×</button>`;p.appendChild(d);};r.readAsDataURL(f);});
-}
-function removePhoto(i){selectedPhotos.splice(i,1);renderPhotos('photoPreview',selectedPhotos,'removePhoto');}
-function removeOwnerPhoto(i){selectedOwnerPhotos.splice(i,1);renderPhotos('ownerPhotoPreview',selectedOwnerPhotos,'removeOwnerPhoto');}
-
-// ── CONTRACTORS ─────────────────────────────────
-const OCCUPATION_OPTIONS = [
-  '','בטון ועבודות עפר','ביוב וצנרת','בנייה כללית','גבס ופנים','גגות ואיטום',
-  'חשמל ותאורה','טיח וצבע','כבישים ופיתוח','מדרכות וריצוף חוץ','מסגרות ומתכת',
-  'מעליות','עבודות עץ ונגרות','ריצוף וחיפוי','שיפוץ ושחזור','תקשורת ואינטרנט',
-  'קירור ומיזוג אוויר','אחר'
-];
-
-function addContractorRow(data={}) {
-  const tbody = document.getElementById('contractorsBody');
-  // Remove empty-state row if present
-  const emptyRow = tbody.querySelector('.contractors-empty');
-  if(emptyRow) emptyRow.closest('tr').remove();
-
-  const tr = document.createElement('tr');
-  tr.innerHTML = `
-    <td><input type="text" placeholder="שם חברה / קבלן" class="contr-company" value="${data.company_name||''}"></td>
-    <td><input type="text" placeholder="שם איש קשר" class="contr-contact" value="${data.contact_name||''}"></td>
-    <td><input type="tel"  placeholder="05X-XXXXXXX"  class="contr-mobile"  value="${data.mobile||''}" style="min-width:120px"></td>
-    <td><input type="tel"  placeholder="0X-XXXXXXX"   class="contr-office"  value="${data.office_tel||''}" style="min-width:110px"></td>
-    <td>
-      <select class="contr-occupation">
-        ${OCCUPATION_OPTIONS.map(o=>`<option value="${o}" ${o===data.main_occupation?'selected':''}>${o||'— בחר עיסוק —'}</option>`).join('')}
-      </select>
-    </td>
-    <td><input type="text" placeholder="מה הוא עושה בפרוייקט זה?" class="contr-activity" value="${data.project_activity||''}" style="min-width:160px"></td>
-    <td class="td-actions">
-      <button type="button" class="btn-remove-contractor" onclick="removeContractorRow(this)" title="הסר">×</button>
-    </td>`;
-  tbody.appendChild(tr);
-}
-
-function removeContractorRow(btn) {
-  const tbody = document.getElementById('contractorsBody');
-  btn.closest('tr').remove();
-  if(tbody.rows.length === 0) {
-    const tr = document.createElement('tr');
-    tr.innerHTML = '<td colspan="7" class="contractors-empty">לחץ ״➕ הוסף קבלן״ להוספת שורה</td>';
-    tbody.appendChild(tr);
-  }
-}
-
-function collectContractors() {
-  const rows = [];
-  document.querySelectorAll('#contractorsBody tr:not(:has(.contractors-empty))').forEach(tr => {
-    const company = tr.querySelector('.contr-company')?.value?.trim();
-    const contact = tr.querySelector('.contr-contact')?.value?.trim();
-    if(company || contact) {
-      rows.push({
-        company_name:      company || '',
-        contact_name:      contact || '',
-        mobile:            tr.querySelector('.contr-mobile')?.value?.trim()  || null,
-        office_tel:        tr.querySelector('.contr-office')?.value?.trim()  || null,
-        main_occupation:   tr.querySelector('.contr-occupation')?.value      || null,
-        project_activity:  tr.querySelector('.contr-activity')?.value?.trim()|| null,
-      });
-    }
-  });
-  return rows;
-}
-
-
-function collectFormData() {
-  const workers=[],activities=[],materials=[],equipment=[],safety=[],inspections=[],delays=[];
-  document.querySelectorAll('#workersContainer .form-row').forEach(r=>{const role=r.querySelector('.worker-role').value;if(role)workers.push({role,worker_count:parseInt(r.querySelector('.worker-count').value)||0,hours_worked:parseFloat(r.querySelector('.worker-hours').value)||0});});
-  document.querySelectorAll('#activitiesContainer .form-row').forEach(r=>{const d=r.querySelector('.activity-desc').value;if(d)activities.push({description:d,location:r.querySelector('.activity-location').value,quantity:r.querySelector('.activity-quantity').value});});
-  document.querySelectorAll('#materialsContainer .dynamic-row').forEach(r=>{const t=r.querySelector('.material-type').value,q=r.querySelector('.material-quantity').value;if(t&&q)materials.push({material_type:t,quantity:q,unit:r.querySelector('.material-unit').value,supplier:r.querySelector('.material-supplier').value,delivery_time:r.querySelector('.material-delivery-time').value||null});});
-  document.querySelectorAll('#equipmentContainer .dynamic-row').forEach(r=>{const t=r.querySelector('.equipment-type').value;if(t)equipment.push({equipment_type:t,hours_used:parseFloat(r.querySelector('.equipment-hours').value)||0,rental:r.querySelector('.equipment-rental').value==='true',issues:r.querySelector('.equipment-issues').value});});
-  document.querySelectorAll('#safetyContainer .dynamic-row').forEach(r=>{const t=r.querySelector('.safety-type').value,d=r.querySelector('.safety-description').value;if(t&&d)safety.push({incident_type:t,severity:r.querySelector('.safety-severity').value,description:d,corrective_action:r.querySelector('.safety-corrective').value});});
-  document.querySelectorAll('#inspectionsContainer .dynamic-row').forEach(r=>{const n=r.querySelector('.inspector-name').value,role=r.querySelector('.inspector-role').value;if(n&&role)inspections.push({inspector_name:n,inspector_role:role,inspection_time:r.querySelector('.inspection-time').value||null,findings:r.querySelector('.inspection-findings').value,required_corrections:r.querySelector('.inspection-corrections').value});});
-  document.querySelectorAll('#delaysContainer .dynamic-row').forEach(r=>{const rs=r.querySelector('.delay-reason').value,rsp=r.querySelector('.delay-responsible').value,d=r.querySelector('.delay-description').value;if(rs&&rsp&&d)delays.push({delay_reason:rs,responsible_party:rsp,impact_hours:parseFloat(r.querySelector('.delay-hours').value)||0,description:d});});
-  const s=document.getElementById('startTime').value, e=document.getElementById('endTime').value;
-  const b=parseFloat(document.getElementById('breakHours').value)||0;
-  let totalWorkHours=0;
-  if(s&&e){const[sh,sm]=s.split(':').map(Number),[eh,em]=e.split(':').map(Number);let m=(eh*60+em)-(sh*60+sm);if(m<0)m+=1440;totalWorkHours=(m/60)-b;}
-  return{report_number:currentReportNumber,project_name:document.getElementById('projectName').value||'ללא שם',report_date:document.getElementById('reportDate').value,manager_name:'אבשי ספיר',weather:document.getElementById('weather').value,start_time:s||null,end_time:e||null,break_hours:b,total_work_hours:totalWorkHours,general_notes:document.getElementById('generalNotes').value,tomorrow_date:document.getElementById('tomorrowDate').value,tomorrow_plan:document.getElementById('tomorrowPlan').value,workers,activities,materials,equipment,safety,inspections,delays,contractors:collectContractors()};
-}
-
-// ── SAVE / SEND ─────────────────────────────────
-async function saveDraft() {
-  showLoading(true);
-  try {
-    const data=collectFormData();
-    if(!data.project_name){alert('נא למלא שם פרוייקט');showLoading(false);return;}
-    const sig=await uploadSignature(signaturePad,'manager');
-    const{data:report,error}=await supabaseClient.from('reports').insert({...data,manager_signature_path:sig,status:'draft'}).select().single();
-    if(error) throw error;
-    await saveRelatedData(report.id,data);
-    await uploadPhotos(report.id,selectedPhotos,'manager');
-    alert('טיוטה נשמרה!');
-  } catch(e){alert('שגיאה: '+e.message);}
-  finally{showLoading(false);}
-}
-async function sendReport() {
-  showLoading(true);
-  try {
-    const data=collectFormData();
-    if(!data.project_name){alert('נא למלא שם פרוייקט');showLoading(false);return;}
-    const sig=await uploadSignature(signaturePad,'manager');
-    const{data:report,error}=await supabaseClient.from('reports').insert({...data,manager_signature_path:sig,status:'sent',sent_at:new Date().toISOString()}).select().single();
-    if(error) throw error;
-    await saveRelatedData(report.id,data);
-    await uploadPhotos(report.id,selectedPhotos,'manager');
-    const url=`${window.location.origin}${window.location.pathname}?token=${report.share_token}`;
-    const msg=`דוח עבודה יומי\n\nמספר: ${data.report_number}\nמנהל: אבשי ספיר\nפרוייקט: ${data.project_name}\nתאריך: ${data.report_date}\n\nלאישור:\n${url}\n\n050-5231042`;
-    window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`);
-    alert('דוח נשלח!\n\n'+url);
-  } catch(e){alert('שגיאה: '+e.message);}
-  finally{showLoading(false);}
-}
-async function saveRelatedData(reportId,data) {
-  const tables=[['workers',data.workers],['activities',data.activities],['materials',data.materials],['equipment',data.equipment],['safety_incidents',data.safety],['inspections',data.inspections],['delays',data.delays],['project_contractors',data.contractors]];
-  for(const[t,rows] of tables) if(rows&&rows.length>0) await supabaseClient.from(t).insert(rows.map(r=>({...r,report_id:reportId})));
-}
-async function uploadSignature(canvas,type) {
-  if(!canvas) return null;
-  const blob=await new Promise(res=>canvas.toBlob(res));
-  const fn=`${type}_${Date.now()}.png`;
-  const{data,error}=await supabaseClient.storage.from('signatures').upload(fn,blob);
-  if(error) throw error;
-  return data.path;
-}
-async function uploadPhotos(reportId,photos,by) {
-  for(let i=0;i<photos.length;i++){
-    const f=photos[i],fn=`${reportId}_${by}_${Date.now()}_${i}.jpg`;
-    const{data,error}=await supabaseClient.storage.from('photos').upload(fn,f);
-    if(error) throw error;
-    await supabaseClient.from('photos').insert({report_id:reportId,storage_path:data.path,file_size:f.size});
-  }
-}
-
-// ── OWNER VIEW ──────────────────────────────────
-async function loadReportForOwner(token) {
-  showLoading(true);
-  try {
-    const{data,error}=await supabaseClient.rpc('get_full_report',{report_token:token});
-    if(error) throw error;
-    if(!data||!data.report){alert('דוח לא נמצא');return;}
-    currentReport=data; displayReportForOwner(data);
-    document.getElementById('managerView').style.display='none';
-    document.getElementById('ownerView').style.display='block';
-    initSignaturePad('ownerSignature');
-    document.getElementById('ownerPhotoInput').addEventListener('change',handleOwnerPhotoSelection);
-    document.getElementById('voiceRemarksBtn').addEventListener('click',()=>startVoiceRecording('ownerRemarks'));
-  } catch(e){alert('שגיאה: '+e.message);}
-  finally{showLoading(false);}
-}
-function displayReportForOwner(data) {
-  const rep=data.report;
-  const pn=document.getElementById('printReportNumber');
-  if(pn&&rep.report_number) pn.innerHTML=`<div style="text-align:center;font-size:18px;font-weight:bold;color:#667eea;">אישור עבודה מספר: ${rep.report_number}</div><div style="text-align:center;font-size:12px;color:#666;">${rep.report_date}</div>`;
-  let html='<div class="section">';
-  if(rep.report_number) html+=`<div style="background:#f0f7ff;padding:10px;border-radius:8px;margin-bottom:15px;text-align:center;"><strong style="color:#667eea;">מספר דוח:</strong> <span style="font-family:monospace;font-size:18px;font-weight:bold;">${rep.report_number}</span></div>`;
-  html+=`<h2>📋 ${rep.project_name}</h2><p><strong>תאריך:</strong> ${rep.report_date}</p><p><strong>מנהל:</strong> ${rep.manager_name}</p>`;
-  if(rep.weather) html+=`<p><strong>מזג אוויר:</strong> ${rep.weather}</p>`;
-  if(rep.start_time&&rep.end_time) html+=`<p><strong>שעות עבודה:</strong> ${rep.start_time} - ${rep.end_time}${rep.total_work_hours?` (סה"כ: ${rep.total_work_hours} שעות)`:''}</p>`;
-  if(rep.general_notes) html+=`<p><strong>הערות:</strong> ${rep.general_notes}</p>`;
-  if(rep.tomorrow_plan) html+=`<hr style="margin:15px 0;border:1px solid #e1e8ed"><h3>📅 תוכנית למחר</h3>${rep.tomorrow_date?`<p><strong>תאריך:</strong> ${rep.tomorrow_date}</p>`:''}<p>${rep.tomorrow_plan}</p>`;
-  const secs=[
-    ['contractors','🏗️ קבלני הפרוייקט',c=>`• ${c.company_name}${c.contact_name?' — '+c.contact_name:''}${c.mobile?' 📱 '+c.mobile:''}${c.office_tel?' ☎️ '+c.office_tel:''}${c.main_occupation?' | '+c.main_occupation:''}${c.project_activity?' → '+c.project_activity:''}`],
-    ['workers','👷 כוח אדם',w=>`• ${w.role}: ${w.worker_count} עובדים × ${w.hours_worked} שעות`],
-    ['activities','🔨 פעילויות',a=>`• ${a.description}${a.location?' - '+a.location:''}${a.quantity?' ('+a.quantity+')':''}`],
-    ['materials','📦 אספקות חומרים',m=>`• ${m.material_type}: ${m.quantity}${m.unit?' '+m.unit:''}${m.supplier?' ('+m.supplier+')':''}`],
-    ['equipment','🚜 ציוד ומכונות',e=>`• ${e.equipment_type}${e.hours_used?' ('+e.hours_used+' שעות)':''}${e.rental?' [השכרה]':''}`],
-    ['safety','⚠️ בטיחות',s=>`• ${s.description}${s.corrective_action?' - '+s.corrective_action:''}`],
-    ['inspections','👮 ביקורות ופיקוח',i=>`• ${i.inspector_name} (${i.inspector_role})${i.findings?' - '+i.findings:''}`],
-    ['delays','⏰ עיכובים',d=>`• ${d.description}${d.impact_hours?' ('+d.impact_hours+' שעות)':''}`],
-  ];
-  secs.forEach(([k,t,f])=>{
-    if(data[k]&&data[k].length>0){
-      html+=`<hr style="margin:15px 0;border:1px solid #e1e8ed"><h3>${t}</h3>`;
-      data[k].forEach(item=>{html+=`<p>${f(item)}</p>`;});
-    }
-  });
-  if(data.photos&&data.photos.length>0){
-    html+='<hr style="margin:15px 0;border:1px solid #e1e8ed"><h3>📸 תמונות מהאתר</h3><div class="photo-preview">';
-    data.photos.forEach(p=>{html+=`<div class="photo-item"><img src="${SUPABASE_URL}/storage/v1/object/public/photos/${p.storage_path}"></div>`;});
-    html+='</div>';
-  }
-  if(rep.manager_signature_path) html+=`<hr style="margin:15px 0;border:1px solid #e1e8ed"><h3>✍️ חתימת מנהל העבודה</h3><div style="text-align:center;padding:10px;"><img src="${SUPABASE_URL}/storage/v1/object/public/signatures/${rep.manager_signature_path}" style="max-width:300px;border:2px solid #667eea;border-radius:8px;padding:10px;background:white;"><p style="margin-top:10px;color:#666;">חתימה דיגיטלית: ${rep.manager_name}</p></div>`;
-  html+='</div>';
-  document.getElementById('reportDetails').innerHTML=html;
-}
-async function approveReport() {
-  const name=document.getElementById('ownerName').value;
-  if(!name){alert('נא למלא שם');return;}
-  showLoading(true);
-  try {
-    const sig=await uploadSignature(ownerSignaturePad,'owner');
-    if(selectedOwnerPhotos.length>0) await uploadPhotos(currentReport.report.id,selectedOwnerPhotos,'owner');
-    await supabaseClient.from('reports').update({status:'approved',approved_at:new Date().toISOString(),owner_signature_path:sig}).eq('id',currentReport.report.id);
-    await supabaseClient.from('approvals').insert({report_id:currentReport.report.id,owner_name:name,remarks:document.getElementById('ownerRemarks').value,signature_path:sig});
-    alert('דוח אושר!');
-    const msg=`דוח אושר\n${currentReport.report.project_name}\n${name}\n${currentReport.report.report_date}${selectedOwnerPhotos.length>0?`\n${selectedOwnerPhotos.length} תמונות נוספו`:''}`;
-    window.open(`https://wa.me/972505231042?text=${encodeURIComponent(msg)}`);
-  } catch(e){alert('שגיאה: '+e.message);}
-  finally{showLoading(false);}
-}
-
-function printReport(){window.print();}
-function showLoading(show){document.getElementById('loading').style.display=show?'flex':'none';}
-console.log('✅ Work Journal - Stonhard - Loaded OK');
-</script>
-</body>
-</html>

@@ -1,0 +1,44 @@
+<div style="padding:54px 0 0;min-height:100vh;background:#1a1a2e;font-family:Heebo,sans-serif;direction:rtl;display:flex;flex-direction:column">
+
+  <div style="padding:16px 24px 0;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
+    <h1 style="font-size:22px;font-weight:900;color:#fff">📅 יומן Google</h1>
+    <div style="display:flex;gap:6px">
+      <button class="gcal-view-btn active-gcal" data-view="agenda" onclick="switchGcalView('agenda')"
+        style="background:rgba(154,111,0,0.3);border:1px solid #9a6f00;color:#f59e0b;padding:7px 16px;border-radius:20px;cursor:pointer;font-family:Heebo,sans-serif;font-size:12px;font-weight:700">
+        📋 אג׳נדה
+      </button>
+      <button class="gcal-view-btn" data-view="week" onclick="switchGcalView('week')"
+        style="background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.15);color:#ccc;padding:7px 16px;border-radius:20px;cursor:pointer;font-family:Heebo,sans-serif;font-size:12px;font-weight:700">
+        📆 שבוע
+      </button>
+      <button class="gcal-view-btn" data-view="month" onclick="switchGcalView('month')"
+        style="background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.15);color:#ccc;padding:7px 16px;border-radius:20px;cursor:pointer;font-family:Heebo,sans-serif;font-size:12px;font-weight:700">
+        🗓️ חודש
+      </button>
+    </div>
+  </div>
+
+  <div style="flex:1;padding:12px 16px 20px;display:flex;flex-direction:column;gap:12px">
+    <div id="gcal-agenda" class="gcal-view" style="flex:1;border-radius:14px;overflow:hidden;border:1px solid rgba(255,255,255,0.08)">
+      <iframe id="iframe-agenda" src="about:blank"
+        data-src="https://calendar.google.com/calendar/embed?mode=AGENDA&showTitle=0&showNav=1&showDate=1&showPrint=1&showTabs=0&showCalendars=0&showTz=0&hl=he&ctz=Asia%2FJerusalem"
+        style="width:100%;height:calc(100vh - 160px);border:none;display:block;background:#fff"
+        title="Google Calendar Agenda"></iframe>
+    </div>
+    <div id="gcal-week" class="gcal-view" style="display:none;flex:1;border-radius:14px;overflow:hidden;border:1px solid rgba(255,255,255,0.08)">
+      <iframe id="iframe-week" src="about:blank"
+        data-src="https://calendar.google.com/calendar/embed?mode=WEEK&showTitle=0&showNav=1&showDate=1&showPrint=1&showTabs=0&showCalendars=0&showTz=0&hl=he&ctz=Asia%2FJerusalem"
+        style="width:100%;height:calc(100vh - 160px);border:none;display:block;background:#fff"
+        title="Google Calendar Week"></iframe>
+    </div>
+    <div id="gcal-month" class="gcal-view" style="display:none;flex:1;border-radius:14px;overflow:hidden;border:1px solid rgba(255,255,255,0.08)">
+      <iframe id="iframe-month" src="about:blank"
+        data-src="https://calendar.google.com/calendar/embed?mode=MONTH&showTitle=0&showNav=1&showDate=1&showPrint=1&showTabs=0&showCalendars=0&showTz=0&hl=he&ctz=Asia%2FJerusalem"
+        style="width:100%;height:calc(100vh - 160px);border:none;display:block;background:#fff"
+        title="Google Calendar Month"></iframe>
+    </div>
+    <div style="text-align:center;font-size:10px;color:#444">
+      לחץ על האירוע ביומן Google להוספה ועריכה ישירה
+    </div>
+  </div>
+</div>
