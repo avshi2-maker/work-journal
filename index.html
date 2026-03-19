@@ -48,7 +48,8 @@
   <div class="nav-item" onclick="showPage('finance')" id="nav-finance"><span class="nav-icon">💰</span><span>כספים</span></div>
   <div class="nav-item" onclick="showPage('forecast')" id="nav-forecast"><span class="nav-icon">📈</span><span>תחזית הכנסות</span></div>
   <div class="nav-item" onclick="showPage('reports')" id="nav-reports"><span class="nav-icon">📄</span><span>דוחות פרויקטים</span></div>
-  <div class="nav-item" onclick="showPage('purchase-orders')" id="nav-purchase-orders"><span class="nav-icon">🏷️</span><span>הזמנות עבודה</span><span class="nav-badge" id="badge-po">0</span></div>
+  <div class="nav-item" onclick="showPage('new-po')" id="nav-new-po"><span class="nav-icon">📄</span><span>פתיחת הזמנות עבודה</span></div>
+  <div class="nav-item" onclick="showPage('purchase-orders')" id="nav-purchase-orders"><span class="nav-icon">🏷️</span><span>דוחות הזמנות עבודה</span><span class="nav-badge" id="badge-po">0</span></div>
   <a href="#" onclick="switchTab('journal')" style="text-decoration:none;">
     <div class="nav-item" style="background:linear-gradient(90deg,rgba(154,111,0,0.18),transparent);color:#9a6f00;border-right:3px solid #9a6f00;margin-top:8px;">
       <span class="nav-icon">📝</span><span style="font-weight:700;">יומן עבודה</span>
@@ -238,6 +239,124 @@
       </div>
       <div style="background:white;border-radius:12px;overflow:hidden;"><div style="padding:14px 18px;background:#f8fafc;border-bottom:2px solid #e1e8ed;font-weight:800;font-size:15px;color:#1a3d5c;">פירוט לפי פרויקט</div><div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:13px;"><thead><tr style="background:#f8fafc;"><th style="padding:10px 14px;text-align:right;border-bottom:1px solid #e1e8ed;">פרויקט</th><th style="padding:10px 14px;text-align:right;border-bottom:1px solid #e1e8ed;color:#1e6b30;">הכנסות</th><th style="padding:10px 14px;text-align:right;border-bottom:1px solid #e1e8ed;color:#b52a1d;">הוצאות</th><th style="padding:10px 14px;text-align:right;border-bottom:1px solid #e1e8ed;color:#1a3d5c;">מאזן</th><th style="padding:10px 14px;text-align:right;border-bottom:1px solid #e1e8ed;">תקציב</th><th style="padding:10px 14px;text-align:right;border-bottom:1px solid #e1e8ed;">% ביצוע</th></tr></thead><tbody id="pnl-projects-tbody"><tr><td colspan="6" style="text-align:center;padding:30px;color:#aaa;">טוען...</td></tr></tbody></table></div></div>
       <div style="background:white;border-radius:12px;overflow:hidden;margin-top:18px;"><div style="padding:14px 18px;background:#f0fdf4;border-bottom:2px solid #86efac;font-weight:800;font-size:15px;color:#1e6b30;">🏦 תנועות הכנסה מלקוחות</div><div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:13px;"><thead><tr style="background:#f0fdf4;"><th style="padding:9px 12px;text-align:right;border-bottom:1px solid #86efac;">תאריך</th><th style="padding:9px 12px;text-align:right;border-bottom:1px solid #86efac;">פרויקט</th><th style="padding:9px 12px;text-align:right;border-bottom:1px solid #86efac;">לקוח</th><th style="padding:9px 12px;text-align:right;border-bottom:1px solid #86efac;">סכום</th><th style="padding:9px 12px;text-align:right;border-bottom:1px solid #86efac;">תיאור</th><th style="padding:9px 12px;text-align:right;border-bottom:1px solid #86efac;">אסמכתא</th></tr></thead><tbody id="pnl-income-tbody"><tr><td colspan="6" style="text-align:center;padding:30px;color:#aaa;">אין הכנסות עדיין</td></tr></tbody></table></div></div>
+    </div>
+  </div>
+
+  <!-- NEW PO FORM PAGE -->
+  <div class="page" id="page-new-po">
+    <div class="topbar">
+      <div class="page-title">פתיחת <span>הזמנת עבודה</span></div>
+      <div class="topbar-actions">
+        <button class="btn btn-ghost" onclick="showPage('dashboard')" style="font-size:16px;padding:6px 10px;">🏠</button>
+        <span id="po-form-number-badge" style="background:#c9a84c;color:#1a1a2e;padding:4px 14px;border-radius:20px;font-size:13px;font-weight:700;letter-spacing:1px;"></span>
+      </div>
+    </div>
+
+    <!-- ORDERER + CONTRACTOR side by side -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;">
+
+      <!-- ORDERER (fixed) -->
+      <div class="card" style="padding:0;overflow:hidden;">
+        <div style="background:linear-gradient(90deg,#1a3d5c,#2d5a8a);padding:10px 16px;display:flex;align-items:center;gap:8px;">
+          <span>🏢</span><span style="font-weight:700;color:#c9a84c;font-size:14px;">המזמין</span>
+          <span style="margin-right:auto;font-size:11px;color:rgba(255,255,255,0.5);">קבוע</span>
+        </div>
+        <div style="padding:14px 16px;display:flex;flex-direction:column;gap:10px;">
+          <div><label style="font-size:11px;font-weight:600;color:#888;display:block;margin-bottom:3px;">שם</label><input type="text" id="pof-orderer-name" value="בני פרסקי ניהול פרויקטים" readonly style="width:100%;opacity:0.6;cursor:not-allowed;"></div>
+          <div><label style="font-size:11px;font-weight:600;color:#888;display:block;margin-bottom:3px;">ח.פ</label><input type="text" id="pof-orderer-hp" value="123456789" readonly style="width:100%;opacity:0.6;cursor:not-allowed;"></div>
+          <div><label style="font-size:11px;font-weight:600;color:#888;display:block;margin-bottom:3px;">כתובת</label><input type="text" id="pof-orderer-address" value="הרצליה, ישראל" readonly style="width:100%;opacity:0.6;cursor:not-allowed;"></div>
+          <div><label style="font-size:11px;font-weight:600;color:#888;display:block;margin-bottom:3px;">טלפון</label><input type="text" id="pof-orderer-phone" value="054-1234567" readonly style="width:100%;opacity:0.6;cursor:not-allowed;"></div>
+          <div><label style="font-size:11px;font-weight:600;color:#888;display:block;margin-bottom:3px;">אימייל</label><input type="text" id="pof-orderer-email" value="beni@example.com" readonly style="width:100%;opacity:0.6;cursor:not-allowed;"></div>
+        </div>
+      </div>
+
+      <!-- CONTRACTOR (editable) -->
+      <div class="card" style="padding:0;overflow:hidden;">
+        <div style="background:linear-gradient(90deg,#2d5a2d,#3a7a3a);padding:10px 16px;display:flex;align-items:center;gap:8px;">
+          <span>👷</span><span style="font-weight:700;color:#c9a84c;font-size:14px;">הקבלן</span>
+          <span style="margin-right:auto;font-size:11px;color:rgba(255,255,255,0.5);">ניתן לעריכה</span>
+        </div>
+        <div style="padding:14px 16px;display:flex;flex-direction:column;gap:10px;">
+          <div><label style="font-size:11px;font-weight:600;color:#888;display:block;margin-bottom:3px;">שם חברה / קבלן</label><input type="text" id="pof-contractor-name" placeholder="שם החברה" style="width:100%;"></div>
+          <div><label style="font-size:11px;font-weight:600;color:#888;display:block;margin-bottom:3px;">ת.ז / ח.פ</label><input type="text" id="pof-contractor-hp" placeholder="מספר חברה" style="width:100%;"></div>
+          <div><label style="font-size:11px;font-weight:600;color:#888;display:block;margin-bottom:3px;">כתובת</label><input type="text" id="pof-contractor-address" placeholder="כתובת הקבלן" style="width:100%;"></div>
+          <div><label style="font-size:11px;font-weight:600;color:#888;display:block;margin-bottom:3px;">טלפון</label><input type="tel" id="pof-contractor-phone" placeholder="054-0000000" style="width:100%;"></div>
+          <div><label style="font-size:11px;font-weight:600;color:#888;display:block;margin-bottom:3px;">אימייל</label><input type="email" id="pof-contractor-email" placeholder="email@example.com" style="width:100%;"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- PROJECT DETAILS -->
+    <div class="card" style="padding:0;overflow:hidden;margin-bottom:16px;">
+      <div style="background:linear-gradient(90deg,#4a3000,#7a5200);padding:10px 16px;display:flex;align-items:center;gap:8px;">
+        <span>🏗️</span><span style="font-weight:700;color:#c9a84c;font-size:14px;">פרטי הפרויקט</span>
+      </div>
+      <div style="padding:14px 16px;display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:12px;">
+        <div><label style="font-size:11px;font-weight:600;color:#888;display:block;margin-bottom:3px;">שם הפרויקט</label><input type="text" id="pof-project-name" placeholder="שם הפרויקט" style="width:100%;"></div>
+        <div><label style="font-size:11px;font-weight:600;color:#888;display:block;margin-bottom:3px;">מיקום</label><input type="text" id="pof-project-location" placeholder="כתובת האתר" style="width:100%;"></div>
+        <div><label style="font-size:11px;font-weight:600;color:#888;display:block;margin-bottom:3px;">תאריך התחלה</label><input type="date" id="pof-start-date" style="width:100%;"></div>
+        <div><label style="font-size:11px;font-weight:600;color:#888;display:block;margin-bottom:3px;">תאריך סיום</label><input type="date" id="pof-end-date" style="width:100%;"></div>
+        <div><label style="font-size:11px;font-weight:600;color:#888;display:block;margin-bottom:3px;">הצעת מחיר</label><input type="text" id="pof-quote-ref" placeholder="Q-2026-" style="width:100%;"></div>
+        <div><label style="font-size:11px;font-weight:600;color:#888;display:block;margin-bottom:3px;">מינוי / מכרז</label><input type="text" id="pof-tender-ref" placeholder="מכרז 01/2026" style="width:100%;"></div>
+        <div><label style="font-size:11px;font-weight:600;color:#888;display:block;margin-bottom:3px;">מקור תקציב</label><input type="text" id="pof-budget-source" placeholder="תקציב 2026-01" style="width:100%;"></div>
+        <div><label style="font-size:11px;font-weight:600;color:#888;display:block;margin-bottom:3px;">תנאי תשלום</label>
+          <select id="pof-payment-terms" style="width:100%;">
+            <option>שוטף + 30 ימים מאישור חשבון</option>
+            <option>שוטף + 45 ימים מאישור חשבון</option>
+            <option>שוטף + 60 ימים מאישור חשבון</option>
+            <option>מזומן</option>
+            <option>אחר</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <!-- WORK ITEMS TABLE -->
+    <div class="card" style="padding:0;overflow:hidden;margin-bottom:16px;">
+      <div style="background:linear-gradient(90deg,#2a1a4a,#3d2a6a);padding:10px 16px;display:flex;align-items:center;gap:8px;">
+        <span>🔧</span><span style="font-weight:700;color:#c9a84c;font-size:14px;">תיאור העבודה</span>
+        <span style="margin-right:auto;font-size:11px;color:rgba(255,255,255,0.5);">שורות ניתנות לעריכה</span>
+      </div>
+      <div style="padding:12px;overflow-x:auto;">
+        <table style="width:100%;border-collapse:collapse;font-size:13px;" id="pof-items-table">
+          <thead>
+            <tr style="background:#f8f9fa;">
+              <th style="padding:8px 6px;text-align:center;width:32px;color:#888;">#</th>
+              <th style="padding:8px 6px;text-align:right;min-width:200px;">תיאור העבודה</th>
+              <th style="padding:8px 6px;text-align:center;width:90px;">יחידה</th>
+              <th style="padding:8px 6px;text-align:center;width:80px;">כמות</th>
+              <th style="padding:8px 6px;text-align:left;width:110px;">מחיר יחידה</th>
+              <th style="padding:8px 6px;text-align:center;width:60px;">מע"מ</th>
+              <th style="padding:8px 6px;text-align:left;width:120px;color:#c9a84c;">סה"כ כולל מע"מ</th>
+              <th style="width:30px;"></th>
+            </tr>
+          </thead>
+          <tbody id="pof-items-body"></tbody>
+        </table>
+        <button onclick="pofAddRow()" style="margin-top:8px;width:100%;background:none;border:2px dashed #ddd;border-radius:8px;padding:8px;cursor:pointer;color:#999;font-family:Heebo,sans-serif;font-size:13px;transition:all 0.2s;" onmouseover="this.style.borderColor='#c9a84c';this.style.color='#c9a84c';" onmouseout="this.style.borderColor='#ddd';this.style.color='#999';">+ הוסף שורה</button>
+
+        <!-- Totals -->
+        <div style="display:flex;justify-content:flex-start;margin-top:12px;">
+          <div style="background:#f8f9fa;border:1px solid #eee;border-radius:10px;padding:12px 18px;min-width:280px;">
+            <div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid #eee;font-size:13px;"><span style="color:#888;">סכום ללא מע"מ</span><span id="pof-total-no-vat" style="font-weight:600;direction:ltr;">₪ 0.00</span></div>
+            <div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid #eee;font-size:13px;"><span style="color:#888;">מע"מ (18%)</span><span id="pof-total-vat" style="font-weight:600;direction:ltr;">₪ 0.00</span></div>
+            <div style="display:flex;justify-content:space-between;padding:8px 0 4px;font-size:16px;font-weight:800;color:#1a3d5c;border-top:2px solid #c9a84c;margin-top:4px;"><span>סה"כ לתשלום</span><span id="pof-total-all" style="direction:ltr;">₪ 0.00</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- NOTES -->
+    <div class="card" style="margin-bottom:16px;">
+      <label style="font-size:11px;font-weight:600;color:#888;display:block;margin-bottom:6px;">📝 הערות ותנאים מיוחדים</label>
+      <textarea id="pof-notes" rows="3" placeholder="הערות, תנאים מיוחדים, הפניה לחוזה הראשי..." style="width:100%;resize:vertical;">הזמנה זו כפופה לחוזה הראשי ולנספחי הבטיחות</textarea>
+    </div>
+
+    <!-- ACTIONS -->
+    <div style="display:flex;gap:12px;flex-wrap:wrap;justify-content:center;padding-bottom:40px;">
+      <button class="btn btn-primary" onclick="pofSaveAndPDF()">📄 שמור ב-Supabase + צור PDF</button>
+      <button onclick="pofSendWhatsApp()" style="background:#25D366;color:white;border:none;border-radius:10px;padding:10px 22px;font-size:14px;font-weight:700;cursor:pointer;font-family:Heebo,sans-serif;">💬 שלח WhatsApp</button>
+      <button class="btn btn-ghost" onclick="pofReset()">🔄 איפוס טופס</button>
     </div>
   </div>
 
@@ -930,6 +1049,336 @@ async function approveReport(){const name=document.getElementById('ownerName').v
 function printReport(){window.print();}
 
 console.log('✅ All modules loaded — Notes, GCal, Journal ready');
+
+// ══════════════════════════════════════════════════════
+// PO FORM — פתיחת הזמנות עבודה
+// ══════════════════════════════════════════════════════
+const POF_VAT = 0.18;
+let pofRowCount = 0;
+const POF_UNITS = ["ס\"ע","מ\"ר","מ\"ל","יח'","טון","שעות","פאושלי","קג","מ\"ק"];
+
+function pofInit() {
+  // Generate PO number
+  const now = new Date();
+  const poNum = 'PO-' + now.getFullYear() + '-' + String(Math.floor(Math.random()*9000)+1000);
+  const badge = document.getElementById('po-form-number-badge');
+  if (badge) badge.textContent = poNum;
+  badge.dataset.poNum = poNum;
+
+  // Default start date
+  const sd = document.getElementById('pof-start-date');
+  if (sd && !sd.value) sd.value = now.toISOString().split('T')[0];
+
+  // Add 3 default rows if empty
+  const tbody = document.getElementById('pof-items-body');
+  if (tbody && tbody.rows.length === 0) {
+    pofAddRow(); pofAddRow(); pofAddRow();
+  }
+}
+
+function pofAddRow(desc='', unit="ס\"ע", qty='', price='', vatOn=true) {
+  pofRowCount++;
+  const tbody = document.getElementById('pof-items-body');
+  const tr = document.createElement('tr');
+  tr.dataset.rid = pofRowCount;
+  tr.style.borderBottom = '1px solid #eee';
+
+  const unitOpts = POF_UNITS.map(u =>
+    `<option value="${u}" ${u===unit?'selected':''}>${u}</option>`
+  ).join('');
+
+  tr.innerHTML = `
+    <td style="text-align:center;color:#aaa;font-size:12px;padding:4px;">${tbody.rows.length+1}</td>
+    <td style="padding:4px;"><input type="text" value="${desc}" placeholder="תיאור הפריט / העבודה" oninput="pofRecalc()" style="width:100%;font-size:13px;"></td>
+    <td style="padding:4px;"><select onchange="pofRecalc()" style="width:100%;font-size:13px;">${unitOpts}</select></td>
+    <td style="padding:4px;"><input type="number" value="${qty}" placeholder="0" min="0" oninput="pofRecalc()" style="width:100%;text-align:center;font-size:13px;"></td>
+    <td style="padding:4px;"><input type="number" value="${price}" placeholder="0" min="0" oninput="pofRecalc()" style="width:100%;text-align:left;font-size:13px;direction:ltr;"></td>
+    <td style="text-align:center;padding:4px;"><input type="checkbox" ${vatOn?'checked':''} onchange="pofRecalc()" style="width:16px;height:16px;accent-color:#c9a84c;cursor:pointer;"></td>
+    <td style="padding:4px;font-weight:600;color:#1a3d5c;direction:ltr;text-align:left;" id="pof-row-total-${pofRowCount}">₪ 0.00</td>
+    <td style="text-align:center;padding:4px;"><button onclick="this.closest('tr').remove();pofRecalc();pofRenumber();" style="background:none;border:none;color:#e53e3e;cursor:pointer;font-size:14px;padding:2px 6px;">✕</button></td>
+  `;
+  tbody.appendChild(tr);
+  pofRecalc();
+  pofRenumber();
+}
+
+function pofRenumber() {
+  document.querySelectorAll('#pof-items-body tr').forEach((tr,i) => {
+    tr.cells[0].textContent = i+1;
+  });
+}
+
+function pofRecalc() {
+  let sumNoVat = 0;
+  document.querySelectorAll('#pof-items-body tr').forEach(tr => {
+    const inputs = tr.querySelectorAll('input[type="number"]');
+    const qty   = parseFloat(inputs[0]?.value)||0;
+    const price = parseFloat(inputs[1]?.value)||0;
+    const vat   = tr.querySelector('input[type="checkbox"]')?.checked;
+    const rid   = tr.dataset.rid;
+    const line  = qty * price;
+    const total = vat ? line*(1+POF_VAT) : line;
+    sumNoVat += line;
+    const cell = document.getElementById('pof-row-total-'+rid);
+    if (cell) cell.textContent = '₪ '+total.toLocaleString('he-IL',{minimumFractionDigits:2});
+  });
+  const vatAmt = sumNoVat * POF_VAT;
+  const grand  = sumNoVat + vatAmt;
+  const fmt = n => '₪ '+n.toLocaleString('he-IL',{minimumFractionDigits:2});
+  document.getElementById('pof-total-no-vat').textContent = fmt(sumNoVat);
+  document.getElementById('pof-total-vat').textContent    = fmt(vatAmt);
+  document.getElementById('pof-total-all').textContent    = fmt(grand);
+}
+
+function pofCollect() {
+  const rows = [];
+  document.querySelectorAll('#pof-items-body tr').forEach((tr,i) => {
+    const inputs = tr.querySelectorAll('input[type="number"]');
+    const qty   = parseFloat(inputs[0]?.value)||0;
+    const price = parseFloat(inputs[1]?.value)||0;
+    const desc  = tr.querySelector('input[type="text"]')?.value||'';
+    const unit  = tr.querySelector('select')?.value||'';
+    const vat   = tr.querySelector('input[type="checkbox"]')?.checked;
+    if (desc||qty) rows.push({num:i+1,desc,unit,qty,price,vat});
+  });
+  const sumNoVat = rows.reduce((s,r)=>s+r.qty*r.price,0);
+  const vatAmt   = sumNoVat*POF_VAT;
+  const total    = sumNoVat+vatAmt;
+  const badge    = document.getElementById('po-form-number-badge');
+  return {
+    poNumber:          badge?.dataset.poNum || badge?.textContent || 'PO-2026-0000',
+    date:              new Date().toISOString(),
+    ordererName:       document.getElementById('pof-orderer-name')?.value||'',
+    ordererHP:         document.getElementById('pof-orderer-hp')?.value||'',
+    ordererAddress:    document.getElementById('pof-orderer-address')?.value||'',
+    ordererPhone:      document.getElementById('pof-orderer-phone')?.value||'',
+    ordererEmail:      document.getElementById('pof-orderer-email')?.value||'',
+    contractorName:    document.getElementById('pof-contractor-name')?.value||'',
+    contractorHP:      document.getElementById('pof-contractor-hp')?.value||'',
+    contractorAddress: document.getElementById('pof-contractor-address')?.value||'',
+    contractorPhone:   document.getElementById('pof-contractor-phone')?.value||'',
+    contractorEmail:   document.getElementById('pof-contractor-email')?.value||'',
+    projectName:       document.getElementById('pof-project-name')?.value||'',
+    projectLocation:   document.getElementById('pof-project-location')?.value||'',
+    startDate:         document.getElementById('pof-start-date')?.value||'',
+    endDate:           document.getElementById('pof-end-date')?.value||'',
+    quoteRef:          document.getElementById('pof-quote-ref')?.value||'',
+    tenderRef:         document.getElementById('pof-tender-ref')?.value||'',
+    budgetSource:      document.getElementById('pof-budget-source')?.value||'',
+    paymentTerms:      document.getElementById('pof-payment-terms')?.value||'',
+    notes:             document.getElementById('pof-notes')?.value||'',
+    rows, sumNoVat, vatAmt, total
+  };
+}
+
+async function pofSaveToSupabase(d) {
+  if (!sb) return null;
+  try {
+    const { data, error } = await sb.from('purchase_orders').insert({
+      po_number:          d.poNumber,
+      created_at:         d.date,
+      contractor_name:    d.contractorName,
+      contractor_hp:      d.contractorHP,
+      contractor_address: d.contractorAddress,
+      contractor_phone:   d.contractorPhone,
+      contractor_email:   d.contractorEmail,
+      project_name:       d.projectName,
+      project_location:   d.projectLocation,
+      start_date:         d.startDate || null,
+      end_date:           d.endDate   || null,
+      quote_ref:          d.quoteRef,
+      tender_ref:         d.tenderRef,
+      budget_source:      d.budgetSource,
+      payment_terms:      d.paymentTerms,
+      notes:              d.notes,
+      items:              JSON.stringify(d.rows),
+      total_no_vat:       d.sumNoVat,
+      total_vat:          d.vatAmt,
+      total_with_vat:     d.total,
+      status:             'active'
+    }).select().single();
+    if (error) throw error;
+    return data;
+  } catch(e) {
+    console.error('PO save error:', e);
+    return null;
+  }
+}
+
+async function pofSaveAndPDF() {
+  const d = pofCollect();
+  if (!d.contractorName) { alert('נא למלא שם קבלן'); return; }
+  if (!d.projectName)    { alert('נא למלא שם פרויקט'); return; }
+  if (d.rows.length === 0){ alert('נא להוסיף לפחות שורת עבודה'); return; }
+
+  // Save to Supabase
+  const saved = await pofSaveToSupabase(d);
+  if (saved) {
+    console.log('✅ PO saved to Supabase:', saved.id);
+  } else {
+    if (!confirm('שגיאה בשמירה ב-Supabase. להמשיך ולפתוח PDF בכל זאת?')) return;
+  }
+
+  // Generate print preview
+  pofOpenPrintPreview(d);
+
+  // Refresh badge count
+  if (typeof loadPOs === 'function') loadPOs();
+}
+
+function pofOpenPrintPreview(d) {
+  const fmt = n => '₪ '+n.toLocaleString('he-IL',{minimumFractionDigits:2});
+  const rowsHTML = d.rows.map(r => {
+    const line  = r.qty*r.price;
+    const total = r.vat ? line*1.18 : line;
+    return `<tr>
+      <td style="text-align:center;">${r.num}</td>
+      <td>${r.desc}</td>
+      <td style="text-align:center;">${r.unit}</td>
+      <td style="text-align:center;">${r.qty}</td>
+      <td style="text-align:left;direction:ltr;">${r.price.toLocaleString('he-IL')}</td>
+      <td style="text-align:center;">${r.vat?'18%':'—'}</td>
+      <td style="text-align:left;font-weight:600;direction:ltr;">${fmt(total)}</td>
+    </tr>`;
+  }).join('');
+
+  const dateStr = new Date(d.date).toLocaleDateString('he-IL');
+  const win = window.open('','_blank');
+  win.document.write(`<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<title>הזמנת עבודה ${d.poNumber}</title>
+<link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:'Heebo',sans-serif;color:#111;background:#fff;font-size:11pt;padding:0;}
+  @page{size:A4;margin:18mm 15mm;}
+  @media print{.no-print{display:none!important}}
+  .header{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:3px solid #C9A84C;padding-bottom:12px;margin-bottom:14px;}
+  .header h1{font-size:20pt;font-weight:800;color:#1a1a2e;}
+  .po-num{font-size:13pt;font-weight:700;color:#C9A84C;}
+  .boxes{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px;}
+  .box{border:1.5px solid #ddd;border-radius:6px;overflow:hidden;}
+  .box-h{background:#1a1a2e;color:#C9A84C;font-weight:700;font-size:10pt;padding:6px 12px;}
+  .box-b{padding:10px 12px;font-size:9.5pt;line-height:1.9;}
+  .box-b span{color:#666;font-size:8.5pt;}
+  .proj{border:1.5px solid #ddd;border-radius:6px;overflow:hidden;margin-bottom:14px;}
+  .proj-grid{display:grid;grid-template-columns:repeat(4,1fr);}
+  .proj-cell{padding:7px 12px;border-left:1px solid #eee;font-size:9.5pt;}
+  .proj-cell:last-child{border-left:none;}
+  .proj-cell span{display:block;font-size:8pt;color:#888;margin-bottom:2px;}
+  table{width:100%;border-collapse:collapse;font-size:9.5pt;margin-bottom:12px;}
+  th{background:#1a1a2e;color:#C9A84C;padding:8px 7px;font-weight:700;}
+  td{padding:6px 7px;border-bottom:1px solid #eee;}
+  .tot-row{display:flex;justify-content:space-between;padding:4px 12px;max-width:300px;margin-left:auto;font-size:10pt;border-bottom:1px solid #eee;}
+  .tot-row.grand{font-weight:800;font-size:12pt;border-top:2px solid #C9A84C;border-bottom:none;padding-top:8px;}
+  .notes{border:1px solid #ddd;border-radius:6px;padding:10px 14px;font-size:9pt;color:#444;margin-bottom:16px;background:#fafaf8;}
+  .sigs{display:grid;grid-template-columns:1fr 1fr;gap:30px;margin-top:20px;}
+  .sig-box{text-align:center;}
+  .sig-line{border-bottom:1.5px solid #aaa;margin:28px 20px 5px;}
+  .footer{text-align:center;font-size:8pt;color:#aaa;border-top:1px solid #eee;padding-top:8px;margin-top:14px;}
+  .print-btn{display:block;margin:16px auto;padding:9px 30px;background:#C9A84C;border:none;border-radius:8px;font-size:13pt;font-family:'Heebo',sans-serif;font-weight:700;cursor:pointer;color:#fff;}
+</style>
+</head>
+<body>
+<button class="print-btn no-print" onclick="window.print()">🖨️ הדפס / שמור PDF</button>
+<div class="header">
+  <div><h1>הזמנת עבודה</h1><div style="font-size:10pt;color:#555;margin-top:3px;">Work Purchase Order</div></div>
+  <div style="text-align:left;"><div class="po-num">${d.poNumber}</div><div style="font-size:9pt;color:#555;margin-top:3px;">${dateStr}</div></div>
+</div>
+<div class="boxes">
+  <div class="box"><div class="box-h">המזמין</div><div class="box-b">
+    <div><span>שם: </span>${d.ordererName}</div>
+    <div><span>ח.פ: </span>${d.ordererHP}</div>
+    <div><span>כתובת: </span>${d.ordererAddress}</div>
+    <div><span>טלפון: </span>${d.ordererPhone}</div>
+    <div><span>אימייל: </span>${d.ordererEmail}</div>
+  </div></div>
+  <div class="box"><div class="box-h">הקבלן</div><div class="box-b">
+    <div><span>שם: </span>${d.contractorName||'—'}</div>
+    <div><span>ת.ז/ח.פ: </span>${d.contractorHP||'—'}</div>
+    <div><span>כתובת: </span>${d.contractorAddress||'—'}</div>
+    <div><span>טלפון: </span>${d.contractorPhone||'—'}</div>
+    <div><span>אימייל: </span>${d.contractorEmail||'—'}</div>
+  </div></div>
+</div>
+<div class="proj">
+  <div class="box-h">פרטי הפרויקט</div>
+  <div class="proj-grid">
+    <div class="proj-cell"><span>שם הפרויקט</span>${d.projectName}</div>
+    <div class="proj-cell"><span>מיקום</span>${d.projectLocation}</div>
+    <div class="proj-cell"><span>התחלה</span>${d.startDate}</div>
+    <div class="proj-cell"><span>סיום</span>${d.endDate}</div>
+    <div class="proj-cell"><span>הצעת מחיר</span>${d.quoteRef}</div>
+    <div class="proj-cell"><span>מינוי/מכרז</span>${d.tenderRef}</div>
+    <div class="proj-cell"><span>מקור תקציב</span>${d.budgetSource}</div>
+    <div class="proj-cell"><span>תנאי תשלום</span>${d.paymentTerms}</div>
+  </div>
+</div>
+<table>
+  <thead><tr>
+    <th style="width:28px;">#</th><th>תיאור העבודה</th>
+    <th style="width:60px;">יחידה</th><th style="width:60px;">כמות</th>
+    <th style="width:90px;">מחיר יחידה</th><th style="width:50px;">מע"מ</th>
+    <th style="width:110px;">סה"כ כולל מע"מ</th>
+  </tr></thead>
+  <tbody>${rowsHTML}</tbody>
+</table>
+<div class="tot-row"><span>סכום ללא מע"מ</span><span style="direction:ltr;">${fmt(d.sumNoVat)}</span></div>
+<div class="tot-row"><span>מע"מ (18%)</span><span style="direction:ltr;">${fmt(d.vatAmt)}</span></div>
+<div class="tot-row grand"><span>סה"כ לתשלום</span><span style="direction:ltr;">${fmt(d.total)}</span></div>
+${d.notes?`<div class="notes" style="margin-top:14px;"><strong>הערות:</strong> ${d.notes}</div>`:''}
+<div class="sigs">
+  <div class="sig-box"><div style="font-weight:700;font-size:10pt;">${d.contractorName||'הקבלן'}</div><div class="sig-line"></div><div style="font-size:8.5pt;color:#888;">חתימה ותאריך</div></div>
+  <div class="sig-box"><div style="font-weight:700;font-size:10pt;">${d.ordererName}</div><div class="sig-line"></div><div style="font-size:8.5pt;color:#888;">אישור מנהל פרויקט ויועץ פיקוח</div></div>
+</div>
+<div class="footer">מסמך זה הופק ממערכת ניהול הפרויקטים של בני פרסקי | ${d.poNumber} | ${dateStr}</div>
+</body></html>`);
+  win.document.close();
+}
+
+function pofSendWhatsApp() {
+  const d = pofCollect();
+  if (!d.contractorPhone) { alert('נא למלא טלפון קבלן'); return; }
+  const phone = d.contractorPhone.replace(/\D/g,'');
+  const il = phone.startsWith('0') ? '972'+phone.slice(1) : phone;
+  const fmt = n => '₪'+n.toLocaleString('he-IL',{minimumFractionDigits:2});
+  const msg = `שלום,\nמצורפת הזמנת עבודה ${d.poNumber}\nפרויקט: ${d.projectName}\nסה"כ לתשלום: ${fmt(d.total)}\n\nבברכה,\n${d.ordererName}`;
+  const a = document.createElement('a');
+  a.href = 'https://wa.me/'+il+'?text='+encodeURIComponent(msg);
+  a.target = '_blank'; a.rel = 'noopener';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+}
+
+function pofReset() {
+  if (!confirm('לאפס את כל הטופס?')) return;
+  ['pof-contractor-name','pof-contractor-hp','pof-contractor-address','pof-contractor-phone','pof-contractor-email',
+   'pof-project-name','pof-project-location','pof-end-date','pof-quote-ref','pof-tender-ref','pof-budget-source'].forEach(id => {
+    const el = document.getElementById(id); if(el) el.value='';
+  });
+  document.getElementById('pof-items-body').innerHTML='';
+  pofRowCount=0;
+  pofAddRow(); pofAddRow(); pofAddRow();
+
+  // New PO number
+  const badge = document.getElementById('po-form-number-badge');
+  const now = new Date();
+  const poNum = 'PO-'+now.getFullYear()+'-'+String(Math.floor(Math.random()*9000)+1000);
+  if(badge){badge.textContent=poNum;badge.dataset.poNum=poNum;}
+}
+
+// Hook into showPage to init form on first open
+const _origShowPage = typeof showPage === 'function' ? showPage : null;
+if (_origShowPage) {
+  const __sp = showPage;
+  showPage = function(page) {
+    __sp(page);
+    if (page === 'new-po') {
+      pofInit();
+    }
+  };
+}
 
 
 document.addEventListener('DOMContentLoaded', async () => {
