@@ -838,6 +838,11 @@ const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJ
 const sb = window.supabase.createClient(SB_URL, SB_KEY);
 let supabaseClient = sb;
 
+// Constants used by Field Intel, Voice Memos, Daily Calls, Site Pulse, etc.
+// Must be defined here — before any function that references them is called.
+const SUPABASE_URL_CONST  = SB_URL;
+const SUPABASE_ANON_KEY_CONST = SB_KEY;
+
 // Storage base URL for panel HTML & CSS
 const STORAGE = `${SB_URL}/storage/v1/object/public/app-assets`;
 
@@ -2620,8 +2625,7 @@ function exportPOsCSV(){const today=new Date().toLocaleDateString('he-IL').repla
 async function deletePO(poId){if(!confirm('למחוק הזמנת עבודה זו?'))return;const{error}=await sb.from('purchase_orders').delete().eq('id',poId);if(error){showToast('שגיאה: '+error.message,'error');return;}showToast('🗑️ הזמנה נמחקה','success');await loadPurchaseOrders();}
 
 // ── SITE PULSE WIDGET ─────────────────────────────────────
-const SUPABASE_URL_CONST = window.APP?.supabaseUrl || 'https://vmcipofovheztbjmhwsl.supabase.co';
-const SUPABASE_ANON_KEY_CONST = window.APP?.supabaseKey || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZtY2lwb2ZvdmhlenRiam1od3NsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE0NjE2MTcsImV4cCI6MjA4NzAzNzYxN30.LPq5N2Xo8iEqjgz2UhmdzUdh5tpGT3EYzSxJcYBEJ1w';
+// (SUPABASE_URL_CONST and SUPABASE_ANON_KEY_CONST are defined at top of script)
 
 async function loadSiteReports() {
   var list  = document.getElementById('sp-reports-list');
