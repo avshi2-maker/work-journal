@@ -586,64 +586,107 @@ function renderPOList(list){const tbody=document.getElementById('po-tbody');if(!
 function openPOViewModal(poId){
   var po=allPOs.find(function(x){return x.id===poId;});
   if(!po)return;
-  var fmt=function(n){return'₪'+fmtMoney(parseFloat(n||0));};
+  var fmt=function(n){return '\u20aa'+fmtMoney(parseFloat(n||0));};
   var grand=parseFloat(po.grand_total||po.total_with_vat||0);
   var noVat=parseFloat(po.subtotal||po.total_no_vat||0);
   var vatAmt=parseFloat(po.vat_amount||po.total_vat||0);
   var items=[];
   try{items=po.items_json?(typeof po.items_json==='string'?JSON.parse(po.items_json):po.items_json):(po.items?(typeof po.items==='string'?JSON.parse(po.items):po.items):[]);}catch(e){}
-  var rowsHTML=items.length?items.map(function(r,i){
-    var qty=parseFloat(r.quantity||r.qty||1);
-    var price=parseFloat(r.unit_cost||r.price||0);
-    var line=qty*price;
-    return '<tr style="border-bottom:1px solid #eee;">'
-      +'<td style="padding:6px 8px;text-align:center;">'+(i+1)+'</td>'
-      +'<td style="padding:6px 8px;">'+esc(r.description||r.desc||'')+'</td>'
-      +'<td style="padding:6px 8px;text-align:center;">'+esc(r.unit||'')+'</td>'
-      +'<td style="padding:6px 8px;text-align:center;">'+qty+'</td>'
-      +'<td style="padding:6px 8px;direction:ltr;">'+fmt(price)+'</td>'
-      +'<td style="padding:6px 8px;font-weight:700;direction:ltr;">'+fmt(line)+'</td></tr>';
-  }).join(''):'<tr><td colspan="6" style="text-align:center;padding:20px;color:#aaa;">אין פריטים</td></tr>';
 
-  var waBtn=po.contractor_phone
-    ?'<button onclick="(function(){var a=document.createElement(\'a\');a.href=\'https://wa.me/972'+(po.contractor_phone||'').replace(/[^0-9]/g,\'\').replace(/^0/,\'\')+'?text=\'+encodeURIComponent(\'הזמנה '+esc(po.po_number||'')+' | '+esc(po.project_name||'')+' | '+fmt(grand)+' | בני פרסקי\');a.target=\'_blank\';document.body.appendChild(a);a.click();document.body.removeChild(a);})()" style="background:#25D366;color:white;border:none;border-radius:8px;padding:9px 18px;font-size:13px;font-weight:700;cursor:pointer;font-family:Heebo,sans-serif;">💬 WhatsApp</button>'
-    :'';
+  var rowsHTML='';
+  if(items.length){
+    items.forEach(function(r,i){
+      var qty=parseFloat(r.quantity||r.qty||1);
+      var price=parseFloat(r.unit_cost||r.price||0);
+      rowsHTML+='<tr style="border-bottom:1px solid #eee">'
+        +'<td style="padding:5px 7px;text-align:center">'+(i+1)+'</td>'
+        +'<td style="padding:5px 7px">'+esc(r.description||r.desc||'')+'</td>'
+        +'<td style="padding:5px 7px;text-align:center">'+esc(r.unit||'')+'</td>'
+        +'<td style="padding:5px 7px;text-align:center">'+qty+'</td>'
+        +'<td style="padding:5px 7px;direction:ltr">'+fmt(price)+'</td>'
+        +'<td style="padding:5px 7px;font-weight:700;direction:ltr">'+fmt(qty*price)+'</td></tr>';
+    });
+  } else {
+    rowsHTML='<tr><td colspan="6" style="text-align:center;padding:20px;color:#aaa">\u05d0\u05d9\u05df \u05e4\u05e8\u05d9\u05d8\u05d9\u05dd</td></tr>';
+  }
 
-  var html='<div style="background:linear-gradient(135deg,#1a3d5c,#2d6a9f);padding:20px 24px;border-radius:12px 12px 0 0;display:flex;justify-content:space-between;align-items:center;">'
-    +'<div><div style="font-size:18px;font-weight:900;color:white;">הזמנת עבודה</div>'
-    +'<div style="font-size:13px;color:rgba(255,255,255,0.7);margin-top:3px;">'+esc(po.po_number||'—')+'</div></div>'
-    +'<div><div style="font-size:22px;font-weight:900;color:#c9a84c;">'+fmt(grand)+'</div>'
-    +'<div style="font-size:11px;color:rgba(255,255,255,0.6);">כולל מע\"מ</div></div></div>'
-    +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:16px;border-bottom:1px solid #eee;">'
-    +'<div style="background:#f8f9fa;border-radius:8px;padding:12px;"><div style="font-size:11px;font-weight:800;color:#1a3d5c;margin-bottom:8px;">👷 קבלן</div>'
-    +'<div style="font-weight:700;">'+esc(po.contractor_name||'—')+'</div>'
-    +(po.contractor_phone?'<div style="font-size:12px;color:#666;margin-top:3px;">📱 '+esc(po.contractor_phone)+'</div>':'')+'</div>'
-    +'<div style="background:#f8f9fa;border-radius:8px;padding:12px;"><div style="font-size:11px;font-weight:800;color:#1a3d5c;margin-bottom:8px;">🏗️ פרויקט</div>'
-    +'<div style="font-weight:700;">'+esc(po.project_name||'—')+'</div>'
-    +(po.start_date?'<div style="font-size:12px;color:#1e6b30;margin-top:3px;">▶ '+fmtDate(po.start_date)+'</div>':'')
-    +(po.end_date?'<div style="font-size:12px;color:#b52a1d;">⏹ '+fmtDate(po.end_date)+'</div>':'')+'</div></div>'
-    +'<div style="padding:0 16px 8px;"><div style="font-size:11px;font-weight:800;color:#1a3d5c;padding:12px 0 6px;">📋 פירוט עבודה</div>'
-    +'<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:13px;">'
-    +'<thead><tr style="background:#1a3d5c;color:white;"><th style="padding:8px;text-align:center;width:30px;">#</th>'
-    +'<th style="padding:8px;text-align:right;">תיאור</th><th style="padding:8px;text-align:center;width:60px;">יחידה</th>'
-    +'<th style="padding:8px;text-align:center;width:60px;">כמות</th><th style="padding:8px;text-align:left;width:100px;">מחיר</th>'
-    +'<th style="padding:8px;text-align:left;width:110px;">סה\"כ</th></tr></thead><tbody>'+rowsHTML+'</tbody></table></div>'
-    +'<div style="display:flex;justify-content:flex-start;margin-top:8px;"><div style="background:#f0f6ff;border:1px solid #dce8ff;border-radius:8px;padding:10px 16px;min-width:240px;">'
-    +'<div style="display:flex;justify-content:space-between;font-size:13px;padding:3px 0;border-bottom:1px solid #e0e8f0;"><span style="color:#888;">ללא מע\"מ</span><span style="direction:ltr;">'+fmt(noVat)+'</span></div>'
-    +'<div style="display:flex;justify-content:space-between;font-size:13px;padding:3px 0;border-bottom:1px solid #e0e8f0;"><span style="color:#888;">מע\"מ 18%</span><span style="direction:ltr;">'+fmt(vatAmt)+'</span></div>'
-    +'<div style="display:flex;justify-content:space-between;font-size:15px;font-weight:900;color:#1a3d5c;padding:6px 0 0;"><span>סה\"כ לתשלום</span><span style="direction:ltr;">'+fmt(grand)+'</span></div>'
-    +'</div></div></div>'
-    +((po.notes||po.remarks)?'<div style="margin:0 16px 12px;background:#fffdf0;border:1px solid #f0d080;border-radius:8px;padding:10px 14px;font-size:13px;color:#555;"><strong>הערות:</strong> '+esc(po.notes||po.remarks)+'</div>':'')
-    +'<div style="display:flex;gap:10px;padding:12px 16px 16px;border-top:1px solid #eee;flex-wrap:wrap;">'
-    +'<button onclick="generatePOPdf(allPOs.find(function(x){return x.id===\''+po.id+'\'}));closeModal(\'modal-po-view\');" style="background:linear-gradient(135deg,#1a3d5c,#2d6a9f);color:white;border:none;border-radius:8px;padding:9px 18px;font-size:13px;font-weight:700;cursor:pointer;font-family:Heebo,sans-serif;">📄 הפק PDF</button>'
-    +waBtn
-    +'<button onclick="closeModal(\'modal-po-view\')" style="background:#f0f0f0;color:#555;border:none;border-radius:8px;padding:9px 18px;font-size:13px;font-weight:700;cursor:pointer;font-family:Heebo,sans-serif;">סגור</button></div>';
+  // Store WA details globally to avoid inline escaping issues
+  window._poModalId=poId;
+  window._poModalPhone=po.contractor_phone?'972'+(po.contractor_phone||'').replace(/[^0-9]/g,'').replace(/^0/,''):'';
+  window._poModalMsg=(po.po_number||'')+' | '+(po.project_name||'')+' | '+fmt(grand)+' | \u05d1\u05e0\u05d9 \u05e4\u05e8\u05e1\u05e7\u05d9';
 
   var modal=document.getElementById('modal-po-view');
-  if(!modal){modal=document.createElement('div');modal.id='modal-po-view';modal.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:1000;display:flex;align-items:center;justify-content:center;padding:16px;';modal.onclick=function(e){if(e.target===modal)closeModal('modal-po-view');};document.body.appendChild(modal);}
-  modal.innerHTML='<div style="background:white;border-radius:12px;width:100%;max-width:700px;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,0.3);">'+html+'</div>';
+  if(!modal){
+    modal=document.createElement('div');
+    modal.id='modal-po-view';
+    modal.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:1000;display:none;align-items:center;justify-content:center;padding:16px;';
+    modal.addEventListener('click',function(e){if(e.target===modal)closeModal('modal-po-view');});
+    document.body.appendChild(modal);
+  }
+
+  var inner=document.createElement('div');
+  inner.style.cssText='background:white;border-radius:12px;width:100%;max-width:700px;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,0.3);';
+
+  inner.innerHTML=''
+    +'<div style="background:linear-gradient(135deg,#1a3d5c,#2d6a9f);padding:18px 22px;border-radius:12px 12px 0 0;display:flex;justify-content:space-between;align-items:center;">'
+      +'<div><div style="font-size:17px;font-weight:900;color:white;">\u05d4\u05d6\u05de\u05e0\u05ea \u05e2\u05d1\u05d5\u05d3\u05d4</div>'
+      +'<div style="font-size:12px;color:rgba(255,255,255,0.7);margin-top:2px;">'+esc(po.po_number||'\u2014')+'</div></div>'
+      +'<div style="text-align:left"><div style="font-size:20px;font-weight:900;color:#c9a84c;">'+fmt(grand)+'</div>'
+      +'<div style="font-size:11px;color:rgba(255,255,255,0.6)">\u05db\u05d5\u05dc\u05dc \u05de\u05e2"מ</div></div>'
+    +'</div>'
+    +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:14px;border-bottom:1px solid #eee;">'
+      +'<div style="background:#f8f9fa;border-radius:8px;padding:11px">'
+        +'<div style="font-size:10px;font-weight:800;color:#1a3d5c;margin-bottom:6px">\u{1f477} \u05e7\u05d1\u05dc\u05df</div>'
+        +'<div style="font-weight:700">'+esc(po.contractor_name||'\u2014')+'</div>'
+        +(po.contractor_phone?'<div style="font-size:12px;color:#666;margin-top:2px">\u{1f4f1} '+esc(po.contractor_phone)+'</div>':'')
+      +'</div>'
+      +'<div style="background:#f8f9fa;border-radius:8px;padding:11px">'
+        +'<div style="font-size:10px;font-weight:800;color:#1a3d5c;margin-bottom:6px">\u{1f3d7}\ufe0f \u05e4\u05e8\u05d5\u05d9\u05e7\u05d8</div>'
+        +'<div style="font-weight:700">'+esc(po.project_name||'\u2014')+'</div>'
+        +(po.start_date?'<div style="font-size:12px;color:#1e6b30;margin-top:2px">\u25b6 '+fmtDate(po.start_date)+'</div>':'')
+        +(po.end_date?'<div style="font-size:12px;color:#b52a1d">\u23f9 '+fmtDate(po.end_date)+'</div>':'')
+      +'</div>'
+    +'</div>'
+    +'<div style="padding:0 14px 10px">'
+      +'<div style="font-size:10px;font-weight:800;color:#1a3d5c;padding:10px 0 6px">\u{1f4cb} \u05e4\u05d9\u05e8\u05d5\u05d8 \u05e2\u05d1\u05d5\u05d3\u05d4</div>'
+      +'<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:12px">'
+        +'<thead><tr style="background:#1a3d5c;color:white">'
+          +'<th style="padding:7px;text-align:center;width:28px">#</th>'
+          +'<th style="padding:7px;text-align:right">\u05ea\u05d9\u05d0\u05d5\u05e8</th>'
+          +'<th style="padding:7px;text-align:center;width:55px">\u05d9\u05d7\u05d9\u05d3\u05d4</th>'
+          +'<th style="padding:7px;text-align:center;width:55px">\u05db\u05de\u05d5\u05ea</th>'
+          +'<th style="padding:7px;text-align:left;width:95px">\u05de\u05d7\u05d9\u05e8</th>'
+          +'<th style="padding:7px;text-align:left;width:105px">\u05e1\u05d4"כ</th>'
+        +'</tr></thead><tbody>'+rowsHTML+'</tbody>'
+      +'</table></div>'
+      +'<div style="display:flex;justify-content:flex-start;margin-top:8px">'
+        +'<div style="background:#f0f6ff;border:1px solid #dce8ff;border-radius:8px;padding:9px 14px;min-width:230px">'
+          +'<div style="display:flex;justify-content:space-between;font-size:12px;padding:3px 0;border-bottom:1px solid #e0e8f0"><span style="color:#888">\u05dc\u05dc\u05d0 \u05de\u05e2"מ</span><span style="direction:ltr">'+fmt(noVat)+'</span></div>'
+          +'<div style="display:flex;justify-content:space-between;font-size:12px;padding:3px 0;border-bottom:1px solid #e0e8f0"><span style="color:#888">\u05de\u05e2"מ 18%</span><span style="direction:ltr">'+fmt(vatAmt)+'</span></div>'
+          +'<div style="display:flex;justify-content:space-between;font-size:14px;font-weight:900;color:#1a3d5c;padding:5px 0 0"><span>\u05e1\u05d4"כ \u05dc\u05ea\u05e9\u05dc\u05d5\u05dd</span><span style="direction:ltr">'+fmt(grand)+'</span></div>'
+        +'</div>'
+      +'</div>'
+    +'</div>'
+    +((po.notes||po.remarks)?'<div style="margin:0 14px 10px;background:#fffdf0;border:1px solid #f0d080;border-radius:8px;padding:9px 12px;font-size:12px;color:#555"><strong>\u05d4\u05e2\u05e8\u05d5\u05ea:</strong> '+esc(po.notes||po.remarks)+'</div>':'')
+    +'<div style="display:flex;gap:8px;padding:10px 14px 14px;border-top:1px solid #eee;flex-wrap:wrap" id="po-modal-actions">'
+      +'<button onclick="generatePOPdf(allPOs.find(function(x){return x.id===window._poModalId}));closeModal(\'modal-po-view\');" style="background:linear-gradient(135deg,#1a3d5c,#2d6a9f);color:white;border:none;border-radius:8px;padding:8px 16px;font-size:13px;font-weight:700;cursor:pointer;font-family:Heebo,sans-serif">\u{1f4c4} \u05d4\u05e4\u05e7 PDF</button>'
+      +(po.contractor_phone?'<button onclick="pofModalWA()" style="background:#25D366;color:white;border:none;border-radius:8px;padding:8px 16px;font-size:13px;font-weight:700;cursor:pointer;font-family:Heebo,sans-serif">\u{1f4ac} WhatsApp</button>':'')
+      +'<button onclick="closeModal(\'modal-po-view\')" style="background:#f0f0f0;color:#555;border:none;border-radius:8px;padding:8px 16px;font-size:13px;font-weight:700;cursor:pointer;font-family:Heebo,sans-serif">\u05e1\u05d2\u05d5\u05e8</button>'
+    +'</div>';
+
+  modal.innerHTML='';
+  modal.appendChild(inner);
   modal.style.display='flex';
 }
+
+function pofModalWA(){
+  if(!window._poModalPhone)return;
+  var a=document.createElement('a');
+  a.href='https://wa.me/'+window._poModalPhone+'?text='+encodeURIComponent(window._poModalMsg);
+  a.target='_blank';a.rel='noopener';
+  document.body.appendChild(a);a.click();document.body.removeChild(a);
+}
+
 
 function exportPOsCSV(){const today=new Date().toLocaleDateString('he-IL').replace(/\//g,'-');downloadCSV([['מס׳ הזמנה','קבלן','פרויקט','תאריך','תחילה','סיום','סה״כ','סטטוס'],...allPOs.map(p=>[p.po_number||'',p.contractor_name||'',p.project_name||'',p.po_date||'',p.start_date||'',p.end_date||'',p.grand_total||0,p.status||''])],'הזמנות_עבודה_'+today+'.csv');showToast('📥 ייוצאו '+allPOs.length+' הזמנות','success');}
 async function deletePO(poId){if(!confirm('למחוק הזמנת עבודה זו?'))return;const{error}=await sb.from('purchase_orders').delete().eq('id',poId);if(error){showToast('שגיאה: '+error.message,'error');return;}showToast('🗑️ הזמנה נמחקה','success');await loadPurchaseOrders();}
