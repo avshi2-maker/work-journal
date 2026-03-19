@@ -755,17 +755,32 @@ async function bootstrap() {
 // ══════════════════════════════════════════════════════
 async function loadPanel(name) {
   if (APP.loaded[name]) return;
-  const res = await fetch(`${STORAGE}/${name}.html`);
-  if (!res.ok) {
-    console.error(`Panel ${name} failed to load: HTTP ${res.status}`);
+  const SUPABASE_STORAGE = `${SB_URL}/storage/v1/object/public/app-assets`;
+
+  // Try GitHub first, fall back to Supabase Storage
+  let html = null;
+  try {
+    const res = await fetch(`${STORAGE}/${name}.html`);
+    if (res.ok) html = await res.text();
+  } catch(e) {}
+
+  if (!html) {
+    try {
+      const res2 = await fetch(`${SUPABASE_STORAGE}/${name}.html`);
+      if (res2.ok) { html = await res2.text(); console.log(`Panel ${name} loaded from Supabase fallback`); }
+    } catch(e) {}
+  }
+
+  if (!html) {
+    console.error(`Panel ${name} failed to load from both GitHub and Supabase`);
     document.getElementById(`${name}-content`).innerHTML =
       `<div style="padding:40px;text-align:center;color:#c00;font-family:Heebo,sans-serif;">
-        ❌ שגיאה בטעינת פאנל ${name} (${res.status})<br>
+        ❌ שגיאה בטעינת פאנל ${name}<br>
         <button onclick="location.reload()" style="margin-top:16px;padding:8px 20px;background:#1a3d5c;color:white;border:none;border-radius:8px;cursor:pointer;">🔄 רענן</button>
       </div>`;
     return;
   }
-  const html = await res.text();
+
   // Strip <script> tags — JS is already in index.html
   const htmlOnly = html.replace(/<script[\s\S]*?<\/script>/gi, '').trim();
   document.getElementById(`${name}-content`).innerHTML = htmlOnly;
