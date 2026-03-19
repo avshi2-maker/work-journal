@@ -64,11 +64,7 @@ document.addEventListener('error', function(e) {
   <div class="nav-item" onclick="showPage('reports')" id="nav-reports"><span class="nav-icon">📄</span><span>דוחות פרויקטים</span></div>
   <div class="nav-item" onclick="showPage('new-po')" id="nav-new-po"><span class="nav-icon">📄</span><span>פתיחת הזמנות עבודה</span></div>
   <div class="nav-item" onclick="showPage('purchase-orders')" id="nav-purchase-orders"><span class="nav-icon">🏷️</span><span>דוחות הזמנות עבודה</span><span class="nav-badge" id="badge-po">0</span></div>
-  <a href="#" onclick="switchTab('journal')" style="text-decoration:none;">
-    <div class="nav-item" style="background:linear-gradient(90deg,rgba(154,111,0,0.18),transparent);color:#9a6f00;border-right:3px solid #9a6f00;margin-top:8px;">
-      <span class="nav-icon">📝</span><span style="font-weight:700;">יומן עבודה</span>
-    </div>
-  </a>
+  <div class="nav-item" onclick="showPage('calc')" id="nav-calc" style="margin-top:8px;"><span class="nav-icon">🧮</span><span>מחשבון הנדסי</span></div>
   <div class="sidebar-bottom">
     <div class="user-chip">
       <div class="user-avatar">ב</div>
@@ -400,6 +396,260 @@ document.addEventListener('error', function(e) {
     </div>
     <div class="table-wrap"><table><thead><tr><th style="width:36px;text-align:center"><input type="checkbox" id="reports-select-all" onchange="toggleAllReports(this)" style="width:16px;height:16px;cursor:pointer;"></th><th>מספר דוח</th><th>פרויקט</th><th>תאריך</th><th>מנהל</th><th>שעות</th><th>סטטוס</th><th style="min-width:100px;">התקדמות</th><th class="td-actions">פעולות</th></tr></thead><tbody id="reports-tbody"><tr><td colspan="9"><div class="empty-state"><div class="empty-icon">📄</div><h3>אין דוחות עדיין</h3></div></td></tr></tbody></table></div>
   </div>
+
+  <!-- ENGINEERING CALCULATOR PAGE -->
+  <div class="page" id="page-calc">
+    <div class="topbar">
+      <div class="page-title">🧮 מחשבון <span>הנדסי</span></div>
+      <div class="topbar-actions"><button class="btn btn-ghost" onclick="showPage('dashboard')" style="font-size:16px;padding:6px 10px;">🏠</button></div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:200px 1fr;gap:16px;align-items:start;">
+
+      <!-- Category tabs -->
+      <div style="display:flex;flex-direction:column;gap:4px;">
+        <div id="calc-tab-btn-area"     onclick="showCalc('area')"     class="calc-tab-btn active-calc-tab">📐 שטחים</div>
+        <div id="calc-tab-btn-volume"   onclick="showCalc('volume')"   class="calc-tab-btn">📦 נפחים</div>
+        <div id="calc-tab-btn-concrete" onclick="showCalc('concrete')" class="calc-tab-btn">🏗️ בטון</div>
+        <div id="calc-tab-btn-flooring" onclick="showCalc('flooring')" class="calc-tab-btn">🪟 ריצוף / ציפוי</div>
+        <div id="calc-tab-btn-weight"   onclick="showCalc('weight')"   class="calc-tab-btn">⚖️ משקל חומרים</div>
+        <div id="calc-tab-btn-slope"    onclick="showCalc('slope')"    class="calc-tab-btn">📏 שיפוע / גובה</div>
+        <div id="calc-tab-btn-convert"  onclick="showCalc('convert')"  class="calc-tab-btn">🔄 המרות יחידות</div>
+        <div id="calc-tab-btn-cost"     onclick="showCalc('cost')"     class="calc-tab-btn">💰 עלות חומר</div>
+      </div>
+
+      <!-- Calculator panels -->
+      <div>
+
+        <!-- AREA -->
+        <div id="calc-panel-area" class="calc-panel">
+          <div class="calc-panel-title">📐 חישוב שטחים</div>
+          <div class="calc-grid">
+            <div class="calc-card">
+              <div class="calc-card-title">מלבן / ריבוע</div>
+              <div class="calc-row"><label>אורך (מ׳)</label><input type="number" id="rect-l" placeholder="0" oninput="calcArea()"></div>
+              <div class="calc-row"><label>רוחב (מ׳)</label><input type="number" id="rect-w" placeholder="0" oninput="calcArea()"></div>
+              <div class="calc-result" id="rect-result">—</div>
+            </div>
+            <div class="calc-card">
+              <div class="calc-card-title">עיגול</div>
+              <div class="calc-row"><label>רדיוס (מ׳)</label><input type="number" id="circ-r" placeholder="0" oninput="calcCircle()"></div>
+              <div class="calc-result" id="circ-result">—</div>
+            </div>
+            <div class="calc-card">
+              <div class="calc-card-title">משולש</div>
+              <div class="calc-row"><label>בסיס (מ׳)</label><input type="number" id="tri-b" placeholder="0" oninput="calcTriangle()"></div>
+              <div class="calc-row"><label>גובה (מ׳)</label><input type="number" id="tri-h" placeholder="0" oninput="calcTriangle()"></div>
+              <div class="calc-result" id="tri-result">—</div>
+            </div>
+            <div class="calc-card">
+              <div class="calc-card-title">טרפז</div>
+              <div class="calc-row"><label>בסיס 1 (מ׳)</label><input type="number" id="trap-a" placeholder="0" oninput="calcTrap()"></div>
+              <div class="calc-row"><label>בסיס 2 (מ׳)</label><input type="number" id="trap-b" placeholder="0" oninput="calcTrap()"></div>
+              <div class="calc-row"><label>גובה (מ׳)</label><input type="number" id="trap-h" placeholder="0" oninput="calcTrap()"></div>
+              <div class="calc-result" id="trap-result">—</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- VOLUME -->
+        <div id="calc-panel-volume" class="calc-panel" style="display:none">
+          <div class="calc-panel-title">📦 חישוב נפחים</div>
+          <div class="calc-grid">
+            <div class="calc-card">
+              <div class="calc-card-title">תיבה / חדר</div>
+              <div class="calc-row"><label>אורך (מ׳)</label><input type="number" id="box-l" placeholder="0" oninput="calcBox()"></div>
+              <div class="calc-row"><label>רוחב (מ׳)</label><input type="number" id="box-w" placeholder="0" oninput="calcBox()"></div>
+              <div class="calc-row"><label>גובה (מ׳)</label><input type="number" id="box-h" placeholder="0" oninput="calcBox()"></div>
+              <div class="calc-result" id="box-result">—</div>
+            </div>
+            <div class="calc-card">
+              <div class="calc-card-title">גליל (עמוד / מאגר)</div>
+              <div class="calc-row"><label>רדיוס (מ׳)</label><input type="number" id="cyl-r" placeholder="0" oninput="calcCyl()"></div>
+              <div class="calc-row"><label>גובה (מ׳)</label><input type="number" id="cyl-h" placeholder="0" oninput="calcCyl()"></div>
+              <div class="calc-result" id="cyl-result">—</div>
+            </div>
+            <div class="calc-card">
+              <div class="calc-card-title">לוח / פלטה (עובי)</div>
+              <div class="calc-row"><label>אורך (מ׳)</label><input type="number" id="slab-l" placeholder="0" oninput="calcSlab()"></div>
+              <div class="calc-row"><label>רוחב (מ׳)</label><input type="number" id="slab-w" placeholder="0" oninput="calcSlab()"></div>
+              <div class="calc-row"><label>עובי (ס״מ)</label><input type="number" id="slab-t" placeholder="0" oninput="calcSlab()"></div>
+              <div class="calc-result" id="slab-result">—</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- CONCRETE -->
+        <div id="calc-panel-concrete" class="calc-panel" style="display:none">
+          <div class="calc-panel-title">🏗️ חישוב בטון ויסודות</div>
+          <div class="calc-grid">
+            <div class="calc-card">
+              <div class="calc-card-title">יציקת רצפה / לוח</div>
+              <div class="calc-row"><label>אורך (מ׳)</label><input type="number" id="con-l" placeholder="0" oninput="calcConcrete()"></div>
+              <div class="calc-row"><label>רוחב (מ׳)</label><input type="number" id="con-w" placeholder="0" oninput="calcConcrete()"></div>
+              <div class="calc-row"><label>עובי (ס״מ)</label><input type="number" id="con-t" placeholder="15" oninput="calcConcrete()"></div>
+              <div class="calc-row"><label>תוספת בזבוז %</label><input type="number" id="con-waste" placeholder="10" value="10" oninput="calcConcrete()"></div>
+              <div class="calc-result" id="con-result">—</div>
+            </div>
+            <div class="calc-card">
+              <div class="calc-card-title">עמוד / יסוד עגול</div>
+              <div class="calc-row"><label>קוטר (ס״מ)</label><input type="number" id="col-d" placeholder="0" oninput="calcColumn()"></div>
+              <div class="calc-row"><label>גובה (מ׳)</label><input type="number" id="col-h" placeholder="0" oninput="calcColumn()"></div>
+              <div class="calc-row"><label>מספר עמודים</label><input type="number" id="col-n" placeholder="1" value="1" oninput="calcColumn()"></div>
+              <div class="calc-result" id="col-result">—</div>
+            </div>
+            <div class="calc-card">
+              <div class="calc-card-title">קיר בטון</div>
+              <div class="calc-row"><label>אורך (מ׳)</label><input type="number" id="wall-l" placeholder="0" oninput="calcWall()"></div>
+              <div class="calc-row"><label>גובה (מ׳)</label><input type="number" id="wall-h" placeholder="0" oninput="calcWall()"></div>
+              <div class="calc-row"><label>עובי (ס״מ)</label><input type="number" id="wall-t" placeholder="20" oninput="calcWall()"></div>
+              <div class="calc-result" id="wall-result">—</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- FLOORING -->
+        <div id="calc-panel-flooring" class="calc-panel" style="display:none">
+          <div class="calc-panel-title">🪟 ריצוף / ציפוי / צבע</div>
+          <div class="calc-grid">
+            <div class="calc-card">
+              <div class="calc-card-title">אריחים / ריצוף</div>
+              <div class="calc-row"><label>שטח החדר (מ״ר)</label><input type="number" id="tile-area" placeholder="0" oninput="calcTile()"></div>
+              <div class="calc-row"><label>גודל אריח — אורך (ס״מ)</label><input type="number" id="tile-l" placeholder="60" oninput="calcTile()"></div>
+              <div class="calc-row"><label>גודל אריח — רוחב (ס״מ)</label><input type="number" id="tile-w" placeholder="60" oninput="calcTile()"></div>
+              <div class="calc-row"><label>תוספת בזבוז %</label><input type="number" id="tile-waste" placeholder="10" value="10" oninput="calcTile()"></div>
+              <div class="calc-result" id="tile-result">—</div>
+            </div>
+            <div class="calc-card">
+              <div class="calc-card-title">צבע / ציפוי קיר</div>
+              <div class="calc-row"><label>שטח לצביעה (מ״ר)</label><input type="number" id="paint-area" placeholder="0" oninput="calcPaint()"></div>
+              <div class="calc-row"><label>כיסוי ליטר (מ״ר/ל׳)</label><input type="number" id="paint-cov" placeholder="10" value="10" oninput="calcPaint()"></div>
+              <div class="calc-row"><label>מספר שכבות</label><input type="number" id="paint-coats" placeholder="2" value="2" oninput="calcPaint()"></div>
+              <div class="calc-result" id="paint-result">—</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- WEIGHT -->
+        <div id="calc-panel-weight" class="calc-panel" style="display:none">
+          <div class="calc-panel-title">⚖️ משקל חומרים לפי נפח</div>
+          <div class="calc-grid">
+            <div class="calc-card" style="grid-column:1/-1;">
+              <div class="calc-card-title">חישוב משקל לפי נפח + סוג חומר</div>
+              <div class="calc-row"><label>נפח (מ״ק)</label><input type="number" id="wt-vol" placeholder="0" oninput="calcWeight()"></div>
+              <div class="calc-row"><label>סוג חומר</label>
+                <select id="wt-mat" onchange="calcWeight()" style="width:100%;padding:8px;border:1.5px solid var(--border);border-radius:8px;font-family:Heebo,sans-serif;font-size:13px;">
+                  <option value="2400">בטון מזוין — 2,400 ק״ג/מ״ק</option>
+                  <option value="2200">בטון רגיל — 2,200 ק״ג/מ״ק</option>
+                  <option value="1800">חול יבש — 1,800 ק״ג/מ״ק</option>
+                  <option value="1600">עפר — 1,600 ק״ג/מ״ק</option>
+                  <option value="7850">פלדה — 7,850 ק״ג/מ״ק</option>
+                  <option value="2700">אלומיניום — 2,700 ק״ג/מ״ק</option>
+                  <option value="600">עץ (אורן) — 600 ק״ג/מ״ק</option>
+                  <option value="1000">מים — 1,000 ק״ג/מ״ק</option>
+                  <option value="1200">בלוקים (ממוצע) — 1,200 ק״ג/מ״ק</option>
+                </select>
+              </div>
+              <div class="calc-result" id="wt-result">—</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- SLOPE -->
+        <div id="calc-panel-slope" class="calc-panel" style="display:none">
+          <div class="calc-panel-title">📏 שיפוע, גובה ומרחק</div>
+          <div class="calc-grid">
+            <div class="calc-card">
+              <div class="calc-card-title">שיפוע → גובה</div>
+              <div class="calc-row"><label>אורך אופקי (מ׳)</label><input type="number" id="sl-run" placeholder="0" oninput="calcSlope1()"></div>
+              <div class="calc-row"><label>שיפוע (%)</label><input type="number" id="sl-pct" placeholder="0" oninput="calcSlope1()"></div>
+              <div class="calc-result" id="sl-result1">—</div>
+            </div>
+            <div class="calc-card">
+              <div class="calc-card-title">גובה + מרחק → שיפוע</div>
+              <div class="calc-row"><label>גובה (מ׳)</label><input type="number" id="sl-rise" placeholder="0" oninput="calcSlope2()"></div>
+              <div class="calc-row"><label>אורך אופקי (מ׳)</label><input type="number" id="sl-run2" placeholder="0" oninput="calcSlope2()"></div>
+              <div class="calc-result" id="sl-result2">—</div>
+            </div>
+            <div class="calc-card">
+              <div class="calc-card-title">פיתגורס — אלכסון</div>
+              <div class="calc-row"><label>צלע א (מ׳)</label><input type="number" id="py-a" placeholder="0" oninput="calcPyth()"></div>
+              <div class="calc-row"><label>צלע ב (מ׳)</label><input type="number" id="py-b" placeholder="0" oninput="calcPyth()"></div>
+              <div class="calc-result" id="py-result">—</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- CONVERT -->
+        <div id="calc-panel-convert" class="calc-panel" style="display:none">
+          <div class="calc-panel-title">🔄 המרות יחידות</div>
+          <div class="calc-grid">
+            <div class="calc-card">
+              <div class="calc-card-title">אורך</div>
+              <div class="calc-row"><label>ערך</label><input type="number" id="cv-len-val" placeholder="0" oninput="calcConvLen()"></div>
+              <div class="calc-row"><label>מ</label>
+                <select id="cv-len-from" onchange="calcConvLen()" style="width:100%;padding:8px;border:1.5px solid var(--border);border-radius:8px;font-family:Heebo,sans-serif;font-size:13px;">
+                  <option value="1">מטר (מ׳)</option>
+                  <option value="0.01">סנטימטר (ס״מ)</option>
+                  <option value="0.001">מילימטר (מ״מ)</option>
+                  <option value="0.3048">פיט</option>
+                  <option value="0.0254">אינץ׳</option>
+                </select>
+              </div>
+              <div class="calc-result" id="cv-len-result">—</div>
+            </div>
+            <div class="calc-card">
+              <div class="calc-card-title">שטח</div>
+              <div class="calc-row"><label>ערך</label><input type="number" id="cv-area-val" placeholder="0" oninput="calcConvArea()"></div>
+              <div class="calc-row"><label>מ</label>
+                <select id="cv-area-from" onchange="calcConvArea()" style="width:100%;padding:8px;border:1.5px solid var(--border);border-radius:8px;font-family:Heebo,sans-serif;font-size:13px;">
+                  <option value="1">מ״ר</option>
+                  <option value="0.0001">ס״מ רבוע</option>
+                  <option value="10000">דונם</option>
+                  <option value="0.0929">רגל רבוע</option>
+                </select>
+              </div>
+              <div class="calc-result" id="cv-area-result">—</div>
+            </div>
+            <div class="calc-card">
+              <div class="calc-card-title">נפח / משקל</div>
+              <div class="calc-row"><label>ערך</label><input type="number" id="cv-vol-val" placeholder="0" oninput="calcConvVol()"></div>
+              <div class="calc-row"><label>מ</label>
+                <select id="cv-vol-from" onchange="calcConvVol()" style="width:100%;padding:8px;border:1.5px solid var(--border);border-radius:8px;font-family:Heebo,sans-serif;font-size:13px;">
+                  <option value="1">מ״ק</option>
+                  <option value="0.001">ליטר</option>
+                  <option value="1000">טון → ק״ג (צפ. 1)</option>
+                  <option value="0.001">ק״ג → טון</option>
+                </select>
+              </div>
+              <div class="calc-result" id="cv-vol-result">—</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- COST -->
+        <div id="calc-panel-cost" class="calc-panel" style="display:none">
+          <div class="calc-panel-title">💰 עלות חומר לפי כמות</div>
+          <div class="calc-grid">
+            <div class="calc-card" style="grid-column:1/-1;">
+              <div class="calc-card-title">חישוב עלות כוללת + מע״מ</div>
+              <div class="calc-row"><label>כמות (מ״ר / מ״ק / יחידות)</label><input type="number" id="cost-qty" placeholder="0" oninput="calcCost()"></div>
+              <div class="calc-row"><label>מחיר ליחידה (₪)</label><input type="number" id="cost-price" placeholder="0" oninput="calcCost()"></div>
+              <div class="calc-row"><label>תוספת בזבוז %</label><input type="number" id="cost-waste" placeholder="10" value="10" oninput="calcCost()"></div>
+              <div class="calc-row"><label>כולל מע״מ 18%</label>
+                <select id="cost-vat" onchange="calcCost()" style="width:100%;padding:8px;border:1.5px solid var(--border);border-radius:8px;font-family:Heebo,sans-serif;font-size:13px;">
+                  <option value="1.18">כן — כולל מע״מ</option>
+                  <option value="1">לא — ללא מע״מ</option>
+                </select>
+              </div>
+              <div class="calc-result" id="cost-result" style="font-size:16px;">—</div>
+            </div>
+          </div>
+        </div>
+
+      </div><!-- end panels -->
+    </div><!-- end grid -->
+  </div><!-- end page-calc -->
 
   <!-- FORECAST PAGE -->
   <div id="page-forecast" class="page" style="display:none">
@@ -1409,6 +1659,79 @@ if (_origShowPage) {
   };
 }
 
+
+// ══════════════════════════════════════════════════════
+// ENGINEERING CALCULATOR
+// ══════════════════════════════════════════════════════
+(function(){
+  // Inject CSS once
+  if(!document.getElementById('calc-styles')){
+    var s=document.createElement('style');
+    s.id='calc-styles';
+    s.textContent=`
+      .calc-tab-btn{padding:10px 14px;border-radius:9px;cursor:pointer;font-family:Heebo,sans-serif;font-size:13px;font-weight:700;color:var(--text2);background:var(--surface);border:1.5px solid var(--border);transition:all 0.15s;text-align:right;}
+      .calc-tab-btn:hover{border-color:#1a3d5c;color:#1a3d5c;}
+      .active-calc-tab{background:#1a3d5c!important;color:white!important;border-color:#1a3d5c!important;}
+      .calc-panel-title{font-size:17px;font-weight:800;color:var(--text);margin-bottom:16px;}
+      .calc-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:14px;}
+      .calc-card{background:var(--surface);border:1.5px solid var(--border);border-radius:12px;padding:16px;}
+      .calc-card-title{font-size:12px;font-weight:800;color:#1a3d5c;text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px;padding-bottom:8px;border-bottom:2px solid var(--border);}
+      .calc-row{display:flex;flex-direction:column;gap:3px;margin-bottom:8px;}
+      .calc-row label{font-size:11px;font-weight:600;color:var(--text3);}
+      .calc-row input{padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-family:Heebo,sans-serif;font-size:14px;background:var(--surface2);color:var(--text);transition:border-color 0.15s;}
+      .calc-row input:focus{outline:none;border-color:#1a3d5c;}
+      .calc-result{background:linear-gradient(135deg,#1a3d5c,#2d6a9f);color:white;border-radius:9px;padding:11px 14px;font-size:14px;font-weight:800;margin-top:6px;min-height:42px;display:flex;align-items:center;direction:rtl;}
+    `;
+    document.head.appendChild(s);
+  }
+})();
+
+function showCalc(name){
+  document.querySelectorAll('.calc-panel').forEach(function(p){p.style.display='none';});
+  document.querySelectorAll('.calc-tab-btn').forEach(function(b){b.classList.remove('active-calc-tab');});
+  var panel=document.getElementById('calc-panel-'+name);
+  var btn=document.getElementById('calc-tab-btn-'+name);
+  if(panel)panel.style.display='block';
+  if(btn)btn.classList.add('active-calc-tab');
+}
+
+function r(n,d){return Math.round(n*(Math.pow(10,d||2)))/(Math.pow(10,d||2));}
+
+// AREA
+function calcArea(){var l=parseFloat(document.getElementById('rect-l').value)||0,w=parseFloat(document.getElementById('rect-w').value)||0;document.getElementById('rect-result').textContent=l&&w?'שטח: '+r(l*w)+' מ״ר':'הכנס נתונים';}
+function calcCircle(){var rd=parseFloat(document.getElementById('circ-r').value)||0;document.getElementById('circ-result').textContent=rd?'שטח: '+r(Math.PI*rd*rd)+' מ״ר  |  היקף: '+r(2*Math.PI*rd)+' מ׳':'הכנס נתונים';}
+function calcTriangle(){var b=parseFloat(document.getElementById('tri-b').value)||0,h=parseFloat(document.getElementById('tri-h').value)||0;document.getElementById('tri-result').textContent=b&&h?'שטח: '+r(b*h/2)+' מ״ר':'הכנס נתונים';}
+function calcTrap(){var a=parseFloat(document.getElementById('trap-a').value)||0,b=parseFloat(document.getElementById('trap-b').value)||0,h=parseFloat(document.getElementById('trap-h').value)||0;document.getElementById('trap-result').textContent=a&&b&&h?'שטח: '+r((a+b)/2*h)+' מ״ר':'הכנס נתונים';}
+
+// VOLUME
+function calcBox(){var l=parseFloat(document.getElementById('box-l').value)||0,w=parseFloat(document.getElementById('box-w').value)||0,h=parseFloat(document.getElementById('box-h').value)||0;document.getElementById('box-result').textContent=l&&w&&h?'נפח: '+r(l*w*h)+' מ״ק':'הכנס נתונים';}
+function calcCyl(){var rd=parseFloat(document.getElementById('cyl-r').value)||0,h=parseFloat(document.getElementById('cyl-h').value)||0;document.getElementById('cyl-result').textContent=rd&&h?'נפח: '+r(Math.PI*rd*rd*h)+' מ״ק':'הכנס נתונים';}
+function calcSlab(){var l=parseFloat(document.getElementById('slab-l').value)||0,w=parseFloat(document.getElementById('slab-w').value)||0,t=parseFloat(document.getElementById('slab-t').value)||0;document.getElementById('slab-result').textContent=l&&w&&t?'נפח: '+r(l*w*(t/100))+' מ״ק  |  שטח: '+r(l*w)+' מ״ר':'הכנס נתונים';}
+
+// CONCRETE
+function calcConcrete(){var l=parseFloat(document.getElementById('con-l').value)||0,w=parseFloat(document.getElementById('con-w').value)||0,t=parseFloat(document.getElementById('con-t').value)||0,wst=(parseFloat(document.getElementById('con-waste').value)||0)/100;if(!l||!w||!t){document.getElementById('con-result').textContent='הכנס נתונים';return;}var vol=l*w*(t/100);var volWaste=vol*(1+wst);document.getElementById('con-result').textContent='נפח נטו: '+r(vol)+' מ״ק  |  כולל בזבוז: '+r(volWaste)+' מ״ק  |  משקל: ~'+r(volWaste*2400/1000)+' טון';}
+function calcColumn(){var d=parseFloat(document.getElementById('col-d').value)||0,h=parseFloat(document.getElementById('col-h').value)||0,n=parseFloat(document.getElementById('col-n').value)||1;if(!d||!h){document.getElementById('col-result').textContent='הכנס נתונים';return;}var vol=Math.PI*Math.pow(d/100/2,2)*h*n;document.getElementById('col-result').textContent=n+' עמודים: '+r(vol)+' מ״ק  |  ~'+r(vol*2400/1000)+' טון';}
+function calcWall(){var l=parseFloat(document.getElementById('wall-l').value)||0,h=parseFloat(document.getElementById('wall-h').value)||0,t=parseFloat(document.getElementById('wall-t').value)||0;if(!l||!h||!t){document.getElementById('wall-result').textContent='הכנס נתונים';return;}var vol=l*h*(t/100);document.getElementById('wall-result').textContent='נפח: '+r(vol)+' מ״ק  |  שטח: '+r(l*h)+' מ״ר  |  ~'+r(vol*2200/1000)+' טון';}
+
+// FLOORING
+function calcTile(){var area=parseFloat(document.getElementById('tile-area').value)||0,tl=parseFloat(document.getElementById('tile-l').value)||0,tw=parseFloat(document.getElementById('tile-w').value)||0,wst=(parseFloat(document.getElementById('tile-waste').value)||0)/100;if(!area||!tl||!tw){document.getElementById('tile-result').textContent='הכנס נתונים';return;}var tileArea=tl/100*tw/100;var tiles=Math.ceil(area/tileArea*(1+wst));document.getElementById('tile-result').textContent='כמות אריחים: '+tiles+' יח׳  |  שטח אריח: '+r(tileArea*10000)+' ס״מ²';}
+function calcPaint(){var area=parseFloat(document.getElementById('paint-area').value)||0,cov=parseFloat(document.getElementById('paint-cov').value)||10,coats=parseFloat(document.getElementById('paint-coats').value)||2;if(!area){document.getElementById('paint-result').textContent='הכנס נתונים';return;}var liters=r(area*coats/cov);document.getElementById('paint-result').textContent='צריך: '+liters+' ליטר  |  '+coats+' שכבות על '+area+' מ״ר';}
+
+// WEIGHT
+function calcWeight(){var vol=parseFloat(document.getElementById('wt-vol').value)||0,dens=parseFloat(document.getElementById('wt-mat').value)||2400;if(!vol){document.getElementById('wt-result').textContent='הכנס נתונים';return;}var kg=vol*dens;document.getElementById('wt-result').textContent='משקל: '+r(kg)+' ק״ג  |  '+r(kg/1000)+' טון';}
+
+// SLOPE
+function calcSlope1(){var run=parseFloat(document.getElementById('sl-run').value)||0,pct=parseFloat(document.getElementById('sl-pct').value)||0;if(!run||!pct){document.getElementById('sl-result1').textContent='הכנס נתונים';return;}var rise=run*pct/100;var deg=r(Math.atan(pct/100)*180/Math.PI);document.getElementById('sl-result1').textContent='גובה: '+r(rise)+' מ׳  |  זווית: '+deg+'°  |  אורך נטוי: '+r(Math.sqrt(run*run+rise*rise))+' מ׳';}
+function calcSlope2(){var rise=parseFloat(document.getElementById('sl-rise').value)||0,run=parseFloat(document.getElementById('sl-run2').value)||0;if(!rise||!run){document.getElementById('sl-result2').textContent='הכנס נתונים';return;}var pct=r(rise/run*100);var deg=r(Math.atan(rise/run)*180/Math.PI);document.getElementById('sl-result2').textContent='שיפוע: '+pct+'%  |  זווית: '+deg+'°';}
+function calcPyth(){var a=parseFloat(document.getElementById('py-a').value)||0,b=parseFloat(document.getElementById('py-b').value)||0;if(!a||!b){document.getElementById('py-result').textContent='הכנס נתונים';return;}document.getElementById('py-result').textContent='אלכסון: '+r(Math.sqrt(a*a+b*b))+' מ׳';}
+
+// CONVERT
+function calcConvLen(){var val=parseFloat(document.getElementById('cv-len-val').value)||0,f=parseFloat(document.getElementById('cv-len-from').value)||1;var m=val*f;document.getElementById('cv-len-result').textContent=val?r(m,4)+' מ׳  |  '+r(m*100,2)+' ס״מ  |  '+r(m/0.3048,3)+' פיט  |  '+r(m/0.0254,2)+' אינץ׳':'הכנס ערך';}
+function calcConvArea(){var val=parseFloat(document.getElementById('cv-area-val').value)||0,f=parseFloat(document.getElementById('cv-area-from').value)||1;var m=val*f;document.getElementById('cv-area-result').textContent=val?r(m,4)+' מ״ר  |  '+r(m*10000,2)+' ס״מ²  |  '+r(m/10000,6)+' דונם':'הכנס ערך';}
+function calcConvVol(){var val=parseFloat(document.getElementById('cv-vol-val').value)||0,f=parseFloat(document.getElementById('cv-vol-from').value)||1;var m=val*f;document.getElementById('cv-vol-result').textContent=val?r(m,4)+' מ״ק  |  '+r(m*1000,2)+' ליטר  |  '+r(m*1000,2)+' ק״ג (מים)':'הכנס ערך';}
+
+// COST
+function calcCost(){var qty=parseFloat(document.getElementById('cost-qty').value)||0,price=parseFloat(document.getElementById('cost-price').value)||0,wst=(parseFloat(document.getElementById('cost-waste').value)||0)/100,vat=parseFloat(document.getElementById('cost-vat').value)||1.18;if(!qty||!price){document.getElementById('cost-result').textContent='הכנס נתונים';return;}var qtyWaste=qty*(1+wst);var net=qtyWaste*price;var total=net*vat;var el=document.getElementById('cost-result');el.innerHTML='כמות כולל בזבוז: '+r(qtyWaste)+' | עלות נטו: ₪'+r(net).toLocaleString('he-IL')+(vat>1?' | סה״כ כולל מע״מ: ₪'+r(total).toLocaleString('he-IL'):'');}
 
 document.addEventListener('DOMContentLoaded', async () => {
   await bootstrap();
