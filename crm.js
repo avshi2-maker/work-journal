@@ -43,7 +43,7 @@ async function loadProjects() {
   window.allProjects = allProjects;
   window.allQuotes = quotesData || [];
   window.allQuoteItems = quoteItemsData || [];
-  document.getElementById('badge-projects').textContent = allProjects.filter(p=>p.status==='active').length;
+  document.getElementById('badge-projects').textContent = allProjects.length;
   window.quoteSum = {};
   (window.allQuotes||[]).forEach(q=>{
     const items = (window.allQuoteItems||[]).filter(i=>i.quote_id===q.id);
