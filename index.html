@@ -3,11 +3,25 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#f5e9c4">
 <title>יומן פעילות — בני פרסקי</title>
 <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;600;700;800;900&family=Rubik:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" id="app-css" href=""><!-- loaded from Supabase Storage by bootstrap() -->
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📋</text></svg>">
+<script>
+// Silently suppress ERR_BLOCKED_BY_CLIENT on Supabase storage images (ad blocker interference)
+document.addEventListener('error', function(e) {
+  if (e.target && e.target.tagName === 'IMG') {
+    const src = e.target.src || '';
+    if (src.includes('supabase.co/storage') || src.includes('supabase.in/storage')) {
+      e.target.style.display = 'none';
+      e.stopPropagation();
+    }
+  }
+}, true);
+</script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
@@ -646,7 +660,7 @@ const SUPABASE_URL_CONST  = SB_URL;
 const SUPABASE_ANON_KEY_CONST = SB_KEY;
 
 // Storage base URL for panel HTML, CSS, and JS modules
-const STORAGE = `${SB_URL}/storage/v1/object/public/app-assets`;
+const STORAGE = 'https://avshi2-maker.github.io/work-journal';
 
 // ── GLOBAL STATE ──────────────────────────────────────
 window.APP = {
