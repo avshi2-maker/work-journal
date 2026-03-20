@@ -420,6 +420,12 @@ document.addEventListener('error', function(e) {
       <div class="stat-card" style="--accent-color:#22c55e;cursor:pointer" onclick="showPage('forecast')"><div class="stat-label">רווח צפוי כולל</div><div class="stat-value" id="stat-total-profit">—</div><div class="stat-sub">₪ מכל הפרויקטים</div><div class="stat-icon">📈</div></div>
     </div>
 
+  <!-- DEBUG PANEL - remove after testing -->
+  <div id="debug-panel" style="background:#1a1a2e;color:#22c55e;border-radius:10px;padding:12px 16px;margin-bottom:16px;font-family:monospace;font-size:12px;direction:ltr;">
+    <div style="font-weight:700;margin-bottom:6px;color:#f59e0b;">🔍 Debug Info (remove after testing)</div>
+    <div id="debug-output">Loading...</div>
+  </div>
+
     <!-- ANNEXES WIDGET -->
     <div class="card" id="annexes-widget" style="margin-bottom:20px;">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
@@ -1713,7 +1719,7 @@ async function bootstrap() {
     try {
       if (typeof crmInit === 'function') await crmInit();
     } catch(e) {
-      console.warn('crmInit failed:', e.message);
+      console.error('crmInit failed:', e.message, e.stack);
     }
 
     // 7. Load dashboard widgets (after data is loaded)
@@ -2310,6 +2316,13 @@ async function loadAll() {
       loadReports().catch(e => console.warn('loadReports:', e.message)),
     ]);
     renderDashboard();
+    // Debug output
+    const dbg = document.getElementById('debug-output');
+    if(dbg) dbg.innerHTML = 
+      'contractors: ' + allContractors.length + 
+      ' | projects: ' + allProjects.length + 
+      ' | transactions: ' + allTransactions.length + 
+      ' | reports: ' + allReports.length;
   } catch(e){ console.warn('loadAll error:', e.message); }
   finally { window.showLoading && window.showLoading(false); }
 }
@@ -2320,7 +2333,11 @@ async function loadContractors() {
   if(error) throw error;
   allContractors = data || [];
   window.allContractors = allContractors;
-  document.querySelectorAll('#badge-contractors').forEach(el => el.textContent = allContractors.filter(c=>c.is_active).length);
+  const activeCount = allContractors.filter(c=>c.is_active).length;
+  // Fallback: if no is_active column, show total count
+  const badgeCount = activeCount > 0 ? activeCount : allContractors.length;
+  document.querySelectorAll('#badge-contractors').forEach(el => el.textContent = badgeCount);
+  console.log('loadContractors: total='+allContractors.length+' active='+activeCount);
   renderContractors();
   populateContractorSelects();
   populateOccupationFilter();
@@ -2343,6 +2360,7 @@ async function loadProjects() {
   window.allQuotes = quotesData || [];
   window.allQuoteItems = quoteItemsData || [];
   document.querySelectorAll('#badge-projects').forEach(el => el.textContent = allProjects.length);
+  console.log('loadProjects: total='+allProjects.length);
   window.quoteSum = {};
   (window.allQuotes||[]).forEach(q=>{
     const items = (window.allQuoteItems||[]).filter(i=>i.quote_id===q.id);
