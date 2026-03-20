@@ -2302,9 +2302,15 @@ async function crmInit() {
 async function loadAll() {
   window.showLoading && window.showLoading(true);
   try {
-    await Promise.all([loadContractors(), loadProjects(), loadTransactions(), loadReports()]);
+    // Each loader independent - one failure never blocks the others
+    await Promise.allSettled([
+      loadContractors().catch(e => console.warn('loadContractors:', e.message)),
+      loadProjects().catch(e => console.warn('loadProjects:', e.message)),
+      loadTransactions().catch(e => console.warn('loadTransactions:', e.message)),
+      loadReports().catch(e => console.warn('loadReports:', e.message)),
+    ]);
     renderDashboard();
-  } catch(e){ showToast('שגיאה בטעינת נתונים: '+e.message,'error'); }
+  } catch(e){ console.warn('loadAll error:', e.message); }
   finally { window.showLoading && window.showLoading(false); }
 }
 
@@ -2323,11 +2329,14 @@ async function loadContractors() {
 }
 
 async function loadProjects() {
-  const [{data,error},{data:quotesData},{data:quoteItemsData}] = await Promise.all([
+  const [projRes, quotesRes, quoteItemsRes] = await Promise.allSettled([
     sb.from('projects').select('*').order('created_at',{ascending:false}),
     sb.from('quotes').select('id,project_id,title,status'),
     sb.from('quote_items').select('quote_id,unit_cost,quantity'),
   ]);
+  const {data,error} = projRes.status==='fulfilled' ? projRes.value : {data:null,error:{message:'failed'}};
+  const quotesData = quotesRes.status==='fulfilled' ? (quotesRes.value.data||[]) : [];
+  const quoteItemsData = quoteItemsRes.status==='fulfilled' ? (quoteItemsRes.value.data||[]) : [];
   if(error) throw error;
   allProjects = data || [];
   window.allProjects = allProjects;
@@ -2352,7 +2361,7 @@ async function loadTransactions() {
   const {data,error} = await sb.from('contractor_transactions')
     .select('*, contractors_master(company_name), projects(project_name)')
     .order('transaction_date',{ascending:false});
-  if(error) throw error;
+  if(error) { console.warn('loadTransactions error:', error.message); allTransactions = []; return; }
   allTransactions = data || [];
   renderBalances();
   renderTransactions();
