@@ -5376,14 +5376,14 @@ async function spApprove(reportId) {
   var contractor   = (allContractors||[]).find(function(c){ return c.id===contractorId; });
   var mobile       = contractor ? (contractor.mobile||'') : '';
   try {
-    // 1. Mark approved in Supabase
+    // 1. Mark approved in Supabase (only use columns that exist in site_reports)
     await fetch(SUPABASE_URL_CONST + '/rest/v1/site_reports?id=eq.' + reportId, {
       method: 'PATCH',
       headers: { apikey: SUPABASE_ANON_KEY_CONST, Authorization: 'Bearer ' + SUPABASE_ANON_KEY_CONST,
                  'Content-Type': 'application/json', Prefer: 'return=minimal' },
-      body: JSON.stringify({ status: 'approved', approved_at: new Date().toISOString(), approved_by: 'Beni Persky' })
+      body: JSON.stringify({ status: 'approved' })
     });
-    // 2. Auto-create daily journal entry
+    // 2. Auto-create daily journal entry (use only base columns)
     try {
       await fetch(SUPABASE_URL_CONST + '/rest/v1/reports', {
         method: 'POST',
@@ -5393,11 +5393,8 @@ async function spApprove(reportId) {
           project_name: projectName || 'Site Pulse Report',
           report_date:  reportDate,
           manager_name: contractorName,
-          source:       'site_pulse',
-          status:       'approved',
           general_notes: activities,
-          workers:      workers,
-          project_id:   projectId
+          status:       'approved'
         })
       });
     } catch(e4) { console.warn('Journal entry non-critical:', e4.message); }
@@ -5445,9 +5442,64 @@ function toggleAllAnnexes(checked) {
 
 function onJournalProjectChange(sel){const customRow=document.getElementById('project-custom-name-row');if(!customRow)return;if(sel.value==='__custom__'){customRow.style.display='block';document.getElementById('projectNameCustom').focus();}else{customRow.style.display='none';}}
 
+
+async function _spConfirmReject() {
+  var reportId = document.getElementById('sp-reject-id').value;
+  var reason   = document.getElementById('sp-reject-reason').value.trim();
+  if (!reason) { alert('נא להזין סיבת דחייה'); return; }
+  var r            = _spReportCache[reportId] || {};
+  var contractorId = r.contractor_id || null;
+  var contractor   = (allContractors||[]).find(function(c){ return c.id===contractorId; });
+  var mobile       = contractor ? (contractor.mobile||'') : '';
+  try {
+    await fetch(SUPABASE_URL_CONST + '/rest/v1/site_reports?id=eq.' + reportId, {
+      method: 'PATCH',
+      headers: { apikey: SUPABASE_ANON_KEY_CONST, Authorization: 'Bearer ' + SUPABASE_ANON_KEY_CONST,
+                 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+      body: JSON.stringify({ status: 'rejected' })
+    });
+    if (mobile) {
+      var NL = '\n';
+      var phone = '972' + mobile.replace(/[^0-9]/g,'').replace(/^0/,'');
+      var dHe = r.report_date ? new Date(r.report_date+'T12:00:00').toLocaleDateString('he-IL',{day:'2-digit',month:'2-digit',year:'numeric'}) : '';
+      var waMsg = 'דוח האתר שלך נדחה על ידי בני פרסקי.' + NL +
+                  (r.project_name ? 'פרויקט: '+r.project_name+NL : '') +
+                  (dHe ? 'תאריך: '+dHe+NL : '') +
+                  NL + 'סיבה: '+reason+NL+NL + 'נא לתקן ולשלוח מחדש. תודה.';
+      var waUrl = 'https://wa.me/'+phone+'?text='+encodeURIComponent(waMsg);
+      var _a = document.createElement('a'); _a.href=waUrl; _a.target='_blank'; _a.rel='noopener';
+      document.body.appendChild(_a); _a.click(); document.body.removeChild(_a);
+    }
+    closeModal('modal-sp-reject');
+    var card = document.getElementById('spr-'+reportId);
+    if (card) { card.style.opacity='0'; card.style.transition='opacity 0.3s'; }
+    setTimeout(function(){ loadSiteReports(); }, 400);
+    showToast('דוח נדחה — WhatsApp נשלח לקבלן', 'success');
+  } catch(e) { showToast('שגיאה: '+e.message,'error'); console.error('_spConfirmReject:',e); }
+}
+
 // ===== END INLINED MODULES =====
 
 
 </script>
+
+<!-- ── SITE PULSE REJECT MODAL ──────────────────────────── -->
+<div id="modal-sp-reject" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:4000;align-items:center;justify-content:center;">
+  <div style="background:#fff;border-radius:16px;padding:28px;width:90%;max-width:480px;direction:rtl;box-shadow:0 20px 60px rgba(0,0,0,0.3);">
+    <h3 style="font-size:18px;font-weight:800;color:#dc2626;margin-bottom:8px;">❌ דחיית דוח</h3>
+    <div id="sp-reject-contractor-label" style="font-size:13px;color:#666;margin-bottom:4px;"></div>
+    <div id="sp-reject-report-label" style="font-size:12px;color:#999;margin-bottom:16px;"></div>
+    <input type="hidden" id="sp-reject-id">
+    <div style="margin-bottom:16px;">
+      <label style="font-size:12px;font-weight:700;color:#666;display:block;margin-bottom:6px;">סיבת דחייה *</label>
+      <textarea id="sp-reject-reason" rows="3" placeholder="הסבר מדוע הדוח נדחה..." style="width:100%;padding:10px;border:2px solid #fca5a5;border-radius:8px;font-family:Heebo,sans-serif;font-size:13px;direction:rtl;resize:vertical;box-sizing:border-box;"></textarea>
+    </div>
+    <div style="display:flex;gap:10px;justify-content:flex-start;">
+      <button onclick="_spConfirmReject()" style="background:#dc2626;color:#fff;border:none;border-radius:8px;padding:10px 20px;font-size:14px;font-weight:700;cursor:pointer;font-family:Heebo,sans-serif;">❌ דחה ושלח WhatsApp</button>
+      <button onclick="closeModal('modal-sp-reject')" style="background:#f3f4f6;color:#374151;border:none;border-radius:8px;padding:10px 20px;font-size:14px;font-weight:700;cursor:pointer;font-family:Heebo,sans-serif;">ביטול</button>
+    </div>
+  </div>
+</div>
+
 </body>
 </html>
