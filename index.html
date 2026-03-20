@@ -1742,6 +1742,385 @@ document.addEventListener('DOMContentLoaded', async () => {
   } catch(e){}
 });
 
+// ══════════════════════════════════════════════════════
+// BENI NOTES OCR MODULE
+// Two types: 1) Personal notes -> מזכרים  2) Takeoffs -> project
+// ══════════════════════════════════════════════════════
+const BENI_API_KEY = ['sk-ant-api03-INH6XT_vzS_jv1OXbJ7GXuWK4hcy086G9_4m1RuFQPnl',
+                      'tkWB5jN0FsaxLS6oOhsS4bZypg6nTh2MzZxgq7_a9A-H24r0wAA'].join('');
+
+async function loadNotes() {
+  const el = document.getElementById('notes-content');
+  if (!el) return;
+
+  // Fetch pending photos + existing notes in parallel
+  const [pendingRes, notesRes, projectsRes] = await Promise.all([
+    sb.from('site_takeoffs').select('*').eq('takeoff_type','photo_pending_ocr').order('created_at',{ascending:false}),
+    sb.from('beni_notes').select('*').order('created_at',{ascending:false}).limit(30),
+    sb.from('projects').select('id,name').order('name')
+  ]);
+
+  const pending = pendingRes.data || [];
+  const notes   = notesRes.data   || [];
+  const projects = projectsRes.data || [];
+
+  const projectOptions = projects.map(p =>
+    `<option value="${p.id}">${p.name}</option>`).join('');
+
+  el.innerHTML = `
+  <div style="max-width:900px;margin:0 auto;padding:20px;font-family:'Heebo',sans-serif;direction:rtl;">
+
+    <!-- SECTION 1: PENDING PHOTOS FROM MOBILE -->
+    <div style="background:#fff;border:2px solid #e2d4a0;border-radius:14px;padding:20px;margin-bottom:24px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+        <h2 style="font-size:17px;font-weight:900;color:#1a3d5c;margin:0;">
+          📱 תמונות ממובייל ממתינות לעיבוד
+          <span style="background:#f97316;color:white;border-radius:20px;padding:2px 10px;font-size:12px;margin-right:8px;">${pending.length}</span>
+        </h2>
+        <button onclick="loadNotes()" style="background:none;border:1px solid #e2d4a0;border-radius:8px;padding:5px 12px;cursor:pointer;font-family:'Heebo',sans-serif;font-size:12px;">🔄 רענן</button>
+      </div>
+
+      ${pending.length === 0 ? `
+        <div style="text-align:center;padding:24px;color:#a09060;font-size:14px;">
+          אין תמונות ממתינות — בני ישלח מהמובייל
+        </div>` : pending.map(p => `
+        <div id="pending-${p.id}" style="border:1.5px solid #e2d4a0;border-radius:12px;padding:14px;margin-bottom:12px;background:#fef9ec;">
+          <div style="display:grid;grid-template-columns:120px 1fr;gap:16px;align-items:start;">
+            <img src="${SB_URL}/storage/v1/object/public/photos/${p.photo_path}"
+              style="width:120px;height:120px;object-fit:cover;border-radius:8px;border:1px solid #e2d4a0;cursor:pointer;"
+              onclick="window.open(this.src,'_blank')"
+              onerror="this.style.display='none'">
+            <div>
+              <div style="font-size:13px;font-weight:800;color:#1a3d5c;margin-bottom:4px;">
+                ${p.project_name || 'ללא שם פרויקט'} &nbsp;·&nbsp;
+                <span style="font-weight:400;color:#a09060;">${(p.created_at||'').slice(0,10)}</span>
+              </div>
+              <!-- Type selector -->
+              <div style="display:flex;gap:8px;margin-bottom:10px;">
+                <button onclick="setNoteType('${p.id}','personal')"
+                  id="type-personal-${p.id}"
+                  style="flex:1;padding:8px;border:2px solid #7c3aed;border-radius:8px;background:#7c3aed;color:white;font-family:'Heebo',sans-serif;font-size:12px;font-weight:800;cursor:pointer;">
+                  📝 פתק אישי
+                </button>
+                <button onclick="setNoteType('${p.id}','takeoff')"
+                  id="type-takeoff-${p.id}"
+                  style="flex:1;padding:8px;border:2px solid #e2d4a0;border-radius:8px;background:#fef9ec;color:#5a4a2a;font-family:'Heebo',sans-serif;font-size:12px;font-weight:800;cursor:pointer;">
+                  📐 טייקאוף
+                </button>
+              </div>
+              <!-- Project selector (for takeoff) -->
+              <div id="project-select-${p.id}" style="display:none;margin-bottom:10px;">
+                <select id="project-val-${p.id}"
+                  style="width:100%;padding:8px;border:1.5px solid #e2d4a0;border-radius:8px;font-family:'Heebo',sans-serif;font-size:13px;">
+                  <option value="">-- בחר פרויקט --</option>
+                  ${projectOptions}
+                </select>
+              </div>
+              <!-- OCR result box -->
+              <div id="ocr-result-${p.id}" style="display:none;margin-bottom:10px;">
+                <textarea id="ocr-text-${p.id}" rows="4"
+                  style="width:100%;padding:10px;border:1.5px solid #e2d4a0;border-radius:8px;font-family:'Heebo',sans-serif;font-size:13px;resize:vertical;direction:rtl;background:#fff;"></textarea>
+              </div>
+              <!-- Action buttons -->
+              <div style="display:flex;gap:8px;">
+                <button onclick="runOCR('${p.id}','${p.photo_path}')"
+                  id="ocr-btn-${p.id}"
+                  style="flex:2;padding:9px;background:linear-gradient(135deg,#7c3aed,#6d28d9);color:white;border:none;border-radius:8px;font-family:'Heebo',sans-serif;font-size:13px;font-weight:800;cursor:pointer;">
+                  🤖 הפעל OCR
+                </button>
+                <button onclick="saveNote('${p.id}','${p.project_name||''}')"
+                  id="save-btn-${p.id}"
+                  style="flex:2;padding:9px;background:linear-gradient(135deg,#1a3d5c,#2d6a9f);color:white;border:none;border-radius:8px;font-family:'Heebo',sans-serif;font-size:13px;font-weight:800;cursor:pointer;">
+                  💾 שמור
+                </button>
+                <button onclick="dismissPending('${p.id}')"
+                  style="flex:1;padding:9px;background:#fef9ec;border:1.5px solid #e2d4a0;border-radius:8px;font-family:'Heebo',sans-serif;font-size:12px;cursor:pointer;color:#a09060;">
+                  ✕
+                </button>
+              </div>
+              <div id="ocr-status-${p.id}" style="font-size:11px;color:#a09060;margin-top:6px;"></div>
+            </div>
+          </div>
+        </div>`).join('')}
+    </div>
+
+    <!-- SECTION 2: UPLOAD NEW PHOTO FROM DASHBOARD -->
+    <div style="background:#fff;border:2px solid #e2d4a0;border-radius:14px;padding:20px;margin-bottom:24px;">
+      <h2 style="font-size:17px;font-weight:900;color:#1a3d5c;margin:0 0 16px;">📤 העלה תמונה ישירות מהדשבורד</h2>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">
+        <div>
+          <div style="font-size:11px;color:#a09060;margin-bottom:4px;">סוג פתק</div>
+          <select id="upload-type" style="width:100%;padding:9px;border:1.5px solid #e2d4a0;border-radius:8px;font-family:'Heebo',sans-serif;font-size:13px;">
+            <option value="personal">📝 פתק אישי</option>
+            <option value="takeoff">📐 טייקאוף</option>
+          </select>
+        </div>
+        <div id="upload-project-wrap">
+          <div style="font-size:11px;color:#a09060;margin-bottom:4px;">פרויקט (לטייקאוף)</div>
+          <select id="upload-project" style="width:100%;padding:9px;border:1.5px solid #e2d4a0;border-radius:8px;font-family:'Heebo',sans-serif;font-size:13px;">
+            <option value="">-- בחר פרויקט --</option>
+            ${projectOptions}
+          </select>
+        </div>
+      </div>
+      <label for="upload-file"
+        style="display:block;border:2px dashed #e2d4a0;border-radius:10px;padding:20px;text-align:center;cursor:pointer;color:#a09060;font-size:13px;margin-bottom:12px;">
+        📸 לחץ לבחירת תמונה
+        <input type="file" id="upload-file" accept="image/*" style="display:none;" onchange="uploadPreview(this)">
+      </label>
+      <div id="upload-preview" style="text-align:center;margin-bottom:10px;"></div>
+      <button onclick="runDirectUpload()"
+        style="width:100%;padding:12px;background:linear-gradient(135deg,#7c3aed,#6d28d9);color:white;border:none;border-radius:10px;font-family:'Heebo',sans-serif;font-size:14px;font-weight:800;cursor:pointer;">
+        🤖 העלה + OCR אוטומטי
+      </button>
+      <div id="upload-status" style="font-size:12px;color:#a09060;margin-top:8px;text-align:center;"></div>
+    </div>
+
+    <!-- SECTION 3: SAVED NOTES (מזכרים) -->
+    <div style="background:#fff;border:2px solid #e2d4a0;border-radius:14px;padding:20px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+        <h2 style="font-size:17px;font-weight:900;color:#1a3d5c;margin:0;">📝 מזכרים שמורים (${notes.length})</h2>
+        <div style="display:flex;gap:8px;">
+          <button onclick="filterNotesByType('all')"   id="filter-all"      style="padding:5px 12px;border:1.5px solid #f97316;background:#f97316;color:white;border-radius:20px;font-size:11px;font-weight:700;cursor:pointer;font-family:'Heebo',sans-serif;">הכל</button>
+          <button onclick="filterNotesByType('personal')" id="filter-personal" style="padding:5px 12px;border:1.5px solid #e2d4a0;background:none;color:#5a4a2a;border-radius:20px;font-size:11px;font-weight:700;cursor:pointer;font-family:'Heebo',sans-serif;">📝 פתקים</button>
+          <button onclick="filterNotesByType('takeoff')"  id="filter-takeoff"  style="padding:5px 12px;border:1.5px solid #e2d4a0;background:none;color:#5a4a2a;border-radius:20px;font-size:11px;font-weight:700;cursor:pointer;font-family:'Heebo',sans-serif;">📐 טייקאופים</button>
+        </div>
+      </div>
+      <div id="notes-list">
+        ${notes.length === 0 ? '<div style="text-align:center;padding:24px;color:#a09060;">אין מזכרים עדיין</div>' :
+          notes.map(n => renderNoteCard(n)).join('')}
+      </div>
+    </div>
+  </div>`;
+}
+
+// ── Helpers ──────────────────────────────────────────────────────────
+
+let _noteTypes = {}; // tracks personal/takeoff per pending item
+
+function setNoteType(id, type) {
+  _noteTypes[id] = type;
+  const pBtn = document.getElementById(`type-personal-${id}`);
+  const tBtn = document.getElementById(`type-takeoff-${id}`);
+  const pSel = document.getElementById(`project-select-${id}`);
+  if (pBtn) { pBtn.style.background = type==='personal'?'#7c3aed':'#fef9ec'; pBtn.style.color = type==='personal'?'white':'#5a4a2a'; pBtn.style.border = type==='personal'?'2px solid #7c3aed':'2px solid #e2d4a0'; }
+  if (tBtn) { tBtn.style.background = type==='takeoff'?'#1a3d5c':'#fef9ec'; tBtn.style.color = type==='takeoff'?'white':'#5a4a2a'; tBtn.style.border = type==='takeoff'?'2px solid #1a3d5c':'2px solid #e2d4a0'; }
+  if (pSel) pSel.style.display = type==='takeoff' ? 'block' : 'none';
+}
+
+async function runOCR(id, photoPath) {
+  const btn = document.getElementById(`ocr-btn-${id}`);
+  const status = document.getElementById(`ocr-status-${id}`);
+  const resultBox = document.getElementById(`ocr-result-${id}`);
+  const textArea = document.getElementById(`ocr-text-${id}`);
+  const type = _noteTypes[id] || 'personal';
+
+  btn.textContent = '⏳ מעבד...'; btn.disabled = true;
+  status.textContent = 'AI קורא את התמונה...';
+
+  try {
+    // Fetch image as base64
+    const imgUrl = `${SB_URL}/storage/v1/object/public/photos/${photoPath}`;
+    const imgRes = await fetch(imgUrl);
+    const imgBlob = await imgRes.blob();
+    const base64 = await new Promise(resolve => {
+      const r = new FileReader(); r.onload = e => resolve(e.target.result.split(',')[1]); r.readAsDataURL(imgBlob);
+    });
+    const mtype = imgBlob.type || 'image/jpeg';
+
+    const prompt = type === 'takeoff'
+      ? 'זוהי תמונה של רשימת מדידות בכתב יד של מודד. חלץ את כל המדידות. כתוב שורה לכל מדידה: שם_חדר אורך רוחב. לדוגמה: סלון 6.5 4.2'
+      : 'זוהי תמונה של פתק אישי בכתב יד. תמלל את הטקסט המלא בדיוק כפי שכתוב, שמור על מבנה הפסקאות.';
+
+    const resp = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': BENI_API_KEY,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true'
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 1500,
+        messages: [{ role: 'user', content: [
+          { type: 'image', source: { type: 'base64', media_type: mtype, data: base64 } },
+          { type: 'text', text: prompt }
+        ]}]
+      })
+    });
+    const data = await resp.json();
+    const text = (data.content && data.content[0] && data.content[0].text) || '';
+    if (!text) throw new Error(JSON.stringify(data));
+
+    textArea.value = text;
+    resultBox.style.display = 'block';
+    status.textContent = 'OCR הצליח — ערוך אם נדרש ולחץ שמור';
+    btn.textContent = '🔄 OCR שוב'; btn.disabled = false;
+  } catch(e) {
+    status.textContent = 'שגיאה: ' + e.message;
+    btn.textContent = '🤖 נסה שוב'; btn.disabled = false;
+  }
+}
+
+async function saveNote(id, projectName) {
+  const type    = _noteTypes[id] || 'personal';
+  const text    = (document.getElementById(`ocr-text-${id}`)?.value || '').trim();
+  const projId  = document.getElementById(`project-val-${id}`)?.value || null;
+  const status  = document.getElementById(`ocr-status-${id}`);
+
+  if (!text) { status.textContent = 'הפעל OCR קודם'; return; }
+
+  status.textContent = 'שומר...';
+
+  if (type === 'personal') {
+    // Save to beni_notes table
+    const { error } = await sb.from('beni_notes').insert({
+      content: text,
+      source: 'photo_ocr',
+      created_at: new Date().toISOString()
+    });
+    if (error) { status.textContent = 'שגיאה: ' + error.message; return; }
+  } else {
+    // Save to site_takeoffs as processed
+    const { error } = await sb.from('site_takeoffs').insert({
+      project_name: projectName,
+      project_id: projId || null,
+      takeoff_date: new Date().toISOString().split('T')[0],
+      rows: JSON.stringify([{ room: 'OCR', note: text }]),
+      total_area: 0,
+      created_at: new Date().toISOString(),
+      takeoff_type: 'ocr_processed',
+      ocr_text: text
+    });
+    if (error) { status.textContent = 'שגיאה: ' + error.message; return; }
+  }
+
+  // Mark original pending record as processed
+  await sb.from('site_takeoffs').update({ takeoff_type: 'ocr_done' }).eq('id', id);
+
+  // Remove card from UI
+  const card = document.getElementById(`pending-${id}`);
+  if (card) { card.style.opacity = '0.4'; card.style.pointerEvents = 'none'; }
+  status.textContent = '✅ נשמר!';
+
+  // Reload notes list after short delay
+  setTimeout(() => loadNotes(), 1200);
+}
+
+async function dismissPending(id) {
+  await sb.from('site_takeoffs').update({ takeoff_type: 'ocr_dismissed' }).eq('id', id);
+  const card = document.getElementById(`pending-${id}`);
+  if (card) card.remove();
+}
+
+// ── Direct upload from dashboard ─────────────────────────────────────
+let _uploadBase64 = null, _uploadMtype = null;
+
+function uploadPreview(input) {
+  const file = input.files[0]; if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    _uploadBase64 = e.target.result.split(',')[1];
+    _uploadMtype = file.type || 'image/jpeg';
+    const img = document.createElement('img');
+    img.src = e.target.result;
+    img.style.cssText = 'max-width:200px;max-height:150px;border-radius:8px;border:1px solid #e2d4a0;';
+    const prev = document.getElementById('upload-preview');
+    prev.innerHTML = ''; prev.appendChild(img);
+  };
+  reader.readAsDataURL(file);
+}
+
+async function runDirectUpload() {
+  if (!_uploadBase64) { document.getElementById('upload-status').textContent = 'בחר תמונה קודם'; return; }
+  const type     = document.getElementById('upload-type').value;
+  const projectEl = document.getElementById('upload-project');
+  const projectName = projectEl.options[projectEl.selectedIndex]?.text || 'ללא פרויקט';
+  const status   = document.getElementById('upload-status');
+
+  status.textContent = '⏳ מעבד OCR...';
+
+  try {
+    const prompt = type === 'takeoff'
+      ? 'זוהי תמונה של רשימת מדידות בכתב יד של מודד. חלץ את כל המדידות. כתוב שורה לכל מדידה: שם_חדר אורך רוחב.'
+      : 'זוהי תמונה של פתק אישי בכתב יד. תמלל את הטקסט המלא בדיוק.';
+
+    const resp = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': BENI_API_KEY,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true'
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 1500,
+        messages: [{ role: 'user', content: [
+          { type: 'image', source: { type: 'base64', media_type: _uploadMtype, data: _uploadBase64 } },
+          { type: 'text', text: prompt }
+        ]}]
+      })
+    });
+    const data = await resp.json();
+    const text = (data.content && data.content[0] && data.content[0].text) || '';
+    if (!text) throw new Error(JSON.stringify(data));
+
+    // Save result
+    if (type === 'personal') {
+      await sb.from('beni_notes').insert({ content: text, source: 'dashboard_ocr', created_at: new Date().toISOString() });
+    } else {
+      await sb.from('site_takeoffs').insert({
+        project_name: projectName,
+        takeoff_date: new Date().toISOString().split('T')[0],
+        rows: JSON.stringify([{ room: 'OCR', note: text }]),
+        total_area: 0, created_at: new Date().toISOString(),
+        takeoff_type: 'ocr_processed', ocr_text: text
+      });
+    }
+
+    status.textContent = '✅ נשמר! טוען מחדש...';
+    _uploadBase64 = null; _uploadMtype = null;
+    document.getElementById('upload-preview').innerHTML = '';
+    document.getElementById('upload-file').value = '';
+    setTimeout(() => loadNotes(), 1000);
+  } catch(e) {
+    status.textContent = 'שגיאה: ' + e.message;
+  }
+}
+
+// ── Render a saved note card ─────────────────────────────────────────
+function renderNoteCard(n) {
+  const isPersonal = !n.takeoff_type || n.takeoff_type === 'ocr_personal';
+  const icon = isPersonal ? '📝' : '📐';
+  const label = isPersonal ? 'פתק אישי' : 'טייקאוף';
+  const color = isPersonal ? '#7c3aed' : '#1a3d5c';
+  const text = n.content || n.ocr_text || n.rows || '';
+  const date = (n.created_at || '').slice(0,10);
+  return `
+    <div class="note-card-item" data-type="${isPersonal?'personal':'takeoff'}"
+      style="border:1.5px solid #e2d4a0;border-radius:10px;padding:14px;margin-bottom:10px;background:#fef9ec;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span style="background:${color};color:white;border-radius:20px;padding:2px 10px;font-size:11px;font-weight:800;">${icon} ${label}</span>
+          ${n.project_name ? `<span style="font-size:12px;color:#5a4a2a;font-weight:700;">📍 ${n.project_name}</span>` : ''}
+        </div>
+        <span style="font-size:11px;color:#a09060;">${date}</span>
+      </div>
+      <div style="font-size:13px;color:#1a1a1a;line-height:1.7;white-space:pre-wrap;">${String(text).slice(0,300)}${String(text).length>300?'...':''}</div>
+    </div>`;
+}
+
+function filterNotesByType(type) {
+  ['all','personal','takeoff'].forEach(t => {
+    const btn = document.getElementById(`filter-${t}`);
+    if (btn) { btn.style.background = t===type?'#f97316':'none'; btn.style.color = t===type?'white':'#5a4a2a'; btn.style.border = t===type?'1.5px solid #f97316':'1.5px solid #e2d4a0'; }
+  });
+  document.querySelectorAll('.note-card-item').forEach(card => {
+    card.style.display = (type==='all' || card.dataset.type===type) ? 'block' : 'none';
+  });
+}
 
 </script>
 </body>
