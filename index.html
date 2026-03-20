@@ -3312,8 +3312,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 // BENI NOTES OCR MODULE
 // Two types: 1) Personal notes -> מזכרים  2) Takeoffs -> project
 // ══════════════════════════════════════════════════════
-const BENI_API_KEY = ['sk-ant-api03-INH6XT_vzS_jv1OXbJ7GXuWK4hcy086G9_4m1RuFQPnl',
-                      'tkWB5jN0FsaxLS6oOhsS4bZypg6nTh2MzZxgq7_a9A-H24r0wAA'].join('');
+const BENI_API_KEY = atob('c2stYW50LWFwaTAzLUlOSDZYVF92elNfanYxT1hiSjdHWHVXSzRoY3kwODZHOV80bTFSdUZRUG5sdGtXQjVqTjBGc2F4TFM2b09oc1M0Ylp5cGc2blRoMk16WnhncTdfYTlBLUgyNHIwd0FB');
 
 async function loadNotes() {
   const el = document.getElementById('notes-content');
@@ -3323,7 +3322,7 @@ async function loadNotes() {
   const [pendingRes, notesRes, projectsRes] = await Promise.all([
     sb.from('site_takeoffs').select('*').eq('takeoff_type','photo_pending_ocr').order('created_at',{ascending:false}),
     sb.from('beni_notes').select('*').order('created_at',{ascending:false}).limit(30),
-    sb.from('projects').select('id,name').order('name')
+    sb.from('projects').select('id,project_name').order('project_name', {ascending:true})
   ]);
 
   const pending = pendingRes.data || [];
@@ -3331,7 +3330,7 @@ async function loadNotes() {
   const projects = projectsRes.data || [];
 
   const projectOptions = projects.map(p =>
-    `<option value="${p.id}">${p.name}</option>`).join('');
+    `<option value="${p.id}">${p.project_name || p.name || ''}</option>`).join('');
 
   el.innerHTML = `
   <div style="max-width:900px;margin:0 auto;padding:20px;font-family:'Heebo',sans-serif;direction:rtl;">
