@@ -3312,7 +3312,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 // BENI NOTES OCR MODULE
 // Two types: 1) Personal notes -> מזכרים  2) Takeoffs -> project
 // ══════════════════════════════════════════════════════
-const BENI_API_KEY = atob('c2stYW50LWFwaTAzLUlOSDZYVF92elNfanYxT1hiSjdHWHVXSzRoY3kwODZHOV80bTFSdUZRUG5sdGtXQjVqTjBGc2F4TFM2b09oc1M0Ylp5cGc2blRoMk16WnhncTdfYTlBLUgyNHIwd0FB');
+// OCR via API disabled — key management issue
 
 async function loadNotes() {
   const el = document.getElementById('notes-content');
@@ -3391,7 +3391,7 @@ async function loadNotes() {
                 <button onclick="runOCR('${p.id}','${p.photo_path}')"
                   id="ocr-btn-${p.id}"
                   style="flex:2;padding:9px;background:linear-gradient(135deg,#7c3aed,#6d28d9);color:white;border:none;border-radius:8px;font-family:'Heebo',sans-serif;font-size:13px;font-weight:800;cursor:pointer;">
-                  🤖 הפעל OCR
+                  ✏️ הקלד ידנית
                 </button>
                 <button onclick="saveNote('${p.id}','${p.project_name||''}')"
                   id="save-btn-${p.id}"
@@ -3436,7 +3436,7 @@ async function loadNotes() {
       <div id="upload-preview" style="text-align:center;margin-bottom:10px;"></div>
       <button onclick="runDirectUpload()"
         style="width:100%;padding:12px;background:linear-gradient(135deg,#7c3aed,#6d28d9);color:white;border:none;border-radius:10px;font-family:'Heebo',sans-serif;font-size:14px;font-weight:800;cursor:pointer;">
-        🤖 העלה + OCR אוטומטי
+        📝 העלה + הקלד ידנית
       </button>
       <div id="upload-status" style="font-size:12px;color:#a09060;margin-top:8px;text-align:center;"></div>
     </div>
@@ -3473,60 +3473,7 @@ function setNoteType(id, type) {
   if (pSel) pSel.style.display = type==='takeoff' ? 'block' : 'none';
 }
 
-async function runOCR(id, photoPath) {
-  const btn = document.getElementById(`ocr-btn-${id}`);
-  const status = document.getElementById(`ocr-status-${id}`);
-  const resultBox = document.getElementById(`ocr-result-${id}`);
-  const textArea = document.getElementById(`ocr-text-${id}`);
-  const type = _noteTypes[id] || 'personal';
-
-  btn.textContent = '⏳ מעבד...'; btn.disabled = true;
-  status.textContent = 'AI קורא את התמונה...';
-
-  try {
-    // Fetch image as base64
-    const imgUrl = `${SB_URL}/storage/v1/object/public/photos/${photoPath}`;
-    const imgRes = await fetch(imgUrl);
-    const imgBlob = await imgRes.blob();
-    const base64 = await new Promise(resolve => {
-      const r = new FileReader(); r.onload = e => resolve(e.target.result.split(',')[1]); r.readAsDataURL(imgBlob);
-    });
-    const mtype = imgBlob.type || 'image/jpeg';
-
-    const prompt = type === 'takeoff'
-      ? 'זוהי תמונה של רשימת מדידות בכתב יד של מודד. חלץ את כל המדידות. כתוב שורה לכל מדידה: שם_חדר אורך רוחב. לדוגמה: סלון 6.5 4.2'
-      : 'זוהי תמונה של פתק אישי בכתב יד. תמלל את הטקסט המלא בדיוק כפי שכתוב, שמור על מבנה הפסקאות.';
-
-    const resp = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': BENI_API_KEY,
-        'anthropic-version': '2023-06-01',
-        'anthropic-dangerous-direct-browser-access': 'true'
-      },
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
-        max_tokens: 1500,
-        messages: [{ role: 'user', content: [
-          { type: 'image', source: { type: 'base64', media_type: mtype, data: base64 } },
-          { type: 'text', text: prompt }
-        ]}]
-      })
-    });
-    const data = await resp.json();
-    const text = (data.content && data.content[0] && data.content[0].text) || '';
-    if (!text) throw new Error(JSON.stringify(data));
-
-    textArea.value = text;
-    resultBox.style.display = 'block';
-    status.textContent = 'OCR הצליח — ערוך אם נדרש ולחץ שמור';
-    btn.textContent = '🔄 OCR שוב'; btn.disabled = false;
-  } catch(e) {
-    status.textContent = 'שגיאה: ' + e.message;
-    btn.textContent = '🤖 נסה שוב'; btn.disabled = false;
-  }
-}
+// runOCR: see inline version above
 
 async function saveNote(id, projectName) {
   const type    = _noteTypes[id] || 'personal';
@@ -3597,63 +3544,7 @@ function uploadPreview(input) {
   reader.readAsDataURL(file);
 }
 
-async function runDirectUpload() {
-  if (!_uploadBase64) { document.getElementById('upload-status').textContent = 'בחר תמונה קודם'; return; }
-  const type     = document.getElementById('upload-type').value;
-  const projectEl = document.getElementById('upload-project');
-  const projectName = projectEl.options[projectEl.selectedIndex]?.text || 'ללא פרויקט';
-  const status   = document.getElementById('upload-status');
-
-  status.textContent = '⏳ מעבד OCR...';
-
-  try {
-    const prompt = type === 'takeoff'
-      ? 'זוהי תמונה של רשימת מדידות בכתב יד של מודד. חלץ את כל המדידות. כתוב שורה לכל מדידה: שם_חדר אורך רוחב.'
-      : 'זוהי תמונה של פתק אישי בכתב יד. תמלל את הטקסט המלא בדיוק.';
-
-    const resp = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': BENI_API_KEY,
-        'anthropic-version': '2023-06-01',
-        'anthropic-dangerous-direct-browser-access': 'true'
-      },
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
-        max_tokens: 1500,
-        messages: [{ role: 'user', content: [
-          { type: 'image', source: { type: 'base64', media_type: _uploadMtype, data: _uploadBase64 } },
-          { type: 'text', text: prompt }
-        ]}]
-      })
-    });
-    const data = await resp.json();
-    const text = (data.content && data.content[0] && data.content[0].text) || '';
-    if (!text) throw new Error(JSON.stringify(data));
-
-    // Save result
-    if (type === 'personal') {
-      await sb.from('beni_notes').insert({ content: text, source: 'dashboard_ocr', created_at: new Date().toISOString() });
-    } else {
-      await sb.from('site_takeoffs').insert({
-        project_name: projectName,
-        takeoff_date: new Date().toISOString().split('T')[0],
-        rows: JSON.stringify([{ room: 'OCR', note: text }]),
-        total_area: 0, created_at: new Date().toISOString(),
-        takeoff_type: 'ocr_processed', ocr_text: text
-      });
-    }
-
-    status.textContent = '✅ נשמר! טוען מחדש...';
-    _uploadBase64 = null; _uploadMtype = null;
-    document.getElementById('upload-preview').innerHTML = '';
-    document.getElementById('upload-file').value = '';
-    setTimeout(() => loadNotes(), 1000);
-  } catch(e) {
-    status.textContent = 'שגיאה: ' + e.message;
-  }
-}
+// runDirectUpload disabled — no API key
 
 // ── Render a saved note card ─────────────────────────────────────────
 function renderNoteCard(n) {
