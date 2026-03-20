@@ -2298,7 +2298,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 // ===== INLINED MODULES =====
 
 // -- crm --
-try {
 async function crmInit() {
   const dbg = document.getElementById('debug-output');
   const log = (msg) => { if(dbg) dbg.innerHTML += '<br>' + msg; console.log('[crmInit]', msg); };
@@ -2894,7 +2893,7 @@ async function executeImportFromQuote(){const checked=[...document.querySelector
 
 // ── PURCHASE ORDERS ───────────────────────────────────────
 let _poSignaturePad=null,_poCurrentQuoteId=null,_poCurrentQuoteData=null;
-let allPOs=[];
+allPOs=[];
 
 async function openPOModal(quoteId){_poCurrentQuoteId=quoteId;const q=(window._quotesAll||[]).find(x=>x.id===quoteId);if(!q){showToast('לא נמצאה הצעת מחיר','error');return;}const items=(window._quoteItemsAll||[]).filter(i=>i.quote_id===quoteId);const proj=(allProjects||[]).find(p=>p.id===q.project_id);const contr=items.length?(allContractors||[]).find(c=>c.id===items[0].contractor_id):null;_poCurrentQuoteData={q,items,proj,contr};const poNum=await generatePONumber();document.getElementById('po-number').value=poNum;document.getElementById('po-date').valueAsDate=new Date();document.getElementById('po-start-date').value='';document.getElementById('po-end-date').value='';document.getElementById('po-remarks').value='';const contrName=contr?contr.company_name:(q.contractor_name||'הקבלן');document.getElementById('po-banner-title').textContent=`📁 ${proj?.project_name||'—'}  |  👷 ${contrName}`;document.getElementById('po-banner-details').textContent=`הצעה: "${q.title||'ללא כותרת'}" | ${items.length} סעיפים`;renderPOItemsPreview(items);document.getElementById('modal-po').style.display='flex';setTimeout(()=>initPOSignaturePad(),120);}
 async function generatePONumber(){try{const{count}=await sb.from('purchase_orders').select('*',{count:'exact',head:true});const next=(count||0)+1;const year=new Date().getFullYear();return`PO-${year}-${String(next).padStart(4,'0')}`;}catch(e){return'PO-'+Date.now().toString().slice(-6);}}
@@ -3279,10 +3278,9 @@ function downloadMockupXLS() {
 
 console.log('✅ CRM Panel JS loaded OK');
 
-} catch(_e) { console.warn("crm init:", _e.message); }
+
 
 // -- notes --
-try {
 // ══════════════════════════════════════════════════════
 // SMART NOTES MODULE
 // ══════════════════════════════════════════════════════
@@ -3293,7 +3291,7 @@ const NOTE_COLORS = {
   blue:  { bg:'#3b82f6', light:'rgba(59,130,246,0.12)', border:'rgba(59,130,246,0.35)', label:'🔵 תכנון' },
   purple:{ bg:'#a855f7', light:'rgba(168,85,247,0.12)', border:'rgba(168,85,247,0.35)', label:'🟣 אישי' },
 };
-let currentNoteColor='yellow', allNotes=[], activeNoteFilter='all', noteVoiceRecog=null, noteVoiceActive=false;
+currentNoteColor='yellow', allNotes=[], activeNoteFilter='all', noteVoiceRecog=null, noteVoiceActive=false;
 
 function selectNoteColor(color){currentNoteColor=color;document.querySelectorAll('.note-color-btn').forEach(b=>{const isActive=b.dataset.color===color;b.style.border=isActive?'3px solid #fff':'3px solid transparent';b.style.transform=isActive?'scale(1.2)':'scale(1)';});}
 
@@ -3347,19 +3345,16 @@ function printNote(id){const n=allNotes.find(x=>x.id===id);if(!n)return;const c=
 function toggleNoteVoice(){if(!('webkitSpeechRecognition' in window||'SpeechRecognition' in window)){alert('דפדפן זה אינו תומך בזיהוי קול');return;}if(noteVoiceActive){if(noteVoiceRecog)noteVoiceRecog.stop();noteVoiceActive=false;const btn=document.getElementById('note-voice-btn');if(btn){btn.textContent='🎤 הקלט';btn.style.background='rgba(154,111,0,0.2)';}return;}const SR=window.SpeechRecognition||window.webkitSpeechRecognition;noteVoiceRecog=new SR();noteVoiceRecog.lang='he-IL';noteVoiceRecog.continuous=true;noteVoiceRecog.interimResults=false;noteVoiceRecog.onresult=e=>{const transcript=Array.from(e.results).map(r=>r[0].transcript).join(' ');const inp=document.getElementById('note-text-input');if(inp)inp.value=(inp.value?inp.value+' ':'')+transcript;};noteVoiceRecog.onerror=()=>{noteVoiceActive=false;const btn=document.getElementById('note-voice-btn');if(btn){btn.textContent='🎤 הקלט';btn.style.background='rgba(154,111,0,0.2)';}};noteVoiceRecog.start();noteVoiceActive=true;const btn=document.getElementById('note-voice-btn');if(btn){btn.textContent='⏹ עצור';btn.style.background='rgba(239,68,68,0.3)';btn.style.borderColor='#ef4444';btn.style.color='#ef4444';}}
 
 
-} catch(_e) { console.warn("notes init:", _e.message); }
+
 
 
 // -- app --
-try {
 // ============================================
 // STONHARD WORK JOURNAL - FULL LEGAL COMPLIANCE
 // With Report Numbers and Action Buttons
 // ============================================
 
 // Supabase Configuration
-const SUPABASE_URL = 'https://vmcipofovheztbjmhwsl.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZtY2lwb2ZvdmhlenRiam1od3NsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE0NjE2MTcsImV4cCI6MjA4NzAzNzYxN30.LPq5N2Xo8iEqjgz2UhmdzUdh5tpGT3EYzSxJcYBEJ1w';
 
 // Reuse existing Supabase client (initialized in index.html)
 // let supabaseClient;  -- already declared above
@@ -4651,7 +4646,7 @@ function showLoading(show) {
 }
 
 console.log('✅ App loaded with all features');
-} catch(_e) { console.warn("app init:", _e.message); }
+
 
 
 
