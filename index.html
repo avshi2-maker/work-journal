@@ -1207,9 +1207,361 @@ document.addEventListener('error', function(e) {
   <div id="lightbox-caption" style="color:rgba(255,255,255,0.7);font-size:12px;margin-top:10px;font-family:Heebo,sans-serif;"></div>
 </div>
 </div></div></div>
-<div class="app-panel"        id="notes-panel">  <div id="notes-content"></div></div>
-<div class="app-panel"        id="gcal-panel">   <div id="gcal-content"></div></div>
-<div class="app-panel"        id="journal-panel"><div id="journal-content"></div></div>
+<div class="app-panel" id="notes-panel"><div id="notes-content"><div style="padding:70px 24px 40px;min-height:100vh;background:#1a1a2e;font-family:Heebo,sans-serif;direction:rtl">
+
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;flex-wrap:wrap;gap:12px">
+    <div>
+      <div style="font-size:10px;letter-spacing:3px;color:#9a6f00;text-transform:uppercase;margin-bottom:4px">בני פרסקי</div>
+      <h1 style="font-size:26px;font-weight:900;color:#fff">📝 יומן חכם</h1>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button onclick="printNotes()" style="background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.15);color:#ccc;padding:8px 16px;border-radius:20px;cursor:pointer;font-family:Heebo,sans-serif;font-size:12px;font-weight:700">🖨️ הדפס</button>
+    </div>
+  </div>
+
+  <div style="background:#242438;border-radius:16px;padding:20px;margin-bottom:24px;border:1px solid rgba(255,255,255,0.08)">
+    <div style="display:flex;gap:10px;margin-bottom:12px;flex-wrap:wrap">
+      <div style="display:flex;gap:6px;align-items:center">
+        <span style="font-size:11px;color:#888">צבע:</span>
+        <button class="note-color-btn active-color" data-color="yellow"  onclick="selectNoteColor('yellow')"  title="כללי"    style="width:28px;height:28px;border-radius:50%;background:#f59e0b;border:3px solid transparent;cursor:pointer;transition:all 0.2s"></button>
+        <button class="note-color-btn"              data-color="red"     onclick="selectNoteColor('red')"     title="דחוף"    style="width:28px;height:28px;border-radius:50%;background:#ef4444;border:3px solid transparent;cursor:pointer;transition:all 0.2s"></button>
+        <button class="note-color-btn"              data-color="green"   onclick="selectNoteColor('green')"   title="בוצע"    style="width:28px;height:28px;border-radius:50%;background:#22c55e;border:3px solid transparent;cursor:pointer;transition:all 0.2s"></button>
+        <button class="note-color-btn"              data-color="blue"    onclick="selectNoteColor('blue')"    title="תכנון"   style="width:28px;height:28px;border-radius:50%;background:#3b82f6;border:3px solid transparent;cursor:pointer;transition:all 0.2s"></button>
+        <button class="note-color-btn"              data-color="purple"  onclick="selectNoteColor('purple')"  title="אישי"    style="width:28px;height:28px;border-radius:50%;background:#a855f7;border:3px solid transparent;cursor:pointer;transition:all 0.2s"></button>
+      </div>
+      <button id="note-voice-btn" onclick="toggleNoteVoice()" style="background:rgba(154,111,0,0.2);border:1px solid rgba(154,111,0,0.4);color:#f59e0b;padding:8px 14px;border-radius:20px;cursor:pointer;font-family:Heebo,sans-serif;font-size:12px;font-weight:700">🎤 הקלט</button>
+      <select id="note-project-select" style="background:#1a1a2e;border:1px solid rgba(255,255,255,0.12);color:#ccc;padding:7px 12px;border-radius:20px;font-family:Heebo,sans-serif;font-size:12px;direction:rtl">
+        <option value="">📁 כל הפרויקטים</option>
+      </select>
+    </div>
+
+    <textarea id="note-text-input" placeholder="כתוב הערה... (קול או הקלדה)" rows="4"
+      style="width:100%;background:#1a1a2e;border:1px solid rgba(255,255,255,0.1);color:#fff;
+             padding:14px;border-radius:10px;font-family:Heebo,sans-serif;font-size:15px;
+             resize:vertical;direction:rtl;outline:none;line-height:1.7"
+      oninput="this.style.borderColor='#9a6f00'"></textarea>
+
+    <div style="display:flex;gap:10px;margin-top:12px;justify-content:flex-end">
+      <button onclick="clearNoteForm()" style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);color:#888;padding:10px 20px;border-radius:10px;cursor:pointer;font-family:Heebo,sans-serif;font-size:13px">נקה</button>
+      <button onclick="saveNote()" style="background:linear-gradient(135deg,#9a6f00,#c9a84c);border:none;color:#1a1a2e;padding:10px 28px;border-radius:10px;cursor:pointer;font-family:Heebo,sans-serif;font-size:14px;font-weight:900">💾 שמור הערה</button>
+    </div>
+  </div>
+
+  <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px;align-items:center">
+    <span style="font-size:11px;color:#666;font-weight:700">סנן:</span>
+    <button class="note-filter active-filter" data-filter="all"    onclick="filterNotes('all')"    style="background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.15);color:#ccc;padding:6px 14px;border-radius:20px;cursor:pointer;font-family:Heebo,sans-serif;font-size:11px;font-weight:700">הכל</button>
+    <button class="note-filter" data-filter="yellow" onclick="filterNotes('yellow')" style="background:rgba(245,158,11,0.15);border:1px solid rgba(245,158,11,0.3);color:#f59e0b;padding:6px 14px;border-radius:20px;cursor:pointer;font-family:Heebo,sans-serif;font-size:11px;font-weight:700">🟡 כללי</button>
+    <button class="note-filter" data-filter="red"    onclick="filterNotes('red')"    style="background:rgba(239,68,68,0.15);border:1px solid rgba(239,68,68,0.3);color:#ef4444;padding:6px 14px;border-radius:20px;cursor:pointer;font-family:Heebo,sans-serif;font-size:11px;font-weight:700">🔴 דחוף</button>
+    <button class="note-filter" data-filter="green"  onclick="filterNotes('green')"  style="background:rgba(34,197,94,0.15);border:1px solid rgba(34,197,94,0.3);color:#22c55e;padding:6px 14px;border-radius:20px;cursor:pointer;font-family:Heebo,sans-serif;font-size:11px;font-weight:700">🟢 בוצע</button>
+    <button class="note-filter" data-filter="blue"   onclick="filterNotes('blue')"   style="background:rgba(59,130,246,0.15);border:1px solid rgba(59,130,246,0.3);color:#3b82f6;padding:6px 14px;border-radius:20px;cursor:pointer;font-family:Heebo,sans-serif;font-size:11px;font-weight:700">🔵 תכנון</button>
+    <button class="note-filter" data-filter="purple" onclick="filterNotes('purple')" style="background:rgba(168,85,247,0.15);border:1px solid rgba(168,85,247,0.3);color:#a855f7;padding:6px 14px;border-radius:20px;cursor:pointer;font-family:Heebo,sans-serif;font-size:11px;font-weight:700">🟣 אישי</button>
+    <input id="note-search" type="text" placeholder="🔍 חיפוש..." oninput="filterNotesByKeyword(this.value)"
+      style="background:#1a1a2e;border:1px solid rgba(255,255,255,0.12);color:#fff;padding:7px 14px;
+             border-radius:20px;font-family:Heebo,sans-serif;font-size:12px;direction:rtl;outline:none;min-width:160px">
+    <input id="note-date-from" type="date" oninput="filterNotesByDate()"
+      style="background:#1a1a2e;border:1px solid rgba(255,255,255,0.12);color:#ccc;padding:7px 10px;border-radius:20px;font-family:Heebo,sans-serif;font-size:11px">
+    <span style="color:#666;font-size:11px">עד</span>
+    <input id="note-date-to" type="date" oninput="filterNotesByDate()"
+      style="background:#1a1a2e;border:1px solid rgba(255,255,255,0.12);color:#ccc;padding:7px 10px;border-radius:20px;font-family:Heebo,sans-serif;font-size:11px">
+  </div>
+
+  <div id="notes-wall" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px">
+    <div style="grid-column:1/-1;text-align:center;padding:60px 20px;color:#444">
+      <div style="font-size:48px;margin-bottom:12px">📝</div>
+      <div style="font-size:14px">אין הערות עדיין — כתוב את ההערה הראשונה למעלה</div>
+    </div>
+  </div>
+</div></div></div>
+<div class="app-panel" id="gcal-panel"><div id="gcal-content"><div style="padding:54px 0 0;min-height:100vh;background:#1a1a2e;font-family:Heebo,sans-serif;direction:rtl;display:flex;flex-direction:column">
+
+  <div style="padding:16px 24px 0;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
+    <h1 style="font-size:22px;font-weight:900;color:#fff">📅 יומן Google</h1>
+    <div style="display:flex;gap:6px">
+      <button class="gcal-view-btn active-gcal" data-view="agenda" onclick="switchGcalView('agenda')"
+        style="background:rgba(154,111,0,0.3);border:1px solid #9a6f00;color:#f59e0b;padding:7px 16px;border-radius:20px;cursor:pointer;font-family:Heebo,sans-serif;font-size:12px;font-weight:700">
+        📋 אג׳נדה
+      </button>
+      <button class="gcal-view-btn" data-view="week" onclick="switchGcalView('week')"
+        style="background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.15);color:#ccc;padding:7px 16px;border-radius:20px;cursor:pointer;font-family:Heebo,sans-serif;font-size:12px;font-weight:700">
+        📆 שבוע
+      </button>
+      <button class="gcal-view-btn" data-view="month" onclick="switchGcalView('month')"
+        style="background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.15);color:#ccc;padding:7px 16px;border-radius:20px;cursor:pointer;font-family:Heebo,sans-serif;font-size:12px;font-weight:700">
+        🗓️ חודש
+      </button>
+    </div>
+  </div>
+
+  <div style="flex:1;padding:12px 16px 20px;display:flex;flex-direction:column;gap:12px">
+    <div id="gcal-agenda" class="gcal-view" style="flex:1;border-radius:14px;overflow:hidden;border:1px solid rgba(255,255,255,0.08)">
+      <iframe id="iframe-agenda" src="about:blank"
+        data-src="https://calendar.google.com/calendar/embed?mode=AGENDA&showTitle=0&showNav=1&showDate=1&showPrint=1&showTabs=0&showCalendars=0&showTz=0&hl=he&ctz=Asia%2FJerusalem"
+        style="width:100%;height:calc(100vh - 160px);border:none;display:block;background:#fff"
+        title="Google Calendar Agenda"></iframe>
+    </div>
+    <div id="gcal-week" class="gcal-view" style="display:none;flex:1;border-radius:14px;overflow:hidden;border:1px solid rgba(255,255,255,0.08)">
+      <iframe id="iframe-week" src="about:blank"
+        data-src="https://calendar.google.com/calendar/embed?mode=WEEK&showTitle=0&showNav=1&showDate=1&showPrint=1&showTabs=0&showCalendars=0&showTz=0&hl=he&ctz=Asia%2FJerusalem"
+        style="width:100%;height:calc(100vh - 160px);border:none;display:block;background:#fff"
+        title="Google Calendar Week"></iframe>
+    </div>
+    <div id="gcal-month" class="gcal-view" style="display:none;flex:1;border-radius:14px;overflow:hidden;border:1px solid rgba(255,255,255,0.08)">
+      <iframe id="iframe-month" src="about:blank"
+        data-src="https://calendar.google.com/calendar/embed?mode=MONTH&showTitle=0&showNav=1&showDate=1&showPrint=1&showTabs=0&showCalendars=0&showTz=0&hl=he&ctz=Asia%2FJerusalem"
+        style="width:100%;height:calc(100vh - 160px);border:none;display:block;background:#fff"
+        title="Google Calendar Month"></iframe>
+    </div>
+    <div style="text-align:center;font-size:10px;color:#444">
+      לחץ על האירוע ביומן Google להוספה ועריכה ישירה
+    </div>
+  </div>
+</div></div></div>
+<div class="app-panel" id="journal-panel"><div id="journal-content"><div id="managerView">
+  <header class="header">
+    <div class="report-number" id="reportNumber">
+      <div class="report-label">אישור עבודה מספר</div>
+      <div class="report-id"></div>
+      <div class="report-timestamp"></div>
+    </div>
+    <h1>📝 יומן עבודה יומי</h1>
+    <p>ביצוע פרויקטים - אבשי ספיר</p>
+    <p class="legal-notice">⚖️ תיעוד משפטי מלא - תקנות התכנון והבניה 1992</p>
+  </header>
+  <main class="container">
+    <form id="reportForm">
+      <section class="section">
+        <h2>📋 פרטי פרוייקט</h2>
+        <div class="form-row">
+          <div style="position:relative;">
+            <select id="projectName" required
+              style="width:100%;padding:12px;border:2px solid #e1e8ed;border-radius:8px;font-size:16px;font-family:inherit;background:white;-webkit-appearance:none;appearance:none;"
+              onchange="onJournalProjectChange(this)">
+              <option value="">— בחר פרוייקט —</option>
+            </select>
+            <span style="position:absolute;left:12px;top:50%;transform:translateY(-50%);pointer-events:none;font-size:14px;">▼</span>
+          </div>
+          <input type="date" id="reportDate" required>
+        </div>
+        <div id="project-custom-name-row" style="display:none;margin-top:8px;">
+          <input type="text" id="projectNameCustom" placeholder="הזן שם פרוייקט ידנית..."
+            style="width:100%;padding:12px;border:2px solid #667eea;border-radius:8px;font-size:16px;font-family:inherit;"
+            oninput="syncProjectNameToSelect()">
+        </div>
+        <div class="form-row">
+          <select id="weather">
+            <option value="">מזג אוויר</option>
+            <option value="sunny">☀️ שמש</option>
+            <option value="cloudy">⛅ מעונן</option>
+            <option value="rainy">🌧️ גשום</option>
+            <option value="hot">🌡️ חם מאוד</option>
+            <option value="cold">❄️ קר</option>
+            <option value="windy">💨 רוח חזקה</option>
+          </select>
+        </div>
+      </section>
+
+      <section class="section">
+        <h2>🏗️ קבלני הפרוייקט</h2>
+        <p class="helper-text">בחר / הוסף קבלן — לחץ על שדה לעריכה.</p>
+        <div class="contractors-table-wrap">
+          <table class="contractors-table" id="contractorsTable">
+            <thead>
+              <tr>
+                <th>שם חברה / קבלן</th><th>איש קשר</th><th>נייד</th>
+                <th>טל׳ משרד</th><th>עיסוק ראשי</th><th>פעילות בפרוייקט זה</th>
+                <th class="td-actions"></th>
+              </tr>
+            </thead>
+            <tbody id="contractorsBody">
+              <tr><td colspan="7" class="contractors-empty">לחץ ״➕ הוסף קבלן״ להוספת שורה</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <button type="button" class="btn-add-contractor" onclick="addContractorRow()">➕ הוסף קבלן</button>
+      </section>
+
+      <section class="section">
+        <h2>⏰ שעות עבודה</h2>
+        <div class="form-row">
+          <input type="time" id="startTime" placeholder="שעת התחלה">
+          <input type="time" id="endTime" placeholder="שעת סיום">
+          <input type="number" id="breakHours" value="0" step="0.5" placeholder="הפסקות (שעות)">
+        </div>
+        <div class="total-hours"><strong>סה"כ שעות עבודה:</strong> <span id="totalWorkHours">0</span> שעות</div>
+      </section>
+
+      <section class="section">
+        <h2>👷 כוח אדם</h2>
+        <div id="workersContainer"></div>
+        <button type="button" class="btn-add" onclick="addWorkerRow()">➕ הוסף עובד</button>
+        <div class="total-hours"><strong>סה"כ שעות כוח אדם:</strong> <span id="totalWorkerHours">0</span> שעות</div>
+      </section>
+
+      <section class="section">
+        <h2>🔨 פעילויות</h2>
+        <div id="activitiesContainer"></div>
+        <button type="button" class="btn-add" onclick="addActivityRow()">➕ הוסף פעילות</button>
+      </section>
+
+      <section class="section legal-section">
+        <h2>📦 אספקות חומרים <span class="legal-badge">חובה לפי חוק</span></h2>
+        <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap;align-items:center">
+          <select id="materialQuickSelect" style="flex:2;padding:10px;border:2px solid #e1e8ed;border-radius:8px;font-size:14px;font-family:inherit;direction:rtl">
+            <option value="">-- בחר חומר מהרשימה --</option>
+          </select>
+          <button type="button" onclick="addMaterialFromList()" style="background:#667eea;color:#fff;border:none;border-radius:8px;padding:10px 18px;font-size:14px;font-weight:700;cursor:pointer;white-space:nowrap">➕ הוסף</button>
+        </div>
+        <div id="materialsContainer"></div>
+        <button type="button" class="btn-add" onclick="addMaterialRow('')">➕ הוסף שורה ריקה</button>
+      </section>
+
+      <section class="section legal-section">
+        <h2>🚜 ציוד ומכונות <span class="legal-badge">חובה לפי חוק</span></h2>
+        <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap;align-items:center">
+          <select id="equipmentQuickSelect" style="flex:2;padding:10px;border:2px solid #e1e8ed;border-radius:8px;font-size:14px;font-family:inherit;direction:rtl">
+            <option value="">-- בחר ציוד/מכונה --</option>
+          </select>
+          <button type="button" onclick="addEquipmentFromList()" style="background:#667eea;color:#fff;border:none;border-radius:8px;padding:10px 18px;font-size:14px;font-weight:700;cursor:pointer;white-space:nowrap">➕ הוסף</button>
+        </div>
+        <div id="equipmentContainer"></div>
+        <button type="button" class="btn-add" onclick="addEquipmentRow('')">➕ הוסף שורה ריקה</button>
+      </section>
+
+      <section class="section legal-section critical">
+        <h2>⚠️ בטיחות ואירועים <span class="legal-badge critical">קריטי</span></h2>
+        <div id="safetyContainer"></div>
+        <button type="button" class="btn-add" onclick="addSafetyRow()">➕ הוסף אירוע</button>
+      </section>
+
+      <section class="section legal-section critical">
+        <h2>👮 ביקורות ופיקוח <span class="legal-badge critical">קריטי</span></h2>
+        <div id="inspectionsContainer"></div>
+        <button type="button" class="btn-add" onclick="addInspectionRow()">➕ הוסף ביקורת</button>
+      </section>
+
+      <section class="section legal-section">
+        <h2>⏰ עיכובים והפסקות <span class="legal-badge">חובה לפי חוק</span></h2>
+        <div id="delaysContainer"></div>
+        <button type="button" class="btn-add" onclick="addDelayRow()">➕ הוסף עיכוב</button>
+      </section>
+
+      <section class="section">
+        <h2>📝 הערות ותמונות</h2>
+        <div class="voice-textarea-container">
+          <textarea id="generalNotes" placeholder="הערות כלליות... (לחץ 🎤 להקלטה)"></textarea>
+          <button type="button" class="btn-voice" id="voiceNotesBtn">🎤</button>
+        </div>
+        <div class="photo-upload" onclick="document.getElementById('photoInput').click()"><span>📷 לחץ להוספת תמונות</span></div>
+        <input type="file" id="photoInput" accept="image/*" capture="environment" multiple style="display:none">
+        <div id="photoPreview" class="photo-preview"></div>
+      </section>
+
+      <section class="section">
+        <h2>📅 תוכנית עבודה למחר</h2>
+        <div class="form-row"><input type="date" id="tomorrowDate"></div>
+        <div id="tomorrowContainer">
+          <div class="tomorrow-row" data-type="continue">
+            <div class="tomorrow-label">🔄 המשך מאתמול</div>
+            <input type="text" class="tomorrow-detail" placeholder="פרט את ההמשך...">
+          </div>
+          <div class="tomorrow-row" data-type="new">
+            <div class="tomorrow-label">🆕 עבודה חדשה</div>
+            <input type="text" class="tomorrow-detail" placeholder="תאר את העבודה החדשה...">
+          </div>
+          <div class="tomorrow-row" data-type="delivery">
+            <div class="tomorrow-label">🚚 אספקה צפויה</div>
+            <input type="text" class="tomorrow-detail" placeholder="ציין חומרים / ציוד שיגיע...">
+          </div>
+          <div class="tomorrow-row" data-type="crew">
+            <div class="tomorrow-label">👷 כוח אדם נדרש</div>
+            <input type="text" class="tomorrow-detail" placeholder="כמה פועלים / אילו בעלי מקצוע...">
+          </div>
+          <div class="tomorrow-row" data-type="safety">
+            <div class="tomorrow-label">⛑️ בטיחות / היתרים</div>
+            <input type="text" class="tomorrow-detail" placeholder="בדיקות בטיחות, היתרי כניסה...">
+          </div>
+          <div id="tomorrowExtraRows"></div>
+        </div>
+        <button type="button" class="btn-add" onclick="addTomorrowRow()">➕ הוסף פריט נוסף</button>
+        <div class="voice-textarea-container" style="margin-top:10px">
+          <textarea id="tomorrowPlan" placeholder="הערות כלליות לתוכנית מחר..." rows="2"></textarea>
+          <button type="button" class="btn-voice" id="voiceTomorrowBtn">🎤</button>
+        </div>
+      </section>
+
+      <section class="section">
+        <h2>✍️ חתימת מנהל העבודה</h2>
+        <canvas id="signatureCanvas" class="signature-pad"></canvas>
+        <div class="btn-group">
+          <button type="button" class="btn-secondary" onclick="clearSignature()">🗑️ נקה חתימה</button>
+        </div>
+      </section>
+
+      <section class="section">
+        <button type="button" id="saveBtn" class="btn-primary">💾 שמור טיוטה</button>
+        <button type="button" id="sendBtn" class="btn-success">📤 שלח לאישור</button>
+      </section>
+
+      <section class="section action-buttons">
+        <div class="btn-group">
+          <button type="button" class="btn-warning" onclick="clearAllData()">🗑️ נקה את כל הנתונים</button>
+          <button type="button" class="btn-info" onclick="startNewReport()">🆕 התחל דוח חדש</button>
+        </div>
+      </section>
+    </form>
+  </main>
+</div>
+
+<div id="ownerView" style="display:none">
+  <header class="header no-print">
+    <button onclick="switchTab('crm')" style="background:linear-gradient(135deg,#1a3d5c,#2d6a9f);color:white;border:none;border-radius:10px;padding:9px 18px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;">
+      ◀ חזרה ללוח בקרה
+    </button>
+    <div class="security-badge">🔒 דוח מאובטח</div>
+    <h1>אישור דוח עבודה</h1>
+    <button class="btn-print" onclick="printReport()">🖨️ הדפס</button>
+  </header>
+  <div class="print-header">
+    <div class="print-logo">
+      <h1>ביצוע פרויקטים</h1>
+      <p>אבשי ספיר - קבלן רצפות תעשייתיות</p>
+      <p>📱 050-5231042</p>
+    </div>
+    <div class="print-report-number" id="printReportNumber"></div>
+  </div>
+  <main class="container" id="printableArea">
+    <div id="reportDetails"></div>
+    <section class="section no-print">
+      <h2>📸 הוסף תמונות שלך</h2>
+      <div class="photo-upload" onclick="document.getElementById('ownerPhotoInput').click()"><span>📷 לחץ להוספת תמונות</span></div>
+      <input type="file" id="ownerPhotoInput" accept="image/*" capture="environment" multiple style="display:none">
+      <div id="ownerPhotoPreview" class="photo-preview"></div>
+    </section>
+    <section class="section no-print">
+      <h2>✍️ אישור</h2>
+      <input type="text" id="ownerName" placeholder="שם מלא">
+      <div class="voice-textarea-container">
+        <textarea id="ownerRemarks" placeholder="הערות (אופציונלי)"></textarea>
+        <button type="button" class="btn-voice" id="voiceRemarksBtn">🎤</button>
+      </div>
+      <canvas id="ownerSignature" class="signature-pad"></canvas>
+      <div class="btn-group">
+        <button onclick="clearOwnerSignature()" class="btn-secondary">🗑️ נקה</button>
+        <button onclick="approveReport()" class="btn-success">✅ אשר ושלח</button>
+      </div>
+    </section>
+  </main>
+  <div class="print-footer">
+    <p>דוח זה נוצר באופן דיגיטלי ועומד בתקנות התכנון והבניה תשנ"ב-1992</p>
+    <p>ביצוע פרויקטים | אבשי ספיר | 050-5231042</p>
+  </div>
+</div>
+
+<div id="voiceIndicator" class="voice-indicator" style="display:none">
+  <div class="voice-pulse"></div>
+  <p>🎤 מקליט... דבר עכשיו</p>
+  <button onclick="stopVoiceRecording()" class="btn-stop">⏹️ עצור</button>
+</div></div></div>
 
 
 <script>
