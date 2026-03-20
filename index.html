@@ -422,8 +422,8 @@ document.addEventListener('error', function(e) {
 
   <!-- DEBUG PANEL - remove after testing -->
   <div id="debug-panel" style="background:#1a1a2e;color:#22c55e;border-radius:10px;padding:12px 16px;margin-bottom:16px;font-family:monospace;font-size:12px;direction:ltr;">
-    <div style="font-weight:700;margin-bottom:6px;color:#f59e0b;">🔍 Debug Info (remove after testing)</div>
-    <div id="debug-output">Loading...</div>
+    <div style="font-weight:700;margin-bottom:6px;color:#f59e0b;">🔍 Debug Info</div>
+    <div id="debug-output">Waiting...</div>
   </div>
 
     <!-- ANNEXES WIDGET -->
@@ -2300,30 +2300,37 @@ document.addEventListener('DOMContentLoaded', async () => {
 // -- crm --
 try {
 async function crmInit() {
+  const dbg = document.getElementById('debug-output');
+  const log = (msg) => { if(dbg) dbg.innerHTML += '<br>' + msg; console.log('[crmInit]', msg); };
+  log('crmInit started');
   document.getElementById('dashboard-date').textContent =
     new Date().toLocaleDateString('he-IL', {weekday:'long',year:'numeric',month:'long',day:'numeric'});
+  log('date set, testing Supabase...');
+  try {
+    const test = await sb.from('contractors_master').select('id').limit(1);
+    log('sb test: ' + (test.error ? 'ERROR: '+test.error.message : 'OK, data=' + JSON.stringify(test.data)));
+  } catch(e) { log('sb test EXCEPTION: ' + e.message); }
+  log('calling loadAll...');
   await loadAll();
+  log('loadAll done');
 }
 
 async function loadAll() {
+  const dbg = document.getElementById('debug-output');
+  const dlog = (m) => { if(dbg) dbg.innerHTML += '<br>'+m; console.log('[loadAll]',m); };
   window.showLoading && window.showLoading(true);
+  dlog('loadAll started');
   try {
-    // Each loader independent - one failure never blocks the others
-    await Promise.allSettled([
-      loadContractors().catch(e => console.warn('loadContractors:', e.message)),
-      loadProjects().catch(e => console.warn('loadProjects:', e.message)),
-      loadTransactions().catch(e => console.warn('loadTransactions:', e.message)),
-      loadReports().catch(e => console.warn('loadReports:', e.message)),
+    const results = await Promise.allSettled([
+      loadContractors().catch(e => { dlog('contractors ERR:'+e.message); }),
+      loadProjects().catch(e => { dlog('projects ERR:'+e.message); }),
+      loadTransactions().catch(e => { dlog('transactions ERR:'+e.message); }),
+      loadReports().catch(e => { dlog('reports ERR:'+e.message); }),
     ]);
+    dlog('settled: C='+allContractors.length+' P='+allProjects.length+' T='+allTransactions.length+' R='+allReports.length);
     renderDashboard();
-    // Debug output
-    const dbg = document.getElementById('debug-output');
-    if(dbg) dbg.innerHTML = 
-      'contractors: ' + allContractors.length + 
-      ' | projects: ' + allProjects.length + 
-      ' | transactions: ' + allTransactions.length + 
-      ' | reports: ' + allReports.length;
-  } catch(e){ console.warn('loadAll error:', e.message); }
+    dlog('renderDashboard done');
+  } catch(e){ dlog('CATCH: '+e.message); console.error('loadAll error:', e); }
   finally { window.showLoading && window.showLoading(false); }
 }
 
