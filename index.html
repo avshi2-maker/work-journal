@@ -382,12 +382,7 @@ document.addEventListener('error', function(e) {
   <div class="nav-item" onclick="showPage('new-po')" id="nav-new-po"><span class="nav-icon">📄</span><span>פתיחת הזמנות עבודה</span></div>
   <div class="nav-item" onclick="showPage('purchase-orders')" id="nav-purchase-orders"><span class="nav-icon">🏷️</span><span>דוחות הזמנות עבודה</span><span class="nav-badge" id="badge-po">0</span></div>
   <div class="nav-item" onclick="showPage('calc')" id="nav-calc" style="margin-top:8px;"><span class="nav-icon">🧮</span><span>מחשבון הנדסי</span></div>
-  <div class="sidebar-bottom">
-    <div class="user-chip">
-      <div class="user-avatar">ב</div>
-      <div><div class="user-name">בני פרסקי</div><div class="user-role">מנהל פרויקטים</div></div>
-    </div>
-  </div>
+  <div class="nav-item" onclick="showPage('takeoff')" id="nav-takeoff"><span class="nav-icon">📐</span><span>טייקאוף</span></div>
 </nav>
 
 <main class="main">
@@ -519,6 +514,24 @@ document.addEventListener('error', function(e) {
 
     <div class="card" style="margin-bottom:20px;"><div class="card-title">פרויקטים פעילים</div><div id="dashboard-projects-list"><div class="empty-state"><div class="empty-icon">🏗️</div><h3>אין פרויקטים עדיין</h3></div></div></div>
     <div class="card"><div class="card-title">תנועות אחרונות</div><div id="dashboard-transactions"><div class="empty-state"><div class="empty-icon">💰</div><h3>אין תנועות עדיין</h3></div></div></div>
+  </div>
+
+  <!-- TAKEOFF PAGE -->
+  <div class="page" id="page-takeoff">
+    <div class="topbar">
+      <div class="page-title">📐 <span>טייקאוף</span></div>
+      <div class="topbar-actions">
+        <button class="btn btn-ghost" onclick="showPage('dashboard')" style="font-size:16px;padding:6px 10px;">🏠</button>
+        <button class="btn btn-primary" onclick="loadTakeoffs()">🔄 רענן</button>
+      </div>
+    </div>
+    <div id="takeoff-content" style="padding:20px;">
+      <div style="text-align:center;padding:40px;color:var(--text3);">
+        <div style="font-size:48px;margin-bottom:12px">📐</div>
+        <div style="font-size:15px;font-weight:600;margin-bottom:8px">טייקאוף מהמובייל</div>
+        <div style="font-size:13px;">מסתנכרן עם Beni Pocket — לחץ רענן לטעינה</div>
+      </div>
+    </div>
   </div>
 
   <!-- CONTRACTORS PAGE -->
@@ -1216,6 +1229,7 @@ document.addEventListener('error', function(e) {
       <h1 style="font-size:26px;font-weight:900;color:#fff">📝 יומן חכם</h1>
     </div>
     <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button onclick="switchTab('crm');showPage('takeoff')" style="background:rgba(154,111,0,0.2);border:1px solid rgba(154,111,0,0.4);color:#f59e0b;padding:8px 16px;border-radius:20px;cursor:pointer;font-family:Heebo,sans-serif;font-size:12px;font-weight:700">📐 טייקאוף</button>
       <button onclick="printNotes()" style="background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.15);color:#ccc;padding:8px 16px;border-radius:20px;cursor:pointer;font-family:Heebo,sans-serif;font-size:12px;font-weight:700">🖨️ הדפס</button>
     </div>
   </div>
@@ -1231,7 +1245,7 @@ document.addEventListener('error', function(e) {
         <button class="note-color-btn"              data-color="purple"  onclick="selectNoteColor('purple')"  title="אישי"    style="width:28px;height:28px;border-radius:50%;background:#a855f7;border:3px solid transparent;cursor:pointer;transition:all 0.2s"></button>
       </div>
       <button id="note-voice-btn" onclick="toggleNoteVoice()" style="background:rgba(154,111,0,0.2);border:1px solid rgba(154,111,0,0.4);color:#f59e0b;padding:8px 14px;border-radius:20px;cursor:pointer;font-family:Heebo,sans-serif;font-size:12px;font-weight:700">🎤 הקלט</button>
-      <select id="note-project-select" style="background:#1a1a2e;border:1px solid rgba(255,255,255,0.12);color:#ccc;padding:7px 12px;border-radius:20px;font-family:Heebo,sans-serif;font-size:12px;direction:rtl">
+      <select id="note-project-select" onchange="filterNotesByProject(this.value)" style="background:#1a1a2e;border:1px solid rgba(255,255,255,0.12);color:#ccc;padding:7px 12px;border-radius:20px;font-family:Heebo,sans-serif;font-size:12px;direction:rtl">
         <option value="">📁 כל הפרויקטים</option>
       </select>
     </div>
@@ -2392,7 +2406,7 @@ function showPage(page) {
   document.querySelectorAll('.nav-item').forEach(function(n){ n.classList.remove('active'); });
   document.getElementById('crm-panel').classList.add('active');
   document.getElementById('tab-crm') && document.getElementById('tab-crm').classList.add('active');
-  const special = {gantt:loadGantt, quotes:loadQuotes, forecast:renderForecast, 'purchase-orders':loadPurchaseOrders};
+  const special = {gantt:loadGantt, quotes:loadQuotes, forecast:renderForecast, 'purchase-orders':loadPurchaseOrders, takeoff:loadTakeoffs};
   if(special[page]) {
     var el = document.getElementById('page-'+page);
     if(el) el.style.display = 'block';
@@ -5483,6 +5497,52 @@ async function _spConfirmReject() {
     setTimeout(function(){ loadSiteReports(); }, 400);
     showToast('דוח נדחה — WhatsApp נשלח לקבלן', 'success');
   } catch(e) { showToast('שגיאה: '+e.message,'error'); console.error('_spConfirmReject:',e); }
+}
+
+
+function filterNotesByProject(projectId) {
+  if (!projectId) {
+    renderNotes(allNotes);
+  } else {
+    renderNotes(allNotes.filter(n => n.project_id === projectId));
+  }
+}
+
+async function loadTakeoffs() {
+  const el = document.getElementById('takeoff-content');
+  if (!el) return;
+  el.innerHTML = '<div style="text-align:center;padding:30px;color:var(--text3);">טוען...</div>';
+  try {
+    const { data, error } = await sb.from('site_takeoffs')
+      .select('*, projects(project_name)')
+      .order('created_at', { ascending: false })
+      .limit(50);
+    if (error) throw error;
+    if (!data || !data.length) {
+      el.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text3);"><div style="font-size:40px">📐</div><div style="margin-top:12px">אין טייקאופים עדיין</div></div>';
+      return;
+    }
+    el.innerHTML = data.map(t => {
+      const proj = t.projects ? esc(t.projects.project_name) : '—';
+      const date = fmtDate(t.takeoff_date || t.created_at);
+      const rows = (() => { try { return JSON.parse(t.rows || '[]'); } catch(e) { return []; } })();
+      const total = t.total_area || rows.reduce((a,r) => a + (parseFloat(r.area)||0), 0);
+      return '<div class="card" style="margin-bottom:16px;">' +
+        '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">' +
+          '<div><div style="font-weight:800;font-size:15px;">' + proj + '</div>' +
+          '<div style="font-size:12px;color:var(--text3);">' + date + '</div></div>' +
+          '<div style="font-size:18px;font-weight:900;color:var(--accent);">' + (total ? total.toFixed(1) + ' מ"ר' : '') + '</div>' +
+        '</div>' +
+        (rows.length ? '<table style="width:100%;border-collapse:collapse;font-size:13px;">' +
+          '<tr style="background:var(--surface2);"><th style="padding:6px 8px;text-align:right;">חדר/אזור</th><th style="padding:6px 8px;text-align:right;">אורך</th><th style="padding:6px 8px;text-align:right;">רוחב</th><th style="padding:6px 8px;text-align:right;">שטח</th></tr>' +
+          rows.map(r => '<tr style="border-bottom:1px solid var(--border);"><td style="padding:6px 8px;">' + esc(r.room||r.area_name||'') + '</td><td style="padding:6px 8px;">' + (r.length||'') + '</td><td style="padding:6px 8px;">' + (r.width||'') + '</td><td style="padding:6px 8px;font-weight:700;">' + (r.area||'') + '</td></tr>').join('') +
+        '</table>' : '') +
+        (t.notes ? '<div style="margin-top:10px;font-size:13px;color:var(--text3);">📝 ' + esc(t.notes) + '</div>' : '') +
+      '</div>';
+    }).join('');
+  } catch(e) {
+    el.innerHTML = '<div style="text-align:center;padding:30px;color:var(--red);">שגיאה: ' + e.message + '</div>';
+  }
 }
 
 // ===== END INLINED MODULES =====
