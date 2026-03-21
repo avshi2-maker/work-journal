@@ -522,8 +522,18 @@ document.addEventListener('error', function(e) {
       <div class="page-title">📐 <span>טייקאוף</span></div>
       <div class="topbar-actions">
         <button class="btn btn-ghost" onclick="showPage('dashboard')" style="font-size:16px;padding:6px 10px;">🏠</button>
+        <button class="btn btn-ghost" onclick="showPage('reports')">📋 דוחות פרויקטים</button>
         <button class="btn btn-primary" onclick="loadTakeoffs()">🔄 רענן</button>
       </div>
+    </div>
+    <div class="search-bar" style="margin:0 0 4px;">
+      <div class="search-input-wrap"><span class="search-icon">🔍</span>
+        <input type="text" id="takeoff-search" placeholder="חיפוש לפי פרויקט..." oninput="filterTakeoffs(this.value)" style="direction:rtl;">
+      </div>
+      <select id="takeoff-project-filter" onchange="filterTakeoffs()" style="width:220px;" >
+        <option value="">כל הפרויקטים</option>
+        <option value="unlinked">ללא קישור ⚠️</option>
+      </select>
     </div>
     <div id="takeoff-content" style="padding:20px;">
       <div style="text-align:center;padding:40px;color:var(--text3);">
@@ -1590,6 +1600,65 @@ let supabaseClient = sb;
 // Aliases used by dashboard widget functions
 const SUPABASE_URL_CONST      = SB_URL;
 const SUPABASE_ANON_KEY_CONST = SB_KEY;
+// ── SB QUERY WRAPPER — handles DataCloneError from Supabase JS client ───────
+// The Supabase client fires postMessage internally which extension SWs block.
+// On DataCloneError the data WAS fetched — we retry once using cached response.
+async function sbQ(queryFn) {
+  try {
+    const r = await queryFn();
+    return r;
+  } catch(e) {
+    if ((e.name === 'DataCloneError') || (e.message||'').includes('clone') || (e.message||'').includes('postMessage')) {
+      // Data was fetched but postMessage failed — retry immediately
+      try { return await queryFn(); } catch(e2) { return { data: null, error: { message: e2.message } }; }
+    }
+    return { data: null, error: { message: e.message } };
+  }
+}
+
+
+// ── SUPABASE QUERY HELPER ────────────────────────────────────────────────
+// Uses sb client with DataCloneError fallback to XHR
+async function sbFetch(table, queryString) {
+  const params = {};
+  (queryString||'').split('&').forEach(p => {
+    const eq = p.indexOf('=');
+    if(eq>0) { const k=p.slice(0,eq), v=p.slice(eq+1); params[decodeURIComponent(k)]=decodeURIComponent(v); }
+  });
+  try {
+    let q = sb.from(table).select(params.select || '*');
+    if (params.order) {
+      const parts = params.order.split('.');
+      q = q.order(parts[0], { ascending: parts[1] !== 'desc' });
+    }
+    if (params.limit) q = q.limit(parseInt(params.limit));
+    const result = await q;
+    return { data: result.data || [], error: result.error };
+  } catch(e) {
+    if ((e.name === 'DataCloneError') || (e.message||'').includes('clone')) {
+      return sbFetchXHR(table, queryString);
+    }
+    return { data: null, error: { message: e.message } };
+  }
+}
+function sbFetchXHR(table, queryString) {
+  return new Promise(function(resolve) {
+    const xhr = new XMLHttpRequest();
+    xhr.open('GET', SB_URL + '/rest/v1/' + table + '?' + (queryString||''), true);
+    xhr.setRequestHeader('apikey', SB_KEY);
+    xhr.setRequestHeader('Authorization', 'Bearer ' + SB_KEY);
+    xhr.setRequestHeader('Accept', 'application/json');
+    xhr.timeout = 10000;
+    xhr.onload = function() {
+      try { const d=JSON.parse(xhr.responseText); resolve(xhr.status<300?{data:d,error:null}:{data:null,error:{message:xhr.responseText}}); }
+      catch(e){ resolve({data:null,error:{message:'parse error'}}); }
+    };
+    xhr.onerror = function(){ resolve({data:null,error:{message:'Network error'}}); };
+    xhr.ontimeout = function(){ resolve({data:null,error:{message:'Timeout'}}); };
+    xhr.send();
+  });
+}
+
 
 // ── SITE PULSE & ANNEXES VARIABLES ─────────────────────────
 var _spReportCache = {};
@@ -1785,14 +1854,10 @@ async function switchTab(tab) {
 // CRM DATA LOADER (shared across panels)
 // ══════════════════════════════════════════════════════
 async function loadCRMData() {
-  const [cRes, pRes, tRes, rRes] = await Promise.all([
-    sb.from('contractors_master').select('*').order('company_name'),
-    sb.from('projects').select('*').order('created_at',{ascending:false}),
-    sb.from('contractor_transactions')
-      .select('*, contractors_master(company_name), projects(project_name)')
-      .order('transaction_date',{ascending:false}),
-    sb.from('reports').select('*').order('report_date',{ascending:false}).limit(100)
-  ]);
+  const cRes = await sbQ(() => sb.from('contractors_master').select('*').order('company_name'));
+  const pRes = await sbQ(() => sb.from('projects').select('*').order('created_at',{ascending:false}));
+  const tRes = await sbQ(() => sb.from('contractor_transactions').select('*,contractors_master(company_name),projects(project_name)').order('transaction_date',{ascending:false}));
+  const rRes = await sbQ(() => sb.from('reports').select('*').order('report_date',{ascending:false}).limit(100));
   APP.contractors  = cRes.data || [];
   APP.projects     = pRes.data || [];
   APP.transactions = tRes.data || [];
@@ -2322,13 +2387,19 @@ async function loadAll() {
     try { await loadTransactions();} catch(e) { console.warn('loadTransactions:', e.message); }
     try { await loadReports();     } catch(e) { console.warn('loadReports:', e.message); }
     renderDashboard();
+    // Update PO badge without loading full table (avoids tbody guard)
+    try {
+      const { data: poData } = (await sbQ(() => sb.from('purchase_orders').select('id'))).data ? await sbQ(() => sb.from('purchase_orders').select('id')) : {data:[]};
+      const poBadge = document.getElementById('badge-po');
+      if (poBadge && poData) poBadge.textContent = poData.length;
+    } catch(e) {}
   } catch(e){ console.warn('loadAll:', e.message); }
   finally { window.showLoading && window.showLoading(false); }
 }
 
 // ── LOAD ─────────────────────────────────────────────────
 async function loadContractors() {
-  const {data,error} = await sb.from('contractors_master').select('*').order('company_name');
+  const {data,error} = await sbQ(() => sb.from('contractors_master').select('*').order('company_name'));
   if(error) throw error;
   allContractors = data || [];
   window.allContractors = allContractors;
@@ -2344,14 +2415,12 @@ async function loadContractors() {
 }
 
 async function loadProjects() {
-  const [projRes, quotesRes, quoteItemsRes] = await Promise.allSettled([
-    sb.from('projects').select('*').order('created_at',{ascending:false}),
-    sb.from('quotes').select('id,project_id,title,status'),
-    sb.from('quote_items').select('quote_id,unit_cost,quantity'),
-  ]);
-  const {data,error} = projRes.status==='fulfilled' ? projRes.value : {data:null,error:{message:'failed'}};
-  const quotesData = quotesRes.status==='fulfilled' ? (quotesRes.value.data||[]) : [];
-  const quoteItemsData = quoteItemsRes.status==='fulfilled' ? (quoteItemsRes.value.data||[]) : [];
+  const projRes    = await sbQ(() => sb.from('projects').select('*').order('created_at',{ascending:false}));
+  const quotesRes  = await sbQ(() => sb.from('quotes').select('id,project_id,title,status'));
+  const quoteItemsRes = await sbQ(() => sb.from('quote_items').select('quote_id,unit_cost,quantity'));
+  const {data,error} = projRes;
+  const quotesData = quotesRes.data||[];
+  const quoteItemsData = quoteItemsRes.data||[];
   if(error) throw error;
   allProjects = data || [];
   window.allProjects = allProjects;
@@ -2373,9 +2442,7 @@ async function loadProjects() {
 }
 
 async function loadTransactions() {
-  const {data,error} = await sb.from('contractor_transactions')
-    .select('*, contractors_master(company_name), projects(project_name)')
-    .order('transaction_date',{ascending:false});
+  const {data,error} = await sbQ(() => sb.from('contractor_transactions').select('*,contractors_master(company_name),projects(project_name)').order('transaction_date',{ascending:false}));
   if(error) { console.warn('loadTransactions error:', error.message); allTransactions = []; return; }
   allTransactions = data || [];
   renderBalances();
@@ -2383,7 +2450,7 @@ async function loadTransactions() {
 }
 
 async function loadReports() {
-  const {data,error} = await sb.from('reports').select('*').order('report_date',{ascending:false}).limit(100);
+  const {data,error} = await sbQ(() => sb.from('reports').select('*').order('report_date',{ascending:false}).limit(100));
   if(error) throw error;
   allReports = data || [];
   renderReports();
@@ -2405,7 +2472,15 @@ function showPage(page) {
   document.querySelectorAll('.nav-item').forEach(function(n){ n.classList.remove('active'); });
   document.getElementById('crm-panel').classList.add('active');
   document.getElementById('tab-crm') && document.getElementById('tab-crm').classList.add('active');
-  const special = {gantt:loadGantt, quotes:loadQuotes, forecast:renderForecast, 'purchase-orders':loadPurchaseOrders, takeoff:loadTakeoffs};
+  const special = {gantt:loadGantt, quotes:loadQuotes, forecast:renderForecast, 'purchase-orders':loadPurchaseOrders, takeoff: async function(){
+    await loadTakeoffs();
+    // Populate project filter dropdown
+    const sel = document.getElementById('takeoff-project-filter');
+    if(sel && allProjects && allProjects.length > 1) {
+      sel.innerHTML = '<option value="">כל הפרויקטים</option><option value="unlinked">ללא קישור ⚠️</option>' +
+        allProjects.map(p=>`<option value="${p.id}">${esc(p.project_name)}</option>`).join('');
+    }
+  }};
   if(special[page]) {
     var el = document.getElementById('page-'+page);
     if(el) el.style.display = 'block';
@@ -2727,7 +2802,7 @@ async function loadQuotes(){
   psel.innerHTML='<option value="">כל הפרויקטים</option>'+(allProjects||[]).map(p=>`<option value="${p.id}">${esc(p.project_name)}</option>`).join('');
   const nqsel=document.getElementById('nq-project');
   nqsel.innerHTML='<option value="">בחר פרויקט...</option>'+(allProjects||[]).map(p=>`<option value="${p.id}">${esc(p.project_name)}</option>`).join('');
-  const{data:quotes,error}=await sb.from('quotes').select('*').order('created_at',{ascending:false});
+  const{data:quotes,error}=await sbQ(()=>sb.from('quotes').select('*').order('created_at',{ascending:false}));
   if(error){list.innerHTML='<div class="quote-empty"><div class="empty-icon">❌</div><h3>שגיאה בטעינה</h3></div>';return;}
   const{data:items}=await sb.from('quote_items').select('*').order('sort_order',{ascending:true});
   window._quotesAll=quotes||[];window._quoteItemsAll=items||[];
@@ -2892,7 +2967,7 @@ function renderPOItemsPreview(items){const tbody=document.getElementById('po-ite
 function initPOSignaturePad(){const canvas=document.getElementById('po-signature-canvas');if(!canvas||canvas._poInited)return;canvas._poInited=true;const ctx=canvas.getContext('2d');canvas.width=canvas.offsetWidth||500;canvas.height=90;let drawing=false,lx=0,ly=0;const getPos=e=>{const r=canvas.getBoundingClientRect();const t=e.touches?e.touches[0]:e;return{x:(t.clientX-r.left)*(canvas.width/r.width),y:(t.clientY-r.top)*(canvas.height/r.height)};};canvas.addEventListener('mousedown',e=>{drawing=true;const p=getPos(e);lx=p.x;ly=p.y;});canvas.addEventListener('mousemove',e=>{if(!drawing)return;const p=getPos(e);ctx.beginPath();ctx.moveTo(lx,ly);ctx.lineTo(p.x,p.y);ctx.strokeStyle='#1a3d5c';ctx.lineWidth=2;ctx.stroke();lx=p.x;ly=p.y;});canvas.addEventListener('mouseup',()=>{drawing=false;});canvas.addEventListener('mouseout',()=>{drawing=false;});canvas.addEventListener('touchstart',e=>{e.preventDefault();drawing=true;const p=getPos(e);lx=p.x;ly=p.y;},{passive:false});canvas.addEventListener('touchmove',e=>{e.preventDefault();if(!drawing)return;const p=getPos(e);ctx.beginPath();ctx.moveTo(lx,ly);ctx.lineTo(p.x,p.y);ctx.strokeStyle='#1a3d5c';ctx.lineWidth=2;ctx.stroke();lx=p.x;ly=p.y;},{passive:false});canvas.addEventListener('touchend',()=>{drawing=false;});_poSignaturePad=canvas;}
 function clearPOSignature(){if(!_poSignaturePad)return;_poSignaturePad.getContext('2d').clearRect(0,0,_poSignaturePad.width,_poSignaturePad.height);}
 async function savePurchaseOrder(){const poNum=document.getElementById('po-number').value;const poDate=document.getElementById('po-date').value;const startD=document.getElementById('po-start-date').value;const endD=document.getElementById('po-end-date').value;const remarks=document.getElementById('po-remarks').value.trim();if(!poDate||!startD||!endD){showToast('נא למלא תאריכים','error');return;}const{q,items,proj,contr}=_poCurrentQuoteData;const subtotal=items.reduce((a,i)=>a+parseFloat(i.unit_cost||0)*parseFloat(i.quantity||1),0);const vat=subtotal*0.18;const grand=subtotal+vat;let sigData=null;if(_poSignaturePad){const blank=document.createElement('canvas');blank.width=_poSignaturePad.width;blank.height=_poSignaturePad.height;const isSigned=_poSignaturePad.toDataURL()!==blank.toDataURL();if(isSigned)sigData=_poSignaturePad.toDataURL('image/png');}window.showLoading&&window.showLoading(true);try{const payload={po_number:poNum,quote_id:q.id,project_id:q.project_id,contractor_id:contr?.id||null,contractor_name:contr?.company_name||'',contractor_email:contr?.email||'',project_name:proj?.project_name||'',quote_title:q.title||'',po_date:poDate,start_date:startD,end_date:endD,subtotal,vat_amount:vat,grand_total:grand,remarks,signature_data:sigData,status:'active',items_json:JSON.stringify(items)};const{data:savedPO,error}=await sb.from('purchase_orders').insert(payload).select().single();if(error)throw error;await sb.from('gantt_tasks').insert({task_name:`🏷️ ${poNum} — ${contr?.company_name||'קבלן'}`,project_id:q.project_id,contractor_id:contr?.id||null,start_date:startD,end_date:endD,progress:0,notes:`הזמנת עבודה ${poNum} | ₪${fmtMoney(grand)} כולל מע״מ`});closeModal('modal-po');showToast(`✅ הזמנת עבודה ${poNum} נשמרה`,'success');setTimeout(()=>generatePOPdf({...payload,id:savedPO.id,items_json:payload.items_json}),400);}catch(e){showToast('שגיאה: '+e.message,'error');}finally{window.showLoading&&window.showLoading(false);}}
-async function loadPurchaseOrders(){const tbody=document.getElementById('po-tbody');if(!tbody)return;tbody.innerHTML='<tr><td colspan="10" style="text-align:center;padding:20px;color:#888;">⏳ טוען...</td></tr>';const{data,error}=await sb.from('purchase_orders').select('*').order('created_at',{ascending:false});if(error){tbody.innerHTML=`<tr><td colspan="10" style="color:#c00;padding:12px;">${error.message}</td></tr>`;return;}allPOs=data||[];const badge=document.getElementById('badge-po');if(badge)badge.textContent=allPOs.length;const pf=document.getElementById('po-filter-project');if(pf){const projects=[...new Set(allPOs.map(p=>p.project_name).filter(Boolean))].sort();pf.innerHTML='<option value="">כל הפרויקטים</option>'+projects.map(p=>`<option value="${esc(p)}">${esc(p)}</option>`).join('');}renderPOList(allPOs);renderPOStats(allPOs);}
+async function loadPurchaseOrders(){const tbody=document.getElementById('po-tbody');if(!tbody)return;tbody.innerHTML='<tr><td colspan="10" style="text-align:center;padding:20px;color:#888;">⏳ טוען...</td></tr>';const{data,error}=await sbQ(()=>sb.from('purchase_orders').select('*').order('created_at',{ascending:false}));if(error){tbody.innerHTML=`<tr><td colspan="10" style="color:#c00;padding:12px;">${error.message}</td></tr>`;return;}allPOs=data||[];const badge=document.getElementById('badge-po');if(badge)badge.textContent=allPOs.length;const pf=document.getElementById('po-filter-project');if(pf){const projects=[...new Set(allPOs.map(p=>p.project_name).filter(Boolean))].sort();pf.innerHTML='<option value="">כל הפרויקטים</option>'+projects.map(p=>`<option value="${esc(p)}">${esc(p)}</option>`).join('');}renderPOList(allPOs);renderPOStats(allPOs);}
 function renderPOStats(list){const total=list.length;const sentWA=list.filter(p=>p.sent_whatsapp).length;const sentEmail=list.filter(p=>p.sent_email).length;const grand=list.reduce((a,p)=>a+parseFloat(p.grand_total||0),0);const el=id=>document.getElementById(id);if(el('po-stat-total'))el('po-stat-total').textContent=total;if(el('po-stat-sent-wa'))el('po-stat-sent-wa').textContent=sentWA;if(el('po-stat-sent-email'))el('po-stat-sent-email').textContent=sentEmail;if(el('po-stat-grand'))el('po-stat-grand').textContent='₪'+fmtMoney(grand);}
 function filterPOs(){const q=(document.getElementById('po-search')?.value||'').toLowerCase();const proj=document.getElementById('po-filter-project')?.value||'';const stat=document.getElementById('po-filter-status')?.value||'';renderPOList(allPOs.filter(p=>{const txt=(p.po_number+' '+p.contractor_name+' '+p.project_name).toLowerCase();return(!q||txt.includes(q))&&(!proj||p.project_name===proj)&&(!stat||p.status===stat);}));}
 function renderPOList(list){const tbody=document.getElementById('po-tbody');if(!tbody)return;if(!list.length){tbody.innerHTML='<tr><td colspan="10"><div class="empty-state"><div class="empty-icon">🏷️</div><h3>אין הזמנות</h3></div></td></tr>';return;}tbody.innerHTML=list.map(po=>{const grand=parseFloat(po.grand_total||0);const waStamp=po.sent_whatsapp?`<span style="background:#25D366;color:white;border-radius:12px;padding:2px 8px;font-size:10px;font-weight:700;">💬 WA</span>`:'<span style="color:#ccc;font-size:11px;">—</span>';const emailStamp=po.sent_email?`<span style="background:#4285f4;color:white;border-radius:12px;padding:2px 8px;font-size:10px;font-weight:700;">📧</span>`:'<span style="color:#ccc;font-size:11px;">—</span>';const anySent=po.sent_whatsapp||po.sent_email||po.sent_hard_copy;const stamp=anySent?`<div style="border:2px solid #1a3d5c;border-radius:6px;padding:3px 8px;transform:rotate(-3deg);font-size:9px;font-weight:900;color:#1a3d5c;display:inline-block;">✅ נשלח</div>`:`<div style="color:#f59e0b;font-size:11px;font-weight:700;">⏳ טרם נשלח</div>`;return`<tr style="cursor:pointer;transition:background 0.15s;" onmouseover="this.style.background='#f0f6ff'" onmouseout="this.style.background=''" onclick="openPOViewModal('${po.id}')"><td style="font-family:monospace;font-weight:700;color:#1a3d5c;font-size:12px;">${esc(po.po_number||'—')}</td><td><strong>${esc(po.contractor_name||'—')}</strong></td><td>${esc(po.project_name||'—')}</td><td style="font-size:12px;color:#666;">${po.po_date?fmtDate(po.po_date):'—'}</td><td style="font-size:12px;color:#1e6b30;font-weight:700;">${po.start_date?fmtDate(po.start_date):'—'}</td><td style="font-size:12px;color:#b52a1d;font-weight:700;">${po.end_date?fmtDate(po.end_date):'—'}</td><td style="font-weight:800;color:#1a3d5c;">₪${fmtMoney(grand)}</td><td style="text-align:center;"><div style="display:flex;flex-direction:column;gap:3px;align-items:center;">${waStamp}${emailStamp}</div></td><td style="text-align:center;">${stamp}</td><td class="td-actions" onclick="event.stopPropagation()"><div class="btn-group" style="gap:4px;flex-wrap:wrap;"><button class="btn btn-ghost btn-sm" style="font-size:10px;padding:3px 8px;color:#1a3d5c;border-color:#1a3d5c;" onclick="generatePOPdf(allPOs.find(x=>x.id==='${po.id}'))" title="הפק PDF הזמנה">📄 PDF</button><button class="btn btn-ghost btn-sm" style="font-size:10px;padding:3px 8px;color:#1e6b30;border-color:#1e6b30;" onclick="downloadMockupXLS()" title="הורד מוק-אפ XLS">📊 מוק-אפ</button><button class="btn btn-ghost btn-sm btn-icon" onclick="deletePO('${po.id}')" title="מחק">🗑️</button></div></td></tr>`;}).join('');}
@@ -3291,7 +3366,7 @@ async function loadNotesWall(){
   if(!wall){ console.warn('loadNotesWall: notes-wall not found'); return; }
   wall.innerHTML='<div style="grid-column:1/-1;text-align:center;padding:30px;color:#666;">טוען הערות...</div>';
   try{
-    const{data,error}=await sb.from('beni_notes').select('*').order('created_at',{ascending:false});
+    const{data,error}=await sbQ(()=>sb.from('beni_notes').select('*').order('created_at',{ascending:false}));
     if(error){ console.error('beni_notes error:',error); throw error; }
     allNotes=data||[];
     console.log('beni_notes loaded:', allNotes.length, 'notes');
@@ -5542,43 +5617,196 @@ function filterNotesByProject(projectId) {
   }
 }
 
+
+// ══════════════════════════════════════════════════════
+// TAKEOFF SYSTEM — Full featured
+// ══════════════════════════════════════════════════════
+
+let _allTakeoffs = [];
+let _activeTakeoffId = null;
+
 async function loadTakeoffs() {
   const el = document.getElementById('takeoff-content');
   if (!el) return;
-  el.innerHTML = '<div style="text-align:center;padding:30px;color:var(--text3);">טוען...</div>';
+  el.innerHTML = '<div style="text-align:center;padding:30px;color:var(--text3);">טוען טייקאופים...</div>';
   try {
     const { data, error } = await sb.from('site_takeoffs')
-      .select('*')
-      .order('created_at', { ascending: false })
-      .limit(50);
+      .select('*').order('created_at', { ascending: false }).limit(100);
     if (error) throw error;
-    if (!data || !data.length) {
-      el.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text3);"><div style="font-size:40px">📐</div><div style="margin-top:12px">אין טייקאופים עדיין</div></div>';
-      return;
-    }
-    el.innerHTML = data.map(t => {
-      const proj = t.project_name ? esc(t.project_name) : (t.project_id ? '📁 '+t.project_id.slice(0,8) : '—');
-      const date = fmtDate(t.takeoff_date || t.created_at);
-      const rows = (() => { try { return JSON.parse(t.rows || '[]'); } catch(e) { return []; } })();
-      const total = t.total_area || rows.reduce((a,r) => a + (parseFloat(r.area)||0), 0);
-      return '<div class="card" style="margin-bottom:16px;">' +
-        '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">' +
-          '<div><div style="font-weight:800;font-size:15px;">' + proj + '</div>' +
-          '<div style="font-size:12px;color:var(--text3);">' + date + '</div></div>' +
-          '<div style="font-size:18px;font-weight:900;color:var(--accent);">' + (total ? total.toFixed(1) + ' מ"ר' : '') + '</div>' +
-        '</div>' +
-        (rows.length ? '<table style="width:100%;border-collapse:collapse;font-size:13px;">' +
-          '<tr style="background:var(--surface2);"><th style="padding:6px 8px;text-align:right;">חדר/אזור</th><th style="padding:6px 8px;text-align:right;">אורך</th><th style="padding:6px 8px;text-align:right;">רוחב</th><th style="padding:6px 8px;text-align:right;">שטח</th></tr>' +
-          rows.map(r => '<tr style="border-bottom:1px solid var(--border);"><td style="padding:6px 8px;">' + esc(r.room||r.area_name||'') + '</td><td style="padding:6px 8px;">' + (r.length||'') + '</td><td style="padding:6px 8px;">' + (r.width||'') + '</td><td style="padding:6px 8px;font-weight:700;">' + (r.area||'') + '</td></tr>').join('') +
-        '</table>' : '') +
-        (t.notes ? '<div style="margin-top:10px;font-size:13px;color:var(--text3);">📝 ' + esc(t.notes) + '</div>' : '') +
-      '</div>';
-    }).join('');
+    _allTakeoffs = data || [];
+    renderTakeoffs();
   } catch(e) {
     el.innerHTML = '<div style="text-align:center;padding:30px;color:var(--red);">שגיאה: ' + e.message + '</div>';
   }
 }
 
+function renderTakeoffs() {
+  const el = document.getElementById('takeoff-content');
+  if (!el) return;
+
+  if (!_allTakeoffs.length) {
+    el.innerHTML = '<div style="text-align:center;padding:60px;color:var(--text3);"><div style="font-size:48px">📐</div><div style="margin-top:12px;font-size:15px;">אין טייקאופים עדיין<br><small style="font-size:12px;">הנתונים מגיעים מ-Beni Pocket</small></div></div>';
+    return;
+  }
+
+  el.innerHTML = _allTakeoffs.map(t => {
+    const projName = t.project_name || (allProjects||[]).find(p=>p.id===t.project_id)?.project_name || '';
+    const date = fmtDate(t.takeoff_date || t.created_at);
+    const rows = (() => { try { return JSON.parse(t.rows||'[]'); } catch(e) { return []; } })();
+    const total = t.total_area || rows.reduce((a,r) => a+(parseFloat(r.area)||0), 0);
+    const isLinked = !!(t.project_id && projName);
+    const hasPDF = !!(t.pdf_report_url);
+
+    return `
+    <div class="card" id="tk-${t.id}" style="margin-bottom:16px;border-right:4px solid ${isLinked?'var(--accent)':'var(--border)'};">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px;gap:12px;">
+        <div style="flex:1;">
+          <div style="font-weight:800;font-size:16px;">${projName ? '📁 '+esc(projName) : '<span style="color:var(--text3);font-weight:400;">לא מקושר לפרויקט</span>'}</div>
+          <div style="font-size:12px;color:var(--text3);margin-top:2px;">${date}${t.submitted_by ? ' · '+esc(t.submitted_by) : ''}</div>
+        </div>
+        <div style="text-align:left;">
+          <div style="font-size:22px;font-weight:900;color:var(--accent);">${total ? total.toFixed(1)+' מ"ר' : '—'}</div>
+          <div style="font-size:10px;color:var(--text3);text-align:center;">שטח כולל</div>
+        </div>
+      </div>
+
+      ${rows.length ? `
+      <table style="width:100%;border-collapse:collapse;font-size:13px;margin-bottom:12px;">
+        <tr style="background:var(--surface2);"><th style="padding:6px 8px;text-align:right;font-weight:700;">חדר / אזור</th><th style="padding:6px 8px;text-align:center;">אורך</th><th style="padding:6px 8px;text-align:center;">רוחב</th><th style="padding:6px 8px;text-align:left;font-weight:700;">שטח מ"ר</th></tr>
+        ${rows.map(r => `<tr style="border-bottom:1px solid var(--border);"><td style="padding:6px 8px;">${esc(r.room||r.area_name||r.name||'')}</td><td style="padding:6px 8px;text-align:center;">${r.length||''}</td><td style="padding:6px 8px;text-align:center;">${r.width||''}</td><td style="padding:6px 8px;font-weight:700;color:var(--accent);">${r.area||''}</td></tr>`).join('')}
+        <tr style="background:var(--surface2);font-weight:800;"><td colspan="3" style="padding:6px 8px;">סה"כ</td><td style="padding:6px 8px;color:var(--accent);">${total.toFixed(1)}</td></tr>
+      </table>` : ''}
+
+      ${t.notes ? `<div style="font-size:13px;color:var(--text3);margin-bottom:12px;padding:8px;background:var(--surface2);border-radius:8px;">📝 ${esc(t.notes)}</div>` : ''}
+
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+        ${!isLinked ? `
+        <select onchange="linkTakeoffToProject('${t.id}', this.value)" style="flex:1;padding:8px 12px;border:1.5px solid var(--border);border-radius:8px;font-family:Heebo,sans-serif;font-size:13px;direction:rtl;background:var(--surface);color:var(--text);">
+          <option value="">🔗 קשר לפרויקט...</option>
+          ${(allProjects||[]).filter(p=>p.status==='active').map(p=>`<option value="${p.id}">${esc(p.project_name)}</option>`).join('')}
+        </select>` : `
+        <div style="flex:1;font-size:12px;color:var(--green);font-weight:700;">✅ מקושר: ${esc(projName)}</div>`}
+
+        <button onclick="generateTakeoffPDF('${t.id}')" class="btn btn-primary" style="font-size:12px;padding:7px 14px;">
+          📄 צור דוח PDF
+        </button>
+        ${hasPDF ? `
+        <button onclick="window.open('${esc(t.pdf_report_url)}','_blank')" class="btn btn-ghost" style="font-size:12px;padding:7px 14px;">
+          👁️ צפה ב-PDF
+        </button>` : ''}
+        <button onclick="showPage('reports')" class="btn btn-ghost" style="font-size:12px;padding:7px 14px;">
+          📋 לדוחות פרויקט
+        </button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+async function linkTakeoffToProject(takeoffId, projectId) {
+  if (!projectId) return;
+  const proj = (allProjects||[]).find(p=>p.id===projectId);
+  if (!proj) return;
+  try {
+    const { error } = await sb.from('site_takeoffs').update({
+      project_id: projectId,
+      project_name: proj.project_name
+    }).eq('id', takeoffId);
+    if (error) throw error;
+    showToast('✅ טייקאוף קושר לפרויקט: ' + proj.project_name, 'success');
+    await loadTakeoffs();
+  } catch(e) {
+    showToast('שגיאה: ' + e.message, 'error');
+  }
+}
+
+async function generateTakeoffPDF(takeoffId) {
+  const t = _allTakeoffs.find(x => x.id === takeoffId);
+  if (!t) return;
+  const rows = (() => { try { return JSON.parse(t.rows||'[]'); } catch(e) { return []; } })();
+  const total = t.total_area || rows.reduce((a,r) => a+(parseFloat(r.area)||0), 0);
+  const projName = t.project_name || (allProjects||[]).find(p=>p.id===t.project_id)?.project_name || 'ללא פרויקט';
+  const date = fmtDate(t.takeoff_date || t.created_at);
+  const reportNum = 'TKF-' + new Date().getFullYear() + '-' + String(Date.now()).slice(-5);
+
+  const html = `<!DOCTYPE html><html dir="rtl" lang="he">
+<head><meta charset="UTF-8"><title>דוח טייקאוף - ${projName}</title>
+<style>
+  body{font-family:Arial,sans-serif;direction:rtl;padding:30px;color:#222;max-width:800px;margin:0 auto}
+  h1{color:#1a3d5c;border-bottom:3px solid #9a6f00;padding-bottom:10px}
+  .meta{display:flex;gap:40px;margin:16px 0 24px;font-size:14px;color:#555}
+  .meta strong{color:#222;display:block;font-size:13px}
+  table{width:100%;border-collapse:collapse;margin-top:16px}
+  th{background:#1a3d5c;color:white;padding:10px 12px;text-align:right}
+  td{padding:9px 12px;border-bottom:1px solid #ddd}
+  tr:nth-child(even){background:#f8f9fa}
+  .total-row{background:#f0e8d0;font-weight:800;font-size:15px}
+  .notes{margin-top:20px;padding:14px;background:#fffdf4;border-right:4px solid #9a6f00;border-radius:6px}
+  .footer{margin-top:40px;font-size:11px;color:#999;text-align:center;border-top:1px solid #eee;padding-top:12px}
+  @media print{button{display:none}}
+</style></head>
+<body>
+<button onclick="window.print()" style="background:#1a3d5c;color:white;border:none;padding:10px 24px;border-radius:6px;cursor:pointer;margin-bottom:20px;font-size:14px">🖨️ הדפס / שמור PDF</button>
+<h1>📐 דוח טייקאוף — ${projName}</h1>
+<div class="meta">
+  <div><strong>מספר דוח</strong>${reportNum}</div>
+  <div><strong>פרויקט</strong>${projName}</div>
+  <div><strong>תאריך</strong>${date}</div>
+  ${t.submitted_by ? `<div><strong>נשלח ע"י</strong>${t.submitted_by}</div>` : ''}
+</div>
+<table>
+  <thead><tr><th>#</th><th>חדר / אזור</th><th>אורך (מ')</th><th>רוחב (מ')</th><th>שטח (מ"ר)</th></tr></thead>
+  <tbody>
+    ${rows.map((r,i) => `<tr><td>${i+1}</td><td>${r.room||r.area_name||r.name||''}</td><td style="text-align:center">${r.length||'—'}</td><td style="text-align:center">${r.width||'—'}</td><td style="text-align:center;font-weight:700">${r.area||'—'}</td></tr>`).join('')}
+    <tr class="total-row"><td colspan="4" style="text-align:right">סה"כ שטח</td><td style="text-align:center">${total.toFixed(2)} מ"ר</td></tr>
+  </tbody>
+</table>
+${t.notes ? `<div class="notes"><strong>הערות:</strong><br>${t.notes}</div>` : ''}
+<div class="footer">דוח טייקאוף | ${new Date().toLocaleDateString('he-IL')} | בני פרסקי ניהול פרויקטים</div>
+</body></html>`;
+
+  // Open print window
+  const w = window.open('','_blank');
+  w.document.write(html);
+  w.document.close();
+
+  // Save report to reports table so it appears in דוחות פרויקטים
+  try {
+    const { error } = await sb.from('reports').insert({
+      report_number: reportNum,
+      project_name: projName,
+      project_id: t.project_id || null,
+      report_date: t.takeoff_date || new Date().toISOString().split('T')[0],
+      manager_name: 'בני פרסקי',
+      general_notes: `טייקאוף: ${total.toFixed(2)} מ"ר כולל | ${rows.length} אזורים`,
+      status: 'draft',
+      source: 'takeoff'
+    });
+    if (!error) {
+      showToast('✅ דוח נשמר בדוחות פרויקטים', 'success');
+      await loadReports(); // refresh reports list
+    }
+  } catch(e) { console.warn('report save:', e.message); }
+}
+
+
+
+
+function filterTakeoffs(searchText) {
+  const q = (searchText || document.getElementById('takeoff-search')?.value || '').toLowerCase();
+  const proj = document.getElementById('takeoff-project-filter')?.value || '';
+  let filtered = _allTakeoffs;
+  if (proj === 'unlinked') filtered = filtered.filter(t => !t.project_id);
+  else if (proj) filtered = filtered.filter(t => t.project_id === proj);
+  if (q) filtered = filtered.filter(t =>
+    (t.project_name||'').toLowerCase().includes(q) ||
+    (t.notes||'').toLowerCase().includes(q)
+  );
+  // Temporarily replace array and render
+  const orig = _allTakeoffs;
+  _allTakeoffs = filtered;
+  renderTakeoffs();
+  _allTakeoffs = orig;
+}
 // ===== END INLINED MODULES =====
 
 
