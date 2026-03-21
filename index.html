@@ -5681,10 +5681,9 @@ function renderTakeoffs() {
 
       <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
         ${!isLinked ? `
-        <select onchange="linkTakeoffToProject('${t.id}', this.value)" style="flex:1;padding:8px 12px;border:1.5px solid #c9a84c;border-radius:8px;font-family:Heebo,sans-serif;font-size:13px;direction:rtl;background:#fff;color:#1a1a2e;min-width:180px;">
-          <option value="">🔗 קשר לפרויקט...</option>
-          ${(allProjects||[]).filter(p=>p.status==='active').map(p=>`<option value="${p.id}">${esc(p.project_name)}</option>`).join('')}
-        </select>` : `
+        <button onclick="openLinkModal('${t.id}')" style="flex:1;padding:8px 14px;border:1.5px solid #c9a84c;border-radius:8px;font-family:Heebo,sans-serif;font-size:13px;direction:rtl;background:#fff;color:#1a3d5c;cursor:pointer;font-weight:700;text-align:right;min-width:180px;">
+          🔗 קשר לפרויקט...
+        </button>` : `
         <div style="flex:1;font-size:12px;color:var(--green);font-weight:700;">✅ מקושר: ${esc(projName)}</div>`}
 
         <button onclick="generateTakeoffPDF('${t.id}')" class="btn btn-primary" style="font-size:12px;padding:7px 14px;">
@@ -5702,17 +5701,18 @@ function renderTakeoffs() {
   }).join('');
 }
 
-async function linkTakeoffToProject(takeoffId, projectId) {
+async function linkTakeoffToProject(takeoffId, projectId, projectNameArg) {
   if (!projectId) return;
   const proj = (allProjects||[]).find(p=>p.id===projectId);
-  if (!proj) return;
+  const projName = projectNameArg || (proj ? proj.project_name : '');
+  if (!projName) return;
   try {
     const { error } = await sb.from('site_takeoffs').update({
       project_id: projectId,
-      project_name: proj.project_name
+      project_name: projName
     }).eq('id', takeoffId);
     if (error) throw error;
-    showToast('✅ טייקאוף קושר לפרויקט: ' + proj.project_name, 'success');
+    showToast('✅ טייקאוף קושר לפרויקט: ' + projName, 'success');
     await loadTakeoffs();
   } catch(e) {
     showToast('שגיאה: ' + e.message, 'error');
@@ -5810,6 +5810,38 @@ function filterTakeoffs(searchText) {
   renderTakeoffs();
   _allTakeoffs = orig;
 }
+
+function openLinkModal(takeoffId) {
+  document.getElementById('link-takeoff-id').value = takeoffId;
+  const list = document.getElementById('link-project-list');
+  const projects = (window.allProjects || []).filter(function(p){ return p.status === 'active'; });
+  if (!projects.length) {
+    list.innerHTML = '<div style="text-align:center;padding:20px;color:#888;">אין פרויקטים פעילים</div>';
+  } else {
+    list.innerHTML = '';
+    projects.forEach(function(p) {
+      var btn = document.createElement('button');
+      btn.textContent = '📁 ' + p.project_name;
+      btn.dataset.pid = p.id;
+      btn.dataset.pname = p.project_name;
+      btn.style.cssText = 'width:100%;padding:12px 16px;background:#f8f9fa;border:1.5px solid #e1e8ed;border-radius:8px;font-family:Heebo,sans-serif;font-size:14px;font-weight:600;cursor:pointer;text-align:right;color:#1a3d5c;display:block;margin-bottom:2px;';
+      btn.addEventListener('mouseover', function(){ this.style.background='#eef2ff'; });
+      btn.addEventListener('mouseout',  function(){ this.style.background='#f8f9fa'; });
+      btn.addEventListener('click', function(){
+        document.getElementById('modal-link-takeoff').style.display = 'none';
+        linkTakeoffToProject(
+          document.getElementById('link-takeoff-id').value,
+          this.dataset.pid,
+          this.dataset.pname
+        );
+      });
+      list.appendChild(btn);
+    });
+  }
+  document.getElementById('modal-link-takeoff').style.display = 'flex';
+}
+
+
 // ===== END INLINED MODULES =====
 
 
@@ -5830,6 +5862,16 @@ function filterTakeoffs(searchText) {
       <button onclick="_spConfirmReject()" style="background:#dc2626;color:#fff;border:none;border-radius:8px;padding:10px 20px;font-size:14px;font-weight:700;cursor:pointer;font-family:Heebo,sans-serif;">❌ דחה ושלח WhatsApp</button>
       <button onclick="closeModal('modal-sp-reject')" style="background:#f3f4f6;color:#374151;border:none;border-radius:8px;padding:10px 20px;font-size:14px;font-weight:700;cursor:pointer;font-family:Heebo,sans-serif;">ביטול</button>
     </div>
+  </div>
+</div>
+
+<!-- ── TAKEOFF LINK PROJECT MODAL ──────────────────────────── -->
+<div id="modal-link-takeoff" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:5000;align-items:center;justify-content:center;">
+  <div style="background:#fff;border-radius:16px;padding:28px;width:90%;max-width:420px;direction:rtl;box-shadow:0 20px 60px rgba(0,0,0,0.3);">
+    <h3 style="font-size:18px;font-weight:800;color:#1a3d5c;margin:0 0 16px;">🔗 קשר טייקאוף לפרויקט</h3>
+    <input type="hidden" id="link-takeoff-id">
+    <div id="link-project-list" style="max-height:320px;overflow-y:auto;display:flex;flex-direction:column;gap:6px;margin-bottom:16px;"></div>
+    <button onclick="document.getElementById('modal-link-takeoff').style.display='none'" style="width:100%;padding:10px;background:#f3f4f6;color:#374151;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;font-family:Heebo,sans-serif;">ביטול</button>
   </div>
 </div>
 
