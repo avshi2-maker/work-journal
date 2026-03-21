@@ -3457,6 +3457,11 @@ function renderNotes(notes){
     if(n.project_name){projName=n.project_name;}
     else if(n.project_id){var pp=(window.allProjects||[]).find(function(x){return x.id===n.project_id;});if(pp)projName=pp.project_name;}
     var proj=projName?'<span style="font-size:10px;color:#888;margin-top:4px;display:block">📁 '+projName+'</span>':'';
+    var photoHtml='';
+    if(n.photo_url){
+      var photoSrc=SUPABASE_URL_CONST+'/storage/v1/object/public/photos/'+n.photo_url;
+      photoHtml='<div style="margin-top:10px;"><img src="'+photoSrc+'" style="max-width:100%;border-radius:8px;border:1px solid '+c.border+';cursor:pointer;" onclick="window.open(this.src,\'_blank\')"></div>';
+    }
 
     var id=n.id;
     return [
@@ -3471,6 +3476,7 @@ function renderNotes(notes){
         '</div>',
         '<p style="color:#fff;font-size:14px;line-height:1.8;white-space:pre-wrap;margin-bottom:10px">'+escNote(n.note_text)+'</p>',
         proj,
+        photoHtml,
         '<div style="font-size:10px;color:#555;margin-top:8px;border-top:1px solid rgba(255,255,255,0.06);padding-top:8px">'+date+'</div>',
       '</div>'
     ].join('');
