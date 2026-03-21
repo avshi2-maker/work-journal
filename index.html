@@ -1776,7 +1776,7 @@ async function switchTab(tab) {
   // Lazy-load panel HTML
 
   // Panel-specific post-init
-  if (tab === 'notes')   { loadNotesWall(); }
+  if (tab === 'notes')   { setTimeout(loadNotesWall, 100); }
   if (tab === 'gcal')    { if (typeof initGcal    === 'function') initGcal();  }
   if (tab === 'journal') { if (typeof initJournalOnce === 'function') initJournalOnce(); }
 }
@@ -2316,12 +2316,11 @@ async function crmInit() {
 async function loadAll() {
   window.showLoading && window.showLoading(true);
   try {
-    await Promise.allSettled([
-      loadContractors().catch(e => console.warn('loadContractors:', e.message)),
-      loadProjects().catch(e => console.warn('loadProjects:', e.message)),
-      loadTransactions().catch(e => console.warn('loadTransactions:', e.message)),
-      loadReports().catch(e => console.warn('loadReports:', e.message)),
-    ]);
+    // Sequential loads — avoids DataCloneError from Promise.allSettled + Headers
+    try { await loadContractors(); } catch(e) { console.warn('loadContractors:', e.message); }
+    try { await loadProjects();    } catch(e) { console.warn('loadProjects:', e.message); }
+    try { await loadTransactions();} catch(e) { console.warn('loadTransactions:', e.message); }
+    try { await loadReports();     } catch(e) { console.warn('loadReports:', e.message); }
     renderDashboard();
   } catch(e){ console.warn('loadAll:', e.message); }
   finally { window.showLoading && window.showLoading(false); }
@@ -3287,7 +3286,36 @@ currentNoteColor='yellow', allNotes=[], activeNoteFilter='all', noteVoiceRecog=n
 
 function selectNoteColor(color){currentNoteColor=color;document.querySelectorAll('.note-color-btn').forEach(b=>{const isActive=b.dataset.color===color;b.style.border=isActive?'3px solid #fff':'3px solid transparent';b.style.transform=isActive?'scale(1.2)':'scale(1)';});}
 
-async function loadNotesWall(){const wall=document.getElementById('notes-wall');if(!wall)return;try{const{data,error}=await sb.from('beni_notes').select('*, projects(project_name)').eq('is_archived',false).order('created_at',{ascending:false});if(error)throw error;allNotes=data||[];renderNotes(allNotes);const sel=document.getElementById('note-project-select');if(sel&&window.allProjects&&window.allProjects.length){sel.innerHTML='<option value="">📁 כל הפרויקטים</option>'+(window.allProjects||[]).map(p=>'<option value="'+p.id+'">'+p.project_name+'</option>').join('');}}catch(e){console.error('loadNotes:',e);}}
+async function loadNotesWall(){
+  const wall=document.getElementById('notes-wall');
+  if(!wall){ console.warn('loadNotesWall: notes-wall not found'); return; }
+  wall.innerHTML='<div style="grid-column:1/-1;text-align:center;padding:30px;color:#666;">טוען הערות...</div>';
+  try{
+    const{data,error}=await sb.from('beni_notes').select('*').order('created_at',{ascending:false});
+    if(error){ console.error('beni_notes error:',error); throw error; }
+    allNotes=data||[];
+    console.log('beni_notes loaded:', allNotes.length, 'notes');
+    renderNotes(allNotes);
+    // Populate project dropdown from allProjects (already loaded)
+    const sel=document.getElementById('note-project-select');
+    if(sel){
+      const projects=window.allProjects||[];
+      // Also build from notes that have project_id — covers projects not in allProjects
+      const noteProjects={};
+      allNotes.forEach(n=>{
+        if(n.project_id && n.project_name) noteProjects[n.project_id]=n.project_name;
+        else if(n.project_id){
+          const p=(projects).find(x=>x.id===n.project_id);
+          if(p) noteProjects[n.project_id]=p.project_name;
+        }
+      });
+      // Merge with allProjects
+      projects.forEach(p=>{ noteProjects[p.id]=p.project_name; });
+      sel.innerHTML='<option value="">📁 כל הפרויקטים</option>'+
+        Object.entries(noteProjects).map(([id,name])=>'<option value="'+id+'">'+name+'</option>').join('');
+    }
+  }catch(e){console.error('loadNotes:',e.message||e);}
+}
 
 function renderNotes(notes){
   const wall=document.getElementById('notes-wall');
@@ -3299,7 +3327,11 @@ function renderNotes(notes){
   wall.innerHTML=notes.map(function(n){
     var c=NOTE_COLORS[n.color]||NOTE_COLORS.yellow;
     var date=new Date(n.created_at).toLocaleDateString('he-IL',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'});
-    var proj=n.projects ? '<span style="font-size:10px;color:#888;margin-top:4px;display:block">📁 '+n.projects.project_name+'</span>' : '';
+    var projName='';
+    if(n.project_name){projName=n.project_name;}
+    else if(n.project_id){var pp=(window.allProjects||[]).find(function(x){return x.id===n.project_id;});if(pp)projName=pp.project_name;}
+    var proj=projName?'<span style="font-size:10px;color:#888;margin-top:4px;display:block">📁 '+projName+'</span>':'';
+
     var id=n.id;
     return [
       '<div style="background:'+c.light+';border:1px solid '+c.border+';border-right:4px solid '+c.bg+';border-radius:12px;padding:16px;position:relative">',
@@ -5504,7 +5536,9 @@ function filterNotesByProject(projectId) {
   if (!projectId) {
     renderNotes(allNotes);
   } else {
-    renderNotes(allNotes.filter(n => n.project_id === projectId));
+    const filtered = allNotes.filter(n => n.project_id === projectId);
+    renderNotes(filtered);
+    console.log('filterNotesByProject:', projectId, '->', filtered.length, 'notes');
   }
 }
 
@@ -5514,7 +5548,7 @@ async function loadTakeoffs() {
   el.innerHTML = '<div style="text-align:center;padding:30px;color:var(--text3);">טוען...</div>';
   try {
     const { data, error } = await sb.from('site_takeoffs')
-      .select('*, projects(project_name)')
+      .select('*')
       .order('created_at', { ascending: false })
       .limit(50);
     if (error) throw error;
@@ -5523,7 +5557,7 @@ async function loadTakeoffs() {
       return;
     }
     el.innerHTML = data.map(t => {
-      const proj = t.projects ? esc(t.projects.project_name) : '—';
+      const proj = t.project_name ? esc(t.project_name) : (t.project_id ? '📁 '+t.project_id.slice(0,8) : '—');
       const date = fmtDate(t.takeoff_date || t.created_at);
       const rows = (() => { try { return JSON.parse(t.rows || '[]'); } catch(e) { return []; } })();
       const total = t.total_area || rows.reduce((a,r) => a + (parseFloat(r.area)||0), 0);
