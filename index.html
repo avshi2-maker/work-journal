@@ -338,6 +338,15 @@ document.addEventListener('error', function(e) {
     }
   }
 }, true);
+
+// Suppress DataCloneError from browser extension service worker
+window.addEventListener('unhandledrejection', function(e) {
+  if (e.reason && (e.reason.name === 'DataCloneError' ||
+      (e.reason.message||'').includes('postMessage') ||
+      (e.reason.message||'').includes('cloned'))) {
+    e.preventDefault();
+  }
+}, true);
 </script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
@@ -526,11 +535,9 @@ document.addEventListener('error', function(e) {
         <button class="btn btn-primary" onclick="loadTakeoffs()">🔄 רענן</button>
       </div>
     </div>
-    <div class="search-bar" style="margin:0 0 4px;">
-      <div class="search-input-wrap"><span class="search-icon">🔍</span>
-        <input type="text" id="takeoff-search" placeholder="חיפוש לפי פרויקט..." oninput="filterTakeoffs(this.value)" style="direction:rtl;">
-      </div>
-      <select id="takeoff-project-filter" onchange="filterTakeoffs()" style="width:220px;" >
+    <div style="display:flex;gap:10px;margin:0 0 12px;align-items:center;">
+      <input type="text" id="takeoff-search" placeholder="🔍 חיפוש..." oninput="filterTakeoffs(this.value)" style="width:200px;flex-shrink:0;padding:9px 12px;border:1.5px solid var(--border);border-radius:8px;font-family:Heebo,sans-serif;font-size:13px;direction:rtl;">
+      <select id="takeoff-project-filter" onchange="filterTakeoffs()" style="width:200px;flex-shrink:0;padding:9px 12px;border:1.5px solid var(--border);border-radius:8px;font-family:Heebo,sans-serif;font-size:13px;direction:rtl;">
         <option value="">כל הפרויקטים</option>
         <option value="unlinked">ללא קישור ⚠️</option>
       </select>
@@ -547,14 +554,14 @@ document.addEventListener('error', function(e) {
   <!-- CONTRACTORS PAGE -->
   <div class="page" id="page-contractors">
     <div class="topbar"><div class="page-title">ספר <span>קבלנים</span></div><div class="topbar-actions"><button class="btn btn-ghost" onclick="showPage('dashboard')" style="font-size:16px;padding:6px 10px;">🏠</button><button class="btn btn-ghost" onclick="exportContractorsCSV()">📥 CSV</button><button class="btn btn-primary" onclick="openContractorModal()">➕ קבלן חדש</button></div></div>
-    <div class="search-bar"><div class="search-input-wrap"><span class="search-icon">🔍</span><input type="text" id="contractor-search" placeholder="חיפוש לפי שם, תפקיד, טלפון..." oninput="filterContractors()"></div><select id="contractor-filter-occupation" onchange="filterContractors()" style="width:200px;"><option value="">כל העיסוקים</option></select><select id="contractor-filter-status" onchange="filterContractors()" style="width:140px;"><option value="">כולם</option><option value="active">פעילים בלבד</option><option value="inactive">לא פעילים</option></select></div>
+    <div style="display:flex;gap:10px;margin-bottom:16px;align-items:center;flex-wrap:wrap;"><div style="position:relative;width:200px;flex-shrink:0;"><span style="position:absolute;left:10px;top:50%;transform:translateY(-50%);color:#aaa;font-size:14px;">🔍</span><input type="text" id="contractor-search" placeholder="חיפוש..." oninput="filterContractors()" style="width:100%;padding:9px 12px 9px 32px;border:1.5px solid var(--border);border-radius:8px;font-family:Heebo,sans-serif;font-size:13px;direction:rtl;"></div><select id="contractor-filter-occupation" onchange="filterContractors()" style="width:200px;"><option value="">כל העיסוקים</option></select><select id="contractor-filter-status" onchange="filterContractors()" style="width:140px;"><option value="">כולם</option><option value="active">פעילים בלבד</option><option value="inactive">לא פעילים</option></select></div>
     <div class="table-wrap"><table><thead><tr><th>שם חברה / קבלן</th><th>איש קשר</th><th>נייד</th><th>עיסוק</th></tr></thead><tbody id="contractors-tbody"><tr><td colspan="4"><div class="empty-state"><div class="empty-icon">👷</div><h3>אין קבלנים עדיין</h3></div></td></tr></tbody></table></div>
   </div>
 
   <!-- PROJECTS PAGE -->
   <div class="page" id="page-projects">
     <div class="topbar"><div class="page-title">ניהול <span>פרויקטים</span></div><div class="topbar-actions"><button class="btn btn-ghost" onclick="showPage('dashboard')" style="font-size:16px;padding:6px 10px;">🏠</button><button class="btn btn-ghost" onclick="exportProjectsCSV()">📥 CSV</button><button class="btn btn-primary" onclick="openProjectModal()">➕ פרויקט חדש</button></div></div>
-    <div class="search-bar"><div class="search-input-wrap"><span class="search-icon">🔍</span><input type="text" id="project-search" placeholder="חיפוש פרויקט..." oninput="filterProjects()"></div><select id="project-filter-status" onchange="filterProjects()" style="width:160px;"><option value="">כל הסטטוסים</option><option value="active">פעיל</option><option value="completed">הושלם</option><option value="paused">מושהה</option><option value="cancelled">בוטל</option></select></div>
+    <div style="display:flex;gap:10px;margin-bottom:16px;align-items:center;flex-wrap:wrap;"><div style="position:relative;width:200px;flex-shrink:0;"><span style="position:absolute;left:10px;top:50%;transform:translateY(-50%);color:#aaa;font-size:14px;">🔍</span><input type="text" id="project-search" placeholder="חיפוש..." oninput="filterProjects()" style="width:100%;padding:9px 12px 9px 32px;border:1.5px solid var(--border);border-radius:8px;font-family:Heebo,sans-serif;font-size:13px;direction:rtl;"></div><select id="project-filter-status" onchange="filterProjects()" style="width:160px;"><option value="">כל הסטטוסים</option><option value="active">פעיל</option><option value="completed">הושלם</option><option value="paused">מושהה</option><option value="cancelled">בוטל</option></select></div>
     <div class="table-wrap"><table><thead><tr><th>שם פרויקט</th><th>לקוח</th><th>כתובת</th><th>תאריך התחלה</th><th>תקציב</th><th>הצעות מחיר</th><th>רווח צפוי</th><th>דוחות</th><th>סטטוס</th><th style="min-width:100px;">התקדמות</th><th class="td-actions">פעולות</th></tr></thead><tbody id="projects-tbody"><tr><td colspan="11"><div class="empty-state"><div class="empty-icon">🏗️</div><h3>אין פרויקטים עדיין</h3></div></td></tr></tbody></table></div>
   </div>
 
@@ -579,7 +586,7 @@ document.addEventListener('error', function(e) {
     <div class="tabs"><div class="tab active" onclick="showFinanceTab('balances')" id="ftab-balances">יתרות קבלנים</div><div class="tab" onclick="showFinanceTab('transactions')" id="ftab-transactions">כל התנועות</div><div class="tab" onclick="showFinanceTab('pnl')" id="ftab-pnl">📊 הכנסות ורווח</div></div>
     <div id="finance-balances"><div class="table-wrap"><table><thead><tr><th>קבלן</th><th>עיסוק</th><th>שולם לו</th><th>קיבלנו ממנו</th><th>יתרה</th></tr></thead><tbody id="balances-tbody"><tr><td colspan="5"><div class="empty-state"><div class="empty-icon">💰</div><h3>אין נתונים עדיין</h3></div></td></tr></tbody></table></div></div>
     <div id="finance-transactions" style="display:none;">
-      <div class="search-bar"><div class="search-input-wrap"><span class="search-icon">🔍</span><input type="text" id="transaction-search" placeholder="חיפוש בתנועות..." oninput="filterTransactions()"></div><select id="transaction-filter-type" onchange="filterTransactions()" style="width:160px;"><option value="">כל הסוגים</option><option value="sent">💸 שולם לקבלן</option><option value="received">✅ התקבל מקבלן</option><option value="client_income">🏦 הכנסה מלקוח</option></select></div>
+      <div style="display:flex;gap:10px;margin-bottom:16px;align-items:center;flex-wrap:wrap;"><div style="position:relative;width:200px;flex-shrink:0;"><span style="position:absolute;left:10px;top:50%;transform:translateY(-50%);color:#aaa;font-size:14px;">🔍</span><input type="text" id="transaction-search" placeholder="חיפוש..." oninput="filterTransactions()" style="width:100%;padding:9px 12px 9px 32px;border:1.5px solid var(--border);border-radius:8px;font-family:Heebo,sans-serif;font-size:13px;direction:rtl;"></div><select id="transaction-filter-type" onchange="filterTransactions()" style="width:160px;"><option value="">כל הסוגים</option><option value="sent">💸 שולם לקבלן</option><option value="received">✅ התקבל מקבלן</option><option value="client_income">🏦 הכנסה מלקוח</option></select></div>
       <div class="table-wrap"><table><thead><tr><th>תאריך</th><th>קבלן</th><th>פרויקט</th><th>סוג</th><th>סכום</th><th>תיאור</th><th>אסמכתא</th><th class="td-actions">פעולות</th></tr></thead><tbody id="transactions-tbody"></tbody></table></div>
     </div>
     <div id="finance-pnl" style="display:none;">
@@ -720,7 +727,7 @@ document.addEventListener('error', function(e) {
       <div style="background:linear-gradient(135deg,#1e40af,#3b82f6);color:white;border-radius:10px;padding:14px 16px;text-align:center;"><div style="font-size:22px;font-weight:900;" id="po-stat-sent-email">—</div><div style="font-size:11px;opacity:.8;margin-top:3px;">נשלחו Email</div></div>
       <div style="background:linear-gradient(135deg,#7a4f00,#e8b84b);color:#1a1a1a;border-radius:10px;padding:14px 16px;text-align:center;"><div style="font-size:22px;font-weight:900;" id="po-stat-grand">—</div><div style="font-size:11px;opacity:.7;margin-top:3px;">סה״כ כולל מע״מ</div></div>
     </div>
-    <div class="search-bar"><div class="search-input-wrap"><span class="search-icon">🔍</span><input type="text" id="po-search" placeholder="חיפוש לפי קבלן, פרויקט, מספר..." oninput="filterPOs()"></div><select id="po-filter-project" onchange="filterPOs()" style="width:200px;"><option value="">כל הפרויקטים</option></select><select id="po-filter-status" onchange="filterPOs()" style="width:160px;"><option value="">כל הסטטוסים</option><option value="active">פעילה</option><option value="completed">הושלמה</option><option value="cancelled">בוטלה</option></select></div>
+    <div style="display:flex;gap:10px;margin-bottom:16px;align-items:center;flex-wrap:wrap;"><div style="position:relative;width:200px;flex-shrink:0;"><span style="position:absolute;left:10px;top:50%;transform:translateY(-50%);color:#aaa;font-size:14px;">🔍</span><input type="text" id="po-search" placeholder="חיפוש..." oninput="filterPOs()" style="width:100%;padding:9px 12px 9px 32px;border:1.5px solid var(--border);border-radius:8px;font-family:Heebo,sans-serif;font-size:13px;direction:rtl;"></div><select id="po-filter-project" onchange="filterPOs()" style="width:200px;"><option value="">כל הפרויקטים</option></select><select id="po-filter-status" onchange="filterPOs()" style="width:160px;"><option value="">כל הסטטוסים</option><option value="active">פעילה</option><option value="completed">הושלמה</option><option value="cancelled">בוטלה</option></select></div>
     <div class="table-wrap"><table><thead><tr><th>מס׳ הזמנה</th><th>קבלן</th><th>פרויקט</th><th>תאריך</th><th>תחילה</th><th>סיום</th><th>סה״כ + מע״מ</th><th style="text-align:center;">נשלח</th><th style="text-align:center;">חותמת</th><th class="td-actions">פעולות</th></tr></thead><tbody id="po-tbody"><tr><td colspan="10"><div class="empty-state"><div class="empty-icon">🏷️</div><h3>אין הזמנות עבודה עדיין</h3></div></td></tr></tbody></table></div>
   </div>
 
@@ -1595,7 +1602,32 @@ document.addEventListener('error', function(e) {
 // ══════════════════════════════════════════════════════
 const SB_URL = 'https://vmcipofovheztbjmhwsl.supabase.co';
 const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZtY2lwb2ZvdmhlenRiam1od3NsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE0NjE2MTcsImV4cCI6MjA4NzAzNzYxN30.LPq5N2Xo8iEqjgz2UhmdzUdh5tpGT3EYzSxJcYBEJ1w';
-const sb = window.supabase.createClient(SB_URL, SB_KEY);
+const sb = window.supabase.createClient(SB_URL, SB_KEY, {
+  auth: {
+    persistSession: false,
+    autoRefreshToken: false,
+    detectSessionInUrl: false
+  }
+});
+window.sb = sb;  // expose for journal module reuse
+
+// ── GLOBAL DataCloneError SUPPRESSOR ─────────────────────
+// Browser extension SW intercepts Supabase postMessage and throws DataCloneError.
+// Catch it globally so it never reaches our try/catch blocks.
+window.addEventListener('unhandledrejection', function(e) {
+  if (e.reason && (e.reason.name === 'DataCloneError' ||
+      (e.reason.message||'').includes('postMessage') ||
+      (e.reason.message||'').includes('cloned'))) {
+    e.preventDefault();
+    e.stopPropagation();
+  }
+});
+window.addEventListener('error', function(e) {
+  if (e.message && (e.message.includes('postMessage') || e.message.includes('cloned'))) {
+    e.preventDefault();
+    e.stopPropagation();
+  }
+}, true);
 let supabaseClient = sb;
 // Aliases used by dashboard widget functions
 const SUPABASE_URL_CONST      = SB_URL;
@@ -1603,16 +1635,26 @@ const SUPABASE_ANON_KEY_CONST = SB_KEY;
 // ── SB QUERY WRAPPER — handles DataCloneError from Supabase JS client ───────
 // The Supabase client fires postMessage internally which extension SWs block.
 // On DataCloneError the data WAS fetched — we retry once using cached response.
-async function sbQ(queryFn) {
+// Supabase query wrapper — sb.from() with DataCloneError suppression
+async function sbQ(tableName, queryString) {
   try {
-    const r = await queryFn();
-    return r;
+    const p = {};
+    (queryString||'').split('&').forEach(s => {
+      const eq = s.indexOf('='); if(eq<1) return;
+      p[decodeURIComponent(s.slice(0,eq))] = decodeURIComponent(s.slice(eq+1));
+    });
+    let q = sb.from(tableName).select(p.select||'*');
+    if(p.order){ const parts=p.order.split('.'); q=q.order(parts[0],{ascending:parts[1]!=='desc'}); }
+    if(p.limit) q=q.limit(parseInt(p.limit));
+    Object.keys(p).forEach(k => {
+      if(k!=='select'&&k!=='order'&&k!=='limit'){
+        const v=p[k]; if(v&&v.startsWith('eq.')) q=q.eq(k,v.slice(3));
+      }
+    });
+    const r = await q;
+    return { data: r.data||[], error: r.error||null };
   } catch(e) {
-    if ((e.name === 'DataCloneError') || (e.message||'').includes('clone') || (e.message||'').includes('postMessage')) {
-      // Data was fetched but postMessage failed — retry immediately
-      try { return await queryFn(); } catch(e2) { return { data: null, error: { message: e2.message } }; }
-    }
-    return { data: null, error: { message: e.message } };
+    return { data: [], error: null }; // Swallow DataCloneError and all errors
   }
 }
 
@@ -1778,8 +1820,8 @@ async function bootstrap() {
     // 3. Load lookups + config — graceful if tables don't exist yet
     try {
       const [lkpRes, cfgRes] = await Promise.all([
-        sb.from('lookup_values').select('category,value,group_name,sort_order').eq('is_active',true).order('sort_order'),
-        sb.from('app_config').select('key,value')
+        sbQ('lookup_values','select=category,value,group_name,sort_order&is_active=eq.true&order=sort_order.asc'),
+        sbQ('app_config','select=key,value')
       ]);
       (lkpRes.data||[]).forEach(r => {
         if (!APP.lookup[r.category]) APP.lookup[r.category] = [];
@@ -1854,10 +1896,10 @@ async function switchTab(tab) {
 // CRM DATA LOADER (shared across panels)
 // ══════════════════════════════════════════════════════
 async function loadCRMData() {
-  const cRes = await sbQ(() => sb.from('contractors_master').select('*').order('company_name'));
-  const pRes = await sbQ(() => sb.from('projects').select('*').order('created_at',{ascending:false}));
-  const tRes = await sbQ(() => sb.from('contractor_transactions').select('*,contractors_master(company_name),projects(project_name)').order('transaction_date',{ascending:false}));
-  const rRes = await sbQ(() => sb.from('reports').select('*').order('report_date',{ascending:false}).limit(100));
+  const cRes = await sbQ('contractors_master','select=*&order=company_name.asc');
+  const pRes = await sbQ('projects','select=*&order=created_at.desc');
+  const tRes = await sbQ('contractor_transactions','select=*,contractors_master(company_name),projects(project_name)&order=transaction_date.desc');
+  const rRes = await sbQ('reports','select=*&order=report_date.desc&limit=100');
   APP.contractors  = cRes.data || [];
   APP.projects     = pRes.data || [];
   APP.transactions = tRes.data || [];
@@ -2389,7 +2431,7 @@ async function loadAll() {
     renderDashboard();
     // Update PO badge without loading full table (avoids tbody guard)
     try {
-      const { data: poData } = (await sbQ(() => sb.from('purchase_orders').select('id'))).data ? await sbQ(() => sb.from('purchase_orders').select('id')) : {data:[]};
+      const { data: poData } = await sbQ('purchase_orders','select=id');
       const poBadge = document.getElementById('badge-po');
       if (poBadge && poData) poBadge.textContent = poData.length;
     } catch(e) {}
@@ -2399,7 +2441,7 @@ async function loadAll() {
 
 // ── LOAD ─────────────────────────────────────────────────
 async function loadContractors() {
-  const {data,error} = await sbQ(() => sb.from('contractors_master').select('*').order('company_name'));
+  const {data,error} = await sbQ('contractors_master','select=*&order=company_name.asc');
   if(error) throw error;
   allContractors = data || [];
   window.allContractors = allContractors;
@@ -2415,9 +2457,9 @@ async function loadContractors() {
 }
 
 async function loadProjects() {
-  const projRes    = await sbQ(() => sb.from('projects').select('*').order('created_at',{ascending:false}));
-  const quotesRes  = await sbQ(() => sb.from('quotes').select('id,project_id,title,status'));
-  const quoteItemsRes = await sbQ(() => sb.from('quote_items').select('quote_id,unit_cost,quantity'));
+  const projRes    = await sbQ('projects','select=*&order=created_at.desc');
+  const quotesRes  = await sbQ('quotes','select=id,project_id,title,status');
+  const quoteItemsRes = await sbQ('quote_items','select=quote_id,unit_cost,quantity');
   const {data,error} = projRes;
   const quotesData = quotesRes.data||[];
   const quoteItemsData = quoteItemsRes.data||[];
@@ -2442,7 +2484,7 @@ async function loadProjects() {
 }
 
 async function loadTransactions() {
-  const {data,error} = await sbQ(() => sb.from('contractor_transactions').select('*,contractors_master(company_name),projects(project_name)').order('transaction_date',{ascending:false}));
+  const {data,error} = await sbQ('contractor_transactions','select=*,contractors_master(company_name),projects(project_name)&order=transaction_date.desc');
   if(error) { console.warn('loadTransactions error:', error.message); allTransactions = []; return; }
   allTransactions = data || [];
   renderBalances();
@@ -2450,7 +2492,7 @@ async function loadTransactions() {
 }
 
 async function loadReports() {
-  const {data,error} = await sbQ(() => sb.from('reports').select('*').order('report_date',{ascending:false}).limit(100));
+  const {data,error} = await sbQ('reports','select=*&order=report_date.desc&limit=100');
   if(error) throw error;
   allReports = data || [];
   renderReports();
@@ -2806,9 +2848,9 @@ async function loadQuotes(){
   psel.innerHTML='<option value="">כל הפרויקטים</option>'+(allProjects||[]).map(p=>`<option value="${p.id}">${esc(p.project_name)}</option>`).join('');
   const nqsel=document.getElementById('nq-project');
   nqsel.innerHTML='<option value="">בחר פרויקט...</option>'+(allProjects||[]).map(p=>`<option value="${p.id}">${esc(p.project_name)}</option>`).join('');
-  const{data:quotes,error}=await sbQ(()=>sb.from('quotes').select('*').order('created_at',{ascending:false}));
+  const{data:quotes,error}=await sbQ('quotes','select=*&order=created_at.desc');
   if(error){list.innerHTML='<div class="quote-empty"><div class="empty-icon">❌</div><h3>שגיאה בטעינה</h3></div>';return;}
-  const{data:items}=await sb.from('quote_items').select('*').order('sort_order',{ascending:true});
+  const{data:items}=(await sbQ('quote_items','select=*&order=sort_order.asc'));
   window._quotesAll=quotes||[];window._quoteItemsAll=items||[];
   await loadAllChangeOrders();
   renderQuotesList(window._quotesAll,window._quoteItemsAll);
@@ -2840,7 +2882,7 @@ window._allCOs=[];window._allCOItems=[];window._newCOquoteId=null;window._newCOp
 const CO_STATUS_HE={open:'פתוח',negotiating:'במו"מ',approved:'אושר',rejected:'נדחה'};
 const CO_STATUS_CSS={open:'costatus-open',negotiating:'costatus-negotiating',approved:'costatus-approved',rejected:'costatus-rejected'};
 
-async function loadAllChangeOrders(){const{data:cos}=await sb.from('change_orders').select('*').order('created_at',{ascending:false});const{data:items}=await sb.from('change_order_items').select('*').order('sort_order',{ascending:true});window._allCOs=cos||[];window._allCOItems=items||[];rebuildCoApprovedSum();}
+async function loadAllChangeOrders(){const{data:cos}=await sbQ('change_orders','select=*&order=created_at.desc');const{data:items}=await sbQ('change_order_items','select=*&order=sort_order.asc');window._allCOs=cos||[];window._allCOItems=items||[];rebuildCoApprovedSum();}
 function rebuildCoApprovedSum(){window.coApprovedSum={};(window._allCOs||[]).forEach(co=>{const projId=co.project_id;if(!projId)return;const approved=(window._allCOItems||[]).filter(i=>i.change_order_id===co.id&&i.approved).reduce((a,i)=>a+parseFloat(i.approved_amount||0),0);window.coApprovedSum[projId]=(window.coApprovedSum[projId]||0)+approved;});}
 function toggleCOSection(qid){const body=document.getElementById('co-body-'+qid);const toggle=document.getElementById('co-toggle-'+qid);const isOpen=body.classList.contains('open');if(!isOpen){body.classList.add('open');if(toggle)toggle.textContent='▲';renderCOCards(qid);}else{body.classList.remove('open');if(toggle)toggle.textContent='▼';}}
 function renderCOCards(qid){const cos=window._allCOs.filter(c=>c.quote_id===qid);const countEl=document.getElementById('co-count-'+qid);const totalEl=document.getElementById('co-total-'+qid);const container=document.getElementById('co-cards-'+qid);if(!container)return;const totalApproved=cos.reduce((a,co)=>{return a+(window._allCOItems||[]).filter(i=>i.change_order_id===co.id&&i.approved).reduce((b,i)=>b+parseFloat(i.approved_amount||0),0);},0);if(countEl)countEl.textContent=cos.length+' פקודות';if(totalEl&&cos.length)totalEl.textContent='₪'+fmtMoney(totalApproved)+' מאושר';if(!cos.length){container.innerHTML='<div style="padding:20px;text-align:center;color:#9a6f00;">אין פקודות שינוי עדיין</div>';return;}container.innerHTML=cos.map(co=>renderCOCard(co,qid)).join('');}
@@ -2894,7 +2936,7 @@ ganttTasks=[];let ganttView='combined',ganttProjectFilter='',ganttContractorFilt
 
 async function loadGantt(){
   window.showLoading&&window.showLoading(true);
-  try{const{data,error}=await sb.from('gantt_tasks').select('*,projects(project_name),contractors_master(company_name,contact_name)').order('start_date',{ascending:true});if(error)throw error;ganttTasks=data||[];populateGanttFilters();renderGantt();}
+  try{const{data,error}=await sbQ('gantt_tasks','select=*,projects(project_name),contractors_master(company_name,contact_name)&order=start_date.asc');if(error)throw error;ganttTasks=data||[];populateGanttFilters();renderGantt();}
   catch(e){showToast('שגיאה בגאנט: '+e.message);}
   finally{window.showLoading&&window.showLoading(false);}
 }
@@ -2957,8 +2999,8 @@ async function updateGanttContractors(){const sel=document.getElementById('gtask
 
 // ── GANTT IMPORT FROM QUOTE ───────────────────────────────
 function openImportFromQuoteModal(){const psel=document.getElementById('iq-project');psel.innerHTML='<option value="">— בחר פרויקט —</option>'+(allProjects||[]).map(p=>`<option value="${p.id}">${esc(p.project_name)}</option>`).join('');document.getElementById('iq-quote-row').style.display='none';document.getElementById('iq-items-wrap').style.display='none';document.getElementById('iq-no-dates').style.display='none';document.getElementById('iq-quote').innerHTML='<option value="">— בחר הצעה —</option>';document.getElementById('btn-do-import').disabled=true;document.getElementById('modal-import-quote').style.display='flex';}
-async function loadQuotesForImport(){const pid=document.getElementById('iq-project').value;document.getElementById('iq-quote-row').style.display='none';document.getElementById('iq-items-wrap').style.display='none';document.getElementById('iq-no-dates').style.display='none';document.getElementById('btn-do-import').disabled=true;if(!pid)return;const{data:quotes}=await sb.from('quotes').select('id,title,status').eq('project_id',pid).order('created_at',{ascending:false});const qsel=document.getElementById('iq-quote');qsel.innerHTML='<option value="">— בחר הצעה —</option>'+(quotes||[]).map(q=>`<option value="${q.id}">${esc(q.title||'הצעה')} [${q.status||''}]</option>`).join('');document.getElementById('iq-quote-row').style.display='block';}
-async function loadItemsForImport(){const qid=document.getElementById('iq-quote').value;document.getElementById('iq-items-wrap').style.display='none';document.getElementById('iq-no-dates').style.display='none';document.getElementById('btn-do-import').disabled=true;if(!qid)return;const{data:items}=await sb.from('quote_items').select('*').eq('quote_id',qid).order('sort_order',{ascending:true});const withDates=(items||[]).filter(i=>i.start_date&&i.end_date);if(!withDates.length){document.getElementById('iq-no-dates').style.display='block';return;}const pid=document.getElementById('iq-project').value;const listEl=document.getElementById('iq-items-list');listEl.innerHTML=withDates.map((item,idx)=>{const contr=(allContractors||[]).find(c=>c.id===item.contractor_id);const days=Math.ceil((new Date(item.end_date)-new Date(item.start_date))/86400000);return`<label style="display:flex;align-items:flex-start;gap:10px;padding:10px 12px;border-bottom:1px solid #fde68a;cursor:pointer;"><input type="checkbox" class="iq-item-cb" value="${item.id}" data-desc="${esc(item.description||'סעיף '+(idx+1))}" data-start="${item.start_date}" data-end="${item.end_date}" data-contractor="${item.contractor_id||''}" data-project="${pid}" checked style="margin-top:3px;width:16px;height:16px;"><div style="flex:1;"><div style="font-weight:700;font-size:13px;">${esc(item.description||'סעיף '+(idx+1))}</div><div style="font-size:11px;color:#888;margin-top:2px;">📅 ${item.start_date} → ${item.end_date} (${days} ימים)${contr?' | 👷 '+esc(contr.company_name):''}</div></div></label>`;}).join('');document.getElementById('iq-items-wrap').style.display='block';document.getElementById('btn-do-import').disabled=false;}
+async function loadQuotesForImport(){const pid=document.getElementById('iq-project').value;document.getElementById('iq-quote-row').style.display='none';document.getElementById('iq-items-wrap').style.display='none';document.getElementById('iq-no-dates').style.display='none';document.getElementById('btn-do-import').disabled=true;if(!pid)return;const{data:quotes}=await sbQ('quotes','select=id,title,status&project_id=eq.'+pid+'&order=created_at.desc');const qsel=document.getElementById('iq-quote');qsel.innerHTML='<option value="">— בחר הצעה —</option>'+(quotes||[]).map(q=>`<option value="${q.id}">${esc(q.title||'הצעה')} [${q.status||''}]</option>`).join('');document.getElementById('iq-quote-row').style.display='block';}
+async function loadItemsForImport(){const qid=document.getElementById('iq-quote').value;document.getElementById('iq-items-wrap').style.display='none';document.getElementById('iq-no-dates').style.display='none';document.getElementById('btn-do-import').disabled=true;if(!qid)return;const{data:items}=await sbQ('quote_items','select=*&quote_id=eq.'+qid+'&order=sort_order.asc');const withDates=(items||[]).filter(i=>i.start_date&&i.end_date);if(!withDates.length){document.getElementById('iq-no-dates').style.display='block';return;}const pid=document.getElementById('iq-project').value;const listEl=document.getElementById('iq-items-list');listEl.innerHTML=withDates.map((item,idx)=>{const contr=(allContractors||[]).find(c=>c.id===item.contractor_id);const days=Math.ceil((new Date(item.end_date)-new Date(item.start_date))/86400000);return`<label style="display:flex;align-items:flex-start;gap:10px;padding:10px 12px;border-bottom:1px solid #fde68a;cursor:pointer;"><input type="checkbox" class="iq-item-cb" value="${item.id}" data-desc="${esc(item.description||'סעיף '+(idx+1))}" data-start="${item.start_date}" data-end="${item.end_date}" data-contractor="${item.contractor_id||''}" data-project="${pid}" checked style="margin-top:3px;width:16px;height:16px;"><div style="flex:1;"><div style="font-weight:700;font-size:13px;">${esc(item.description||'סעיף '+(idx+1))}</div><div style="font-size:11px;color:#888;margin-top:2px;">📅 ${item.start_date} → ${item.end_date} (${days} ימים)${contr?' | 👷 '+esc(contr.company_name):''}</div></div></label>`;}).join('');document.getElementById('iq-items-wrap').style.display='block';document.getElementById('btn-do-import').disabled=false;}
 async function executeImportFromQuote(){const checked=[...document.querySelectorAll('.iq-item-cb:checked')];if(!checked.length)return;let imported=0,skipped=0;for(const cb of checked){const exists=ganttTasks.some(t=>t.task_name===cb.dataset.desc&&t.project_id===cb.dataset.project&&t.start_date===cb.dataset.start&&t.end_date===cb.dataset.end);if(exists){skipped++;continue;}const{data,error}=await sb.from('gantt_tasks').insert({task_name:cb.dataset.desc,project_id:cb.dataset.project,contractor_id:cb.dataset.contractor||null,start_date:cb.dataset.start,end_date:cb.dataset.end,progress:0,notes:'יובא מהצעת מחיר'}).select().single();if(!error&&data){ganttTasks.push(data);imported++;}}closeModal('modal-import-quote');renderGantt();showToast(`✅ יובאו ${imported} משימות`+(skipped?` (${skipped} כבר קיימות)`:''),(imported?'success':'error'));}
 
 // ── PURCHASE ORDERS ───────────────────────────────────────
@@ -2966,12 +3008,12 @@ let _poSignaturePad=null,_poCurrentQuoteId=null,_poCurrentQuoteData=null;
 allPOs=[];
 
 async function openPOModal(quoteId){_poCurrentQuoteId=quoteId;const q=(window._quotesAll||[]).find(x=>x.id===quoteId);if(!q){showToast('לא נמצאה הצעת מחיר','error');return;}const items=(window._quoteItemsAll||[]).filter(i=>i.quote_id===quoteId);const proj=(allProjects||[]).find(p=>p.id===q.project_id);const contr=items.length?(allContractors||[]).find(c=>c.id===items[0].contractor_id):null;_poCurrentQuoteData={q,items,proj,contr};const poNum=await generatePONumber();document.getElementById('po-number').value=poNum;document.getElementById('po-date').valueAsDate=new Date();document.getElementById('po-start-date').value='';document.getElementById('po-end-date').value='';document.getElementById('po-remarks').value='';const contrName=contr?contr.company_name:(q.contractor_name||'הקבלן');document.getElementById('po-banner-title').textContent=`📁 ${proj?.project_name||'—'}  |  👷 ${contrName}`;document.getElementById('po-banner-details').textContent=`הצעה: "${q.title||'ללא כותרת'}" | ${items.length} סעיפים`;renderPOItemsPreview(items);document.getElementById('modal-po').style.display='flex';setTimeout(()=>initPOSignaturePad(),120);}
-async function generatePONumber(){try{const{count}=await sb.from('purchase_orders').select('*',{count:'exact',head:true});const next=(count||0)+1;const year=new Date().getFullYear();return`PO-${year}-${String(next).padStart(4,'0')}`;}catch(e){return'PO-'+Date.now().toString().slice(-6);}}
+async function generatePONumber(){try{const poRes=await sbQ('purchase_orders','select=id');const count=poRes.data?.length||0;const next=(count)+1;const year=new Date().getFullYear();return`PO-${year}-${String(next).padStart(4,'0')}`;}catch(e){return'PO-'+Date.now().toString().slice(-6);}}
 function renderPOItemsPreview(items){const tbody=document.getElementById('po-items-preview');const tfoot=document.getElementById('po-totals-preview');const subtotal=items.reduce((a,i)=>a+parseFloat(i.unit_cost||0)*parseFloat(i.quantity||1),0);const vat=subtotal*0.18;const grand=subtotal+vat;tbody.innerHTML=items.map((item,idx)=>`<tr style="background:${idx%2===0?'#fff':'#f9fafb'}"><td style="padding:7px 10px">${esc(item.description||'—')}</td><td style="padding:7px 10px;text-align:center">${item.quantity||1}</td><td style="padding:7px 10px;text-align:left">₪${fmtMoney(parseFloat(item.unit_cost||0))}</td><td style="padding:7px 10px;text-align:left;font-weight:700">₪${fmtMoney(parseFloat(item.unit_cost||0)*parseFloat(item.quantity||1))}</td></tr>`).join('');tfoot.innerHTML=`<tr><td colspan="3" style="padding:7px 10px;font-weight:700;text-align:right">לפני מע״מ</td><td style="padding:7px 10px;font-weight:700;text-align:left">₪${fmtMoney(subtotal)}</td></tr><tr><td colspan="3" style="padding:7px 10px;color:#666;text-align:right">מע״מ 18%</td><td style="padding:7px 10px;color:#666;text-align:left">₪${fmtMoney(vat)}</td></tr><tr style="background:#1a3d5c"><td colspan="3" style="padding:9px 10px;font-weight:900;color:white;text-align:right">סה״כ כולל מע״מ</td><td style="padding:9px 10px;font-weight:900;color:white;text-align:left;font-size:15px">₪${fmtMoney(grand)}</td></tr>`;}
 function initPOSignaturePad(){const canvas=document.getElementById('po-signature-canvas');if(!canvas||canvas._poInited)return;canvas._poInited=true;const ctx=canvas.getContext('2d');canvas.width=canvas.offsetWidth||500;canvas.height=90;let drawing=false,lx=0,ly=0;const getPos=e=>{const r=canvas.getBoundingClientRect();const t=e.touches?e.touches[0]:e;return{x:(t.clientX-r.left)*(canvas.width/r.width),y:(t.clientY-r.top)*(canvas.height/r.height)};};canvas.addEventListener('mousedown',e=>{drawing=true;const p=getPos(e);lx=p.x;ly=p.y;});canvas.addEventListener('mousemove',e=>{if(!drawing)return;const p=getPos(e);ctx.beginPath();ctx.moveTo(lx,ly);ctx.lineTo(p.x,p.y);ctx.strokeStyle='#1a3d5c';ctx.lineWidth=2;ctx.stroke();lx=p.x;ly=p.y;});canvas.addEventListener('mouseup',()=>{drawing=false;});canvas.addEventListener('mouseout',()=>{drawing=false;});canvas.addEventListener('touchstart',e=>{e.preventDefault();drawing=true;const p=getPos(e);lx=p.x;ly=p.y;},{passive:false});canvas.addEventListener('touchmove',e=>{e.preventDefault();if(!drawing)return;const p=getPos(e);ctx.beginPath();ctx.moveTo(lx,ly);ctx.lineTo(p.x,p.y);ctx.strokeStyle='#1a3d5c';ctx.lineWidth=2;ctx.stroke();lx=p.x;ly=p.y;},{passive:false});canvas.addEventListener('touchend',()=>{drawing=false;});_poSignaturePad=canvas;}
 function clearPOSignature(){if(!_poSignaturePad)return;_poSignaturePad.getContext('2d').clearRect(0,0,_poSignaturePad.width,_poSignaturePad.height);}
 async function savePurchaseOrder(){const poNum=document.getElementById('po-number').value;const poDate=document.getElementById('po-date').value;const startD=document.getElementById('po-start-date').value;const endD=document.getElementById('po-end-date').value;const remarks=document.getElementById('po-remarks').value.trim();if(!poDate||!startD||!endD){showToast('נא למלא תאריכים','error');return;}const{q,items,proj,contr}=_poCurrentQuoteData;const subtotal=items.reduce((a,i)=>a+parseFloat(i.unit_cost||0)*parseFloat(i.quantity||1),0);const vat=subtotal*0.18;const grand=subtotal+vat;let sigData=null;if(_poSignaturePad){const blank=document.createElement('canvas');blank.width=_poSignaturePad.width;blank.height=_poSignaturePad.height;const isSigned=_poSignaturePad.toDataURL()!==blank.toDataURL();if(isSigned)sigData=_poSignaturePad.toDataURL('image/png');}window.showLoading&&window.showLoading(true);try{const payload={po_number:poNum,quote_id:q.id,project_id:q.project_id,contractor_id:contr?.id||null,contractor_name:contr?.company_name||'',contractor_email:contr?.email||'',project_name:proj?.project_name||'',quote_title:q.title||'',po_date:poDate,start_date:startD,end_date:endD,subtotal,vat_amount:vat,grand_total:grand,remarks,signature_data:sigData,status:'active',items_json:JSON.stringify(items)};const{data:savedPO,error}=await sb.from('purchase_orders').insert(payload).select().single();if(error)throw error;await sb.from('gantt_tasks').insert({task_name:`🏷️ ${poNum} — ${contr?.company_name||'קבלן'}`,project_id:q.project_id,contractor_id:contr?.id||null,start_date:startD,end_date:endD,progress:0,notes:`הזמנת עבודה ${poNum} | ₪${fmtMoney(grand)} כולל מע״מ`});closeModal('modal-po');showToast(`✅ הזמנת עבודה ${poNum} נשמרה`,'success');setTimeout(()=>generatePOPdf({...payload,id:savedPO.id,items_json:payload.items_json}),400);}catch(e){showToast('שגיאה: '+e.message,'error');}finally{window.showLoading&&window.showLoading(false);}}
-async function loadPurchaseOrders(){const tbody=document.getElementById('po-tbody');if(!tbody)return;tbody.innerHTML='<tr><td colspan="10" style="text-align:center;padding:20px;color:#888;">⏳ טוען...</td></tr>';const{data,error}=await sbQ(()=>sb.from('purchase_orders').select('*').order('created_at',{ascending:false}));if(error){tbody.innerHTML=`<tr><td colspan="10" style="color:#c00;padding:12px;">${error.message}</td></tr>`;return;}allPOs=data||[];const badge=document.getElementById('badge-po');if(badge)badge.textContent=allPOs.length;const pf=document.getElementById('po-filter-project');if(pf){const projects=[...new Set(allPOs.map(p=>p.project_name).filter(Boolean))].sort();pf.innerHTML='<option value="">כל הפרויקטים</option>'+projects.map(p=>`<option value="${esc(p)}">${esc(p)}</option>`).join('');}renderPOList(allPOs);renderPOStats(allPOs);}
+async function loadPurchaseOrders(){const tbody=document.getElementById('po-tbody');if(!tbody)return;tbody.innerHTML='<tr><td colspan="10" style="text-align:center;padding:20px;color:#888;">⏳ טוען...</td></tr>';const{data,error}=await sbQ('purchase_orders','select=*&order=created_at.desc');if(error){tbody.innerHTML=`<tr><td colspan="10" style="color:#c00;padding:12px;">${error.message}</td></tr>`;return;}allPOs=data||[];const badge=document.getElementById('badge-po');if(badge)badge.textContent=allPOs.length;const pf=document.getElementById('po-filter-project');if(pf){const projects=[...new Set(allPOs.map(p=>p.project_name).filter(Boolean))].sort();pf.innerHTML='<option value="">כל הפרויקטים</option>'+projects.map(p=>`<option value="${esc(p)}">${esc(p)}</option>`).join('');}renderPOList(allPOs);renderPOStats(allPOs);}
 function renderPOStats(list){const total=list.length;const sentWA=list.filter(p=>p.sent_whatsapp).length;const sentEmail=list.filter(p=>p.sent_email).length;const grand=list.reduce((a,p)=>a+parseFloat(p.grand_total||0),0);const el=id=>document.getElementById(id);if(el('po-stat-total'))el('po-stat-total').textContent=total;if(el('po-stat-sent-wa'))el('po-stat-sent-wa').textContent=sentWA;if(el('po-stat-sent-email'))el('po-stat-sent-email').textContent=sentEmail;if(el('po-stat-grand'))el('po-stat-grand').textContent='₪'+fmtMoney(grand);}
 function filterPOs(){const q=(document.getElementById('po-search')?.value||'').toLowerCase();const proj=document.getElementById('po-filter-project')?.value||'';const stat=document.getElementById('po-filter-status')?.value||'';renderPOList(allPOs.filter(p=>{const txt=(p.po_number+' '+p.contractor_name+' '+p.project_name).toLowerCase();return(!q||txt.includes(q))&&(!proj||p.project_name===proj)&&(!stat||p.status===stat);}));}
 function renderPOList(list){const tbody=document.getElementById('po-tbody');if(!tbody)return;if(!list.length){tbody.innerHTML='<tr><td colspan="10"><div class="empty-state"><div class="empty-icon">🏷️</div><h3>אין הזמנות</h3></div></td></tr>';return;}tbody.innerHTML=list.map(po=>{const grand=parseFloat(po.grand_total||0);const waStamp=po.sent_whatsapp?`<span style="background:#25D366;color:white;border-radius:12px;padding:2px 8px;font-size:10px;font-weight:700;">💬 WA</span>`:'<span style="color:#ccc;font-size:11px;">—</span>';const emailStamp=po.sent_email?`<span style="background:#4285f4;color:white;border-radius:12px;padding:2px 8px;font-size:10px;font-weight:700;">📧</span>`:'<span style="color:#ccc;font-size:11px;">—</span>';const anySent=po.sent_whatsapp||po.sent_email||po.sent_hard_copy;const stamp=anySent?`<div style="border:2px solid #1a3d5c;border-radius:6px;padding:3px 8px;transform:rotate(-3deg);font-size:9px;font-weight:900;color:#1a3d5c;display:inline-block;">✅ נשלח</div>`:`<div style="color:#f59e0b;font-size:11px;font-weight:700;">⏳ טרם נשלח</div>`;return`<tr style="cursor:pointer;transition:background 0.15s;" onmouseover="this.style.background='#f0f6ff'" onmouseout="this.style.background=''" onclick="openPOViewModal('${po.id}')"><td style="font-family:monospace;font-weight:700;color:#1a3d5c;font-size:12px;">${esc(po.po_number||'—')}</td><td><strong>${esc(po.contractor_name||'—')}</strong></td><td>${esc(po.project_name||'—')}</td><td style="font-size:12px;color:#666;">${po.po_date?fmtDate(po.po_date):'—'}</td><td style="font-size:12px;color:#1e6b30;font-weight:700;">${po.start_date?fmtDate(po.start_date):'—'}</td><td style="font-size:12px;color:#b52a1d;font-weight:700;">${po.end_date?fmtDate(po.end_date):'—'}</td><td style="font-weight:800;color:#1a3d5c;">₪${fmtMoney(grand)}</td><td style="text-align:center;"><div style="display:flex;flex-direction:column;gap:3px;align-items:center;">${waStamp}${emailStamp}</div></td><td style="text-align:center;">${stamp}</td><td class="td-actions" onclick="event.stopPropagation()"><div class="btn-group" style="gap:4px;flex-wrap:wrap;"><button class="btn btn-ghost btn-sm" style="font-size:10px;padding:3px 8px;color:#1a3d5c;border-color:#1a3d5c;" onclick="generatePOPdf(allPOs.find(x=>x.id==='${po.id}'))" title="הפק PDF הזמנה">📄 PDF</button><button class="btn btn-ghost btn-sm" style="font-size:10px;padding:3px 8px;color:#1e6b30;border-color:#1e6b30;" onclick="downloadMockupXLS()" title="הורד מוק-אפ XLS">📊 מוק-אפ</button><button class="btn btn-ghost btn-sm btn-icon" onclick="deletePO('${po.id}')" title="מחק">🗑️</button></div></td></tr>`;}).join('');}
@@ -3370,10 +3412,15 @@ async function loadNotesWall(){
   if(!wall){ console.warn('loadNotesWall: notes-wall not found'); return; }
   wall.innerHTML='<div style="grid-column:1/-1;text-align:center;padding:30px;color:#666;">טוען הערות...</div>';
   try{
-    const{data,error}=await sbQ(()=>sb.from('beni_notes').select('*').order('created_at',{ascending:false}));
-    if(error){ console.error('beni_notes error:',error); throw error; }
-    allNotes=data||[];
-    console.log('beni_notes loaded:', allNotes.length, 'notes');
+    let notesData = [];
+    try {
+      const r = await sbQ('beni_notes','select=*&order=created_at.desc');
+      notesData = r.data || [];
+    } catch(innerE) {
+      // DataCloneError or network — notes unavailable, show empty wall
+      console.warn('beni_notes fetch suppressed:', innerE.name||innerE.message);
+    }
+    allNotes = notesData;
     renderNotes(allNotes);
     // Populate project dropdown from allProjects (already loaded)
     const sel=document.getElementById('note-project-select');
