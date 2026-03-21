@@ -2752,7 +2752,7 @@ function renderReports(list) {
   const SRHE={draft:'טיוטה',sent:'נשלח',approved:'אושר'};
   const SRCSS={draft:'badge-amber',sent:'badge-blue',approved:'badge-green'};
   if(!data.length){tbody.innerHTML='<tr><td colspan="9"><div class="empty-state"><div class="empty-icon">📄</div><h3>אין דוחות עדיין</h3></div></td></tr>';return;}
-  tbody.innerHTML=data.map(r=>`<tr id="report-row-${r.id}"><td style="text-align:center;width:36px"><input type="checkbox" class="report-cb" data-id="${r.id}" data-number="${esc(r.report_number||'')}" data-project="${esc(r.project_name||allProjects.find(p=>p.id===r.project_id)?.project_name||'')}" data-date="${r.report_date||''}" onchange="onReportCbChange()" style="width:16px;height:16px;cursor:pointer;"></td><td style="font-family:monospace;font-size:13px">${esc(r.report_number||'—')}</td><td>${esc(r.project_name||allProjects.find(p=>p.id===r.project_id)?.project_name||'—')}</td><td>${r.report_date?fmtDate(r.report_date):'—'}</td><td style="font-size:13px">${esc(r.manager_name||'—')}</td><td style="text-align:center">${r.total_work_hours||'—'}</td><td><span class="badge ${SRCSS[r.status]||'badge-gray'}">${SRHE[r.status]||r.status||'—'}</span></td><td class="td-actions"><div class="btn-group"><button class="btn btn-ghost btn-sm btn-icon" onclick="openJournalForProject('${r.project_id||''}','${esc(r.project_name||allProjects.find(p=>p.id===r.project_id)?.project_name||'')}')">📝</button></div></td></tr>`).join('');
+  tbody.innerHTML=data.map(r=>`<tr id="report-row-${r.id}"><td style="text-align:center;width:36px"><input type="checkbox" class="report-cb" data-id="${r.id}" data-number="${esc(r.report_number||'')}" data-project="${esc(r.project_name||allProjects.find(p=>p.id===r.project_id)?.project_name||'')}" data-date="${r.report_date||''}" onchange="onReportCbChange()" style="width:16px;height:16px;cursor:pointer;"></td><td style="font-family:monospace;font-size:13px">${(r.report_number||'').startsWith('TKF-')?'📐 ':''}${esc(r.report_number||'—')}</td><td>${esc(r.project_name||allProjects.find(p=>p.id===r.project_id)?.project_name||'—')}</td><td>${r.report_date?fmtDate(r.report_date):'—'}</td><td style="font-size:13px">${esc(r.manager_name||'—')}</td><td style="text-align:center">${r.total_work_hours||'—'}</td><td><span class="badge ${SRCSS[r.status]||'badge-gray'}">${SRHE[r.status]||r.status||'—'}</span></td><td class="td-actions"><div class="btn-group"><button class="btn btn-ghost btn-sm btn-icon" onclick="openJournalForProject('${r.project_id||''}','${esc(r.project_name||allProjects.find(p=>p.id===r.project_id)?.project_name||'')}')">📝</button></div></td></tr>`).join('');
   const sa=document.getElementById('reports-select-all');if(sa)sa.checked=false;
   updateReportToolbar();
 }
@@ -5681,7 +5681,7 @@ function renderTakeoffs() {
 
       <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
         ${!isLinked ? `
-        <select onchange="linkTakeoffToProject('${t.id}', this.value)" style="flex:1;padding:8px 12px;border:1.5px solid var(--border);border-radius:8px;font-family:Heebo,sans-serif;font-size:13px;direction:rtl;background:var(--surface);color:var(--text);">
+        <select onchange="linkTakeoffToProject('${t.id}', this.value)" style="flex:1;padding:8px 12px;border:1.5px solid #c9a84c;border-radius:8px;font-family:Heebo,sans-serif;font-size:13px;direction:rtl;background:#fff;color:#1a1a2e;min-width:180px;">
           <option value="">🔗 קשר לפרויקט...</option>
           ${(allProjects||[]).filter(p=>p.status==='active').map(p=>`<option value="${p.id}">${esc(p.project_name)}</option>`).join('')}
         </select>` : `
@@ -5745,7 +5745,10 @@ async function generateTakeoffPDF(takeoffId) {
   @media print{button{display:none}}
 </style></head>
 <body>
-<button onclick="window.print()" style="background:#1a3d5c;color:white;border:none;padding:10px 24px;border-radius:6px;cursor:pointer;margin-bottom:20px;font-size:14px">🖨️ הדפס / שמור PDF</button>
+<div style="display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap;">
+<button onclick="window.print()" style="background:#1a3d5c;color:white;border:none;padding:10px 24px;border-radius:6px;cursor:pointer;font-size:14px">🖨️ הדפס / שמור PDF</button>
+<button onclick="window.close()" style="background:#6b7280;color:white;border:none;padding:10px 20px;border-radius:6px;cursor:pointer;font-size:14px">← חזרה</button>
+</div>
 <h1>📐 דוח טייקאוף — ${projName}</h1>
 <div class="meta">
   <div><strong>מספר דוח</strong>${reportNum}</div>
