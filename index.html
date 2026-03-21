@@ -2473,10 +2473,14 @@ function showPage(page) {
   document.getElementById('crm-panel').classList.add('active');
   document.getElementById('tab-crm') && document.getElementById('tab-crm').classList.add('active');
   const special = {gantt:loadGantt, quotes:loadQuotes, forecast:renderForecast, 'purchase-orders':loadPurchaseOrders, takeoff: async function(){
+    // Ensure projects are loaded before takeoff page renders
+    if (!allProjects || !allProjects.length) {
+      try { await loadProjects(); } catch(e) {}
+    }
     await loadTakeoffs();
     // Populate project filter dropdown
     const sel = document.getElementById('takeoff-project-filter');
-    if(sel && allProjects && allProjects.length > 1) {
+    if(sel && allProjects && allProjects.length > 0) {
       sel.innerHTML = '<option value="">כל הפרויקטים</option><option value="unlinked">ללא קישור ⚠️</option>' +
         allProjects.map(p=>`<option value="${p.id}">${esc(p.project_name)}</option>`).join('');
     }
@@ -5780,9 +5784,8 @@ ${t.notes ? `<div class="notes"><strong>הערות:</strong><br>${t.notes}</div>
       project_id: t.project_id || null,
       report_date: t.takeoff_date || new Date().toISOString().split('T')[0],
       manager_name: 'בני פרסקי',
-      general_notes: `טייקאוף: ${total.toFixed(2)} מ"ר כולל | ${rows.length} אזורים`,
-      status: 'draft',
-      source: 'takeoff'
+      general_notes: 'טייקאוף: ' + total.toFixed(2) + ' מ"ר | ' + rows.length + ' אזורים',
+      status: 'draft'
     });
     if (!error) {
       showToast('✅ דוח נשמר בדוחות פרויקטים', 'success');
@@ -5814,9 +5817,13 @@ function filterTakeoffs(searchText) {
 function openLinkModal(takeoffId) {
   document.getElementById('link-takeoff-id').value = takeoffId;
   const list = document.getElementById('link-project-list');
-  const projects = (window.allProjects || []).filter(function(p){ return p.status === 'active'; });
+  // Show all projects if no 'active' ones found (status values may differ)
+  var projects = (window.allProjects || []).filter(function(p){ return p.status === 'active'; });
+  if (!projects.length) projects = window.allProjects || [];
   if (!projects.length) {
-    list.innerHTML = '<div style="text-align:center;padding:20px;color:#888;">אין פרויקטים פעילים</div>';
+    list.innerHTML = '<div style="text-align:center;padding:20px;color:#888;">אין פרויקטים — לחץ רענן תחילה</div>';
+    document.getElementById('modal-link-takeoff').style.display = 'flex';
+    return;
   } else {
     list.innerHTML = '';
     projects.forEach(function(p) {
