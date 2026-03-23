@@ -528,24 +528,46 @@ window.addEventListener('unhandledrejection', function(e) {
   <!-- TAKEOFF PAGE -->
   <div class="page" id="page-takeoff">
     <div class="topbar">
-      <div class="page-title">📐 <span>טייקאוף</span></div>
+      <div class="page-title">📐 <span>מדידות שטח</span></div>
       <div class="topbar-actions">
         <button class="btn btn-ghost" onclick="showPage('dashboard')" style="font-size:16px;padding:6px 10px;">🏠</button>
-        <button class="btn btn-ghost" onclick="showPage('reports')">📋 דוחות פרויקטים</button>
+        <button class="btn btn-ghost" onclick="showPage('reports')">📋 דוחות</button>
         <button class="btn btn-primary" onclick="loadTakeoffs()">🔄 רענן</button>
       </div>
     </div>
-    <div style="display:flex;gap:10px;margin:0 0 12px;align-items:center;">
-      <input type="text" id="takeoff-search" placeholder="🔍 חיפוש..." oninput="filterTakeoffs(this.value)" style="width:200px;flex-shrink:0;padding:9px 12px;border:1.5px solid var(--border);border-radius:8px;font-family:Heebo,sans-serif;font-size:13px;direction:rtl;">
-      <select id="takeoff-project-filter" onchange="filterTakeoffs()" style="width:200px;flex-shrink:0;padding:9px 12px;border:1.5px solid var(--border);border-radius:8px;font-family:Heebo,sans-serif;font-size:13px;direction:rtl;">
+
+    <!-- 3 Sub-tabs -->
+    <div style="display:flex;border-bottom:2px solid var(--border);margin-bottom:14px;background:var(--surface);">
+      <div id="tk-tab-standard" onclick="switchTakeoffTab('standard')"
+        style="flex:1;padding:11px 6px;text-align:center;font-size:13px;font-weight:800;cursor:pointer;border-bottom:3px solid var(--accent);color:var(--accent);transition:all .15s;">
+        📐 טייקאוף
+      </div>
+      <div id="tk-tab-detailed" onclick="switchTakeoffTab('detailed')"
+        style="flex:1;padding:11px 6px;text-align:center;font-size:13px;font-weight:800;cursor:pointer;border-bottom:3px solid transparent;color:var(--text3);transition:all .15s;">
+        📋 מדידות
+      </div>
+      <div id="tk-tab-laser" onclick="switchTakeoffTab('laser')"
+        style="flex:1;padding:11px 6px;text-align:center;font-size:13px;font-weight:800;cursor:pointer;border-bottom:3px solid transparent;color:var(--text3);transition:all .15s;">
+        🔴 גבהים
+      </div>
+    </div>
+
+    <!-- Filters row -->
+    <div style="display:flex;gap:10px;margin:0 0 12px;align-items:center;flex-wrap:wrap;">
+      <input type="text" id="takeoff-search" placeholder="🔍 חיפוש..." oninput="filterTakeoffs(this.value)"
+        style="width:200px;flex-shrink:0;padding:9px 12px;border:1.5px solid var(--border);border-radius:8px;font-family:Heebo,sans-serif;font-size:13px;direction:rtl;">
+      <select id="takeoff-project-filter" onchange="filterTakeoffs()"
+        style="width:200px;flex-shrink:0;padding:9px 12px;border:1.5px solid var(--border);border-radius:8px;font-family:Heebo,sans-serif;font-size:13px;direction:rtl;">
         <option value="">כל הפרויקטים</option>
         <option value="unlinked">ללא קישור ⚠️</option>
       </select>
     </div>
-    <div id="takeoff-content" style="padding:20px;">
+
+    <!-- Content area — re-used by all 3 tabs -->
+    <div id="takeoff-content" style="padding:4px 0 40px;">
       <div style="text-align:center;padding:40px;color:var(--text3);">
         <div style="font-size:48px;margin-bottom:12px">📐</div>
-        <div style="font-size:15px;font-weight:600;margin-bottom:8px">טייקאוף מהמובייל</div>
+        <div style="font-size:15px;font-weight:600;margin-bottom:8px">מדידות מהמובייל</div>
         <div style="font-size:13px;">מסתנכרן עם Beni Pocket — לחץ רענן לטעינה</div>
       </div>
     </div>
@@ -1631,52 +1653,31 @@ window.addEventListener('error', function(e) {
 let supabaseClient = sb;
 // ── SB QUERY WRAPPER ─────────────────────────────────────────────────────────
 // Supabase query wrapper — sb.from() with DataCloneError suppression
-async function sbQ(tableName, queryString) {
-  try {
-    const p = {};
-    (queryString||'').split('&').forEach(s => {
-      const eq = s.indexOf('='); if(eq<1) return;
-      p[decodeURIComponent(s.slice(0,eq))] = decodeURIComponent(s.slice(eq+1));
-    });
-    let q = sb.from(tableName).select(p.select||'*');
-    if(p.order){ const parts=p.order.split('.'); q=q.order(parts[0],{ascending:parts[1]!=='desc'}); }
-    if(p.limit) q=q.limit(parseInt(p.limit));
-    Object.keys(p).forEach(k => {
-      if(k!=='select'&&k!=='order'&&k!=='limit'){
-        const v=p[k]; if(v&&v.startsWith('eq.')) q=q.eq(k,v.slice(3));
-      }
-    });
-    const r = await q;
-    return { data: r.data||[], error: r.error||null };
-  } catch(e) {
-    // DataCloneError: browser extension blocks Supabase client postMessage.
-    // Fall back to plain XHR which is not affected.
-    if ((e.name==='DataCloneError') || (e.message||'').includes('clone') || (e.message||'').includes('postMessage')) {
-      return new Promise(function(resolve) {
-        const xhr = new XMLHttpRequest();
-        xhr.open('GET', SB_URL + '/rest/v1/' + tableName + (queryString ? '?' + queryString : ''), true);
-        xhr.setRequestHeader('apikey', SB_KEY);
-        xhr.setRequestHeader('Authorization', 'Bearer ' + SB_KEY);
-        xhr.setRequestHeader('Accept', 'application/json');
-        xhr.timeout = 10000;
-        xhr.onload = function() {
-          try {
-            const d = JSON.parse(xhr.responseText);
-            resolve(xhr.status < 300 ? {data: d, error: null} : {data: [], error: {message: xhr.responseText}});
-          } catch(pe) { resolve({data: [], error: {message: 'parse error'}}); }
-        };
-        xhr.onerror = function(){ resolve({data: [], error: {message: 'Network error'}}); };
-        xhr.ontimeout = function(){ resolve({data: [], error: {message: 'Timeout'}}); };
-        xhr.send();
-      });
-    }
-    return { data: [], error: { message: e.message } };
-  }
+// sbQ — plain XHR only (immune to DataCloneError from browser extensions)
+function sbQ(tableName, queryString) {
+  return new Promise(function(resolve) {
+    var xhr = new XMLHttpRequest();
+    var url = SB_URL + '/rest/v1/' + tableName + (queryString ? '?' + queryString : '');
+    xhr.open('GET', url, true);
+    xhr.setRequestHeader('apikey', SB_KEY);
+    xhr.setRequestHeader('Authorization', 'Bearer ' + SB_KEY);
+    xhr.setRequestHeader('Accept', 'application/json');
+    xhr.timeout = 15000;
+    xhr.onload = function() {
+      try {
+        var d = JSON.parse(xhr.responseText);
+        if (xhr.status < 300) {
+          resolve({ data: Array.isArray(d) ? d : (d.data || []), error: null });
+        } else {
+          resolve({ data: [], error: { message: d.message || d.error || xhr.responseText } });
+        }
+      } catch(e) { resolve({ data: [], error: { message: 'parse error: ' + e.message } }); }
+    };
+    xhr.onerror = function() { resolve({ data: [], error: { message: 'Network error' } }); };
+    xhr.ontimeout = function() { resolve({ data: [], error: { message: 'Timeout' } }); };
+    xhr.send();
+  });
 }
-
-
-
-
 
 // ── SITE PULSE & ANNEXES VARIABLES ─────────────────────────
 var _spReportCache = {};
@@ -5618,13 +5619,33 @@ function filterNotesByProject(projectId) {
 let _allTakeoffs = [];
 let _activeTakeoffId = null;
 
+// ══ TAKEOFF — 3 tabs: standard / detailed / laser ══════════════
+var _activeTakeoffTab = 'standard'; // current sub-tab
+
+function switchTakeoffTab(type) {
+  _activeTakeoffTab = type;
+  // Update tab styles
+  ['standard','detailed','laser'].forEach(function(t) {
+    var el = document.getElementById('tk-tab-' + t);
+    if (!el) return;
+    if (t === type) {
+      el.style.borderBottomColor = 'var(--accent)';
+      el.style.color = 'var(--accent)';
+    } else {
+      el.style.borderBottomColor = 'transparent';
+      el.style.color = 'var(--text3)';
+    }
+  });
+  renderTakeoffs();
+}
+
 async function loadTakeoffs() {
   const el = document.getElementById('takeoff-content');
   if (!el) return;
-  el.innerHTML = '<div style="text-align:center;padding:30px;color:var(--text3);">טוען טייקאופים...</div>';
+  el.innerHTML = '<div style="text-align:center;padding:30px;color:var(--text3);">טוען מדידות...</div>';
   try {
     const { data, error } = await sb.from('site_takeoffs')
-      .select('*').order('created_at', { ascending: false }).limit(100);
+      .select('*').order('created_at', { ascending: false }).limit(200);
     if (error) throw error;
     _allTakeoffs = data || [];
     renderTakeoffs();
@@ -5636,62 +5657,302 @@ async function loadTakeoffs() {
 function renderTakeoffs() {
   const el = document.getElementById('takeoff-content');
   if (!el) return;
+  const type = _activeTakeoffTab || 'standard';
 
-  if (!_allTakeoffs.length) {
-    el.innerHTML = '<div style="text-align:center;padding:60px;color:var(--text3);"><div style="font-size:48px">📐</div><div style="margin-top:12px;font-size:15px;">אין טייקאופים עדיין<br><small style="font-size:12px;">הנתונים מגיעים מ-Beni Pocket</small></div></div>';
+  // Filter to current tab type
+  const typed = _allTakeoffs.filter(function(t) {
+    if (type === 'standard') return !t.takeoff_type || t.takeoff_type === 'standard';
+    return t.takeoff_type === type;
+  });
+
+  // Apply search + project filter
+  const q = (document.getElementById('takeoff-search')?.value || '').toLowerCase();
+  const proj = document.getElementById('takeoff-project-filter')?.value || '';
+  let filtered = typed;
+  if (proj === 'unlinked') filtered = filtered.filter(t => !t.project_id);
+  else if (proj) filtered = filtered.filter(t => t.project_id === proj);
+  if (q) filtered = filtered.filter(t =>
+    (t.project_name||'').toLowerCase().includes(q) ||
+    (t.session_label||'').toLowerCase().includes(q) ||
+    (t.notes||'').toLowerCase().includes(q)
+  );
+
+  const icons = { standard: '📐', detailed: '📋', laser: '🔴' };
+  const labels = { standard: 'טייקאוף', detailed: 'מדידות מפורטות', laser: 'מדידת גבהים' };
+
+  if (!filtered.length) {
+    el.innerHTML = `<div style="text-align:center;padding:60px;color:var(--text3);">
+      <div style="font-size:48px">${icons[type]}</div>
+      <div style="margin-top:12px;font-size:15px;">${_allTakeoffs.length ? 'אין ' + labels[type] + ' עדיין' : 'לחץ רענן לטעינה'}
+      <br><small style="font-size:12px;">הנתונים מגיעים מ-Beni Pocket</small></div></div>`;
     return;
   }
 
-  el.innerHTML = _allTakeoffs.map(t => {
-    const projName = t.project_name || (allProjects||[]).find(p=>p.id===t.project_id)?.project_name || '';
-    const date = fmtDate(t.takeoff_date || t.created_at);
-    const rows = (() => { try { return JSON.parse(t.rows||'[]'); } catch(e) { return []; } })();
-    const total = t.total_area || rows.reduce((a,r) => a+(parseFloat(r.area)||0), 0);
-    const isLinked = !!(t.project_id && projName);
-    const hasPDF = !!(t.pdf_report_url);
+  if (type === 'laser') {
+    el.innerHTML = filtered.map(t => _renderLaserCard(t)).join('');
+  } else if (type === 'detailed') {
+    el.innerHTML = filtered.map(t => _renderDetailedCard(t)).join('');
+  } else {
+    el.innerHTML = filtered.map(t => _renderStandardCard(t)).join('');
+  }
+}
 
-    return `
-    <div class="card" id="tk-${t.id}" style="margin-bottom:16px;border-right:4px solid ${isLinked?'var(--accent)':'var(--border)'};">
-      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px;gap:12px;">
-        <div style="flex:1;">
-          <div style="font-weight:800;font-size:16px;">${projName ? '📁 '+esc(projName) : '<span style="color:var(--text3);font-weight:400;">לא מקושר לפרויקט</span>'}</div>
-          <div style="font-size:12px;color:var(--text3);margin-top:2px;">${date}${t.submitted_by ? ' · '+esc(t.submitted_by) : ''}</div>
-        </div>
-        <div style="text-align:left;">
-          <div style="font-size:22px;font-weight:900;color:var(--accent);">${total ? total.toFixed(1)+' מ"ר' : '—'}</div>
-          <div style="font-size:10px;color:var(--text3);text-align:center;">שטח כולל</div>
-        </div>
+function _renderStandardCard(t) {
+  const projName = t.project_name || (allProjects||[]).find(p=>p.id===t.project_id)?.project_name || '';
+  const date = fmtDate(t.takeoff_date || t.created_at);
+  const rows = (() => { try { return JSON.parse(t.rows||'[]'); } catch(e) { return []; } })();
+  const total = t.total_area || rows.reduce((a,r) => a+(parseFloat(r.area)||0), 0);
+  const isLinked = !!(t.project_id && projName);
+  const borderCol = isLinked ? "var(--accent)" : "var(--border)";
+
+  return `<div class="card" id="tk-${t.id}" style="margin-bottom:16px;border-right:4px solid ${borderCol};">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px;gap:12px;">
+      <div style="flex:1;">
+        <div style="font-weight:800;font-size:16px;">${projName ? '📁 '+esc(projName) : '<span style="color:var(--text3);font-weight:400;">לא מקושר לפרויקט</span>'}</div>
+        <div style="font-size:12px;color:var(--text3);margin-top:2px;">${date}${t.submitted_by ? ' · '+esc(t.submitted_by) : ''}${t.session_label ? ' · '+esc(t.session_label) : ''}</div>
       </div>
-
-      ${rows.length ? `
-      <table style="width:100%;border-collapse:collapse;font-size:13px;margin-bottom:12px;">
-        <tr style="background:var(--surface2);"><th style="padding:6px 8px;text-align:right;font-weight:700;">חדר / אזור</th><th style="padding:6px 8px;text-align:center;">אורך</th><th style="padding:6px 8px;text-align:center;">רוחב</th><th style="padding:6px 8px;text-align:left;font-weight:700;">שטח מ"ר</th></tr>
-        ${rows.map(r => `<tr style="border-bottom:1px solid var(--border);"><td style="padding:6px 8px;">${esc(r.room||r.area_name||r.name||'')}</td><td style="padding:6px 8px;text-align:center;">${r.length||''}</td><td style="padding:6px 8px;text-align:center;">${r.width||''}</td><td style="padding:6px 8px;font-weight:700;color:var(--accent);">${r.area||''}</td></tr>`).join('')}
-        <tr style="background:var(--surface2);font-weight:800;"><td colspan="3" style="padding:6px 8px;">סה"כ</td><td style="padding:6px 8px;color:var(--accent);">${total.toFixed(1)}</td></tr>
-      </table>` : ''}
-
-      ${t.notes ? `<div style="font-size:13px;color:var(--text3);margin-bottom:12px;padding:8px;background:var(--surface2);border-radius:8px;">📝 ${esc(t.notes)}</div>` : ''}
-
-      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
-        ${!isLinked ? `
-        <button onclick="openLinkModal('${t.id}')" style="flex:1;padding:8px 14px;border:1.5px solid #c9a84c;border-radius:8px;font-family:Heebo,sans-serif;font-size:13px;direction:rtl;background:#fff;color:#1a3d5c;cursor:pointer;font-weight:700;text-align:right;min-width:180px;">
-          🔗 קשר לפרויקט...
-        </button>` : `
-        <div style="flex:1;font-size:12px;color:var(--green);font-weight:700;">✅ מקושר: ${esc(projName)}</div>`}
-
-        <button onclick="generateTakeoffPDF('${t.id}')" class="btn btn-primary" style="font-size:12px;padding:7px 14px;">
-          📄 צור דוח PDF
-        </button>
-        ${hasPDF ? `
-        <button onclick="window.open('${esc(t.pdf_report_url)}','_blank')" class="btn btn-ghost" style="font-size:12px;padding:7px 14px;">
-          👁️ צפה ב-PDF
-        </button>` : ''}
-        <button onclick="showPage('reports')" class="btn btn-ghost" style="font-size:12px;padding:7px 14px;">
-          📋 לדוחות פרויקט
-        </button>
+      <div style="text-align:left;">
+        <div style="font-size:22px;font-weight:900;color:var(--accent);">${total ? total.toFixed(1)+' מ"ר' : '—'}</div>
+        <div style="font-size:10px;color:var(--text3);text-align:center;">שטח כולל</div>
       </div>
-    </div>`;
-  }).join('');
+    </div>
+    ${rows.length ? `<table style="width:100%;border-collapse:collapse;font-size:13px;margin-bottom:12px;">
+      <tr style="background:var(--surface2);"><th style="padding:6px 8px;text-align:right;font-weight:700;">חדר / אזור</th><th style="padding:6px 8px;text-align:center;">אורך</th><th style="padding:6px 8px;text-align:center;">רוחב</th><th style="padding:6px 8px;text-align:left;font-weight:700;">מ"ר</th></tr>
+      ${rows.map(r => `<tr style="border-bottom:1px solid var(--border);"><td style="padding:6px 8px;">${esc(r.room||r.area_name||r.name||'')}</td><td style="padding:6px 8px;text-align:center;">${r.length||''}</td><td style="padding:6px 8px;text-align:center;">${r.width||''}</td><td style="padding:6px 8px;font-weight:700;color:var(--accent);">${r.area||''}</td></tr>`).join('')}
+      <tr style="background:var(--surface2);font-weight:800;"><td colspan="3" style="padding:6px 8px;">סה"כ</td><td style="padding:6px 8px;color:var(--accent);">${total.toFixed(1)}</td></tr>
+    </table>` : ''}
+    ${t.notes ? `<div style="font-size:13px;color:var(--text3);margin-bottom:12px;padding:8px;background:var(--surface2);border-radius:8px;">📝 ${esc(t.notes)}</div>` : ''}
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+      ${!isLinked ? `<button onclick="openLinkModal('${t.id}')" style="flex:1;padding:8px 14px;border:1.5px solid #c9a84c;border-radius:8px;font-family:Heebo,sans-serif;font-size:13px;direction:rtl;background:#fff;color:#1a3d5c;cursor:pointer;font-weight:700;min-width:180px;">🔗 קשר לפרויקט...</button>`
+      : `<div style="flex:1;font-size:12px;color:var(--green);font-weight:700;">✅ מקושר: ${esc(projName)}</div>`}
+      <button onclick="generateTakeoffPDF('${t.id}')" class="btn btn-primary" style="font-size:12px;padding:7px 14px;">📄 צור דוח PDF</button>
+    </div>
+  </div>`;
+}
+
+function _renderDetailedCard(t) {
+  const projName = t.project_name || (allProjects||[]).find(p=>p.id===t.project_id)?.project_name || '';
+  const date = fmtDate(t.takeoff_date || t.created_at);
+  const rows = (() => { try { return JSON.parse(t.rows||'[]'); } catch(e) { return []; } })();
+  const deductions = (() => { try { return JSON.parse(t.deductions||'[]'); } catch(e) { return []; } })();
+  const isLinked = !!(t.project_id && projName);
+  const borderCol = isLinked ? "#3b82f6" : "var(--border)";
+  const grossArea = rows.reduce((a,r) => a+(parseFloat(r.area)||0), 0);
+  const deductArea = deductions.reduce((a,r) => a+(parseFloat(r.area)||0), 0);
+  const netArea = t.total_area || (grossArea - deductArea);
+
+  return `<div class="card" id="tk-${t.id}" style="margin-bottom:16px;border-right:4px solid ${borderCol};">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;gap:12px;">
+      <div style="flex:1;">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
+          <span style="background:#3b82f6;color:white;border-radius:6px;padding:2px 8px;font-size:11px;font-weight:800;">📋 מדידות מפורטות</span>
+          ${t.session_label ? `<span style="font-size:12px;color:var(--text3);">${esc(t.session_label)}</span>` : ''}
+        </div>
+        <div style="font-weight:800;font-size:15px;">${projName ? '📁 '+esc(projName) : '<span style="color:var(--text3);font-weight:400;">לא מקושר לפרויקט</span>'}</div>
+        <div style="font-size:12px;color:var(--text3);margin-top:2px;">${date}${t.submitted_by ? ' · '+esc(t.submitted_by) : ''}</div>
+      </div>
+      <div style="text-align:left;min-width:80px;">
+        <div style="font-size:20px;font-weight:900;color:#3b82f6;">${netArea ? netArea.toFixed(1)+' מ"ר' : '—'}</div>
+        <div style="font-size:10px;color:var(--text3);">שטח נטו</div>
+        ${deductArea ? `<div style="font-size:11px;color:var(--red);margin-top:2px;">-${deductArea.toFixed(1)} הפחתות</div>` : ''}
+      </div>
+    </div>
+    ${rows.length ? `
+    <div style="font-size:11px;font-weight:800;color:var(--text3);margin-bottom:4px;text-transform:uppercase;">שטחי בסיס (${rows.length} אזורים)</div>
+    <table style="width:100%;border-collapse:collapse;font-size:12px;margin-bottom:8px;">
+      <tr style="background:var(--surface2);"><th style="padding:5px 7px;text-align:right;">תיאור</th><th style="padding:5px 7px;text-align:center;">קטגוריה</th><th style="padding:5px 7px;text-align:center;">שטח מ"ר</th></tr>
+      ${rows.slice(0,5).map(r => `<tr style="border-bottom:1px solid var(--border);"><td style="padding:5px 7px;">${esc(r.description||r.room||r.name||'')}</td><td style="padding:5px 7px;text-align:center;color:var(--text3);">${esc(r.category||'')}</td><td style="padding:5px 7px;text-align:center;font-weight:700;color:#3b82f6;">${r.area||'—'}</td></tr>`).join('')}
+      ${rows.length > 5 ? `<tr><td colspan="3" style="padding:5px 7px;text-align:center;color:var(--text3);font-size:11px;">... ועוד ${rows.length-5} שורות</td></tr>` : ''}
+    </table>` : ''}
+    ${deductions.length ? `
+    <div style="font-size:11px;font-weight:800;color:var(--red);margin-bottom:4px;text-transform:uppercase;">הפחתות (${deductions.length})</div>
+    <table style="width:100%;border-collapse:collapse;font-size:12px;margin-bottom:8px;">
+      ${deductions.map(r => `<tr style="border-bottom:1px solid var(--border);background:rgba(239,68,68,0.04);"><td style="padding:5px 7px;">${esc(r.description||r.room||r.name||'')}</td><td style="padding:5px 7px;text-align:center;font-weight:700;color:var(--red);">-${r.area||'—'}</td></tr>`).join('')}
+    </table>` : ''}
+    ${t.notes ? `<div style="font-size:13px;color:var(--text3);margin-bottom:10px;padding:8px;background:var(--surface2);border-radius:8px;">📝 ${esc(t.notes)}</div>` : ''}
+    <div style="display:flex;gap:8px;flex-wrap:wrap;">
+      ${!isLinked ? `<button onclick="openLinkModal('${t.id}')" style="flex:1;padding:8px 14px;border:1.5px solid #3b82f6;border-radius:8px;font-family:Heebo,sans-serif;font-size:13px;background:#fff;color:#1a3d5c;cursor:pointer;font-weight:700;min-width:160px;">🔗 קשר לפרויקט...</button>`
+      : `<div style="flex:1;font-size:12px;color:var(--green);font-weight:700;">✅ ${esc(projName)}</div>`}
+      <button onclick="generateDetailedPDF('${t.id}')" class="btn btn-primary" style="font-size:12px;padding:7px 14px;background:#3b82f6;border-color:#3b82f6;">📄 דוח PDF</button>
+    </div>
+  </div>`;
+}
+
+function _renderLaserCard(t) {
+  const projName = t.project_name || (allProjects||[]).find(p=>p.id===t.project_id)?.project_name || '';
+  const date = fmtDate(t.takeoff_date || t.created_at);
+  const rows = (() => { try { return JSON.parse(t.rows||'[]'); } catch(e) { return []; } })();
+  const isLinked = !!(t.project_id && projName);
+  // Laser rows: {point, reading, deviation, status}
+  const deviations = rows.map(r => parseFloat(r.deviation)||0).filter(v => !isNaN(v));
+  const maxDev = deviations.length ? Math.max(...deviations.map(Math.abs)) : null;
+  const outOfTol = rows.filter(r => r.status === 'fail' || r.status === 'red' || (Math.abs(parseFloat(r.deviation)||0) > (t.tolerance||5))).length;
+  const borderCol = outOfTol > 0 ? "var(--red)" : isLinked ? "var(--green)" : "var(--border)";
+
+  return `<div class="card" id="tk-${t.id}" style="margin-bottom:16px;border-right:4px solid ${borderCol};">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;gap:12px;">
+      <div style="flex:1;">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
+          <span style="background:#ef4444;color:white;border-radius:6px;padding:2px 8px;font-size:11px;font-weight:800;">🔴 מדידת גבהים</span>
+          ${t.session_label ? `<span style="font-size:12px;color:var(--text3);">${esc(t.session_label)}</span>` : ''}
+        </div>
+        <div style="font-weight:800;font-size:15px;">${projName ? '📁 '+esc(projName) : '<span style="color:var(--text3);font-weight:400;">לא מקושר לפרויקט</span>'}</div>
+        <div style="font-size:12px;color:var(--text3);margin-top:2px;">${date}${t.submitted_by ? ' · '+esc(t.submitted_by) : ''}</div>
+      </div>
+      <div style="text-align:left;min-width:80px;">
+        ${maxDev !== null ? `<div style="font-size:20px;font-weight:900;color:${outOfTol?'var(--red)':'var(--green)'};">${maxDev.toFixed(1)} מ"מ</div><div style="font-size:10px;color:var(--text3);">סטייה מקס'</div>` : '<div style="font-size:13px;color:var(--text3);">—</div>'}
+        ${outOfTol ? `<div style="font-size:11px;color:var(--red);margin-top:2px;font-weight:700;">⚠️ ${outOfTol} חריגות</div>` : rows.length ? `<div style="font-size:11px;color:var(--green);margin-top:2px;font-weight:700;">✅ תקין</div>` : ''}
+      </div>
+    </div>
+    ${rows.length ? `
+    <table style="width:100%;border-collapse:collapse;font-size:12px;margin-bottom:10px;">
+      <tr style="background:var(--surface2);"><th style="padding:5px 7px;text-align:right;">נקודה</th><th style="padding:5px 7px;text-align:center;">קריאה (מ')</th><th style="padding:5px 7px;text-align:center;">סטייה (מ"מ)</th><th style="padding:5px 7px;text-align:center;">סטטוס</th></tr>
+      ${rows.map(r => {
+        const dev = parseFloat(r.deviation)||0;
+        const isFail = r.status==='fail' || r.status==='red' || Math.abs(dev)>(t.tolerance||5);
+        return `<tr style="border-bottom:1px solid var(--border);background:${isFail?'rgba(239,68,68,0.06)':''};">
+          <td style="padding:5px 7px;">${esc(r.point||r.name||'')}</td>
+          <td style="padding:5px 7px;text-align:center;">${r.reading||'—'}</td>
+          <td style="padding:5px 7px;text-align:center;font-weight:700;color:${isFail?'var(--red)':'var(--green)'};">${dev>=0?'+':''}${dev.toFixed(1)}</td>
+          <td style="padding:5px 7px;text-align:center;">${isFail?'🔴':'🟢'}</td>
+        </tr>`;
+      }).join('')}
+    </table>` : '<div style="padding:12px;text-align:center;color:var(--text3);font-size:13px;">אין נקודות מדידה</div>'}
+    ${t.notes ? `<div style="font-size:13px;color:var(--text3);margin-bottom:10px;padding:8px;background:var(--surface2);border-radius:8px;">📝 ${esc(t.notes)}</div>` : ''}
+    <div style="display:flex;gap:8px;flex-wrap:wrap;">
+      ${!isLinked ? `<button onclick="openLinkModal('${t.id}')" style="flex:1;padding:8px 14px;border:1.5px solid #ef4444;border-radius:8px;font-family:Heebo,sans-serif;font-size:13px;background:#fff;color:#1a3d5c;cursor:pointer;font-weight:700;min-width:160px;">🔗 קשר לפרויקט...</button>`
+      : `<div style="flex:1;font-size:12px;color:var(--green);font-weight:700;">✅ ${esc(projName)}</div>`}
+      <button onclick="generateLaserPDF('${t.id}')" class="btn btn-primary" style="font-size:12px;padding:7px 14px;background:#ef4444;border-color:#ef4444;">📄 דוח PDF</button>
+    </div>
+  </div>`;
+}
+
+function generateDetailedPDF(takeoffId) {
+  const t = _allTakeoffs.find(x => x.id === takeoffId);
+  if (!t) return;
+  const rows = (() => { try { return JSON.parse(t.rows||'[]'); } catch(e) { return []; } })();
+  const deductions = (() => { try { return JSON.parse(t.deductions||'[]'); } catch(e) { return []; } })();
+  const grossArea = rows.reduce((a,r) => a+(parseFloat(r.area)||0), 0);
+  const deductArea = deductions.reduce((a,r) => a+(parseFloat(r.area)||0), 0);
+  const netArea = t.total_area || (grossArea - deductArea);
+  const projName = t.project_name || (allProjects||[]).find(p=>p.id===t.project_id)?.project_name || 'ללא פרויקט';
+  const date = fmtDate(t.takeoff_date || t.created_at);
+  const w = window.open('','_blank');
+  w.document.write(`<!DOCTYPE html><html dir="rtl" lang="he"><head><meta charset="UTF-8"><title>מדידות מפורטות - ${projName}</title>
+<style>body{font-family:Arial,sans-serif;direction:rtl;padding:30px;color:#222;max-width:800px;margin:0 auto}
+h1{color:#1a3d5c;border-bottom:3px solid #3b82f6;padding-bottom:10px}
+.meta{display:flex;gap:30px;margin:14px 0 20px;font-size:13px;color:#555}
+.meta strong{color:#222;display:block;font-size:12px}
+table{width:100%;border-collapse:collapse;margin-bottom:16px}
+th{background:#1a3d5c;color:white;padding:9px 10px;text-align:right;font-size:12px}
+td{padding:8px 10px;border-bottom:1px solid #ddd;font-size:12px}
+.deduct td{background:#fff5f5;color:#dc2626}
+.total-row{background:#eff6ff;font-weight:800;font-size:14px}
+.net-row{background:#dbeafe;font-weight:900;font-size:15px;color:#1d4ed8}
+.section-title{font-size:13px;font-weight:800;color:#374151;margin:16px 0 6px;text-transform:uppercase;letter-spacing:.5px}
+@media print{button{display:none}}</style></head><body>
+<button onclick="window.print()" style="background:#1a3d5c;color:white;border:none;padding:9px 22px;border-radius:6px;cursor:pointer;font-size:13px;margin-bottom:16px;">🖨️ הדפס / PDF</button>
+<button onclick="window.close()" style="background:#6b7280;color:white;border:none;padding:9px 18px;border-radius:6px;cursor:pointer;font-size:13px;margin-bottom:16px;margin-right:8px;">← חזרה</button>
+<h1>📋 מדידות מפורטות — ${projName}</h1>
+<div class="meta">
+  <div><strong>פרויקט</strong>${projName}</div>
+  <div><strong>תאריך</strong>${date}</div>
+  ${t.session_label ? `<div><strong>תיאור</strong>${t.session_label}</div>` : ''}
+  ${t.submitted_by ? `<div><strong>נמדד ע"י</strong>${t.submitted_by}</div>` : ''}
+</div>
+<div class="section-title">שטחי בסיס</div>
+<table><thead><tr><th>#</th><th>תיאור</th><th>קטגוריה</th><th>צורה</th><th>שטח מ"ר</th></tr></thead><tbody>
+${rows.map((r,i) => `<tr><td>${i+1}</td><td>${r.description||r.room||''}</td><td>${r.category||''}</td><td>${r.shape||''}</td><td style="font-weight:700;text-align:center">${r.area||'—'}</td></tr>`).join('')}
+<tr class="total-row"><td colspan="4" style="text-align:right">סה"כ שטח גולמי</td><td style="text-align:center">${grossArea.toFixed(2)} מ"ר</td></tr>
+</tbody></table>
+${deductions.length ? `<div class="section-title">הפחתות</div>
+<table><thead><tr><th>#</th><th>תיאור</th><th>שטח הפחתה מ"ר</th></tr></thead><tbody>
+${deductions.map((r,i) => `<tr class="deduct"><td>${i+1}</td><td>${r.description||r.room||''}</td><td style="text-align:center;font-weight:700">-${r.area||'—'}</td></tr>`).join('')}
+<tr class="total-row"><td colspan="2" style="text-align:right">סה"כ הפחתות</td><td style="text-align:center">-${deductArea.toFixed(2)} מ"ר</td></tr>
+</tbody></table>` : ''}
+<table><tbody><tr class="net-row"><td colspan="4" style="text-align:right;padding:12px 10px;">✅ שטח נטו סופי</td><td style="text-align:center;padding:12px 10px;">${netArea.toFixed(2)} מ"ר</td></tr></tbody></table>
+${t.notes ? `<div style="margin-top:16px;padding:14px;background:#eff6ff;border-right:4px solid #3b82f6;border-radius:6px;"><strong>הערות:</strong><br>${t.notes}</div>` : ''}
+<div style="margin-top:30px;font-size:11px;color:#999;text-align:center;border-top:1px solid #eee;padding-top:10px;">מדידות מפורטות | ${new Date().toLocaleDateString('he-IL')} | בני פרסקי ניהול פרויקטים</div>
+</body></html>`);
+  w.document.close();
+}
+
+function generateLaserPDF(takeoffId) {
+  const t = _allTakeoffs.find(x => x.id === takeoffId);
+  if (!t) return;
+  const rows = (() => { try { return JSON.parse(t.rows||'[]'); } catch(e) { return []; } })();
+  const projName = t.project_name || (allProjects||[]).find(p=>p.id===t.project_id)?.project_name || 'ללא פרויקט';
+  const date = fmtDate(t.takeoff_date || t.created_at);
+  const tolerance = t.tolerance || 5;
+  const deviations = rows.map(r => Math.abs(parseFloat(r.deviation)||0));
+  const maxDev = deviations.length ? Math.max(...deviations) : 0;
+  const avgDev = deviations.length ? (deviations.reduce((a,b)=>a+b,0)/deviations.length) : 0;
+  const failCount = rows.filter(r => Math.abs(parseFloat(r.deviation)||0) > tolerance).length;
+  const w = window.open('','_blank');
+  w.document.write(`<!DOCTYPE html><html dir="rtl" lang="he"><head><meta charset="UTF-8"><title>מדידת גבהים - ${projName}</title>
+<style>body{font-family:Arial,sans-serif;direction:rtl;padding:30px;color:#222;max-width:800px;margin:0 auto}
+h1{color:#1a3d5c;border-bottom:3px solid #ef4444;padding-bottom:10px}
+.meta{display:flex;gap:30px;margin:14px 0 20px;font-size:13px;color:#555}
+.meta strong{color:#222;display:block;font-size:12px}
+.summary{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px}
+.sum-box{border:1.5px solid #e5e7eb;border-radius:8px;padding:12px;text-align:center}
+.sum-val{font-size:20px;font-weight:900;color:#1a3d5c}
+.sum-lbl{font-size:11px;color:#6b7280;margin-top:4px}
+table{width:100%;border-collapse:collapse;margin-bottom:16px}
+th{background:#1a3d5c;color:white;padding:9px 10px;text-align:right;font-size:12px}
+td{padding:8px 10px;border-bottom:1px solid #ddd;font-size:12px}
+.fail{background:#fff5f5}.pass{background:#f0fdf4}
+@media print{button{display:none}}</style></head><body>
+<button onclick="window.print()" style="background:#1a3d5c;color:white;border:none;padding:9px 22px;border-radius:6px;cursor:pointer;font-size:13px;margin-bottom:16px;">🖨️ הדפס / PDF</button>
+<button onclick="window.close()" style="background:#6b7280;color:white;border:none;padding:9px 18px;border-radius:6px;cursor:pointer;font-size:13px;margin-bottom:16px;margin-right:8px;">← חזרה</button>
+<h1>🔴 דוח מדידת גבהים — ${projName}</h1>
+<div class="meta">
+  <div><strong>פרויקט</strong>${projName}</div>
+  <div><strong>תאריך</strong>${date}</div>
+  <div><strong>סבילות</strong>±${tolerance} מ"מ</div>
+  ${t.submitted_by ? `<div><strong>נמדד ע"י</strong>${t.submitted_by}</div>` : ''}
+</div>
+<div class="summary">
+  <div class="sum-box"><div class="sum-val">${rows.length}</div><div class="sum-lbl">נקודות מדידה</div></div>
+  <div class="sum-box"><div class="sum-val" style="color:${failCount?'#dc2626':'#16a34a'}">${maxDev.toFixed(1)}</div><div class="sum-lbl">סטייה מקסימלית מ"מ</div></div>
+  <div class="sum-box"><div class="sum-val">${avgDev.toFixed(1)}</div><div class="sum-lbl">סטייה ממוצעת מ"מ</div></div>
+  <div class="sum-box"><div class="sum-val" style="color:${failCount?'#dc2626':'#16a34a'}">${failCount ? failCount+' ❌' : '0 ✅'}</div><div class="sum-lbl">חריגות מסבילות</div></div>
+</div>
+<table><thead><tr><th>#</th><th>נקודה</th><th>קריאה (מ')</th><th>סטייה (מ"מ)</th><th>סטטוס</th></tr></thead><tbody>
+${rows.map((r,i) => {
+  const dev = parseFloat(r.deviation)||0;
+  const fail = Math.abs(dev) > tolerance;
+  return `<tr class="${fail?'fail':'pass'}"><td>${i+1}</td><td>${r.point||r.name||''}</td><td style="text-align:center">${r.reading||'—'}</td><td style="text-align:center;font-weight:700;color:${fail?'#dc2626':'#16a34a'}">${dev>=0?'+':''}${dev.toFixed(1)}</td><td style="text-align:center">${fail?'🔴 חריגה':'🟢 תקין'}</td></tr>`;
+}).join('')}
+</tbody></table>
+<div style="padding:14px;background:${failCount?'#fff5f5':'#f0fdf4'};border-right:4px solid ${failCount?'#ef4444':'#22c55e'};border-radius:6px;font-weight:700;color:${failCount?'#dc2626':'#16a34a'};">
+${failCount ? `⚠️ נמצאו ${failCount} נקודות חריגות מעל הסבילות (±${tolerance} מ"מ) — נדרשת בדיקה נוספת` : `✅ כל הנקודות בתוך הסבילות (±${tolerance} מ"מ) — הריצוף תקין`}
+</div>
+${t.notes ? `<div style="margin-top:14px;padding:14px;background:#fff7ed;border-right:4px solid #f97316;border-radius:6px;"><strong>הערות:</strong><br>${t.notes}</div>` : ''}
+<div style="margin-top:30px;font-size:11px;color:#999;text-align:center;border-top:1px solid #eee;padding-top:10px;">מדידת גבהים | ${new Date().toLocaleDateString('he-IL')} | בני פרסקי ניהול פרויקטים</div>
+</body></html>`);
+  w.document.close();
+}
+
+function filterTakeoffs(searchText) {
+  const q = (searchText || document.getElementById('takeoff-search')?.value || '').toLowerCase();
+  const proj = document.getElementById('takeoff-project-filter')?.value || '';
+  const orig = _allTakeoffs;
+  const type = _activeTakeoffTab || 'standard';
+  let filtered = orig.filter(function(t) {
+    if (type === 'standard') return !t.takeoff_type || t.takeoff_type === 'standard';
+    return t.takeoff_type === type;
+  });
+  if (proj === 'unlinked') filtered = filtered.filter(t => !t.project_id);
+  else if (proj) filtered = filtered.filter(t => t.project_id === proj);
+  if (q) filtered = filtered.filter(t =>
+    (t.project_name||'').toLowerCase().includes(q) ||
+    (t.session_label||'').toLowerCase().includes(q) ||
+    (t.notes||'').toLowerCase().includes(q)
+  );
+  _allTakeoffs = filtered;
+  renderTakeoffs();
+  _allTakeoffs = orig;
 }
 
 async function linkTakeoffToProject(takeoffId, projectId, projectNameArg) {
@@ -5785,24 +6046,6 @@ ${t.notes ? `<div class="notes"><strong>הערות:</strong><br>${t.notes}</div>
 }
 
 
-
-
-function filterTakeoffs(searchText) {
-  const q = (searchText || document.getElementById('takeoff-search')?.value || '').toLowerCase();
-  const proj = document.getElementById('takeoff-project-filter')?.value || '';
-  let filtered = _allTakeoffs;
-  if (proj === 'unlinked') filtered = filtered.filter(t => !t.project_id);
-  else if (proj) filtered = filtered.filter(t => t.project_id === proj);
-  if (q) filtered = filtered.filter(t =>
-    (t.project_name||'').toLowerCase().includes(q) ||
-    (t.notes||'').toLowerCase().includes(q)
-  );
-  // Temporarily replace array and render
-  const orig = _allTakeoffs;
-  _allTakeoffs = filtered;
-  renderTakeoffs();
-  _allTakeoffs = orig;
-}
 
 function openLinkModal(takeoffId) {
   document.getElementById('link-takeoff-id').value = takeoffId;
