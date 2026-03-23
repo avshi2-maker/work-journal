@@ -1269,6 +1269,8 @@ window.addEventListener('unhandledrejection', function(e) {
     </div>
     <div style="display:flex;gap:8px;flex-wrap:wrap">
       <button onclick="switchTab('crm');showPage('takeoff')" style="background:rgba(154,111,0,0.2);border:1px solid rgba(154,111,0,0.4);color:#f59e0b;padding:8px 16px;border-radius:20px;cursor:pointer;font-family:Heebo,sans-serif;font-size:12px;font-weight:700">📐 טייקאוף</button>
+      <button onclick="switchTab('crm');showPage('takeoff');setTimeout(()=>switchTakeoffTab('detailed'),200)" style="background:rgba(59,130,246,0.2);border:1px solid rgba(59,130,246,0.4);color:#93c5fd;padding:8px 16px;border-radius:20px;cursor:pointer;font-family:Heebo,sans-serif;font-size:12px;font-weight:700">📋 מדידות</button>
+      <button onclick="switchTab('crm');showPage('takeoff');setTimeout(()=>switchTakeoffTab('laser'),200)" style="background:rgba(239,68,68,0.2);border:1px solid rgba(239,68,68,0.4);color:#fca5a5;padding:8px 16px;border-radius:20px;cursor:pointer;font-family:Heebo,sans-serif;font-size:12px;font-weight:700">🔴 גבהים</button>
       <button onclick="printNotes()" style="background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.15);color:#ccc;padding:8px 16px;border-radius:20px;cursor:pointer;font-family:Heebo,sans-serif;font-size:12px;font-weight:700">🖨️ הדפס</button>
     </div>
   </div>
