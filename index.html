@@ -1655,28 +1655,35 @@ let supabaseClient = sb;
 // Supabase query wrapper — sb.from() with DataCloneError suppression
 // sbQ — plain XHR only (immune to DataCloneError from browser extensions)
 function sbQ(tableName, queryString) {
-  return new Promise(function(resolve) {
-    var xhr = new XMLHttpRequest();
-    var url = SB_URL + '/rest/v1/' + tableName + (queryString ? '?' + queryString : '');
-    xhr.open('GET', url, true);
-    xhr.setRequestHeader('apikey', SB_KEY);
-    xhr.setRequestHeader('Authorization', 'Bearer ' + SB_KEY);
-    xhr.setRequestHeader('Accept', 'application/json');
-    xhr.timeout = 15000;
-    xhr.onload = function() {
-      try {
-        var d = JSON.parse(xhr.responseText);
-        if (xhr.status < 300) {
-          resolve({ data: Array.isArray(d) ? d : (d.data || []), error: null });
-        } else {
-          resolve({ data: [], error: { message: d.message || d.error || xhr.responseText } });
-        }
-      } catch(e) { resolve({ data: [], error: { message: 'parse error: ' + e.message } }); }
-    };
-    xhr.onerror = function() { resolve({ data: [], error: { message: 'Network error' } }); };
-    xhr.ontimeout = function() { resolve({ data: [], error: { message: 'Timeout' } }); };
-    xhr.send();
-  });
+  var url = SB_URL + '/rest/v1/' + tableName + (queryString ? '?' + queryString : '');
+  var headers = { 'apikey': SB_KEY, 'Authorization': 'Bearer ' + SB_KEY, 'Accept': 'application/json' };
+  return fetch(url, { method: 'GET', headers: headers, mode: 'cors' })
+    .then(function(r) {
+      return r.json().then(function(d) {
+        if (r.ok) return { data: Array.isArray(d) ? d : (d.data || []), error: null };
+        return { data: [], error: { message: d.message || d.error || r.statusText } };
+      });
+    })
+    .catch(function(e) {
+      // fetch failed (network/CORS) — fall back to XHR which bypasses some extension blocks
+      return new Promise(function(resolve) {
+        var xhr = new XMLHttpRequest();
+        xhr.open('GET', url, true);
+        xhr.setRequestHeader('apikey', SB_KEY);
+        xhr.setRequestHeader('Authorization', 'Bearer ' + SB_KEY);
+        xhr.setRequestHeader('Accept', 'application/json');
+        xhr.timeout = 15000;
+        xhr.onload = function() {
+          try {
+            var d = JSON.parse(xhr.responseText);
+            resolve(xhr.status < 300 ? { data: Array.isArray(d) ? d : (d.data||[]), error: null } : { data: [], error: { message: d.message || xhr.responseText } });
+          } catch(pe) { resolve({ data: [], error: { message: 'parse error' } }); }
+        };
+        xhr.onerror = function() { resolve({ data: [], error: { message: 'Network error — check internet connection and ad blocker' } }); };
+        xhr.ontimeout = function() { resolve({ data: [], error: { message: 'Timeout' } }); };
+        xhr.send();
+      });
+    });
 }
 
 // ── SITE PULSE & ANNEXES VARIABLES ─────────────────────────
@@ -2612,9 +2619,63 @@ function renderProjects(list) {
     const qs=window.quoteSum&&window.quoteSum[p.id]||0;
     const cos=window.coApprovedSum&&window.coApprovedSum[p.id]||0;
     const profit=((p.total_budget||0)-qs-cos);
-    return`<tr><td><strong>${esc(p.project_name)}</strong></td><td>${esc(p.client_name||'—')}</td><td style="font-size:13px;color:var(--text3)">${esc(p.city||p.address||'—')}</td><td style="font-size:13px">${p.start_date?fmtDate(p.start_date):'—'}</td><td>${p.total_budget?'₪'+fmtMoney(p.total_budget):'—'}</td><td class="col-quote-sum">${qs?'₪'+fmtMoney(qs):'—'}</td><td style="color:${profit>=0?'#22c55e':'#ef4444'};font-weight:700">${p.total_budget?'₪'+fmtMoney(profit):'—'}</td><td style="text-align:center"><span class="badge badge-blue">${reportCount[p.id]||0} 📝</span></td><td><span class="badge ${STATUS_BADGE[p.status]||'badge-gray'}">${STATUS_HE[p.status]||p.status}</span></td><td>${(()=>{if(!p.start_date||!p.planned_end_date)return'<span style="color:#aaa;font-size:11px">ללא</span>';const start=new Date(p.start_date),end=new Date(p.planned_end_date),now=new Date();const pct=Math.min(100,Math.max(0,Math.round((now-start)/(end-start)*100)));return'<div style="background:#f0f0f0;border-radius:4px;height:7px;"><div style="width:'+pct+'%;background:#3b82f6;height:7px;border-radius:4px;"></div></div><div style="font-size:10px;color:#666">'+pct+'%</div>';})()}</td><td class="td-actions"><div class="btn-group"><button class="btn btn-ghost btn-sm btn-icon" onclick="openProjectModal('${p.id}')">✏️</button><button class="btn btn-ghost btn-sm btn-icon" onclick="openPhotoGallery('${p.id}','${esc(p.project_name)}')">📸</button></div></td></tr>`;
+    return`<tr><td><strong>${esc(p.project_name)}</strong></td><td>${esc(p.client_name||'—')}</td><td style="font-size:13px;color:var(--text3)">${esc(p.city||p.address||'—')}</td><td style="font-size:13px">${p.start_date?fmtDate(p.start_date):'—'}</td><td>${p.total_budget?'₪'+fmtMoney(p.total_budget):'—'}</td><td class="col-quote-sum">${qs?'₪'+fmtMoney(qs):'—'}</td><td style="color:${profit>=0?'#22c55e':'#ef4444'};font-weight:700">${p.total_budget?'₪'+fmtMoney(profit):'—'}</td><td style="text-align:center"><span class="badge badge-blue">${reportCount[p.id]||0} 📝</span></td><td><span class="badge ${STATUS_BADGE[p.status]||'badge-gray'}">${STATUS_HE[p.status]||p.status}</span></td><td>${(()=>{if(!p.start_date||!p.planned_end_date)return'<span style="color:#aaa;font-size:11px">ללא</span>';const start=new Date(p.start_date),end=new Date(p.planned_end_date),now=new Date();const pct=Math.min(100,Math.max(0,Math.round((now-start)/(end-start)*100)));return'<div style="background:#f0f0f0;border-radius:4px;height:7px;"><div style="width:'+pct+'%;background:#3b82f6;height:7px;border-radius:4px;"></div></div><div style="font-size:10px;color:#666">'+pct+'%</div>';})()}</td><td class="td-actions"><div class="btn-group"><button class="btn btn-ghost btn-sm btn-icon" onclick="openProjectModal('${p.id}')">✏️</button><button class="btn btn-ghost btn-sm btn-icon" onclick="openPhotoGallery('${p.id}','${esc(p.project_name)}')">📸</button><button class="btn btn-ghost btn-sm btn-icon" onclick="sendBriefToBeni('${p.id}')" title="שלח בריפינג לבני">📲</button></div></td></tr>`;
   }).join('');
 }
+
+// ══ PROJECT BRIEFING — push from Journal to Beni Pocket ════════
+async function sendBriefToBeni(projectId) {
+  const proj = allProjects.find(p => p.id === projectId);
+  if (!proj) { showToast('פרויקט לא נמצא', 'error'); return; }
+  showToast('מכין בריפינג...', 'info');
+  try {
+    const { data: tasks } = await sbQ('gantt_tasks',
+      'select=task_name,start_date,end_date,status,progress,contractors_master(company_name)&project_id=eq.' + projectId + '&order=start_date.asc');
+    const { data: txns } = await sbQ('contractor_transactions',
+      'select=contractors_master(id,company_name,phone,main_occupation),amount,type,transaction_date&project_id=eq.' + projectId + '&order=transaction_date.desc&limit=30');
+    const totalPaid = (txns||[]).filter(t=>t.type==='sent').reduce((s,t)=>s+Number(t.amount||0),0);
+    const { data: cos } = await sbQ('change_orders',
+      'select=title,status&project_id=eq.' + projectId + '&status=eq.approved');
+    const { data: pos } = await sbQ('purchase_orders',
+      'select=po_number,contractor_name,grand_total,start_date,end_date,status&project_id=eq.' + projectId + '&status=eq.active&order=created_at.desc&limit=10');
+    const { data: inspections } = await sbQ('inspections',
+      'select=inspection_date,status,notes&project_id=eq.' + projectId + '&order=inspection_date.desc&limit=3');
+    const seen = new Set();
+    const activeContractors = [];
+    (txns||[]).forEach(t => {
+      const c = t.contractors_master;
+      if (c && !seen.has(c.id)) { seen.add(c.id); activeContractors.push(c); }
+    });
+    const brief = {
+      project_id:   proj.id,
+      project_name: proj.project_name,
+      sent_at:      new Date().toISOString(),
+      sent_by:      'יומן פעילות',
+      data: {
+        project: {
+          name: proj.project_name, client: proj.client_name||null,
+          client_mobile: proj.client_mobile||null, address: proj.address||null,
+          city: proj.city||null, status: proj.status,
+          start_date: proj.start_date||null, end_date: proj.planned_end_date||null,
+          total_budget: proj.total_budget||null, contract_amount: proj.contract_amount||null,
+          scope: proj.scope_of_work||null, total_paid: totalPaid
+        },
+        gantt_tasks:         (tasks||[]).slice(0,10),
+        active_contractors:  activeContractors.slice(0,8),
+        change_orders:       (cos||[]),
+        purchase_orders:     (pos||[]),
+        recent_inspections:  (inspections||[])
+      }
+    };
+    const { error } = await sb.from('project_briefs')
+      .upsert(brief, { onConflict: 'project_id' });
+    if (error) throw error;
+    showToast('\u2705 בריפינג נשלח לבני! — ' + proj.project_name, 'success');
+  } catch(e) {
+    showToast('שגיאה בשליחת בריפינג: ' + e.message, 'error');
+  }
+}
+
 
 function filterProjects() {
   const q=document.getElementById('project-search').value.toLowerCase();
