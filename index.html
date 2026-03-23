@@ -394,6 +394,7 @@ window.addEventListener('unhandledrejection', function(e) {
   <div class="nav-item" onclick="showPage('purchase-orders')" id="nav-purchase-orders"><span class="nav-icon">🏷️</span><span>דוחות הזמנות עבודה</span><span class="nav-badge" id="badge-po">0</span></div>
   <div class="nav-item" onclick="showPage('calc')" id="nav-calc" style="margin-top:8px;"><span class="nav-icon">🧮</span><span>מחשבון הנדסי</span></div>
   <div class="nav-item" onclick="showPage('takeoff')" id="nav-takeoff"><span class="nav-icon">📐</span><span>טייקאוף</span></div>
+  <div class="nav-item" onclick="showPage('weekly')" id="nav-weekly" style="margin-top:8px;"><span class="nav-icon">📊</span><span>דוח שבועי</span><span class="nav-badge" id="badge-weekly" style="display:none;background:#8b5cf6;">AI</span></div>
 </nav>
 
 <main class="main">
@@ -767,6 +768,76 @@ window.addEventListener('unhandledrejection', function(e) {
       <button onclick="clearReportSelection()" style="background:rgba(255,255,255,0.2);color:white;border:none;border-radius:8px;padding:8px 14px;font-size:12px;cursor:pointer;font-family:inherit;">✕ בטל בחירה</button>
     </div>
     <div class="table-wrap"><table><thead><tr><th style="width:36px;text-align:center"><input type="checkbox" id="reports-select-all" onchange="toggleAllReports(this)" style="width:16px;height:16px;cursor:pointer;"></th><th>מספר דוח</th><th>פרויקט</th><th>תאריך</th><th>מנהל</th><th>שעות</th><th>סטטוס</th><th style="min-width:100px;">התקדמות</th><th class="td-actions">פעולות</th></tr></thead><tbody id="reports-tbody"><tr><td colspan="9"><div class="empty-state"><div class="empty-icon">📄</div><h3>אין דוחות עדיין</h3></div></td></tr></tbody></table></div>
+  </div>
+
+  <!-- WEEKLY INTELLIGENCE REPORT PAGE -->
+  <div class="page" id="page-weekly">
+    <div class="topbar">
+      <div class="page-title">📊 <span>דוח שבועי</span></div>
+      <div class="topbar-actions">
+        <button class="btn btn-ghost" onclick="showPage('dashboard')" style="font-size:16px;padding:6px 10px;">🏠</button>
+        <button class="btn btn-primary" onclick="generateWeeklyReport()" id="weekly-gen-btn">🧠 צור דוח AI</button>
+      </div>
+    </div>
+
+    <!-- Week selector -->
+    <div style="display:flex;gap:10px;align-items:center;margin-bottom:16px;flex-wrap:wrap;">
+      <button onclick="weeklyShift(-1)" class="btn btn-ghost" style="padding:7px 14px;">← שבוע קודם</button>
+      <div id="weekly-range-label" style="font-size:14px;font-weight:700;color:var(--text);flex:1;text-align:center;"></div>
+      <button onclick="weeklyShift(1)" class="btn btn-ghost" style="padding:7px 14px;" id="weekly-next-btn">שבוע הבא →</button>
+    </div>
+
+    <!-- Stats grid -->
+    <div id="weekly-stats" style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:20px;">
+      <div class="card" style="text-align:center;padding:14px 8px;">
+        <div style="font-size:22px;font-weight:900;color:var(--accent);" id="ws-calls">—</div>
+        <div style="font-size:11px;color:var(--text3);margin-top:3px;">שיחות</div>
+      </div>
+      <div class="card" style="text-align:center;padding:14px 8px;">
+        <div style="font-size:22px;font-weight:900;color:#22c55e;" id="ws-tasks">—</div>
+        <div style="font-size:11px;color:var(--text3);margin-top:3px;">משימות הושלמו</div>
+      </div>
+      <div class="card" style="text-align:center;padding:14px 8px;">
+        <div style="font-size:22px;font-weight:900;color:#3b82f6;" id="ws-takeoffs">—</div>
+        <div style="font-size:11px;color:var(--text3);margin-top:3px;">מדידות</div>
+      </div>
+      <div class="card" style="text-align:center;padding:14px 8px;">
+        <div style="font-size:22px;font-weight:900;color:#f59e0b;" id="ws-payments">—</div>
+        <div style="font-size:11px;color:var(--text3);margin-top:3px;">תשלומים ₪</div>
+      </div>
+      <div class="card" style="text-align:center;padding:14px 8px;">
+        <div style="font-size:22px;font-weight:900;color:#8b5cf6;" id="ws-memos">—</div>
+        <div style="font-size:11px;color:var(--text3);margin-top:3px;">הקלטות</div>
+      </div>
+      <div class="card" style="text-align:center;padding:14px 8px;">
+        <div style="font-size:22px;font-weight:900;color:#ef4444;" id="ws-inspections">—</div>
+        <div style="font-size:11px;color:var(--text3);margin-top:3px;">ביקורות</div>
+      </div>
+    </div>
+
+    <!-- AI API Key input (shown only if not set) -->
+    <div id="weekly-key-row" style="display:none;background:var(--surface2);border:1.5px solid var(--border);border-radius:12px;padding:14px;margin-bottom:16px;">
+      <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:8px;">🔑 מפתח Anthropic API נדרש לדוח AI</div>
+      <div style="display:flex;gap:8px;">
+        <input type="password" id="weekly-api-key" placeholder="sk-ant-..." class="inp" style="flex:1;font-size:13px;">
+        <button onclick="weeklySaveKey()" class="btn btn-primary" style="white-space:nowrap;">שמור מפתח</button>
+      </div>
+      <div style="font-size:11px;color:var(--text3);margin-top:6px;">המפתח נשמר ב-app_config בסופרבייס — לא בקוד</div>
+    </div>
+
+    <!-- AI Report output -->
+    <div id="weekly-report-out" style="margin-bottom:16px;"></div>
+
+    <!-- WhatsApp export button — shown after report generated -->
+    <div id="weekly-wa-bar" style="display:none;gap:8px;flex-wrap:wrap;margin-bottom:20px;">
+      <button onclick="weeklyWhatsApp()" class="btn btn-primary" style="background:#25d366;border-color:#25d366;">
+        💬 שלח וואטסאפ לסטונהרד
+      </button>
+      <button onclick="weeklySaveAsReport()" class="btn btn-ghost">📄 שמור כדוח</button>
+    </div>
+
+    <!-- Raw data accordion -->
+    <div id="weekly-raw" style="margin-top:8px;"></div>
   </div>
 
   <!-- ENGINEERING CALCULATOR PAGE -->
@@ -2545,7 +2616,7 @@ function showPage(page) {
   document.querySelectorAll('.nav-item').forEach(function(n){ n.classList.remove('active'); });
   document.getElementById('crm-panel').classList.add('active');
   document.getElementById('tab-crm') && document.getElementById('tab-crm').classList.add('active');
-  const special = {gantt:loadGantt, quotes:loadQuotes, forecast:renderForecast, 'purchase-orders':loadPurchaseOrders, takeoff: async function(){
+  const special = {gantt:loadGantt, quotes:loadQuotes, forecast:renderForecast, 'purchase-orders':loadPurchaseOrders, weekly: function(){ loadWeeklyData(); }, takeoff: async function(){
     // Ensure projects are loaded before takeoff page renders
     if (!allProjects || !allProjects.length) {
       try { await loadProjects(); } catch(e) {}
@@ -5459,6 +5530,320 @@ async function eodSaveReport() {
     showLoading(false);
   }
 }
+
+// ══ WEEKLY INTELLIGENCE REPORT ════════════════════════════════
+var _weeklyOffset = 0;   // 0 = current week, -1 = last week
+var _weeklyRawData = {};
+var _weeklyAIReport = '';
+var _weeklyAnthropicKey = null;
+
+function weeklyGetRange(offset) {
+  const now   = new Date();
+  const day   = now.getDay(); // 0=Sun
+  const sunday = new Date(now);
+  sunday.setDate(now.getDate() - day + (offset * 7));
+  sunday.setHours(0,0,0,0);
+  const saturday = new Date(sunday);
+  saturday.setDate(sunday.getDate() + 6);
+  saturday.setHours(23,59,59,999);
+  return { from: sunday, to: saturday };
+}
+
+function weeklyShift(dir) {
+  _weeklyOffset += dir;
+  const nextBtn = document.getElementById('weekly-next-btn');
+  if (nextBtn) nextBtn.style.opacity = _weeklyOffset >= 0 ? '0.3' : '1';
+  loadWeeklyData();
+}
+
+async function loadWeeklyData() {
+  const { from, to } = weeklyGetRange(_weeklyOffset);
+  const fromISO = from.toISOString();
+  const toISO   = to.toISOString();
+  const fromDate = from.toISOString().split('T')[0];
+  const toDate   = to.toISOString().split('T')[0];
+
+  const label = document.getElementById('weekly-range-label');
+  if (label) {
+    const fStr = from.toLocaleDateString('he-IL',{day:'2-digit',month:'2-digit'});
+    const tStr = to.toLocaleDateString('he-IL',{day:'2-digit',month:'2-digit',year:'numeric'});
+    label.textContent = fStr + ' – ' + tStr;
+  }
+
+  const nextBtn = document.getElementById('weekly-next-btn');
+  if (nextBtn) nextBtn.style.opacity = _weeklyOffset >= 0 ? '0.3' : '1';
+
+  // Hide old report
+  const out = document.getElementById('weekly-report-out');
+  const waBar = document.getElementById('weekly-wa-bar');
+  if (out)   out.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text3);font-size:13px;">טוען נתונים...</div>';
+  if (waBar) waBar.style.display = 'none';
+  _weeklyRawData = {};
+  _weeklyAIReport = '';
+
+  try {
+    const H = { apikey: SB_KEY, Authorization: 'Bearer ' + SB_KEY };
+
+    const [callRes, taskRes, takeoffRes, txnRes, memoRes, insRes] = await Promise.all([
+      fetch(SB_URL+'/rest/v1/call_log?created_at=gte.'+fromISO+'&created_at=lte.'+toISO+'&order=created_at.desc&select=caller_name,direction,wa_sent,created_at', {headers:H}),
+      fetch(SB_URL+'/rest/v1/reminders?is_done=eq.true&done_at=gte.'+fromISO+'&done_at=lte.'+toISO+'&select=text,source,done_at', {headers:H}),
+      fetch(SB_URL+'/rest/v1/site_takeoffs?created_at=gte.'+fromISO+'&created_at=lte.'+toISO+'&select=project_name,total_area,takeoff_type,created_at', {headers:H}),
+      fetch(SB_URL+'/rest/v1/contractor_transactions?transaction_date=gte.'+fromDate+'&transaction_date=lte.'+toDate+'&select=amount,type,contractors_master(company_name),projects(project_name)', {headers:H}),
+      fetch(SB_URL+'/rest/v1/eod_sessions?session_date=gte.'+fromDate+'&session_date=lte.'+toDate+'&select=transcript,ai_result,duration_sec,session_date', {headers:H}),
+      fetch(SB_URL+'/rest/v1/site_inspections?inspection_date=gte.'+fromDate+'&inspection_date=lte.'+toDate+'&select=inspection_date,status,project_name', {headers:H})
+    ]);
+
+    const calls      = callRes.ok     ? await callRes.json()     : [];
+    const tasks      = taskRes.ok     ? await taskRes.json()     : [];
+    const takeoffs   = takeoffRes.ok  ? await takeoffRes.json()  : [];
+    const txns       = txnRes.ok      ? await txnRes.json()      : [];
+    const memos      = memoRes.ok     ? await memoRes.json()     : [];
+    const inspections= insRes.ok      ? await insRes.json()      : [];
+
+    _weeklyRawData = { calls, tasks, takeoffs, txns, memos, inspections };
+
+    // Stats
+    const totalPaid  = txns.filter(t=>t.type==='sent').reduce((s,t)=>s+Number(t.amount||0),0);
+    const statIds    = ['ws-calls','ws-tasks','ws-takeoffs','ws-payments','ws-memos','ws-inspections'];
+    const statVals   = [
+      calls.length,
+      tasks.length,
+      takeoffs.length,
+      totalPaid ? '₪'+totalPaid.toLocaleString('he-IL',{maximumFractionDigits:0}) : '0',
+      memos.length,
+      inspections.length
+    ];
+    statIds.forEach((id,i) => { const el=document.getElementById(id); if(el) el.textContent=statVals[i]; });
+
+    // Raw data accordion
+    _renderWeeklyRaw(calls, tasks, takeoffs, txns, memos, inspections);
+
+    // Check for API key
+    await weeklyCheckKey();
+
+    if (out) out.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text3);font-size:13px;">לחץ <strong>צור דוח AI</strong> לקבלת ניתוח מלא</div>';
+
+  } catch(e) {
+    if (out) out.innerHTML = '<div style="text-align:center;padding:20px;color:var(--red);font-size:13px;">שגיאה: '+e.message+'</div>';
+  }
+}
+
+async function weeklyCheckKey() {
+  const keyRow = document.getElementById('weekly-key-row');
+  if (!keyRow) return;
+
+  // Try APP.config first
+  if (APP.config && APP.config.anthropic_key) {
+    _weeklyAnthropicKey = APP.config.anthropic_key;
+    keyRow.style.display = 'none';
+    return;
+  }
+  // Try fetching from app_config table
+  try {
+    const res = await sbQ('app_config', 'select=key,value&key=eq.anthropic_key');
+    if (res.data && res.data.length && res.data[0].value) {
+      _weeklyAnthropicKey = res.data[0].value;
+      keyRow.style.display = 'none';
+      return;
+    }
+  } catch(e) {}
+  keyRow.style.display = 'block';
+}
+
+async function weeklySaveKey() {
+  const inp = document.getElementById('weekly-api-key');
+  const key = inp ? inp.value.trim() : '';
+  if (!key.startsWith('sk-')) { showToast('מפתח לא תקין — צריך להתחיל ב-sk-', 'error'); return; }
+  try {
+    await sb.from('app_config').upsert({ key: 'anthropic_key', value: key }, { onConflict: 'key' });
+    _weeklyAnthropicKey = key;
+    if (APP.config) APP.config.anthropic_key = key;
+    document.getElementById('weekly-key-row').style.display = 'none';
+    showToast('✅ מפתח נשמר', 'success');
+  } catch(e) { showToast('שגיאה: '+e.message, 'error'); }
+}
+
+async function generateWeeklyReport() {
+  if (!_weeklyAnthropicKey) { await weeklyCheckKey(); }
+  if (!_weeklyAnthropicKey) {
+    document.getElementById('weekly-key-row').style.display = 'block';
+    showToast('נדרש מפתח Anthropic API', 'error');
+    return;
+  }
+
+  const out    = document.getElementById('weekly-report-out');
+  const btn    = document.getElementById('weekly-gen-btn');
+  const waBar  = document.getElementById('weekly-wa-bar');
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ מייצר...'; }
+  if (out) out.innerHTML = '<div style="text-align:center;padding:24px;color:var(--text3);font-size:13px;"><div style="font-size:32px;margin-bottom:8px;">🧠</div>Claude מנתח את השבוע...</div>';
+
+  const { calls=[], tasks=[], takeoffs=[], txns=[], memos=[], inspections=[] } = _weeklyRawData;
+  const { from, to } = weeklyGetRange(_weeklyOffset);
+  const fStr = from.toLocaleDateString('he-IL',{day:'numeric',month:'long'});
+  const tStr = to.toLocaleDateString('he-IL',{day:'numeric',month:'long',year:'numeric'});
+  const totalPaid = txns.filter(t=>t.type==='sent').reduce((s,t)=>s+Number(t.amount||0),0);
+  const totalIncome = txns.filter(t=>t.type==='client_income').reduce((s,t)=>s+Number(t.amount||0),0);
+
+  const memoSummaries = memos.slice(0,10).map(m => {
+    const ai = m.ai_result ? (typeof m.ai_result==='string' ? (() => { try { return JSON.parse(m.ai_result); } catch(e){ return null; } })() : m.ai_result) : null;
+    return ai?.summary || (m.transcript||'').substring(0,80);
+  }).filter(Boolean).join(' | ');
+
+  const contractorsPaid = [...new Set(txns.filter(t=>t.type==='sent').map(t=>t.contractors_master?.company_name).filter(Boolean))].join(', ');
+  const projectsActive  = [...new Set([
+    ...takeoffs.map(t=>t.project_name),
+    ...txns.map(t=>t.projects?.project_name)
+  ].filter(Boolean))].join(', ');
+
+  const prompt = `אתה מנהל בנייה בכיר. סכם את השבוע בשטח של בני פרסקי (מנהל שטח) עבור הנהלת סטונהרד.
+
+תקופה: ${fStr} – ${tStr}
+
+נתונים:
+- שיחות טלפון: ${calls.length} (נכנסות: ${calls.filter(c=>c.direction==='incoming').length}, יוצאות: ${calls.filter(c=>c.direction==='outgoing').length}, לא נענו: ${calls.filter(c=>c.direction==='missed').length})
+- משימות שהושלמו: ${tasks.length}
+- מדידות שהוגשו: ${takeoffs.length}
+- תשלומים לקבלנים: ₪${totalPaid.toLocaleString()}
+- הכנסות מלקוחות: ₪${totalIncome.toLocaleString()}
+- הקלטות קוליות: ${memos.length}
+- ביקורות בטיחות: ${inspections.length}
+- קבלנים ששולמו להם: ${contractorsPaid || 'אין'}
+- פרויקטים פעילים: ${projectsActive || 'אין'}
+- תמצית הקלטות: ${memoSummaries || 'אין'}
+
+כתוב דוח ניהולי קצר בעברית — 3 פסקאות בלבד:
+1. **סיכום השבוע** — מה הושג
+2. **נושאים פתוחים** — מה דורש תשומת לב
+3. **המלצה לשבוע הבא**
+
+פורמט: טקסט נקי, עברית, מקצועי. אין נקודות, אין כותרות מיוחדות.`;
+
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': _weeklyAnthropicKey,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true'
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 800,
+        messages: [{ role: 'user', content: prompt }]
+      })
+    });
+
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error?.message || 'API error ' + res.status);
+
+    const text = data.content?.[0]?.text || '';
+    _weeklyAIReport = text;
+
+    if (out) {
+      out.innerHTML = '<div style="background:linear-gradient(135deg,rgba(139,92,246,0.1),rgba(59,130,246,0.08));border:1.5px solid rgba(139,92,246,0.3);border-radius:14px;padding:20px 22px;">'
+        + '<div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;">'
+        + '<span style="font-size:20px;">🧠</span>'
+        + '<div style="font-size:13px;font-weight:800;color:var(--text);">ניתוח AI — ' + fStr + ' – ' + tStr + '</div>'
+        + '<span style="background:rgba(139,92,246,0.2);color:#8b5cf6;border-radius:20px;padding:2px 8px;font-size:10px;font-weight:800;margin-right:auto;">Claude Sonnet</span>'
+        + '</div>'
+        + '<div style="font-size:14px;color:var(--text);line-height:1.9;white-space:pre-wrap;">' + text.replace(/</g,'&lt;') + '</div>'
+        + '</div>';
+    }
+    if (waBar) waBar.style.display = 'flex';
+    showToast('✅ דוח AI נוצר', 'success');
+
+  } catch(e) {
+    if (out) out.innerHTML = '<div style="padding:16px;color:var(--red);font-size:13px;border:1.5px solid var(--red);border-radius:10px;">שגיאה ב-API: '+e.message+'</div>';
+    showToast('שגיאה: '+e.message, 'error');
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = '🧠 צור דוח AI'; }
+  }
+}
+
+function weeklyWhatsApp() {
+  if (!_weeklyAIReport) return;
+  const { from, to } = weeklyGetRange(_weeklyOffset);
+  const fStr = from.toLocaleDateString('he-IL',{day:'2-digit',month:'2-digit'});
+  const tStr = to.toLocaleDateString('he-IL',{day:'2-digit',month:'2-digit',year:'numeric'});
+  const { calls=[], tasks=[], takeoffs=[], txns=[], memos=[], inspections=[] } = _weeklyRawData;
+  const totalPaid = txns.filter(t=>t.type==='sent').reduce((s,t)=>s+Number(t.amount||0),0);
+
+  let msg = '📊 *דוח שבועי סטונהרד — ' + fStr + ' – ' + tStr + '*\n';
+  msg += '━━━━━━━━━━━━━━━━━━━━\n\n';
+  msg += _weeklyAIReport + '\n\n';
+  msg += '━━━━━━━━━━━━━━━━━━━━\n';
+  msg += '📞 שיחות: ' + calls.length + '  ✅ משימות: ' + tasks.length + '  📐 מדידות: ' + takeoffs.length + '\n';
+  msg += '💸 שולם: ₪' + totalPaid.toLocaleString('he-IL',{maximumFractionDigits:0}) + '  🎙️ הקלטות: ' + memos.length + '  🔍 ביקורות: ' + inspections.length;
+
+  window.open('https://wa.me/?text=' + encodeURIComponent(msg), '_blank');
+}
+
+async function weeklySaveAsReport() {
+  if (!_weeklyAIReport) return;
+  const { from, to } = weeklyGetRange(_weeklyOffset);
+  const reportNum = 'WKL-' + from.toISOString().split('T')[0].replace(/-/g,'');
+  const { calls=[], tasks=[], takeoffs=[], txns=[] } = _weeklyRawData;
+  const totalPaid = txns.filter(t=>t.type==='sent').reduce((s,t)=>s+Number(t.amount||0),0);
+  showLoading(true);
+  try {
+    const { error } = await sb.from('reports').insert({
+      report_number: reportNum,
+      report_date:   from.toISOString().split('T')[0],
+      project_name:  'סיכום שבועי',
+      manager_name:  'בני פרסקי',
+      general_notes: _weeklyAIReport.substring(0,500) + '\n\nשיחות: '+calls.length+' | משימות: '+tasks.length+' | מדידות: '+takeoffs.length+' | שולם: ₪'+totalPaid.toLocaleString(),
+      status:        'draft'
+    });
+    if (error) throw error;
+    showToast('✅ נשמר: ' + reportNum, 'success');
+    await loadReports();
+  } catch(e) { showToast('שגיאה: '+e.message, 'error'); }
+  finally { showLoading(false); }
+}
+
+function _renderWeeklyRaw(calls, tasks, takeoffs, txns, memos, inspections) {
+  const el = document.getElementById('weekly-raw');
+  if (!el) return;
+
+  const section = (icon, title, count, rows) => {
+    if (!count) return '';
+    return '<details style="margin-bottom:10px;">'
+      + '<summary style="cursor:pointer;padding:10px 14px;background:var(--surface2);border-radius:10px;font-size:13px;font-weight:700;color:var(--text);list-style:none;display:flex;justify-content:space-between;align-items:center;">'
+      + '<span>' + icon + ' ' + title + '</span>'
+      + '<span style="background:var(--accent);color:white;border-radius:20px;padding:1px 8px;font-size:11px;">' + count + '</span>'
+      + '</summary>'
+      + '<div style="padding:10px 14px;background:var(--surface);border-radius:0 0 10px 10px;border:1px solid var(--border);border-top:none;">'
+      + rows + '</div></details>';
+  };
+
+  const callRows = calls.slice(0,10).map(c => {
+    const t = new Date(c.created_at).toLocaleString('he-IL',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
+    const icon = c.direction==='missed' ? '📵' : c.direction==='outgoing' ? '📲' : '📞';
+    return '<div style="font-size:12px;padding:4px 0;border-bottom:1px solid var(--border);color:var(--text2);">' + icon + ' ' + (c.caller_name||'לא ידוע').replace(/</g,'&lt;') + ' · ' + t + (c.wa_sent?' 💬':'') + '</div>';
+  }).join('');
+
+  const taskRows = tasks.slice(0,10).map(t =>
+    '<div style="font-size:12px;padding:4px 0;border-bottom:1px solid var(--border);color:var(--text2);">✅ ' + (t.text||'').substring(0,80).replace(/</g,'&lt;') + '</div>'
+  ).join('');
+
+  const takeoffRows = takeoffs.map(t =>
+    '<div style="font-size:12px;padding:4px 0;border-bottom:1px solid var(--border);color:var(--text2);">📐 ' + (t.project_name||'ללא פרויקט').replace(/</g,'&lt;') + (t.total_area ? ' · ' + Number(t.total_area).toFixed(1) + ' מ"ר' : '') + '</div>'
+  ).join('');
+
+  const txnRows = txns.slice(0,8).map(t => {
+    const amt = Number(t.amount||0).toLocaleString('he-IL',{maximumFractionDigits:0});
+    const type = t.type==='sent' ? '💸' : '✅';
+    return '<div style="font-size:12px;padding:4px 0;border-bottom:1px solid var(--border);color:var(--text2);">' + type + ' ₪' + amt + ' · ' + (t.contractors_master?.company_name||'').replace(/</g,'&lt;') + '</div>';
+  }).join('');
+
+  el.innerHTML = '<div style="font-size:11px;font-weight:800;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;">פירוט נתונים</div>'
+    + section('📞', 'שיחות', calls.length, callRows)
+    + section('✅', 'משימות שהושלמו', tasks.length, taskRows)
+    + section('📐', 'מדידות', takeoffs.length, takeoffRows)
+    + section('💰', 'תנועות כספיות', txns.length, txnRows);
+}
+
 
 async function loadRecentInspections() {
   var list  = document.getElementById('inspections-list');
