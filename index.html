@@ -2867,9 +2867,20 @@ async function sendBriefToBeni(projectId) {
         recent_inspections:  (inspections||[])
       }
     };
-    const { error } = await sb.from('project_briefs')
-      .upsert(brief, { onConflict: 'project_id' });
-    if (error) throw error;
+    // Delete existing brief for this project, then insert fresh
+    await fetch(SB_URL + '/rest/v1/project_briefs?project_id=eq.' + projectId, {
+      method: 'DELETE',
+      headers: { apikey: SB_KEY, Authorization: 'Bearer ' + SB_KEY }
+    });
+    const insertRes = await fetch(SB_URL + '/rest/v1/project_briefs', {
+      method: 'POST',
+      headers: { apikey: SB_KEY, Authorization: 'Bearer ' + SB_KEY, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+      body: JSON.stringify(brief)
+    });
+    if (!insertRes.ok) {
+      const err = await insertRes.json().catch(() => ({}));
+      throw new Error(err.message || 'שגיאה בשמירת בריפינג');
+    }
     showToast('\u2705 בריפינג נשלח לבני! — ' + proj.project_name, 'success');
   } catch(e) {
     showToast('שגיאה בשליחת בריפינג: ' + e.message, 'error');
