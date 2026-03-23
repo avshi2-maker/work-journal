@@ -1395,6 +1395,60 @@ window.addEventListener('unhandledrejection', function(e) {
       style="background:#1a1a2e;border:1px solid rgba(255,255,255,0.12);color:#ccc;padding:7px 10px;border-radius:20px;font-family:Heebo,sans-serif;font-size:11px">
   </div>
 
+  <!-- ── OCR PANEL — Photo → Note / Takeoff / Task ─────────── -->
+  <div style="background:#1e1e35;border:1px solid rgba(201,168,76,0.3);border-radius:16px;padding:16px;margin-bottom:20px;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+      <div style="font-size:14px;font-weight:800;color:#c9a84c;">📷 OCR — קרא כתב יד עם AI</div>
+      <span style="font-size:10px;color:#555;background:#242438;border-radius:20px;padding:2px 8px;">Claude Vision</span>
+    </div>
+
+    <!-- Upload buttons -->
+    <div style="display:flex;gap:8px;margin-bottom:10px;">
+      <label style="flex:1;display:flex;align-items:center;justify-content:center;gap:6px;background:rgba(201,168,76,0.15);border:1px solid rgba(201,168,76,0.3);border-radius:10px;padding:10px;cursor:pointer;font-size:13px;font-weight:700;color:#c9a84c;font-family:Heebo,sans-serif;">
+        📁 בחר תמונה
+        <input type="file" id="journal-ocr-file" accept="image/*" style="display:none;" onchange="journalOcrProcess(this)">
+      </label>
+      <label style="flex:1;display:flex;align-items:center;justify-content:center;gap:6px;background:rgba(59,130,246,0.12);border:1px solid rgba(59,130,246,0.3);border-radius:10px;padding:10px;cursor:pointer;font-size:13px;font-weight:700;color:#93c5fd;font-family:Heebo,sans-serif;">
+        📸 צלם עכשיו
+        <input type="file" id="journal-ocr-camera" accept="image/*" capture="environment" style="display:none;" onchange="journalOcrProcess(this)">
+      </label>
+    </div>
+
+    <!-- Loading -->
+    <div id="journal-ocr-loading" style="display:none;text-align:center;padding:14px;color:#666;font-size:13px;">
+      🧠 Claude קורא את הכתב יד...
+    </div>
+
+    <!-- Result -->
+    <div id="journal-ocr-result" style="display:none;">
+      <div style="font-size:11px;font-weight:800;color:#666;margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px;">טקסט שזוהה — ערוך לפי הצורך:</div>
+      <textarea id="journal-ocr-text" rows="4"
+        style="width:100%;background:#1a1a2e;border:1px solid rgba(255,255,255,0.1);color:#fff;padding:12px;border-radius:10px;font-family:Heebo,sans-serif;font-size:14px;resize:vertical;direction:rtl;outline:none;line-height:1.7;box-sizing:border-box;"></textarea>
+
+      <!-- Destination selector -->
+      <div style="font-size:11px;font-weight:800;color:#666;margin:10px 0 6px;text-transform:uppercase;letter-spacing:.5px;">שלח אל:</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+        <button onclick="journalOcrSend('note')"
+          style="background:rgba(245,158,11,0.15);border:1px solid rgba(245,158,11,0.4);color:#f59e0b;border-radius:10px;padding:10px;font-family:Heebo,sans-serif;font-size:12px;font-weight:800;cursor:pointer;">
+          📝 מזכר ביומן חכם
+        </button>
+        <button onclick="journalOcrSend('task')"
+          style="background:rgba(34,197,94,0.12);border:1px solid rgba(34,197,94,0.3);color:#4ade80;border-radius:10px;padding:10px;font-family:Heebo,sans-serif;font-size:12px;font-weight:800;cursor:pointer;">
+          ✅ משימה חדשה
+        </button>
+        <button onclick="journalOcrSend('takeoff')"
+          style="background:rgba(59,130,246,0.12);border:1px solid rgba(59,130,246,0.3);color:#93c5fd;border-radius:10px;padding:10px;font-family:Heebo,sans-serif;font-size:12px;font-weight:800;cursor:pointer;">
+          📐 טייקאוף (מדידות)
+        </button>
+        <button onclick="journalOcrSend('report')"
+          style="background:rgba(139,92,246,0.12);border:1px solid rgba(139,92,246,0.3);color:#c4b5fd;border-radius:10px;padding:10px;font-family:Heebo,sans-serif;font-size:12px;font-weight:800;cursor:pointer;">
+          📄 דוח שטח
+        </button>
+      </div>
+      <div id="journal-ocr-status" style="margin-top:8px;font-size:12px;color:#4ade80;text-align:center;min-height:16px;"></div>
+    </div>
+  </div>
+
   <div id="notes-wall" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px">
     <div style="grid-column:1/-1;text-align:center;padding:60px 20px;color:#444">
       <div style="font-size:48px;margin-bottom:12px">📝</div>
@@ -3570,6 +3624,163 @@ const NOTE_COLORS = {
 currentNoteColor='yellow', allNotes=[], activeNoteFilter='all', noteVoiceRecog=null, noteVoiceActive=false;
 
 function selectNoteColor(color){currentNoteColor=color;document.querySelectorAll('.note-color-btn').forEach(b=>{const isActive=b.dataset.color===color;b.style.border=isActive?'3px solid #fff':'3px solid transparent';b.style.transform=isActive?'scale(1.2)':'scale(1)';});}
+
+// ══ JOURNAL OCR — Photo → Note / Task / Takeoff / Report ══════
+var _journalOcrImageBase64 = null;
+var _journalOcrImageType   = 'image/jpeg';
+
+async function journalOcrProcess(input) {
+  const file = input?.files?.[0];
+  if (!file) return;
+
+  const key = (APP.config && APP.config.anthropic_key) || null;
+  if (!key) {
+    showToast('הגדר מפתח Anthropic API בדוח השבועי תחילה', 'error');
+    return;
+  }
+
+  const loading = document.getElementById('journal-ocr-loading');
+  const result  = document.getElementById('journal-ocr-result');
+  const textEl  = document.getElementById('journal-ocr-text');
+  const status  = document.getElementById('journal-ocr-status');
+
+  if (loading) loading.style.display = 'block';
+  if (result)  result.style.display  = 'none';
+  if (status)  status.textContent    = '';
+
+  try {
+    _journalOcrImageType = file.type || 'image/jpeg';
+    _journalOcrImageBase64 = await new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload  = e => resolve(e.target.result.split(',')[1]);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': key,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true'
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 1000,
+        messages: [{ role: 'user', content: [
+          { type: 'image', source: { type: 'base64', media_type: _journalOcrImageType, data: _journalOcrImageBase64 } },
+          { type: 'text',  text: 'קרא את כל הטקסט בתמונה הזו בדיוק כפי שהוא כתוב. כלול עברית, אנגלית, ספרות, מידות. אם זו רשימת מדידות — שמור על הפורמט שורה-שורה. החזר רק את הטקסט ללא הסברים.' }
+        ]}]
+      })
+    });
+
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error?.message || 'API error ' + res.status);
+    const text = data.content?.[0]?.text || '';
+
+    if (loading) loading.style.display = 'none';
+    if (text.trim()) {
+      if (textEl)  textEl.value = text.trim();
+      if (result)  result.style.display = 'block';
+      showToast('✅ טקסט זוהה בהצלחה', 'success');
+    } else {
+      showToast('⚠️ לא זוהה טקסט בתמונה', 'error');
+    }
+  } catch(e) {
+    if (loading) loading.style.display = 'none';
+    showToast('שגיאה: ' + e.message, 'error');
+  }
+  input.value = '';
+}
+
+async function journalOcrSend(dest) {
+  const text   = document.getElementById('journal-ocr-text')?.value?.trim();
+  const status = document.getElementById('journal-ocr-status');
+  if (!text) { showToast('אין טקסט לשליחה', 'error'); return; }
+
+  try {
+    if (dest === 'note') {
+      const projId = document.getElementById('note-project-select')?.value || null;
+      const { error } = await sb.from('beni_notes').insert({
+        note_text:  '📷 ' + text,
+        color:      'yellow',
+        project_id: projId || null
+      });
+      if (error) throw error;
+      if (status) status.textContent = '✅ נשמר ביומן חכם';
+      await loadNotesWall();
+      showToast('✅ מזכר OCR נשמר', 'success');
+
+    } else if (dest === 'task') {
+      const { error } = await sb.from('reminders').insert({
+        text:       '📷 ' + text,
+        source:     'ocr',
+        priority:   'normal',
+        is_done:    false,
+        created_at: new Date().toISOString()
+      });
+      if (error) throw error;
+      if (status) status.textContent = '✅ נשמר כמשימה';
+      showToast('✅ משימה OCR נשמרה', 'success');
+
+    } else if (dest === 'takeoff') {
+      // Parse measurement lines: "room_name length width"
+      const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
+      const rows = lines.map((line, idx) => {
+        const parts = line.split(/\s+/);
+        if (parts.length >= 3) {
+          const room = parts.slice(0, parts.length - 2).join(' ');
+          const length = parseFloat(parts[parts.length - 2]) || 0;
+          const width  = parseFloat(parts[parts.length - 1]) || 0;
+          const area   = Math.round(length * width * 100) / 100;
+          return { id: Date.now() + idx, room, length, width, area };
+        }
+        return { id: Date.now() + idx, room: line, length: 0, width: 0, area: 0 };
+      });
+      const total = rows.reduce((s, r) => s + r.area, 0);
+      const { error } = await sb.from('site_takeoffs').insert({
+        project_name: 'OCR — ' + new Date().toLocaleDateString('he-IL'),
+        takeoff_date: new Date().toISOString().split('T')[0],
+        rows:         JSON.stringify(rows),
+        total_area:   Math.round(total * 100) / 100,
+        takeoff_type: 'standard',
+        session_label: 'ממוחשב מכתב יד',
+        created_at:   new Date().toISOString()
+      });
+      if (error) throw error;
+      if (status) status.textContent = '✅ נשמר כטייקאוף (' + rows.length + ' שורות)';
+      showToast('✅ טייקאוף OCR נשמר — ' + rows.length + ' מדידות', 'success');
+
+    } else if (dest === 'report') {
+      const reportNum = 'OCR-' + Date.now().toString().slice(-6);
+      const { error } = await sb.from('reports').insert({
+        report_number: reportNum,
+        report_date:   new Date().toISOString().split('T')[0],
+        project_name:  'דוח שטח — OCR',
+        manager_name:  'בני פרסקי',
+        general_notes: text,
+        status:        'draft'
+      });
+      if (error) throw error;
+      if (status) status.textContent = '✅ נשמר כדוח ' + reportNum;
+      await loadReports();
+      showToast('✅ דוח OCR נשמר: ' + reportNum, 'success');
+    }
+
+    // Clear after success
+    setTimeout(() => {
+      document.getElementById('journal-ocr-result').style.display = 'none';
+      document.getElementById('journal-ocr-text').value = '';
+      if (status) status.textContent = '';
+      _journalOcrImageBase64 = null;
+    }, 2500);
+
+  } catch(e) {
+    showToast('שגיאה: ' + e.message, 'error');
+    if (status) status.textContent = '❌ ' + e.message;
+  }
+}
 
 async function loadNotesWall(){
   const wall=document.getElementById('notes-wall');
