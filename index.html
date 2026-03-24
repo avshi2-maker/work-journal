@@ -1345,7 +1345,50 @@ window.addEventListener('unhandledrejection', function(e) {
       <button onclick="switchTab('crm');showPage('takeoff')" style="background:rgba(154,111,0,0.2);border:1px solid rgba(154,111,0,0.4);color:#f59e0b;padding:8px 16px;border-radius:20px;cursor:pointer;font-family:Heebo,sans-serif;font-size:12px;font-weight:700">📐 טייקאוף</button>
       <button onclick="switchTab('crm');showPage('takeoff');setTimeout(()=>switchTakeoffTab('detailed'),200)" style="background:rgba(59,130,246,0.2);border:1px solid rgba(59,130,246,0.4);color:#93c5fd;padding:8px 16px;border-radius:20px;cursor:pointer;font-family:Heebo,sans-serif;font-size:12px;font-weight:700">📋 מדידות</button>
       <button onclick="switchTab('crm');showPage('takeoff');setTimeout(()=>switchTakeoffTab('laser'),200)" style="background:rgba(239,68,68,0.2);border:1px solid rgba(239,68,68,0.4);color:#fca5a5;padding:8px 16px;border-radius:20px;cursor:pointer;font-family:Heebo,sans-serif;font-size:12px;font-weight:700">🔴 גבהים</button>
+      <button onclick="videoUploadTrigger()" style="background:rgba(139,92,246,0.2);border:1px solid rgba(139,92,246,0.4);color:#c4b5fd;padding:8px 16px;border-radius:20px;cursor:pointer;font-family:Heebo,sans-serif;font-size:12px;font-weight:700">🎬 סרטון</button>
+      <input type="file" id="video-file-input" accept="video/*" style="display:none;" onchange="videoHandleFile(this)">
       <button onclick="printNotes()" style="background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.15);color:#ccc;padding:8px 16px;border-radius:20px;cursor:pointer;font-family:Heebo,sans-serif;font-size:12px;font-weight:700">🖨️ הדפס</button>
+    </div>
+  </div>
+
+  <!-- ── VIDEO UPLOAD PANEL ──────────────────────────────────── -->
+  <div id="video-panel" style="display:none;background:#1e1e35;border:1px solid rgba(139,92,246,0.35);border-radius:16px;padding:16px;margin-bottom:20px;">
+    <!-- Loading state -->
+    <div id="video-loading" style="display:none;text-align:center;padding:20px;">
+      <div id="video-loading-text" style="font-size:13px;color:#c4b5fd;font-family:Heebo,sans-serif;margin-bottom:8px;">⏳ מעלה סרטון...</div>
+      <div style="background:rgba(139,92,246,0.15);border-radius:20px;height:6px;overflow:hidden;">
+        <div id="video-progress-bar" style="height:100%;background:linear-gradient(90deg,#7c3aed,#a855f7);border-radius:20px;width:0%;transition:width 0.3s;"></div>
+      </div>
+    </div>
+    <!-- Preview + result state -->
+    <div id="video-result" style="display:none;">
+      <div style="display:flex;gap:14px;align-items:flex-start;flex-wrap:wrap;">
+        <!-- Thumbnail -->
+        <div style="flex-shrink:0;">
+          <canvas id="video-thumb-canvas" width="160" height="90" style="border-radius:10px;border:1px solid rgba(139,92,246,0.4);display:block;"></canvas>
+          <div style="font-size:10px;color:#555;text-align:center;margin-top:4px;">פריים מהסרטון</div>
+        </div>
+        <!-- AI description + edit -->
+        <div style="flex:1;min-width:200px;">
+          <div style="font-size:11px;font-weight:800;color:#666;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;">תיאור AI — ערוך לפי הצורך:</div>
+          <textarea id="video-desc-text" rows="3"
+            style="width:100%;background:#1a1a2e;border:1px solid rgba(255,255,255,0.1);color:#fff;padding:10px;border-radius:10px;font-family:Heebo,sans-serif;font-size:13px;resize:vertical;direction:rtl;outline:none;line-height:1.6;box-sizing:border-box;"></textarea>
+          <div style="font-size:11px;color:#555;margin-top:4px;" id="video-file-info"></div>
+        </div>
+      </div>
+      <!-- Color tag + save -->
+      <div style="margin-top:12px;">
+        <div style="font-size:11px;font-weight:800;color:#666;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;">Tag color:</div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;">
+          <button onclick="videoSaveNote('yellow')" style="display:inline-flex;align-items:center;gap:5px;padding:6px 14px;border-radius:20px;border:1.5px solid #f59e0b;background:rgba(245,158,11,0.15);color:#f59e0b;font-size:12px;font-weight:700;cursor:pointer;font-family:Heebo,sans-serif;">🟡 כללי</button>
+          <button onclick="videoSaveNote('red')"    style="display:inline-flex;align-items:center;gap:5px;padding:6px 14px;border-radius:20px;border:1.5px solid #ef4444;background:rgba(239,68,68,0.15);color:#ef4444;font-size:12px;font-weight:700;cursor:pointer;font-family:Heebo,sans-serif;">🔴 דחוף</button>
+          <button onclick="videoSaveNote('green')"  style="display:inline-flex;align-items:center;gap:5px;padding:6px 14px;border-radius:20px;border:1.5px solid #22c55e;background:rgba(34,197,94,0.15);color:#22c55e;font-size:12px;font-weight:700;cursor:pointer;font-family:Heebo,sans-serif;">🟢 בוצע</button>
+          <button onclick="videoSaveNote('blue')"   style="display:inline-flex;align-items:center;gap:5px;padding:6px 14px;border-radius:20px;border:1.5px solid #3b82f6;background:rgba(59,130,246,0.15);color:#3b82f6;font-size:12px;font-weight:700;cursor:pointer;font-family:Heebo,sans-serif;">🔵 תכנון</button>
+          <button onclick="videoSaveNote('purple')" style="display:inline-flex;align-items:center;gap:5px;padding:6px 14px;border-radius:20px;border:1.5px solid #a855f7;background:rgba(168,85,247,0.15);color:#a855f7;font-size:12px;font-weight:700;cursor:pointer;font-family:Heebo,sans-serif;">🟣 אישי</button>
+          <button onclick="videoCancelUpload()" style="padding:6px 14px;border-radius:20px;border:1px solid rgba(255,255,255,0.15);background:none;color:#555;font-size:12px;cursor:pointer;font-family:Heebo,sans-serif;">✕ בטל</button>
+        </div>
+      </div>
+      <div id="video-save-status" style="font-size:12px;color:#4ade80;margin-top:8px;min-height:16px;text-align:center;"></div>
     </div>
   </div>
 
@@ -3066,6 +3109,7 @@ function showToast(msg,type='success'){clearTimeout(toastTimer);let t=document.q
 function fmtMoney(n){return Number(n).toLocaleString('he-IL',{maximumFractionDigits:0});}
 function fmtDate(d){if(!d)return'—';try{return new Date(d).toLocaleDateString('he-IL',{day:'2-digit',month:'2-digit',year:'numeric'});}catch{return d;}}
 function esc(str){return String(str||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function openInNewTab(url){window.open(url,'_blank');}
 
 function sendSelectedReports(type){const ids=getSelectedReportIds();if(!ids.length)return;if(type==='print'){const rows=Array.from(document.querySelectorAll('.report-cb:checked')).map(c=>`<tr><td>${c.dataset.number}</td><td>${c.dataset.project}</td><td>${c.dataset.date}</td></tr>`).join('');const win=window.open('','_blank');win.document.write(`<!DOCTYPE html><html dir="rtl"><head><meta charset="UTF-8"><title>דוחות</title><style>body{font-family:Arial;padding:30px;direction:rtl}table{width:100%;border-collapse:collapse}th{background:#1a3d5c;color:white;padding:10px}td{padding:9px;border-bottom:1px solid #ddd}</style></head><body><button onclick=\"window.close()\" style=\"position:fixed;top:12px;right:12px;background:#1a3d5c;color:#fff;border:none;padding:8px 18px;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;z-index:9999;font-family:Heebo,sans-serif;box-shadow:0 2px 10px rgba(0,0,0,0.25);">✕ סגור חלון</button><button onclick="window.close()" style="position:fixed;top:12px;right:12px;background:#1a3d5c;color:white;border:none;padding:8px 16px;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;z-index:9999;font-family:Heebo,sans-serif;box-shadow:0 2px 8px rgba(0,0,0,0.2);">✕ סגור</button><h1>דוחות נבחרים</h1><button onclick="window.print()" style="background:#1a3d5c;color:white;border:none;padding:8px 20px;border-radius:6px;cursor:pointer;margin-bottom:16px">🖨️ הדפס</button><table><thead><tr><th>מספר דוח</th><th>פרויקט</th><th>תאריך</th></tr></thead><tbody>${rows}</tbody></table></body></html>`);win.document.close();}}
 
@@ -3644,6 +3688,192 @@ currentNoteColor='yellow', allNotes=[], activeNoteFilter='all', noteVoiceRecog=n
 
 function selectNoteColor(color){currentNoteColor=color;document.querySelectorAll('.note-color-btn').forEach(b=>{const isActive=b.dataset.color===color;b.style.border=isActive?'3px solid #fff':'3px solid transparent';b.style.transform=isActive?'scale(1.2)':'scale(1)';});}
 
+// ══ VIDEO UPLOAD — A+B+C ══════════════════════════════════════
+// A: Upload to Supabase Storage
+// B: Extract frame → Claude Vision description
+// C: Save URL + thumbnail data URL + AI description to beni_notes
+
+var _videoFile        = null;
+var _videoStorageUrl  = null;
+var _videoThumbData   = null;   // base64 JPEG of extracted frame
+
+function videoUploadTrigger() {
+  document.getElementById('video-file-input').click();
+}
+
+function videoCancelUpload() {
+  _videoFile = null; _videoStorageUrl = null; _videoThumbData = null;
+  document.getElementById('video-panel').style.display = 'none';
+  document.getElementById('video-loading').style.display = 'none';
+  document.getElementById('video-result').style.display  = 'none';
+  document.getElementById('video-file-input').value = '';
+}
+
+async function videoHandleFile(input) {
+  const file = input.files && input.files[0];
+  if (!file) return;
+  _videoFile = file;
+
+  const panel   = document.getElementById('video-panel');
+  const loading = document.getElementById('video-loading');
+  const result  = document.getElementById('video-result');
+  const loadTxt = document.getElementById('video-loading-text');
+  const progBar = document.getElementById('video-progress-bar');
+  const fileInfo= document.getElementById('video-file-info');
+
+  panel.style.display   = 'block';
+  loading.style.display = 'block';
+  result.style.display  = 'none';
+  progBar.style.width   = '0%';
+
+  const sizeMB = (file.size / 1024 / 1024).toFixed(1);
+  if (file.size > 50 * 1024 * 1024) {
+    loadTxt.textContent = '❌ הקובץ גדול מ-50MB — צמצם את הסרטון תחילה';
+    progBar.style.background = '#ef4444';
+    progBar.style.width = '100%';
+    return;
+  }
+
+  try {
+    // ── STEP A: Upload to Supabase Storage ───────────────────
+    loadTxt.textContent = '⬆️ מעלה סרטון ל-Storage...';
+    progBar.style.width = '15%';
+
+    const fname   = 'videos/' + Date.now() + '_' + file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+    const arrBuf  = await file.arrayBuffer();
+    const upRes   = await window.sb.storage.from('photos').upload(fname, new Uint8Array(arrBuf), { contentType: file.type, upsert: false });
+    if (upRes.error) throw upRes.error;
+
+    _videoStorageUrl = SB_URL + '/storage/v1/object/public/photos/' + fname;
+    progBar.style.width = '50%';
+    loadTxt.textContent = '🎞️ מחלץ פריים מהסרטון...';
+
+    // ── STEP B: Extract frame from video ─────────────────────
+    const thumbBase64 = await videoExtractFrame(file);
+    _videoThumbData = thumbBase64;
+    progBar.style.width = '70%';
+
+    // ── STEP B continued: Claude Vision describes the frame ──
+    let aiDesc = '';
+    const apiKey = (APP.config && APP.config.anthropic_key) || null;
+    if (apiKey && thumbBase64) {
+      loadTxt.textContent = '🧠 Claude מנתח את הסרטון...';
+      try {
+        const visionRes = await fetch('https://api.anthropic.com/v1/messages', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
+          body: JSON.stringify({
+            model: 'claude-sonnet-4-20250514',
+            max_tokens: 300,
+            messages: [{ role: 'user', content: [
+              { type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: thumbBase64 } },
+              { type: 'text',  text: 'זוהי תמונה מסרטון שצולם באתר בנייה. תאר בקצרה מה רואים: מה המצב, מה בוצע, מה בעיה אפשרית. 2-3 משפטים בעברית בלבד.' }
+            ]}]
+          })
+        });
+        const vData = await visionRes.json();
+        aiDesc = vData.content?.[0]?.text || '';
+      } catch(e) { aiDesc = ''; }
+    }
+    progBar.style.width = '100%';
+
+    // ── Show result ──────────────────────────────────────────
+    loading.style.display = 'none';
+    result.style.display  = 'block';
+
+    // Draw thumbnail on canvas
+    const canvas = document.getElementById('video-thumb-canvas');
+    if (canvas && thumbBase64) {
+      const img = new Image();
+      img.onload = () => { const ctx = canvas.getContext('2d'); ctx.drawImage(img, 0, 0, 160, 90); };
+      img.src = 'data:image/jpeg;base64,' + thumbBase64;
+    }
+
+    const descEl = document.getElementById('video-desc-text');
+    if (descEl) descEl.value = aiDesc || ('🎬 סרטון שדה — ' + file.name);
+
+    if (fileInfo) fileInfo.textContent = sizeMB + 'MB · ' + file.type.replace('video/','') + ' · ' + new Date().toLocaleString('he-IL', {day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
+
+  } catch(e) {
+    loadTxt.textContent = '❌ שגיאה: ' + e.message;
+    progBar.style.background = '#ef4444';
+    progBar.style.width = '100%';
+  }
+  input.value = '';
+}
+
+// Extract one frame from video using a hidden <video> + canvas
+function videoExtractFrame(file) {
+  return new Promise(function(resolve) {
+    const url   = URL.createObjectURL(file);
+    const video = document.createElement('video');
+    video.style.display  = 'none';
+    video.muted          = true;
+    video.playsInline    = true;
+    video.crossOrigin    = 'anonymous';
+    video.src            = url;
+    document.body.appendChild(video);
+
+    const cleanup = () => { URL.revokeObjectURL(url); video.remove(); };
+
+    video.addEventListener('loadeddata', function() {
+      video.currentTime = Math.min(1.5, video.duration * 0.1 || 0);
+    });
+    video.addEventListener('seeked', function() {
+      try {
+        const canvas  = document.createElement('canvas');
+        canvas.width  = 640;
+        canvas.height = Math.round(640 * video.videoHeight / (video.videoWidth || 1));
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.82);
+        cleanup();
+        resolve(dataUrl.split(',')[1]);  // base64 only
+      } catch(e) { cleanup(); resolve(null); }
+    });
+    video.addEventListener('error', function() { cleanup(); resolve(null); });
+    video.load();
+  });
+}
+
+// ── STEP C: Save to beni_notes ────────────────────────────────
+async function videoSaveNote(color) {
+  if (!_videoStorageUrl) { showToast('אין סרטון להעלאה', 'error'); return; }
+  const status  = document.getElementById('video-save-status');
+  const descEl  = document.getElementById('video-desc-text');
+  const desc    = descEl ? descEl.value.trim() : '🎬 סרטון שדה';
+  const projId  = document.getElementById('note-project-select')?.value || null;
+
+  if (status) status.textContent = '⏳ שומר...';
+
+  try {
+    // Build note text with video link
+    const noteText = '🎬 ' + desc + '\n🔗 ' + _videoStorageUrl;
+
+    await fetch(SB_URL + '/rest/v1/beni_notes', {
+      method: 'POST',
+      headers: { apikey: SB_KEY, Authorization: 'Bearer ' + SB_KEY, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+      body: JSON.stringify({
+        note_text:  noteText,
+        color:      color,
+        project_id: projId || null,
+        photo_url:  _videoStorageUrl   // reuse photo_url column for video URL
+      })
+    });
+
+    if (status) status.textContent = '✅ סרטון נשמר ביומן חכם';
+    showToast('✅ סרטון נשמר ביומן חכם', 'success');
+
+    // Refresh notes wall then close panel
+    await loadNotesWall();
+    setTimeout(videoCancelUpload, 1800);
+
+  } catch(e) {
+    if (status) status.textContent = '❌ ' + e.message;
+    showToast('שגיאה: ' + e.message, 'error');
+  }
+}
+
 // ══ JOURNAL OCR — Photo → Note / Task / Takeoff / Report ══════
 var _journalOcrImageBase64 = null;
 var _journalOcrImageType   = 'image/jpeg';
@@ -3852,8 +4082,17 @@ function renderNotes(notes){
     var proj=projName?'<span style="font-size:10px;color:#888;margin-top:4px;display:block">📁 '+projName+'</span>':'';
     var photoHtml='';
     if(n.photo_url){
-      var photoSrc=SB_URL+'/storage/v1/object/public/photos/'+n.photo_url;
-      photoHtml='<div style="margin-top:10px;"><img src="'+photoSrc+'" style="max-width:100%;border-radius:8px;border:1px solid '+c.border+';cursor:pointer;" onclick="window.open(this.src,\'_blank\')"></div>';
+      var isFullUrl = n.photo_url.startsWith('http');
+      var isVideo   = n.photo_url.includes('/videos/') || /\.(mp4|mov|webm|avi|m4v)(\?|$)/i.test(n.photo_url);
+      var mediaSrc  = isFullUrl ? n.photo_url : SB_URL+'/storage/v1/object/public/photos/'+n.photo_url;
+      if (isVideo) {
+        photoHtml = '<div style="margin-top:10px;">'
+          + '<video src="'+mediaSrc+'" controls playsinline style="max-width:100%;border-radius:8px;border:1px solid '+c.border+';background:#000;"></video>'
+          + '<div style="margin-top:6px;"><a href="'+mediaSrc+'" target="_blank" style="font-size:11px;color:#c4b5fd;text-decoration:none;">🔗 פתח בחלון חדש</a></div>'
+          + '</div>';
+      } else {
+        photoHtml='<div style="margin-top:10px;"><img src="'+mediaSrc+'" style="max-width:100%;border-radius:8px;border:1px solid '+c.border+';cursor:pointer;" onclick="openInNewTab(this.src)"></div>';
+      }
     }
 
     var id=n.id;
