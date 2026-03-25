@@ -1566,80 +1566,154 @@ window.addEventListener('unhandledrejection', function(e) {
 <div class="app-panel" id="safety-panel"><div id="safety-content"><div style="padding:70px 24px 60px;min-height:100vh;background:#1a1a2e;font-family:Heebo,sans-serif;direction:rtl;">
 
   <!-- Header -->
-  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;flex-wrap:wrap;gap:12px;">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:12px;">
     <div>
-      <div style="font-size:10px;letter-spacing:3px;color:#ef4444;text-transform:uppercase;margin-bottom:4px;">Safety Intelligence</div>
-      <h1 style="font-size:26px;font-weight:900;color:#fff;">🛡️ ניתוח בטיחות AI</h1>
-      <div style="font-size:12px;color:#555;margin-top:4px;">ניתוח תמונות וסרטונים — זיהוי סיכונים באתר בנייה</div>
+      <div style="font-size:10px;letter-spacing:3px;color:#ef4444;text-transform:uppercase;margin-bottom:4px;">AI Site Intelligence</div>
+      <h1 style="font-size:24px;font-weight:900;color:#fff;">🛡️ ניתוח בטיחות וליקויים</h1>
     </div>
-    <div style="display:flex;gap:8px;align-items:center;">
-      <select id="safety-project-sel" style="background:#1a1a2e;border:1px solid rgba(255,255,255,0.15);color:#ccc;padding:8px 12px;border-radius:20px;font-family:Heebo,sans-serif;font-size:12px;direction:rtl;">
-        <option value="">📁 כל הפרויקטים</option>
-      </select>
+    <select id="safety-project-sel" style="background:#1a1a2e;border:1px solid rgba(255,255,255,0.15);color:#ccc;padding:8px 12px;border-radius:20px;font-family:Heebo,sans-serif;font-size:12px;direction:rtl;">
+      <option value="">📁 כל הפרויקטים</option>
+    </select>
+  </div>
+
+  <!-- Sub-tabs -->
+  <div style="display:flex;gap:4px;margin-bottom:20px;background:#242438;border-radius:14px;padding:5px;">
+    <button id="subtab-safety" onclick="switchSafetySubTab('safety')"
+      style="flex:1;padding:10px;border-radius:10px;border:none;cursor:pointer;font-family:Heebo,sans-serif;font-size:13px;font-weight:700;background:#ef4444;color:#fff;transition:all .15s;">
+      🛡️ ניתוח בטיחות
+    </button>
+    <button id="subtab-snag" onclick="switchSafetySubTab('snag')"
+      style="flex:1;padding:10px;border-radius:10px;border:none;cursor:pointer;font-family:Heebo,sans-serif;font-size:13px;font-weight:700;background:transparent;color:#888;transition:all .15s;">
+      🔍 רשימת ליקויים
+    </button>
+  </div>
+
+  <!-- ══ SAFETY SUB-TAB ══════════════════════════════════════════ -->
+  <div id="safety-sub-safety">
+
+    <!-- Upload zone -->
+    <div style="background:#1e1e35;border:2px dashed rgba(239,68,68,0.4);border-radius:16px;padding:20px;margin-bottom:20px;text-align:center;">
+      <div style="font-size:36px;margin-bottom:8px;">📸</div>
+      <div style="font-size:14px;font-weight:800;color:#fff;margin-bottom:4px;">העלה תמונה או סרטון לניתוח בטיחות</div>
+      <div style="font-size:11px;color:#555;margin-bottom:16px;">סרטונים — נדגם עד 8 פריימים · 20 קטגוריות בטיחות</div>
+      <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;">
+        <label style="display:inline-flex;align-items:center;gap:8px;background:rgba(239,68,68,0.2);border:1.5px solid rgba(239,68,68,0.5);color:#fca5a5;padding:10px 20px;border-radius:12px;cursor:pointer;font-size:13px;font-weight:700;font-family:Heebo,sans-serif;">
+          📁 בחר קובץ<input type="file" id="safety-file-input" accept="image/*,video/*" style="display:none;" onchange="safetyHandleFile(this)">
+        </label>
+        <label style="display:inline-flex;align-items:center;gap:8px;background:rgba(59,130,246,0.15);border:1.5px solid rgba(59,130,246,0.4);color:#93c5fd;padding:10px 20px;border-radius:12px;cursor:pointer;font-size:13px;font-weight:700;font-family:Heebo,sans-serif;">
+          📸 צלם עכשיו<input type="file" id="safety-camera-input" accept="image/*" capture="environment" style="display:none;" onchange="safetyHandleFile(this)">
+        </label>
+      </div>
+    </div>
+
+    <!-- Progress -->
+    <div id="safety-progress" style="display:none;background:#1e1e35;border:1.5px solid rgba(139,92,246,0.4);border-radius:14px;padding:20px;margin-bottom:20px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;gap:12px;flex-wrap:wrap;">
+        <div id="safety-progress-text" style="font-size:13px;color:#c4b5fd;font-weight:700;">מכין ניתוח...</div>
+        <div style="display:flex;gap:12px;align-items:center;">
+          <div style="text-align:center;"><div id="safety-clock" style="font-size:18px;font-weight:900;color:#f59e0b;font-family:monospace;">0:00</div><div style="font-size:9px;color:#555;text-transform:uppercase;letter-spacing:.5px;">זמן</div></div>
+          <div style="text-align:center;"><div id="safety-tokens" style="font-size:18px;font-weight:900;color:#c4b5fd;font-family:monospace;">~0</div><div style="font-size:9px;color:#555;text-transform:uppercase;letter-spacing:.5px;">טוקנים</div></div>
+          <div style="text-align:center;"><div id="safety-cost" style="font-size:18px;font-weight:900;color:#22c55e;font-family:monospace;">$0.00</div><div style="font-size:9px;color:#555;text-transform:uppercase;letter-spacing:.5px;">עלות</div></div>
+        </div>
+      </div>
+      <div style="background:rgba(139,92,246,0.12);border-radius:20px;height:8px;overflow:hidden;margin-bottom:14px;">
+        <div id="safety-progress-bar" style="height:100%;background:linear-gradient(90deg,#7c3aed,#ef4444);border-radius:20px;width:0%;transition:width 0.6s ease;"></div>
+      </div>
+      <div id="safety-frames-preview" style="display:flex;gap:6px;flex-wrap:wrap;justify-content:center;min-height:20px;"></div>
+    </div>
+
+    <div id="safety-results"></div>
+
+    <div id="safety-history-wrap" style="margin-top:28px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+        <div style="font-size:12px;font-weight:800;color:#666;text-transform:uppercase;letter-spacing:.5px;">ניתוחים קודמים</div>
+        <button onclick="safetyLoadHistory()" style="background:none;border:1px solid rgba(255,255,255,0.1);color:#555;padding:5px 12px;border-radius:8px;cursor:pointer;font-family:Heebo,sans-serif;font-size:11px;">🔄 רענן</button>
+      </div>
+      <div id="safety-history-list"><div style="text-align:center;padding:20px;color:#444;font-size:13px;">טוען...</div></div>
     </div>
   </div>
 
-  <!-- Upload zone -->
-  <div style="background:#1e1e35;border:2px dashed rgba(239,68,68,0.4);border-radius:16px;padding:24px;margin-bottom:24px;text-align:center;">
-    <div style="font-size:40px;margin-bottom:10px;">📸</div>
-    <div style="font-size:15px;font-weight:800;color:#fff;margin-bottom:6px;">העלה תמונה או סרטון לניתוח בטיחות</div>
-    <div style="font-size:12px;color:#555;margin-bottom:18px;">מהגלריה, מהמצלמה, או מ-Google Drive. סרטונים — נדגם עד 8 פריימים.</div>
-    <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;">
-      <label style="display:inline-flex;align-items:center;gap:8px;background:rgba(239,68,68,0.2);border:1.5px solid rgba(239,68,68,0.5);color:#fca5a5;padding:10px 20px;border-radius:12px;cursor:pointer;font-size:13px;font-weight:700;font-family:Heebo,sans-serif;">
-        📁 בחר קובץ
-        <input type="file" id="safety-file-input" accept="image/*,video/*" style="display:none;" onchange="safetyHandleFile(this)">
-      </label>
-      <label style="display:inline-flex;align-items:center;gap:8px;background:rgba(59,130,246,0.15);border:1.5px solid rgba(59,130,246,0.4);color:#93c5fd;padding:10px 20px;border-radius:12px;cursor:pointer;font-size:13px;font-weight:700;font-family:Heebo,sans-serif;">
-        📸 צלם עכשיו
-        <input type="file" id="safety-camera-input" accept="image/*" capture="environment" style="display:none;" onchange="safetyHandleFile(this)">
-      </label>
-    </div>
-  </div>
+  <!-- ══ SNAG LIST SUB-TAB ════════════════════════════════════════ -->
+  <div id="safety-sub-snag" style="display:none;">
 
-  <!-- Progress / status — fixed position so it never causes layout shake -->
-  <div id="safety-progress" style="display:none;background:#1e1e35;border:1.5px solid rgba(139,92,246,0.4);border-radius:14px;padding:20px;margin-bottom:20px;">
-    <!-- Status row -->
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;gap:12px;flex-wrap:wrap;">
-      <div id="safety-progress-text" style="font-size:13px;color:#c4b5fd;font-weight:700;">מכין ניתוח...</div>
-      <!-- Live clock -->
-      <div style="display:flex;gap:12px;align-items:center;">
-        <div style="text-align:center;">
-          <div id="safety-clock" style="font-size:18px;font-weight:900;color:#f59e0b;font-family:monospace;">0:00</div>
-          <div style="font-size:9px;color:#555;text-transform:uppercase;letter-spacing:.5px;">זמן</div>
+    <!-- Upload zone -->
+    <div style="background:#1e1e35;border:2px dashed rgba(59,130,246,0.4);border-radius:16px;padding:20px;margin-bottom:20px;text-align:center;">
+      <div style="font-size:36px;margin-bottom:8px;">🔍</div>
+      <div style="font-size:14px;font-weight:800;color:#fff;margin-bottom:4px;">העלה תמונה או סרטון לבדיקת ליקויי בנייה</div>
+      <div style="font-size:11px;color:#555;margin-bottom:16px;">AI יזהה ליקויי איכות, פגמים ועבודה לקויה</div>
+      <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;">
+        <label style="display:inline-flex;align-items:center;gap:8px;background:rgba(59,130,246,0.2);border:1.5px solid rgba(59,130,246,0.5);color:#93c5fd;padding:10px 20px;border-radius:12px;cursor:pointer;font-size:13px;font-weight:700;font-family:Heebo,sans-serif;">
+          📁 בחר קובץ<input type="file" id="snag-file-input" accept="image/*,video/*" style="display:none;" onchange="snagHandleFile(this)">
+        </label>
+        <label style="display:inline-flex;align-items:center;gap:8px;background:rgba(139,92,246,0.15);border:1.5px solid rgba(139,92,246,0.4);color:#c4b5fd;padding:10px 20px;border-radius:12px;cursor:pointer;font-size:13px;font-weight:700;font-family:Heebo,sans-serif;">
+          📸 צלם עכשיו<input type="file" id="snag-camera-input" accept="image/*" capture="environment" style="display:none;" onchange="snagHandleFile(this)">
+        </label>
+      </div>
+    </div>
+
+    <!-- Category selector — loaded from Supabase snag_categories -->
+    <div style="background:#242438;border-radius:14px;padding:16px;margin-bottom:20px;border:1px solid rgba(255,255,255,0.06);">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px;">
+        <div style="font-size:13px;font-weight:800;color:#fff;">קטגוריות לסריקה</div>
+        <div style="display:flex;gap:8px;">
+          <button onclick="snagSelectAll(true)"  style="background:rgba(59,130,246,0.15);border:1px solid rgba(59,130,246,0.3);color:#93c5fd;padding:5px 12px;border-radius:8px;cursor:pointer;font-family:Heebo,sans-serif;font-size:11px;font-weight:700;">בחר הכל</button>
+          <button onclick="snagSelectAll(false)" style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);color:#666;padding:5px 12px;border-radius:8px;cursor:pointer;font-family:Heebo,sans-serif;font-size:11px;">נקה הכל</button>
         </div>
-        <div style="text-align:center;">
-          <div id="safety-tokens" style="font-size:18px;font-weight:900;color:#c4b5fd;font-family:monospace;">~0</div>
-          <div style="font-size:9px;color:#555;text-transform:uppercase;letter-spacing:.5px;">טוקנים</div>
-        </div>
-        <div style="text-align:center;">
-          <div id="safety-cost" style="font-size:18px;font-weight:900;color:#22c55e;font-family:monospace;">$0.00</div>
-          <div style="font-size:9px;color:#555;text-transform:uppercase;letter-spacing:.5px;">עלות</div>
+      </div>
+      <div id="snag-categories-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:8px;">
+        <div style="text-align:center;padding:20px;color:#555;font-size:12px;grid-column:1/-1;">טוען קטגוריות...</div>
+      </div>
+
+      <!-- 5 free-text custom categories -->
+      <div style="margin-top:14px;border-top:1px solid rgba(255,255,255,0.06);padding-top:14px;">
+        <div style="font-size:11px;font-weight:800;color:#666;text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px;">קטגוריות נוספות (הזן ידנית):</div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:8px;" id="snag-custom-inputs">
+          <input placeholder="קטגוריה נוספת 1..." class="snag-custom-cat" style="background:#1a1a2e;border:1px solid rgba(255,255,255,0.1);color:#fff;padding:8px 12px;border-radius:8px;font-family:Heebo,sans-serif;font-size:13px;direction:rtl;outline:none;">
+          <input placeholder="קטגוריה נוספת 2..." class="snag-custom-cat" style="background:#1a1a2e;border:1px solid rgba(255,255,255,0.1);color:#fff;padding:8px 12px;border-radius:8px;font-family:Heebo,sans-serif;font-size:13px;direction:rtl;outline:none;">
+          <input placeholder="קטגוריה נוספת 3..." class="snag-custom-cat" style="background:#1a1a2e;border:1px solid rgba(255,255,255,0.1);color:#fff;padding:8px 12px;border-radius:8px;font-family:Heebo,sans-serif;font-size:13px;direction:rtl;outline:none;">
+          <input placeholder="קטגוריה נוספת 4..." class="snag-custom-cat" style="background:#1a1a2e;border:1px solid rgba(255,255,255,0.1);color:#fff;padding:8px 12px;border-radius:8px;font-family:Heebo,sans-serif;font-size:13px;direction:rtl;outline:none;">
+          <input placeholder="קטגוריה נוספת 5..." class="snag-custom-cat" style="background:#1a1a2e;border:1px solid rgba(255,255,255,0.1);color:#fff;padding:8px 12px;border-radius:8px;font-family:Heebo,sans-serif;font-size:13px;direction:rtl;outline:none;">
         </div>
       </div>
     </div>
-    <!-- Progress bar -->
-    <div style="background:rgba(139,92,246,0.12);border-radius:20px;height:8px;overflow:hidden;margin-bottom:14px;">
-      <div id="safety-progress-bar" style="height:100%;background:linear-gradient(90deg,#7c3aed,#ef4444);border-radius:20px;width:0%;transition:width 0.6s ease;"></div>
-    </div>
-    <!-- Frame thumbnails -->
-    <div id="safety-frames-preview" style="display:flex;gap:6px;flex-wrap:wrap;justify-content:center;min-height:20px;"></div>
-  </div>
 
-  <!-- Results area -->
-  <div id="safety-results"></div>
+    <!-- Snag scan button -->
+    <button onclick="snagRunScan()" id="snag-scan-btn"
+      style="width:100%;padding:14px;background:linear-gradient(135deg,#1a3d5c,#2d6a9f);border:none;color:#fff;border-radius:12px;font-family:Heebo,sans-serif;font-size:15px;font-weight:800;cursor:pointer;margin-bottom:20px;">
+      🔍 הפעל סריקת ליקויים AI
+    </button>
 
-  <!-- History -->
-  <div id="safety-history-wrap" style="margin-top:32px;">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
-      <div style="font-size:12px;font-weight:800;color:#666;text-transform:uppercase;letter-spacing:.5px;">ניתוחים קודמים</div>
-      <button onclick="safetyLoadHistory()" style="background:none;border:1px solid rgba(255,255,255,0.1);color:#555;padding:5px 12px;border-radius:8px;cursor:pointer;font-family:Heebo,sans-serif;font-size:11px;">🔄 רענן</button>
+    <!-- Snag progress -->
+    <div id="snag-progress" style="display:none;background:#1e1e35;border:1.5px solid rgba(59,130,246,0.4);border-radius:14px;padding:20px;margin-bottom:20px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;gap:12px;flex-wrap:wrap;">
+        <div id="snag-progress-text" style="font-size:13px;color:#93c5fd;font-weight:700;">מכין סריקה...</div>
+        <div style="display:flex;gap:12px;align-items:center;">
+          <div style="text-align:center;"><div id="snag-clock" style="font-size:18px;font-weight:900;color:#f59e0b;font-family:monospace;">0:00</div><div style="font-size:9px;color:#555;text-transform:uppercase;letter-spacing:.5px;">זמן</div></div>
+          <div style="text-align:center;"><div id="snag-tokens" style="font-size:18px;font-weight:900;color:#c4b5fd;font-family:monospace;">~0</div><div style="font-size:9px;color:#555;text-transform:uppercase;letter-spacing:.5px;">טוקנים</div></div>
+          <div style="text-align:center;"><div id="snag-cost" style="font-size:18px;font-weight:900;color:#22c55e;font-family:monospace;">$0.00</div><div style="font-size:9px;color:#555;text-transform:uppercase;letter-spacing:.5px;">עלות</div></div>
+        </div>
+      </div>
+      <div style="background:rgba(59,130,246,0.12);border-radius:20px;height:8px;overflow:hidden;margin-bottom:14px;">
+        <div id="snag-progress-bar" style="height:100%;background:linear-gradient(90deg,#1a3d5c,#3b82f6);border-radius:20px;width:0%;transition:width 0.6s ease;"></div>
+      </div>
+      <div id="snag-frames-preview" style="display:flex;gap:6px;flex-wrap:wrap;justify-content:center;min-height:20px;"></div>
     </div>
-    <div id="safety-history-list">
-      <div style="text-align:center;padding:20px;color:#444;font-size:13px;">טוען היסטוריה...</div>
+
+    <!-- Snag results -->
+    <div id="snag-results"></div>
+
+    <!-- Snag history -->
+    <div style="margin-top:28px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+        <div style="font-size:12px;font-weight:800;color:#666;text-transform:uppercase;letter-spacing:.5px;">ליקויים קודמים</div>
+        <button onclick="snagLoadHistory()" style="background:none;border:1px solid rgba(255,255,255,0.1);color:#555;padding:5px 12px;border-radius:8px;cursor:pointer;font-family:Heebo,sans-serif;font-size:11px;">🔄 רענן</button>
+      </div>
+      <div id="snag-history-list"><div style="text-align:center;padding:20px;color:#444;font-size:13px;">טוען...</div></div>
     </div>
   </div>
 
 </div></div></div>
+
 
 
 <div class="app-panel" id="gcal-panel"><div id="gcal-content"><div style="padding:54px 0 0;min-height:100vh;background:#1a1a2e;font-family:Heebo,sans-serif;direction:rtl;display:flex;flex-direction:column">
@@ -5919,6 +5993,8 @@ function safetyTabInit() {
   safetyLoadCategories().then(function() {
     safetyLoadHistory();
   });
+  // Pre-load snag categories in background
+  setTimeout(snagLoadCategories, 500);
 }
 
 function safetyPopulateProjects() {
@@ -6371,6 +6447,490 @@ async function safetyShowHistoryItem(id) {
   _safetyIsVideo = item.is_video;
   safetyRenderReport(findings, item);
   window.scrollTo(0, document.getElementById('safety-results').offsetTop - 80);
+}
+
+
+
+// ══ SAFETY / SNAG SUB-TAB SWITCHER ════════════════════════════════════
+function switchSafetySubTab(tab) {
+  document.getElementById('safety-sub-safety').style.display = tab === 'safety' ? 'block' : 'none';
+  document.getElementById('safety-sub-snag').style.display   = tab === 'snag'   ? 'block' : 'none';
+  document.getElementById('subtab-safety').style.background  = tab === 'safety' ? '#ef4444' : 'transparent';
+  document.getElementById('subtab-safety').style.color       = tab === 'safety' ? '#fff' : '#888';
+  document.getElementById('subtab-snag').style.background    = tab === 'snag'   ? '#2d6a9f' : 'transparent';
+  document.getElementById('subtab-snag').style.color         = tab === 'snag'   ? '#fff' : '#888';
+  if (tab === 'snag') { snagLoadCategories(); snagLoadHistory(); }
+}
+
+// ══ SNAG LIST ENGINE ═══════════════════════════════════════════════════
+var SNAG_CATEGORIES      = [];
+var _snagCatsLoaded      = false;
+var _snagFrames          = [];
+var _snagIsVideo         = false;
+var _snagLastFindings    = null;
+var _snagTimer           = null;
+var _snagStartTime       = null;
+
+// ── Load categories from Supabase ─────────────────────────────────────
+async function snagLoadCategories() {
+  var grid = document.getElementById('snag-categories-grid');
+  if (_snagCatsLoaded && SNAG_CATEGORIES.length > 0) {
+    snagRenderCategoryGrid();
+    return;
+  }
+  try {
+    var res  = await fetch(
+      SB_URL + '/rest/v1/snag_categories?is_active=eq.true&order=sort_order.asc',
+      { headers: { apikey: SB_KEY, Authorization: 'Bearer ' + SB_KEY } }
+    );
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    var rows = await res.json();
+    if (rows && rows.length > 0) {
+      SNAG_CATEGORIES = rows;
+      _snagCatsLoaded = true;
+      snagRenderCategoryGrid();
+      return;
+    }
+  } catch(e) {
+    console.warn('snag_categories table not found — run SQL first:', e.message);
+  }
+  // Fallback until SQL is run
+  SNAG_CATEGORIES = [
+    { id:'concrete',    icon:'🧱', name_he:'ליקויי בטון',           sort_order:1 },
+    { id:'iron',        icon:'🔩', name_he:'ברזל ופלדה',            sort_order:2 },
+    { id:'painting',    icon:'🎨', name_he:'צביעה וטיח',            sort_order:3 },
+    { id:'waterproof',  icon:'💧', name_he:'איטום ורטיבות',          sort_order:4 },
+    { id:'tiling',      icon:'⬜', name_he:'ריצוף וחיפוי',           sort_order:5 },
+    { id:'carpentry',   icon:'🚪', name_he:'נגרות ואלומיניום',       sort_order:6 },
+    { id:'plumbing',    icon:'🚿', name_he:'אינסטלציה',              sort_order:7 },
+    { id:'electrical',  icon:'⚡', name_he:'חשמל ותקשורת',           sort_order:8 },
+  ];
+  _snagCatsLoaded = true;
+  snagRenderCategoryGrid();
+}
+
+function snagRenderCategoryGrid() {
+  var grid = document.getElementById('snag-categories-grid');
+  if (!grid) return;
+  grid.innerHTML = SNAG_CATEGORIES.map(function(cat) {
+    return '<label style="display:flex;align-items:center;gap:8px;background:#1a1a2e;border:1px solid rgba(255,255,255,0.08);border-radius:10px;padding:10px 12px;cursor:pointer;user-select:none;">'
+      + '<input type="checkbox" class="snag-cat-cb" data-id="' + cat.id + '" checked'
+      + ' style="width:16px;height:16px;cursor:pointer;accent-color:#3b82f6;">'
+      + '<span style="font-size:16px;">' + (cat.icon||'🔧') + '</span>'
+      + '<span style="font-size:12px;font-weight:700;color:#ccc;direction:rtl;">' + cat.name_he + '</span>'
+      + '</label>';
+  }).join('');
+}
+
+function snagSelectAll(checked) {
+  document.querySelectorAll('.snag-cat-cb').forEach(function(cb){ cb.checked = checked; });
+}
+
+// ── File handler ──────────────────────────────────────────────────────
+async function snagHandleFile(input) {
+  var file = input.files && input.files[0];
+  if (!file) return;
+  input.value = '';
+  _snagIsVideo = file.type.startsWith('video/');
+  _snagFrames  = [];
+
+  // Show scan button highlighted
+  var btn = document.getElementById('snag-scan-btn');
+  if (btn) btn.style.background = 'linear-gradient(135deg,#9a6f00,#c9a84c)';
+
+  if (_snagIsVideo) {
+    // Extract frames
+    var prog = document.getElementById('snag-progress');
+    var txt  = document.getElementById('snag-progress-text');
+    var bar  = document.getElementById('snag-progress-bar');
+    var prev = document.getElementById('snag-frames-preview');
+    prog.style.display = 'block'; prev.innerHTML = '';
+    bar.style.width = '0%';
+    if (txt) txt.textContent = '🎞️ מחלץ פריימים...';
+    _snagFrames = await safetyExtractFrames(file, 8); // reuse safety extractor
+    bar.style.width = '40%';
+    _snagFrames.forEach(function(b64, i) {
+      var img = document.createElement('img');
+      img.src = 'data:image/jpeg;base64,' + b64;
+      img.style.cssText = 'width:80px;height:55px;object-fit:cover;border-radius:6px;border:1px solid rgba(255,255,255,0.15);';
+      prev.appendChild(img);
+    });
+    if (txt) txt.textContent = '✅ ' + _snagFrames.length + ' פריימים — לחץ "הפעל סריקה"';
+    bar.style.width = '100%';
+    setTimeout(function(){ prog.style.display='none'; }, 2000);
+  } else {
+    // Single image — read to base64
+    var b64 = await new Promise(function(resolve, reject) {
+      var reader = new FileReader();
+      reader.onload  = function(e){ resolve(e.target.result.split(',')[1]); };
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+    _snagFrames = [b64];
+
+    // Show mini preview on scan button
+    if (btn) btn.textContent = '🔍 הפעל סריקת ליקויים AI — תמונה מוכנה ✅';
+  }
+}
+
+// ── Main scan ─────────────────────────────────────────────────────────
+async function snagRunScan() {
+  if (!_snagFrames.length) {
+    showToast('בחר תמונה או סרטון תחילה', 'error');
+    return;
+  }
+
+  var apiKey = (APP.config && APP.config.anthropic_key) || null;
+  if (!apiKey) { showToast('הגדר מפתח Anthropic API תחילה', 'error'); return; }
+
+  // Get selected categories
+  var selectedIds = Array.from(document.querySelectorAll('.snag-cat-cb:checked')).map(function(cb){ return cb.dataset.id; });
+  var customCats  = Array.from(document.querySelectorAll('.snag-custom-cat'))
+    .map(function(el){ return el.value.trim(); }).filter(Boolean);
+  var allCats     = SNAG_CATEGORIES.filter(function(c){ return selectedIds.includes(c.id); });
+
+  if (!allCats.length && !customCats.length) {
+    showToast('בחר לפחות קטגוריה אחת לסריקה', 'error');
+    return;
+  }
+
+  var prog   = document.getElementById('snag-progress');
+  var txt    = document.getElementById('snag-progress-text');
+  var bar    = document.getElementById('snag-progress-bar');
+  var btn    = document.getElementById('snag-scan-btn');
+  var results= document.getElementById('snag-results');
+
+  prog.style.display  = 'block';
+  bar.style.width     = '0%';
+  if (btn) btn.disabled = true;
+  if (results) results.innerHTML = '';
+
+  // Start timer
+  snagStartMeter();
+
+  var imageBlocks = _snagFrames.map(function(b64) {
+    return { type:'image', source:{ type:'base64', media_type:'image/jpeg', data:b64 } };
+  });
+
+  // Build comprehensive snag prompt
+  var catList = allCats.map(function(c, i) {
+    var p = c.prompt_en || ('Inspect for defects and poor workmanship in: ' + c.name_he);
+    return (i+1) + '. ' + c.name_he + ' (id:"' + c.id + '"): ' + p;
+  });
+  if (customCats.length) {
+    customCats.forEach(function(name, i) {
+      catList.push((allCats.length + i + 1) + '. ' + name + ' (id:"custom_' + i + '"): Inspect for any defects, poor workmanship, or quality issues related to: ' + name);
+    });
+  }
+
+  var snagPrompt = 'You are a senior construction quality inspector and defect surveyor with 25+ years experience on Israeli building sites.\n\n'
+    + 'Analyze ' + (_snagIsVideo ? 'these ' + _snagFrames.length + ' frames from a site video' : 'this site photo')
+    + ' for construction defects and quality issues.\n\n'
+    + 'For EACH category, return a JSON object. Respond ONLY with valid JSON, no markdown.\n\n'
+    + 'JSON structure:\n{\n'
+    + [...allCats.map(function(c){ return c.id; }), ...customCats.map(function(_,i){ return 'custom_'+i; })].map(function(id) {
+        return '  "' + id + '": {\n'
+          + '    "severity": "NONE|MINOR|MODERATE|CRITICAL",\n'
+          + '    "findings": ["specific defect 1 in Hebrew", "defect 2"],\n'
+          + '    "location": "where in the image/frame",\n'
+          + '    "remedy": "recommended fix in Hebrew",\n'
+          + '    "responsible_trade": "trade responsible in Hebrew",\n'
+          + '    "frame_ref": "frame number or null"\n'
+          + '  }';
+      }).join(',\n')
+    + '\n}\n\n'
+    + 'Categories to inspect:\n' + catList.join('\n')
+    + '\n\nSeverity definitions:\n'
+    + '- CRITICAL: Structural safety risk or major defect requiring immediate stop-work\n'
+    + '- MODERATE: Significant quality defect requiring repair before next stage\n'
+    + '- MINOR: Cosmetic or minor defect to fix before handover\n'
+    + '- NONE: No defects found in this category\n'
+    + '\nBe SPECIFIC about exact locations (e.g. "northeast corner column", "floor level 2 slab"). '
+    + 'If category not visible in images, mark NONE.\n'
+    + 'Return ONLY valid JSON.';
+
+  if (txt) txt.textContent = '🧠 Claude בודק ' + (allCats.length + customCats.length) + ' קטגוריות...';
+  bar.style.width = '55%';
+
+  try {
+    var res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type':'application/json','x-api-key':apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true' },
+      body: JSON.stringify({ model:'claude-sonnet-4-20250514', max_tokens:3000,
+        messages:[{ role:'user', content:[...imageBlocks, { type:'text', text:snagPrompt }] }] })
+    });
+    var data = await res.json();
+    if (!res.ok) throw new Error(data.error?.message || 'API error ' + res.status);
+
+    var raw = data.content && data.content[0] && data.content[0].text;
+    raw = raw.replace(/```json|```/g,'').trim();
+    var findings = {};
+    try { findings = JSON.parse(raw); } catch(e) { throw new Error('תגובת AI לא תקינה'); }
+
+    snagStopMeter(data.usage?.input_tokens, data.usage?.output_tokens);
+    bar.style.width = '90%';
+    if (txt) txt.textContent = '✅ הסריקה הושלמה — מכין דוח...';
+
+    _snagLastFindings = findings;
+
+    await new Promise(function(r){ setTimeout(r,300); });
+    snagRenderReport(findings, allCats, customCats);
+
+    // Save to Supabase
+    var projId   = document.getElementById('safety-project-sel')?.value || null;
+    var projName = projId ? ((window.allProjects||[]).find(function(p){return p.id===projId;})||{}).project_name : null;
+    await snagSaveReport(findings, allCats, customCats, projId, projName);
+
+    bar.style.width = '100%';
+    setTimeout(function(){ prog.style.display='none'; if(btn){btn.disabled=false;btn.textContent='🔍 הפעל סריקת ליקויים AI';btn.style.background='linear-gradient(135deg,#1a3d5c,#2d6a9f)';} }, 1500);
+    snagLoadHistory();
+
+  } catch(e) {
+    if (txt) txt.textContent = '❌ ' + e.message;
+    bar.style.background = '#ef4444'; bar.style.width = '100%';
+    if (btn) { btn.disabled = false; btn.style.background = 'linear-gradient(135deg,#1a3d5c,#2d6a9f)'; }
+    showToast('שגיאה: ' + e.message, 'error');
+    snagStopMeter();
+  }
+}
+
+// ── Timers ─────────────────────────────────────────────────────────────
+function snagStartMeter() {
+  _snagStartTime = Date.now();
+  clearInterval(_snagTimer);
+  _snagTimer = setInterval(function() {
+    var elapsed = Math.floor((Date.now() - _snagStartTime) / 1000);
+    var mins = Math.floor(elapsed/60), secs = elapsed%60;
+    var pct  = Math.min(1, elapsed/20);
+    var est  = Math.round((_snagFrames.length * 1700 + 1000) * pct);
+    var cost = (est * 3 / 1e6) + (800 * 15 / 1e6);
+    var c = document.getElementById('snag-clock');
+    var t = document.getElementById('snag-tokens');
+    var d = document.getElementById('snag-cost');
+    if (c) c.textContent = mins + ':' + (secs<10?'0':'') + secs;
+    if (t) t.textContent = '~' + est.toLocaleString();
+    if (d) d.textContent = '$' + cost.toFixed(3);
+  }, 500);
+}
+
+function snagStopMeter(inTok, outTok) {
+  clearInterval(_snagTimer);
+  var elapsed = Math.floor((Date.now() - (_snagStartTime||Date.now())) / 1000);
+  var mins = Math.floor(elapsed/60), secs = elapsed%60;
+  var iT = inTok || (_snagFrames.length * 1700 + 1000);
+  var oT = outTok || 600;
+  var cost = (iT * 3 / 1e6) + (oT * 15 / 1e6);
+  var c = document.getElementById('snag-clock');
+  var t = document.getElementById('snag-tokens');
+  var d = document.getElementById('snag-cost');
+  if (c) c.textContent = mins + ':' + (secs<10?'0':'') + secs;
+  if (t) t.textContent = (iT+oT).toLocaleString();
+  if (d) d.textContent = '$' + cost.toFixed(3);
+}
+
+// ── Report renderer ────────────────────────────────────────────────────
+function snagRenderReport(findings, allCats, customCats, metadata) {
+  var results = document.getElementById('snag-results');
+  if (!results) return;
+
+  var now      = metadata ? new Date(metadata.created_at) : new Date();
+  var dateStr  = now.toLocaleString('he-IL',{day:'2-digit',month:'2-digit',year:'2-digit',hour:'2-digit',minute:'2-digit'});
+  var projName = metadata?.project_name || document.getElementById('safety-project-sel')?.selectedOptions[0]?.textContent||'';
+
+  // Merge all cats
+  var allCatDefs = [...allCats, ...customCats.map(function(name,i){ return {id:'custom_'+i, name_he:name, icon:'📝'}; })];
+
+  var SEV = {
+    CRITICAL: { color:'#ef4444', bg:'rgba(239,68,68,0.15)', border:'#ef4444', label:'🔴 קריטי — פעולה מיידית' },
+    MODERATE: { color:'#f59e0b', bg:'rgba(245,158,11,0.12)', border:'#f59e0b', label:'🟡 בינוני — לתקן לפני השלב הבא' },
+    MINOR:    { color:'#3b82f6', bg:'rgba(59,130,246,0.1)',  border:'#3b82f6', label:'🔵 קל — לתקן לפני מסירה' },
+    NONE:     { color:'#22c55e', bg:'rgba(34,197,94,0.08)',  border:'#22c55e', label:'✅ תקין' }
+  };
+
+  // Score and sort
+  var sevOrder = { CRITICAL:3, MODERATE:2, MINOR:1, NONE:0 };
+  var scored = allCatDefs.map(function(cat) {
+    var f   = findings[cat.id] || { severity:'NONE', findings:[], remedy:null };
+    var sev = SEV[f.severity] || SEV.NONE;
+    return { cat, f, sev, level: sevOrder[f.severity]||0 };
+  }).sort(function(a,b){ return b.level - a.level; });
+
+  var critCount = scored.filter(function(s){ return s.level===3; }).length;
+  var modCount  = scored.filter(function(s){ return s.level===2; }).length;
+  var minorCount= scored.filter(function(s){ return s.level===1; }).length;
+  var okCount   = scored.filter(function(s){ return s.level===0; }).length;
+  var maxLevel  = scored[0]?.level || 0;
+  var overallColor = maxLevel>=3?'#ef4444':maxLevel>=2?'#f59e0b':maxLevel>=1?'#3b82f6':'#22c55e';
+  var overallLabel = maxLevel>=3?'🔴 ליקויים קריטיים':maxLevel>=2?'🟡 ליקויים משמעותיים':maxLevel>=1?'🔵 ליקויים קלים':'✅ לא נמצאו ליקויים';
+
+  var html = '';
+
+  // Summary banner
+  html += '<div style="background:linear-gradient(135deg,' + overallColor + '20,' + overallColor + '08);border:2px solid ' + overallColor + ';border-radius:16px;padding:18px 22px;margin-bottom:20px;">'
+    + '<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">'
+    + '<div><div style="font-size:18px;font-weight:900;color:' + overallColor + ';">' + overallLabel + '</div>'
+    + '<div style="font-size:12px;color:#888;margin-top:4px;">' + dateStr + (projName && projName !== '📁 כל הפרויקטים' ? ' · 📁 ' + projName.replace('📁 ','').trim() : '') + ' · ' + (_snagIsVideo ? _snagFrames.length + ' פריימים' : 'תמונה') + '</div></div>'
+    + '<div style="display:flex;gap:14px;text-align:center;">'
+    + (critCount  ? '<div><div style="font-size:22px;font-weight:900;color:#ef4444;">' + critCount  + '</div><div style="font-size:10px;color:#888;">קריטי</div></div>' : '')
+    + (modCount   ? '<div><div style="font-size:22px;font-weight:900;color:#f59e0b;">' + modCount   + '</div><div style="font-size:10px;color:#888;">בינוני</div></div>' : '')
+    + (minorCount ? '<div><div style="font-size:22px;font-weight:900;color:#3b82f6;">' + minorCount + '</div><div style="font-size:10px;color:#888;">קל</div></div>' : '')
+    + '<div><div style="font-size:22px;font-weight:900;color:#22c55e;">' + okCount + '</div><div style="font-size:10px;color:#888;">תקין</div></div>'
+    + '</div></div></div>';
+
+  // Category cards
+  html += '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:14px;margin-bottom:20px;">';
+  scored.forEach(function(s) {
+    if (s.level === 0) {
+      html += '<div style="background:' + s.sev.bg + ';border:1px solid ' + s.sev.border + '40;border-radius:12px;padding:12px 16px;display:flex;align-items:center;gap:10px;">'
+        + '<span style="font-size:22px;">' + (s.cat.icon||'🔧') + '</span>'
+        + '<div><div style="font-size:13px;font-weight:700;color:#fff;">' + s.cat.name_he + '</div>'
+        + '<div style="font-size:11px;color:#22c55e;margin-top:2px;">✅ לא נמצאו ליקויים</div></div></div>';
+      return;
+    }
+    html += '<div style="background:' + s.sev.bg + ';border:2px solid ' + s.sev.border + ';border-radius:14px;padding:16px;">'
+      + '<div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">'
+      + '<span style="font-size:26px;">' + (s.cat.icon||'🔧') + '</span>'
+      + '<div style="flex:1;"><div style="font-size:14px;font-weight:900;color:#fff;">' + s.cat.name_he + '</div>'
+      + '<div style="font-size:11px;font-weight:700;color:' + s.sev.color + ';margin-top:2px;">' + s.sev.label + '</div></div></div>';
+
+    if (s.f.location) {
+      html += '<div style="font-size:11px;color:#888;margin-bottom:8px;padding:4px 8px;background:rgba(0,0,0,0.2);border-radius:6px;">📍 ' + s.f.location.replace(/</g,'&lt;') + '</div>';
+    }
+
+    if (s.f.findings && s.f.findings.length) {
+      html += '<div style="margin-bottom:10px;">';
+      s.f.findings.forEach(function(item) {
+        html += '<div style="font-size:12px;color:#ccc;padding:4px 0;border-bottom:1px solid rgba(255,255,255,0.05);">▸ ' + (item||'').replace(/</g,'&lt;') + '</div>';
+      });
+      html += '</div>';
+    }
+
+    if (s.f.remedy) {
+      html += '<div style="background:rgba(0,0,0,0.3);border-radius:8px;padding:8px 12px;margin-bottom:8px;font-size:12px;">'
+        + '<span style="color:' + s.sev.color + ';font-weight:700;">🔧 תיקון: </span>'
+        + '<span style="color:#ccc;">' + s.f.remedy.replace(/</g,'&lt;') + '</span></div>';
+    }
+
+    if (s.f.responsible_trade) {
+      html += '<div style="font-size:11px;color:#888;">👷 אחראי: ' + s.f.responsible_trade.replace(/</g,'&lt;') + '</div>';
+    }
+
+    if (s.f.frame_ref && _snagIsVideo) {
+      html += '<div style="font-size:10px;color:#555;margin-top:4px;">📹 פריים ' + s.f.frame_ref + '</div>';
+    }
+    html += '</div>';
+  });
+  html += '</div>';
+
+  // WhatsApp + PDF buttons
+  html += '<div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:8px;">'
+    + '<button onclick="snagExportWhatsApp()" style="flex:1;background:rgba(37,211,102,0.15);border:1.5px solid rgba(37,211,102,0.4);color:#25d366;padding:10px 16px;border-radius:12px;cursor:pointer;font-family:Heebo,sans-serif;font-size:13px;font-weight:700;">💬 שלח דוח ליקויים ב-WhatsApp</button>'
+    + '</div>';
+
+  results.innerHTML = html;
+}
+
+// ── WhatsApp export ────────────────────────────────────────────────────
+function snagExportWhatsApp() {
+  var findings = _snagLastFindings;
+  if (!findings) return;
+  var projName = document.getElementById('safety-project-sel')?.selectedOptions[0]?.textContent||'';
+  var now = new Date().toLocaleString('he-IL',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
+  var msg = '🔍 *דוח ליקויים — ' + now + '*\n';
+  if (projName && projName !== '📁 כל הפרויקטים') msg += '📁 ' + projName.replace('📁 ','').trim() + '\n';
+  msg += '━━━━━━━━━━━━━━━━━━━━\n\n';
+
+  var sevOrder = { CRITICAL:3, MODERATE:2, MINOR:1, NONE:0 };
+  var allCatDefs = SNAG_CATEGORIES;
+  var issues = allCatDefs.filter(function(c){ return findings[c.id] && (findings[c.id].severity||'NONE') !== 'NONE'; })
+    .sort(function(a,b){ return (sevOrder[(findings[b.id]||{}).severity]||0) - (sevOrder[(findings[a.id]||{}).severity]||0) });
+
+  if (!issues.length) { msg += '✅ לא נמצאו ליקויים משמעותיים\n'; }
+  else {
+    issues.forEach(function(cat) {
+      var f = findings[cat.id] || {};
+      var emoji = f.severity==='CRITICAL'?'🔴':f.severity==='MODERATE'?'🟡':'🔵';
+      msg += emoji + ' *' + cat.name_he + '*\n';
+      (f.findings||[]).forEach(function(item){ msg += '  ▸ ' + item + '\n'; });
+      if (f.remedy) msg += '  🔧 ' + f.remedy + '\n';
+      if (f.responsible_trade) msg += '  👷 ' + f.responsible_trade + '\n';
+      msg += '\n';
+    });
+  }
+
+  window.open('https://wa.me/?text=' + encodeURIComponent(msg), '_blank');
+}
+
+// ── Save to Supabase ───────────────────────────────────────────────────
+async function snagSaveReport(findings, allCats, customCats, projId, projName) {
+  try {
+    var maxSev = 'NONE';
+    var sevOrder = { CRITICAL:3, MODERATE:2, MINOR:1, NONE:0 };
+    Object.values(findings).forEach(function(f) {
+      if ((sevOrder[f.severity]||0) > (sevOrder[maxSev]||0)) maxSev = f.severity;
+    });
+    await fetch(SB_URL + '/rest/v1/snag_reports', {
+      method: 'POST',
+      headers: { apikey:SB_KEY, Authorization:'Bearer '+SB_KEY, 'Content-Type':'application/json', Prefer:'return=minimal' },
+      body: JSON.stringify({
+        project_id:    projId || null,
+        project_name:  projName || null,
+        findings:      findings,
+        categories_scanned: [...allCats.map(function(c){return c.id;}), ...customCats.map(function(_,i){return 'custom_'+i;})],
+        custom_categories: customCats,
+        max_severity:  maxSev,
+        frame_count:   _snagFrames.length,
+        is_video:      _snagIsVideo,
+        created_at:    new Date().toISOString()
+      })
+    });
+  } catch(e) { console.error('Snag save:', e); }
+}
+
+// ── History ─────────────────────────────────────────────────────────────
+async function snagLoadHistory() {
+  var list = document.getElementById('snag-history-list');
+  if (!list) return;
+  list.innerHTML = '<div style="text-align:center;padding:12px;color:#555;font-size:12px;">טוען...</div>';
+  try {
+    var res   = await sbQ('snag_reports','select=id,project_name,max_severity,frame_count,is_video,created_at&order=created_at.desc&limit=20');
+    var items = res.data || [];
+    if (!items.length) {
+      list.innerHTML = '<div style="text-align:center;padding:20px;color:#444;font-size:13px;">אין ניתוחים עדיין — העלה תמונה ולחץ סריקה</div>';
+      return;
+    }
+    var SE = {CRITICAL:'🔴',MODERATE:'🟡',MINOR:'🔵',NONE:'✅'};
+    var SC = {CRITICAL:'#ef4444',MODERATE:'#f59e0b',MINOR:'#3b82f6',NONE:'#22c55e'};
+    list.innerHTML = items.map(function(item) {
+      var date = new Date(item.created_at).toLocaleString('he-IL',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
+      var sev  = item.max_severity||'NONE';
+      return '<div style="background:#242438;border:1px solid rgba(255,255,255,0.06);border-right:4px solid ' + (SC[sev]||'#22c55e') + ';border-radius:12px;padding:12px 16px;margin-bottom:8px;cursor:pointer;" onclick="snagShowHistoryItem(' + item.id + ')">'
+        + '<div style="display:flex;align-items:center;gap:10px;">'
+        + '<span style="font-size:20px;">' + (SE[sev]||'✅') + '</span>'
+        + '<div style="flex:1;">'
+        + '<div style="font-size:13px;font-weight:700;color:#fff;">' + (item.project_name||'ללא פרויקט') + '</div>'
+        + '<div style="font-size:11px;color:#555;">' + date + ' · ' + (item.is_video ? item.frame_count + ' פריימים' : 'תמונה') + '</div>'
+        + '</div></div></div>';
+    }).join('');
+  } catch(e) {
+    list.innerHTML = '<div style="color:#ef4444;padding:12px;font-size:12px;">שגיאה: ' + e.message + '</div>';
+  }
+}
+
+async function snagShowHistoryItem(id) {
+  var res = await sbQ('snag_reports','select=*&id=eq.' + id);
+  var item = res.data && res.data[0];
+  if (!item) return;
+  var findings = typeof item.findings==='string' ? JSON.parse(item.findings) : item.findings;
+  var cats = (item.categories_scanned||[]).map(function(id) {
+    return SNAG_CATEGORIES.find(function(c){ return c.id===id; }) || {id:id, name_he:id, icon:'🔧'};
+  });
+  var customs = item.custom_categories || [];
+  _snagFrames = new Array(item.frame_count||1).fill('');
+  _snagIsVideo = item.is_video;
+  _snagLastFindings = findings;
+  snagRenderReport(findings, cats, customs, item);
+  window.scrollTo(0, document.getElementById('snag-results').offsetTop - 80);
 }
 
 
