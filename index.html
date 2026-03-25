@@ -1337,128 +1337,164 @@ window.addEventListener('unhandledrejection', function(e) {
 </div></div></div>
 <div class="app-panel" id="notes-panel"><div id="notes-content"><div style="padding:70px 24px 40px;min-height:100vh;background:#1a1a2e;font-family:Heebo,sans-serif;direction:rtl">
 
-  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;flex-wrap:wrap;gap:12px">
+  <!-- Header -->
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:12px">
     <div>
       <div style="font-size:10px;letter-spacing:3px;color:#9a6f00;text-transform:uppercase;margin-bottom:4px">בני פרסקי</div>
       <h1 style="font-size:26px;font-weight:900;color:#fff">📝 יומן חכם</h1>
     </div>
-    <div style="display:flex;gap:8px;flex-wrap:wrap">
-      <button onclick="switchTab('crm');showPage('takeoff')" style="background:rgba(154,111,0,0.2);border:1px solid rgba(154,111,0,0.4);color:#f59e0b;padding:8px 16px;border-radius:20px;cursor:pointer;font-family:Heebo,sans-serif;font-size:12px;font-weight:700">📐 טייקאוף</button>
-      <button onclick="switchTab('crm');showPage('takeoff');setTimeout(()=>switchTakeoffTab('detailed'),200)" style="background:rgba(59,130,246,0.2);border:1px solid rgba(59,130,246,0.4);color:#93c5fd;padding:8px 16px;border-radius:20px;cursor:pointer;font-family:Heebo,sans-serif;font-size:12px;font-weight:700">📋 מדידות</button>
-      <button onclick="switchTab('crm');showPage('takeoff');setTimeout(()=>switchTakeoffTab('laser'),200)" style="background:rgba(239,68,68,0.2);border:1px solid rgba(239,68,68,0.4);color:#fca5a5;padding:8px 16px;border-radius:20px;cursor:pointer;font-family:Heebo,sans-serif;font-size:12px;font-weight:700">🔴 גבהים</button>
-
-      <button onclick="printNotes()" style="background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.15);color:#ccc;padding:8px 16px;border-radius:20px;cursor:pointer;font-family:Heebo,sans-serif;font-size:12px;font-weight:700">🖨️ הדפס</button>
-    </div>
-  </div>
-
-
-  <div style="background:#242438;border-radius:16px;padding:20px;margin-bottom:24px;border:1px solid rgba(255,255,255,0.08)">
-    <div style="display:flex;gap:10px;margin-bottom:12px;flex-wrap:wrap">
-      <div style="display:flex;gap:6px;align-items:center">
-        <span style="font-size:11px;color:#888">צבע:</span>
-        <button class="note-color-btn active-color" data-color="yellow"  onclick="selectNoteColor('yellow')"  title="כללי"    style="width:28px;height:28px;border-radius:50%;background:#f59e0b;border:3px solid transparent;cursor:pointer;transition:all 0.2s"></button>
-        <button class="note-color-btn"              data-color="red"     onclick="selectNoteColor('red')"     title="דחוף"    style="width:28px;height:28px;border-radius:50%;background:#ef4444;border:3px solid transparent;cursor:pointer;transition:all 0.2s"></button>
-        <button class="note-color-btn"              data-color="green"   onclick="selectNoteColor('green')"   title="בוצע"    style="width:28px;height:28px;border-radius:50%;background:#22c55e;border:3px solid transparent;cursor:pointer;transition:all 0.2s"></button>
-        <button class="note-color-btn"              data-color="blue"    onclick="selectNoteColor('blue')"    title="תכנון"   style="width:28px;height:28px;border-radius:50%;background:#3b82f6;border:3px solid transparent;cursor:pointer;transition:all 0.2s"></button>
-        <button class="note-color-btn"              data-color="purple"  onclick="selectNoteColor('purple')"  title="אישי"    style="width:28px;height:28px;border-radius:50%;background:#a855f7;border:3px solid transparent;cursor:pointer;transition:all 0.2s"></button>
-      </div>
-      <button id="note-voice-btn" onclick="toggleNoteVoice()" style="background:rgba(154,111,0,0.2);border:1px solid rgba(154,111,0,0.4);color:#f59e0b;padding:8px 14px;border-radius:20px;cursor:pointer;font-family:Heebo,sans-serif;font-size:12px;font-weight:700">🎤 הקלט</button>
-      <select id="note-project-select" onchange="filterNotesByProject(this.value)" style="background:#1a1a2e;border:1px solid rgba(255,255,255,0.12);color:#ccc;padding:7px 12px;border-radius:20px;font-family:Heebo,sans-serif;font-size:12px;direction:rtl">
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+      <!-- Project filter — applies to ALL tabs -->
+      <select id="smart-project-filter" onchange="smartJournalFilter()" style="background:#1a1a2e;border:1px solid rgba(255,255,255,0.18);color:#ccc;padding:7px 12px;border-radius:20px;font-family:Heebo,sans-serif;font-size:12px;direction:rtl">
         <option value="">📁 כל הפרויקטים</option>
       </select>
-    </div>
-
-    <textarea id="note-text-input" placeholder="כתוב הערה... (קול או הקלדה)" rows="4"
-      style="width:100%;background:#1a1a2e;border:1px solid rgba(255,255,255,0.1);color:#fff;
-             padding:14px;border-radius:10px;font-family:Heebo,sans-serif;font-size:15px;
-             resize:vertical;direction:rtl;outline:none;line-height:1.7"
-      oninput="this.style.borderColor='#9a6f00'"></textarea>
-
-    <div style="display:flex;gap:10px;margin-top:12px;justify-content:flex-end">
-      <button onclick="clearNoteForm()" style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);color:#888;padding:10px 20px;border-radius:10px;cursor:pointer;font-family:Heebo,sans-serif;font-size:13px">נקה</button>
-      <button onclick="saveNote()" style="background:linear-gradient(135deg,#9a6f00,#c9a84c);border:none;color:#1a1a2e;padding:10px 28px;border-radius:10px;cursor:pointer;font-family:Heebo,sans-serif;font-size:14px;font-weight:900">💾 שמור הערה</button>
+      <button onclick="printNotes()" style="background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.15);color:#ccc;padding:8px 14px;border-radius:20px;cursor:pointer;font-family:Heebo,sans-serif;font-size:12px;font-weight:700">🖨️ הדפס</button>
     </div>
   </div>
 
-  <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px;align-items:center">
-    <span style="font-size:11px;color:#666;font-weight:700">סנן:</span>
-    <button class="note-filter active-filter" data-filter="all"    onclick="filterNotes('all')"    style="background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.15);color:#ccc;padding:6px 14px;border-radius:20px;cursor:pointer;font-family:Heebo,sans-serif;font-size:11px;font-weight:700">הכל</button>
-    <button class="note-filter" data-filter="yellow" onclick="filterNotes('yellow')" style="background:rgba(245,158,11,0.15);border:1px solid rgba(245,158,11,0.3);color:#f59e0b;padding:6px 14px;border-radius:20px;cursor:pointer;font-family:Heebo,sans-serif;font-size:11px;font-weight:700">🟡 כללי</button>
-    <button class="note-filter" data-filter="red"    onclick="filterNotes('red')"    style="background:rgba(239,68,68,0.15);border:1px solid rgba(239,68,68,0.3);color:#ef4444;padding:6px 14px;border-radius:20px;cursor:pointer;font-family:Heebo,sans-serif;font-size:11px;font-weight:700">🔴 דחוף</button>
-    <button class="note-filter" data-filter="green"  onclick="filterNotes('green')"  style="background:rgba(34,197,94,0.15);border:1px solid rgba(34,197,94,0.3);color:#22c55e;padding:6px 14px;border-radius:20px;cursor:pointer;font-family:Heebo,sans-serif;font-size:11px;font-weight:700">🟢 בוצע</button>
-    <button class="note-filter" data-filter="blue"   onclick="filterNotes('blue')"   style="background:rgba(59,130,246,0.15);border:1px solid rgba(59,130,246,0.3);color:#3b82f6;padding:6px 14px;border-radius:20px;cursor:pointer;font-family:Heebo,sans-serif;font-size:11px;font-weight:700">🔵 תכנון</button>
-    <button class="note-filter" data-filter="purple" onclick="filterNotes('purple')" style="background:rgba(168,85,247,0.15);border:1px solid rgba(168,85,247,0.3);color:#a855f7;padding:6px 14px;border-radius:20px;cursor:pointer;font-family:Heebo,sans-serif;font-size:11px;font-weight:700">🟣 אישי</button>
-    <input id="note-search" type="text" placeholder="🔍 חיפוש..." oninput="filterNotesByKeyword(this.value)"
-      style="background:#1a1a2e;border:1px solid rgba(255,255,255,0.12);color:#fff;padding:7px 14px;
-             border-radius:20px;font-family:Heebo,sans-serif;font-size:12px;direction:rtl;outline:none;min-width:160px">
-    <input id="note-date-from" type="date" oninput="filterNotesByDate()"
-      style="background:#1a1a2e;border:1px solid rgba(255,255,255,0.12);color:#ccc;padding:7px 10px;border-radius:20px;font-family:Heebo,sans-serif;font-size:11px">
-    <span style="color:#666;font-size:11px">עד</span>
-    <input id="note-date-to" type="date" oninput="filterNotesByDate()"
-      style="background:#1a1a2e;border:1px solid rgba(255,255,255,0.12);color:#ccc;padding:7px 10px;border-radius:20px;font-family:Heebo,sans-serif;font-size:11px">
+  <!-- 5 TABS NAV -->
+  <div style="display:flex;gap:4px;margin-bottom:20px;background:#242438;border-radius:14px;padding:5px;overflow-x:auto;scrollbar-width:none;">
+    <button id="sj-tab-notes"     onclick="switchSmartTab('notes')"      style="flex:1;min-width:80px;padding:9px 6px;border-radius:10px;border:none;cursor:pointer;font-family:Heebo,sans-serif;font-size:12px;font-weight:700;background:#9a6f00;color:#fff;transition:all .15s;">📝 הערות</button>
+    <button id="sj-tab-photos"    onclick="switchSmartTab('photos')"     style="flex:1;min-width:80px;padding:9px 6px;border-radius:10px;border:none;cursor:pointer;font-family:Heebo,sans-serif;font-size:12px;font-weight:700;background:transparent;color:#888;transition:all .15s;">📷 תמונות</button>
+    <button id="sj-tab-videos"    onclick="switchSmartTab('videos')"     style="flex:1;min-width:80px;padding:9px 6px;border-radius:10px;border:none;cursor:pointer;font-family:Heebo,sans-serif;font-size:12px;font-weight:700;background:transparent;color:#888;transition:all .15s;">🎬 סרטונים</button>
+    <button id="sj-tab-takeoffs"  onclick="switchSmartTab('takeoffs')"   style="flex:1;min-width:80px;padding:9px 6px;border-radius:10px;border:none;cursor:pointer;font-family:Heebo,sans-serif;font-size:12px;font-weight:700;background:transparent;color:#888;transition:all .15s;">📐 מדידות</button>
+    <button id="sj-tab-recordings" onclick="switchSmartTab('recordings')" style="flex:1;min-width:80px;padding:9px 6px;border-radius:10px;border:none;cursor:pointer;font-family:Heebo,sans-serif;font-size:12px;font-weight:700;background:transparent;color:#888;transition:all .15s;">🎙️ הקלטות</button>
   </div>
 
-  <!-- ── OCR PANEL — Photo → Note / Takeoff / Task ─────────── -->
-  <div style="background:#1e1e35;border:1px solid rgba(201,168,76,0.3);border-radius:16px;padding:16px;margin-bottom:20px;">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
-      <div style="font-size:14px;font-weight:800;color:#c9a84c;">📷 OCR — קרא כתב יד עם AI</div>
-      <span style="font-size:10px;color:#555;background:#242438;border-radius:20px;padding:2px 8px;">Claude Vision</span>
-    </div>
-
-    <!-- Upload buttons -->
-    <div style="display:flex;gap:8px;margin-bottom:10px;">
-      <label style="flex:1;display:flex;align-items:center;justify-content:center;gap:6px;background:rgba(201,168,76,0.15);border:1px solid rgba(201,168,76,0.3);border-radius:10px;padding:10px;cursor:pointer;font-size:13px;font-weight:700;color:#c9a84c;font-family:Heebo,sans-serif;">
-        📁 בחר תמונה
-        <input type="file" id="journal-ocr-file" accept="image/*" style="display:none;" onchange="journalOcrProcess(this)">
-      </label>
-      <label style="flex:1;display:flex;align-items:center;justify-content:center;gap:6px;background:rgba(59,130,246,0.12);border:1px solid rgba(59,130,246,0.3);border-radius:10px;padding:10px;cursor:pointer;font-size:13px;font-weight:700;color:#93c5fd;font-family:Heebo,sans-serif;">
-        📸 צלם עכשיו
-        <input type="file" id="journal-ocr-camera" accept="image/*" capture="environment" style="display:none;" onchange="journalOcrProcess(this)">
-      </label>
-    </div>
-
-    <!-- Loading -->
-    <div id="journal-ocr-loading" style="display:none;text-align:center;padding:14px;color:#666;font-size:13px;">
-      🧠 Claude קורא את הכתב יד...
-    </div>
-
-    <!-- Result -->
-    <div id="journal-ocr-result" style="display:none;">
-      <div style="font-size:11px;font-weight:800;color:#666;margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px;">טקסט שזוהה — ערוך לפי הצורך:</div>
-      <textarea id="journal-ocr-text" rows="4"
-        style="width:100%;background:#1a1a2e;border:1px solid rgba(255,255,255,0.1);color:#fff;padding:12px;border-radius:10px;font-family:Heebo,sans-serif;font-size:14px;resize:vertical;direction:rtl;outline:none;line-height:1.7;box-sizing:border-box;"></textarea>
-
-      <!-- Destination selector -->
-      <div style="font-size:11px;font-weight:800;color:#666;margin:10px 0 6px;text-transform:uppercase;letter-spacing:.5px;">שלח אל:</div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
-        <button onclick="journalOcrSend('note')"
-          style="background:rgba(245,158,11,0.15);border:1px solid rgba(245,158,11,0.4);color:#f59e0b;border-radius:10px;padding:10px;font-family:Heebo,sans-serif;font-size:12px;font-weight:800;cursor:pointer;">
-          📝 מזכר ביומן חכם
-        </button>
-        <button onclick="journalOcrSend('task')"
-          style="background:rgba(34,197,94,0.12);border:1px solid rgba(34,197,94,0.3);color:#4ade80;border-radius:10px;padding:10px;font-family:Heebo,sans-serif;font-size:12px;font-weight:800;cursor:pointer;">
-          ✅ משימה חדשה
-        </button>
-        <button onclick="journalOcrSend('takeoff')"
-          style="background:rgba(59,130,246,0.12);border:1px solid rgba(59,130,246,0.3);color:#93c5fd;border-radius:10px;padding:10px;font-family:Heebo,sans-serif;font-size:12px;font-weight:800;cursor:pointer;">
-          📐 טייקאוף (מדידות)
-        </button>
-        <button onclick="journalOcrSend('report')"
-          style="background:rgba(139,92,246,0.12);border:1px solid rgba(139,92,246,0.3);color:#c4b5fd;border-radius:10px;padding:10px;font-family:Heebo,sans-serif;font-size:12px;font-weight:800;cursor:pointer;">
-          📄 דוח שטח
-        </button>
+  <!-- ── TAB: NOTES ─────────────────────────────────────── -->
+  <div id="sj-panel-notes">
+    <!-- Note input card -->
+    <div style="background:#242438;border-radius:16px;padding:20px;margin-bottom:20px;border:1px solid rgba(255,255,255,0.08)">
+      <div style="display:flex;gap:10px;margin-bottom:12px;flex-wrap:wrap">
+        <div style="display:flex;gap:6px;align-items:center">
+          <span style="font-size:11px;color:#888">צבע:</span>
+          <button class="note-color-btn active-color" data-color="yellow"  onclick="selectNoteColor('yellow')"  title="כללי"  style="width:28px;height:28px;border-radius:50%;background:#f59e0b;border:3px solid transparent;cursor:pointer;transition:all 0.2s"></button>
+          <button class="note-color-btn"              data-color="red"     onclick="selectNoteColor('red')"     title="דחוף"  style="width:28px;height:28px;border-radius:50%;background:#ef4444;border:3px solid transparent;cursor:pointer;transition:all 0.2s"></button>
+          <button class="note-color-btn"              data-color="green"   onclick="selectNoteColor('green')"   title="בוצע"  style="width:28px;height:28px;border-radius:50%;background:#22c55e;border:3px solid transparent;cursor:pointer;transition:all 0.2s"></button>
+          <button class="note-color-btn"              data-color="blue"    onclick="selectNoteColor('blue')"    title="תכנון" style="width:28px;height:28px;border-radius:50%;background:#3b82f6;border:3px solid transparent;cursor:pointer;transition:all 0.2s"></button>
+          <button class="note-color-btn"              data-color="purple"  onclick="selectNoteColor('purple')"  title="אישי"  style="width:28px;height:28px;border-radius:50%;background:#a855f7;border:3px solid transparent;cursor:pointer;transition:all 0.2s"></button>
+        </div>
+        <button id="note-voice-btn" onclick="toggleNoteVoice()" style="background:rgba(154,111,0,0.2);border:1px solid rgba(154,111,0,0.4);color:#f59e0b;padding:8px 14px;border-radius:20px;cursor:pointer;font-family:Heebo,sans-serif;font-size:12px;font-weight:700">🎤 הקלט</button>
+        <select id="note-project-select" onchange="filterNotesByProject(this.value)" style="background:#1a1a2e;border:1px solid rgba(255,255,255,0.12);color:#ccc;padding:7px 12px;border-radius:20px;font-family:Heebo,sans-serif;font-size:12px;direction:rtl">
+          <option value="">📁 כל הפרויקטים</option>
+        </select>
       </div>
-      <div id="journal-ocr-status" style="margin-top:8px;font-size:12px;color:#4ade80;text-align:center;min-height:16px;"></div>
+      <textarea id="note-text-input" placeholder="כתוב הערה... (קול או הקלדה)" rows="4"
+        style="width:100%;background:#1a1a2e;border:1px solid rgba(255,255,255,0.1);color:#fff;padding:14px;border-radius:10px;font-family:Heebo,sans-serif;font-size:15px;resize:vertical;direction:rtl;outline:none;line-height:1.7;box-sizing:border-box;"
+        oninput="this.style.borderColor='#9a6f00'"></textarea>
+      <div style="display:flex;gap:10px;margin-top:12px;justify-content:flex-end">
+        <button onclick="clearNoteForm()" style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);color:#888;padding:10px 20px;border-radius:10px;cursor:pointer;font-family:Heebo,sans-serif;font-size:13px">נקה</button>
+        <button onclick="saveNote()" style="background:linear-gradient(135deg,#9a6f00,#c9a84c);border:none;color:#1a1a2e;padding:10px 28px;border-radius:10px;cursor:pointer;font-family:Heebo,sans-serif;font-size:14px;font-weight:900">💾 שמור הערה</button>
+      </div>
+    </div>
+    <!-- Color filters -->
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px;align-items:center">
+      <span style="font-size:11px;color:#666;font-weight:700">סנן:</span>
+      <button class="note-filter active-filter" data-filter="all"    onclick="filterNotes('all')"    style="background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.15);color:#ccc;padding:6px 14px;border-radius:20px;cursor:pointer;font-family:Heebo,sans-serif;font-size:11px;font-weight:700">הכל</button>
+      <button class="note-filter" data-filter="yellow" onclick="filterNotes('yellow')" style="background:rgba(245,158,11,0.15);border:1px solid rgba(245,158,11,0.3);color:#f59e0b;padding:6px 14px;border-radius:20px;cursor:pointer;font-family:Heebo,sans-serif;font-size:11px;font-weight:700">🟡 כללי</button>
+      <button class="note-filter" data-filter="red"    onclick="filterNotes('red')"    style="background:rgba(239,68,68,0.15);border:1px solid rgba(239,68,68,0.3);color:#ef4444;padding:6px 14px;border-radius:20px;cursor:pointer;font-family:Heebo,sans-serif;font-size:11px;font-weight:700">🔴 דחוף</button>
+      <button class="note-filter" data-filter="green"  onclick="filterNotes('green')"  style="background:rgba(34,197,94,0.15);border:1px solid rgba(34,197,94,0.3);color:#22c55e;padding:6px 14px;border-radius:20px;cursor:pointer;font-family:Heebo,sans-serif;font-size:11px;font-weight:700">🟢 בוצע</button>
+      <button class="note-filter" data-filter="blue"   onclick="filterNotes('blue')"   style="background:rgba(59,130,246,0.15);border:1px solid rgba(59,130,246,0.3);color:#3b82f6;padding:6px 14px;border-radius:20px;cursor:pointer;font-family:Heebo,sans-serif;font-size:11px;font-weight:700">🔵 תכנון</button>
+      <button class="note-filter" data-filter="purple" onclick="filterNotes('purple')" style="background:rgba(168,85,247,0.15);border:1px solid rgba(168,85,247,0.3);color:#a855f7;padding:6px 14px;border-radius:20px;cursor:pointer;font-family:Heebo,sans-serif;font-size:11px;font-weight:700">🟣 אישי</button>
+      <input id="note-date-from" type="date" oninput="filterNotesByDate()" style="background:#1a1a2e;border:1px solid rgba(255,255,255,0.12);color:#ccc;padding:5px 8px;border-radius:20px;font-family:Heebo,sans-serif;font-size:11px">
+      <span style="color:#666;font-size:11px">עד</span>
+      <input id="note-date-to" type="date" oninput="filterNotesByDate()" style="background:#1a1a2e;border:1px solid rgba(255,255,255,0.12);color:#ccc;padding:7px 10px;border-radius:20px;font-family:Heebo,sans-serif;font-size:11px">
+    </div>
+    <!-- OCR panel -->
+    <div style="background:#1e1e35;border:1px solid rgba(201,168,76,0.3);border-radius:16px;padding:16px;margin-bottom:20px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+        <div style="font-size:14px;font-weight:800;color:#c9a84c;">📷 OCR — קרא כתב יד עם AI</div>
+        <span style="font-size:10px;color:#555;background:#242438;border-radius:20px;padding:2px 8px;">Claude Vision</span>
+      </div>
+      <div style="display:flex;gap:8px;margin-bottom:10px;">
+        <label style="flex:1;display:flex;align-items:center;justify-content:center;gap:6px;background:rgba(201,168,76,0.15);border:1px solid rgba(201,168,76,0.3);border-radius:10px;padding:10px;cursor:pointer;font-size:13px;font-weight:700;color:#c9a84c;font-family:Heebo,sans-serif;">
+          📁 בחר תמונה<input type="file" id="journal-ocr-file" accept="image/*" style="display:none;" onchange="journalOcrProcess(this)">
+        </label>
+        <label style="flex:1;display:flex;align-items:center;justify-content:center;gap:6px;background:rgba(59,130,246,0.12);border:1px solid rgba(59,130,246,0.3);border-radius:10px;padding:10px;cursor:pointer;font-size:13px;font-weight:700;color:#93c5fd;font-family:Heebo,sans-serif;">
+          📸 צלם עכשיו<input type="file" id="journal-ocr-camera" accept="image/*" capture="environment" style="display:none;" onchange="journalOcrProcess(this)">
+        </label>
+      </div>
+      <div id="journal-ocr-loading" style="display:none;text-align:center;padding:14px;color:#666;font-size:13px;">🧠 Claude קורא את הכתב יד...</div>
+      <div id="journal-ocr-result" style="display:none;">
+        <textarea id="journal-ocr-text" rows="4" style="width:100%;background:#1a1a2e;border:1px solid rgba(255,255,255,0.1);color:#fff;padding:12px;border-radius:10px;font-family:Heebo,sans-serif;font-size:14px;resize:vertical;direction:rtl;outline:none;line-height:1.7;box-sizing:border-box;"></textarea>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px;">
+          <button onclick="journalOcrSend('note')"    style="background:rgba(245,158,11,0.15);border:1px solid rgba(245,158,11,0.4);color:#f59e0b;border-radius:10px;padding:10px;font-family:Heebo,sans-serif;font-size:12px;font-weight:800;cursor:pointer;">📝 מזכר</button>
+          <button onclick="journalOcrSend('task')"    style="background:rgba(34,197,94,0.12);border:1px solid rgba(34,197,94,0.3);color:#4ade80;border-radius:10px;padding:10px;font-family:Heebo,sans-serif;font-size:12px;font-weight:800;cursor:pointer;">✅ משימה</button>
+          <button onclick="journalOcrSend('takeoff')" style="background:rgba(59,130,246,0.12);border:1px solid rgba(59,130,246,0.3);color:#93c5fd;border-radius:10px;padding:10px;font-family:Heebo,sans-serif;font-size:12px;font-weight:800;cursor:pointer;">📐 טייקאוף</button>
+          <button onclick="journalOcrSend('report')"  style="background:rgba(139,92,246,0.12);border:1px solid rgba(139,92,246,0.3);color:#c4b5fd;border-radius:10px;padding:10px;font-family:Heebo,sans-serif;font-size:12px;font-weight:800;cursor:pointer;">📄 דוח</button>
+        </div>
+        <div id="journal-ocr-status" style="margin-top:8px;font-size:12px;color:#4ade80;text-align:center;min-height:16px;"></div>
+      </div>
+    </div>
+    <!-- Notes wall -->
+    <div id="notes-wall" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px">
+      <div style="grid-column:1/-1;text-align:center;padding:60px 20px;color:#444">
+        <div style="font-size:48px;margin-bottom:12px">📝</div>
+        <div style="font-size:14px">אין הערות עדיין</div>
+      </div>
     </div>
   </div>
 
-  <div id="notes-wall" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px">
-    <div style="grid-column:1/-1;text-align:center;padding:60px 20px;color:#444">
-      <div style="font-size:48px;margin-bottom:12px">📝</div>
-      <div style="font-size:14px">אין הערות עדיין — כתוב את ההערה הראשונה למעלה</div>
+  <!-- ── TAB: PHOTOS ────────────────────────────────────── -->
+  <div id="sj-panel-photos" style="display:none;">
+    <div style="display:flex;gap:8px;margin-bottom:16px;align-items:center;flex-wrap:wrap;">
+      <div style="font-size:13px;color:#888;">תמונות מהשטח לפי פרויקט</div>
+      <div style="margin-right:auto;" id="sj-photos-count" style="font-size:12px;color:#555;"></div>
+    </div>
+    <div id="sj-photos-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;">
+      <div style="grid-column:1/-1;text-align:center;padding:40px;color:#444;">
+        <div style="font-size:40px;margin-bottom:10px;">📷</div>
+        <div style="font-size:13px;">בחר פרויקט למעלה לצפייה בתמונות</div>
+      </div>
     </div>
   </div>
+
+  <!-- ── TAB: VIDEOS ────────────────────────────────────── -->
+  <div id="sj-panel-videos" style="display:none;">
+    <div style="display:flex;gap:8px;margin-bottom:16px;align-items:center;flex-wrap:wrap;">
+      <div style="font-size:13px;color:#888;">סרטוני שטח מ-Google Drive</div>
+      <div id="sj-videos-count" style="font-size:12px;color:#555;margin-right:auto;"></div>
+    </div>
+    <div id="sj-videos-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px;">
+      <div style="grid-column:1/-1;text-align:center;padding:40px;color:#444;">
+        <div style="font-size:40px;margin-bottom:10px;">🎬</div>
+        <div style="font-size:13px;">בחר פרויקט למעלה לצפייה בסרטונים</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── TAB: TAKEOFFS ──────────────────────────────────── -->
+  <div id="sj-panel-takeoffs" style="display:none;">
+    <div style="display:flex;gap:8px;margin-bottom:16px;align-items:center;flex-wrap:wrap;">
+      <div style="font-size:13px;color:#888;">מדידות שטח</div>
+      <button onclick="switchTab('crm');showPage('takeoff')" style="background:rgba(154,111,0,0.2);border:1px solid rgba(154,111,0,0.4);color:#f59e0b;padding:7px 14px;border-radius:20px;cursor:pointer;font-family:Heebo,sans-serif;font-size:12px;font-weight:700;">📐 פתח טייקאוף מלא</button>
+      <button onclick="switchTab('crm');showPage('takeoff');setTimeout(()=>switchTakeoffTab('detailed'),200)" style="background:rgba(59,130,246,0.2);border:1px solid rgba(59,130,246,0.4);color:#93c5fd;padding:7px 14px;border-radius:20px;cursor:pointer;font-family:Heebo,sans-serif;font-size:12px;font-weight:700;">📋 מדידות</button>
+      <button onclick="switchTab('crm');showPage('takeoff');setTimeout(()=>switchTakeoffTab('laser'),200)" style="background:rgba(239,68,68,0.2);border:1px solid rgba(239,68,68,0.4);color:#fca5a5;padding:7px 14px;border-radius:20px;cursor:pointer;font-family:Heebo,sans-serif;font-size:12px;font-weight:700;">🔴 גבהים</button>
+    </div>
+    <div id="sj-takeoffs-list">
+      <div style="text-align:center;padding:40px;color:#444;">
+        <div style="font-size:40px;margin-bottom:10px;">📐</div>
+        <div style="font-size:13px;">בחר פרויקט למעלה</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── TAB: RECORDINGS ────────────────────────────────── -->
+  <div id="sj-panel-recordings" style="display:none;">
+    <div style="display:flex;gap:8px;margin-bottom:16px;align-items:center;flex-wrap:wrap;">
+      <div style="font-size:13px;color:#888;">הקלטות קוליות מהשטח</div>
+      <div id="sj-recordings-count" style="font-size:12px;color:#555;margin-right:auto;"></div>
+    </div>
+    <div id="sj-recordings-list">
+      <div style="text-align:center;padding:40px;color:#444;">
+        <div style="font-size:40px;margin-bottom:10px;">🎙️</div>
+        <div style="font-size:13px;">בחר פרויקט למעלה</div>
+      </div>
+    </div>
+  </div>
+
 </div></div></div>
+
 <div class="app-panel" id="eod-panel"><div id="eod-content"><div style="padding:60px 20px 40px;min-height:100vh;background:#1a1a2e;font-family:Heebo,sans-serif;direction:rtl;">
 
   <!-- Header -->
@@ -2012,6 +2048,7 @@ async function bootstrap() {
       try { if (typeof loadBeniTasks       === 'function') loadBeniTasks(); }       catch(e){}
       try { if (typeof loadDailyCalls      === 'function') loadDailyCalls(); }      catch(e){}
       try { if (typeof loadFieldIntel      === 'function') loadFieldIntel(); }      catch(e){}
+      try { if (typeof sjPopulateProjectFilter === 'function') sjPopulateProjectFilter(); } catch(e){}
     }, 500);
 
     // Auto-refresh Field Intel + Beni Tasks every 60 seconds (only when CRM tab visible)
@@ -2058,7 +2095,7 @@ async function switchTab(tab) {
   try { localStorage.setItem('beni_active_tab', tab); } catch(e){}
 
   // Panel-specific post-init
-  if (tab === 'notes')   { setTimeout(loadNotesWall, 100); }
+  if (tab === 'notes')   { setTimeout(function(){ sjPopulateProjectFilter(); loadNotesWall(); }, 100); }
   if (tab === 'eod')     { setTimeout(loadEODReport, 100); }
   if (tab === 'gcal')    { if (typeof initGcal    === 'function') initGcal();  }
   if (tab === 'journal') { if (typeof initJournalOnce === 'function') initJournalOnce(); }
@@ -5674,6 +5711,303 @@ async function fiLinkProject(memoId, projectId) {
   } catch(e) {
     showToast('שגיאה: ' + e.message, 'error');
   }
+}
+
+
+// ══ SMART JOURNAL — 5 TABS ═════════════════════════════════════════
+var _sjActiveTab    = 'notes';
+var _sjProjectId    = '';
+var _sjProjectName  = '';
+
+function switchSmartTab(tab) {
+  _sjActiveTab = tab;
+  ['notes','photos','videos','takeoffs','recordings'].forEach(function(t) {
+    var panel = document.getElementById('sj-panel-' + t);
+    var btn   = document.getElementById('sj-tab-' + t);
+    if (!panel || !btn) return;
+    var isActive = t === tab;
+    panel.style.display = isActive ? 'block' : 'none';
+    btn.style.background = isActive ? '#9a6f00' : 'transparent';
+    btn.style.color      = isActive ? '#fff'    : '#888';
+  });
+  smartJournalFilter();
+}
+
+function smartJournalFilter() {
+  var sel = document.getElementById('smart-project-filter');
+  _sjProjectId   = sel ? sel.value : '';
+  _sjProjectName = sel && sel.selectedOptions[0] ? sel.selectedOptions[0].textContent.replace('📁 ','').trim() : '';
+
+  // Also sync the notes tab project selector
+  var noteSel = document.getElementById('note-project-select');
+  if (noteSel && _sjProjectId) noteSel.value = _sjProjectId;
+
+  if      (_sjActiveTab === 'notes')      { if (_sjProjectId) filterNotesByProject(_sjProjectId); else loadNotesWall(); }
+  else if (_sjActiveTab === 'photos')     sjLoadPhotos();
+  else if (_sjActiveTab === 'videos')     sjLoadVideos();
+  else if (_sjActiveTab === 'takeoffs')   sjLoadTakeoffs();
+  else if (_sjActiveTab === 'recordings') sjLoadRecordings();
+}
+
+// ── PHOTOS TAB ──────────────────────────────────────────────────────
+async function sjLoadPhotos() {
+  var grid     = document.getElementById('sj-photos-grid');
+  var countEl  = document.getElementById('sj-photos-count');
+  if (!grid) return;
+  grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:20px;color:#555;font-size:13px;">טוען תמונות...</div>';
+
+  try {
+    var query = 'select=id,note_text,photo_url,color,created_at,project_id&photo_url=not.is.null&order=created_at.desc&limit=60';
+    if (_sjProjectId) query += '&project_id=eq.' + _sjProjectId;
+
+    var res  = await sbQ('beni_notes', query);
+    var notes = (res.data || []).filter(function(n) {
+      var url = n.photo_url || '';
+      var isVideo = url.includes('drive.google.com') || /\.(mp4|mov|webm|avi)/i.test(url);
+      return !isVideo; // photos only
+    });
+
+    if (countEl) countEl.textContent = notes.length + ' תמונות';
+
+    if (!notes.length) {
+      grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:40px;color:#444;"><div style="font-size:40px;margin-bottom:10px;">📷</div><div style="font-size:13px;">אין תמונות' + (_sjProjectId ? ' לפרויקט זה' : '') + '</div></div>';
+      return;
+    }
+
+    grid.innerHTML = '';
+    notes.forEach(function(n) {
+      var url = n.photo_url.startsWith('http') ? n.photo_url : SB_URL + '/storage/v1/object/public/photos/' + n.photo_url;
+      var date = new Date(n.created_at).toLocaleDateString('he-IL', {day:'2-digit',month:'2-digit'});
+      var proj = (window.allProjects||[]).find(function(p){ return p.id===n.project_id; });
+
+      var div = document.createElement('div');
+      div.style.cssText = 'position:relative;border-radius:10px;overflow:hidden;border:1px solid rgba(255,255,255,0.1);cursor:pointer;aspect-ratio:1;background:#0a0a1a;';
+
+      var img = document.createElement('img');
+      img.src = url;
+      img.style.cssText = 'width:100%;height:100%;object-fit:cover;';
+      img.onerror = function(){ this.style.display='none'; };
+      img.addEventListener('click', function(){ openLightbox(url, n.note_text||''); });
+
+      var cap = document.createElement('div');
+      cap.style.cssText = 'position:absolute;bottom:0;left:0;right:0;background:linear-gradient(transparent,rgba(0,0,0,0.8));padding:16px 8px 6px;';
+      cap.innerHTML = '<div style="font-size:10px;color:#fff;">' + date + (proj ? ' · ' + proj.project_name.substring(0,12) : '') + '</div>';
+
+      div.appendChild(img); div.appendChild(cap);
+      grid.appendChild(div);
+    });
+  } catch(e) {
+    grid.innerHTML = '<div style="color:#ef4444;padding:16px;font-size:13px;">שגיאה: ' + e.message + '</div>';
+  }
+}
+
+// ── VIDEOS TAB ───────────────────────────────────────────────────────
+async function sjLoadVideos() {
+  var grid    = document.getElementById('sj-videos-grid');
+  var countEl = document.getElementById('sj-videos-count');
+  if (!grid) return;
+  grid.innerHTML = '<div style="text-align:center;padding:20px;color:#555;font-size:13px;">טוען סרטונים...</div>';
+
+  try {
+    var query = 'select=id,note_text,photo_url,color,created_at,project_id&photo_url=ilike.*drive.google*&order=created_at.desc&limit=40';
+    if (_sjProjectId) query += '&project_id=eq.' + _sjProjectId;
+
+    var res   = await sbQ('beni_notes', query);
+    var notes = res.data || [];
+
+    if (countEl) countEl.textContent = notes.length + ' סרטונים';
+
+    if (!notes.length) {
+      grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:40px;color:#444;"><div style="font-size:40px;margin-bottom:10px;">🎬</div><div style="font-size:13px;">אין סרטונים' + (_sjProjectId ? ' לפרויקט זה' : '') + '</div></div>';
+      return;
+    }
+
+    grid.innerHTML = '';
+    notes.forEach(function(n) {
+      var url  = n.photo_url;
+      var date = new Date(n.created_at).toLocaleDateString('he-IL', {day:'2-digit',month:'2-digit',year:'2-digit'});
+      var desc = (n.note_text||'').replace(/\n.*$/,'').replace('🎬','').replace('📁 Google Drive: '+url,'').trim() || 'סרטון שטח';
+      var proj = (window.allProjects||[]).find(function(p){ return p.id===n.project_id; });
+
+      var card = document.createElement('div');
+      card.style.cssText = 'background:#1e1e35;border:1px solid rgba(139,92,246,0.3);border-radius:12px;padding:14px;';
+
+      card.innerHTML =
+        '<div style="font-size:32px;text-align:center;margin-bottom:8px;">🎬</div>'
+        + '<div style="font-size:12px;font-weight:700;color:#c4b5fd;margin-bottom:4px;line-height:1.4;">' + desc.substring(0,60).replace(/</g,'&lt;') + '</div>'
+        + '<div style="font-size:10px;color:#555;margin-bottom:10px;">' + date + (proj ? ' · 📁 ' + proj.project_name.substring(0,15) : '') + '</div>'
+        + '<div style="display:flex;gap:6px;flex-wrap:wrap;">'
+        + '<a href="' + url + '" target="_blank" style="flex:1;display:flex;align-items:center;justify-content:center;gap:4px;background:rgba(66,133,244,0.2);border:1px solid rgba(66,133,244,0.4);color:#4285f4;padding:7px;border-radius:8px;font-size:11px;font-weight:700;text-decoration:none;font-family:Heebo,sans-serif;">▶️ צפה</a>'
+        + '<button onclick="sjSafetyAnalysis(\'' + n.id + '\',\'' + url + '\')" style="flex:1;background:rgba(239,68,68,0.15);border:1px solid rgba(239,68,68,0.3);color:#fca5a5;padding:7px;border-radius:8px;font-size:11px;font-weight:700;cursor:pointer;font-family:Heebo,sans-serif;">🦺 בטיחות AI</button>'
+        + '</div>'
+        + '<div id="safety-result-' + n.id + '" style="display:none;margin-top:8px;font-size:11px;line-height:1.6;"></div>';
+
+      grid.appendChild(card);
+    });
+  } catch(e) {
+    grid.innerHTML = '<div style="color:#ef4444;padding:16px;font-size:13px;">שגיאה: ' + e.message + '</div>';
+  }
+}
+
+// ── AI SAFETY ANALYSIS ───────────────────────────────────────────────
+async function sjSafetyAnalysis(noteId, driveUrl) {
+  var resultEl = document.getElementById('safety-result-' + noteId);
+  var btn      = resultEl && resultEl.previousElementSibling && resultEl.previousElementSibling.querySelector('button[onclick*="sjSafetyAnalysis"]');
+
+  if (!resultEl) return;
+
+  var apiKey = (APP.config && APP.config.anthropic_key) || null;
+  if (!apiKey) { showToast('הגדר מפתח Anthropic API תחילה', 'error'); return; }
+
+  resultEl.style.display = 'block';
+  resultEl.style.color   = '#888';
+  resultEl.textContent   = '🧠 מנתח בטיחות...';
+
+  // Get the note's photo_url — we need to work with thumbnail from beni_notes
+  // The video is on Drive — we can't extract frames from Drive URLs server-side
+  // Instead: fetch the note record and use the AI description already stored
+  try {
+    var noteRes = await sbQ('beni_notes', 'select=note_text,photo_url&id=eq.' + noteId);
+    var note    = noteRes.data && noteRes.data[0];
+    var existingDesc = note ? note.note_text : '';
+
+    // Ask Claude to perform safety analysis based on the existing description
+    // and flag it as a Drive video (no frame extraction possible from Journal)
+    var prompt = 'אתה מהנדס בטיחות בנייה מנוסה. בהתבסס על התיאור הבא של סרטון שצולם באתר בנייה, נתח סיכוני בטיחות:\n\n'
+      + 'תיאור: "' + existingDesc.substring(0,300) + '"\n\n'
+      + 'זהה:\n1. סיכוני בטיחות נראים לעין\n2. ציוד מגן חסר\n3. בעיות מבניות\n4. חסמים וסכנות נפילה\n\n'
+      + 'דרג חומרה: 🔴 קריטי / 🟡 בינוני / 🟢 תקין\n'
+      + 'השב ב-3-4 משפטים קצרים בעברית בלבד.';
+
+    var res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type':'application/json','x-api-key':apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true' },
+      body: JSON.stringify({ model:'claude-sonnet-4-20250514', max_tokens:300, messages:[{role:'user',content:prompt}] })
+    });
+    var data = await res.json();
+    var text = data.content && data.content[0] && data.content[0].text;
+
+    if (text) {
+      resultEl.style.color = '#fca5a5';
+      resultEl.textContent = text;
+    } else {
+      resultEl.textContent = 'לא ניתן לנתח';
+    }
+  } catch(e) {
+    resultEl.style.color = '#ef4444';
+    resultEl.textContent = 'שגיאה: ' + e.message;
+  }
+}
+
+// ── TAKEOFFS TAB ─────────────────────────────────────────────────────
+async function sjLoadTakeoffs() {
+  var list    = document.getElementById('sj-takeoffs-list');
+  if (!list) return;
+  list.innerHTML = '<div style="text-align:center;padding:20px;color:#555;font-size:13px;">טוען מדידות...</div>';
+
+  try {
+    var query = 'select=id,project_name,total_area,takeoff_type,created_at&order=created_at.desc&limit=30';
+    if (_sjProjectId) {
+      var proj = (window.allProjects||[]).find(function(p){ return p.id===_sjProjectId; });
+      if (proj) query = 'select=id,project_name,total_area,takeoff_type,created_at&project_id=eq.' + _sjProjectId + '&order=created_at.desc&limit=30';
+    }
+
+    var res       = await sbQ('site_takeoffs', query);
+    var takeoffs  = res.data || [];
+
+    if (!takeoffs.length) {
+      list.innerHTML = '<div style="text-align:center;padding:40px;color:#444;"><div style="font-size:40px;margin-bottom:10px;">📐</div><div style="font-size:13px;">אין מדידות' + (_sjProjectId ? ' לפרויקט זה' : '') + '</div></div>';
+      return;
+    }
+
+    var typeIcon = { standard:'📐', detailed:'📋', laser:'🔴' };
+    list.innerHTML = takeoffs.map(function(t) {
+      var date = new Date(t.created_at).toLocaleDateString('he-IL',{day:'2-digit',month:'2-digit',year:'2-digit'});
+      var icon = typeIcon[t.takeoff_type||'standard'] || '📐';
+      var area = t.total_area ? Number(t.total_area).toFixed(1) + ' מ"ר' : '—';
+      return '<div style="background:#242438;border:1px solid rgba(255,255,255,0.06);border-radius:12px;padding:12px 16px;margin-bottom:8px;display:flex;align-items:center;gap:12px;">'
+        + '<span style="font-size:22px;">' + icon + '</span>'
+        + '<div style="flex:1;">'
+        + '<div style="font-size:13px;font-weight:700;color:#fff;">' + (t.project_name||'ללא פרויקט').replace(/</g,'&lt;') + '</div>'
+        + '<div style="font-size:11px;color:#555;">' + date + '</div>'
+        + '</div>'
+        + '<div style="font-size:14px;font-weight:800;color:#c9a84c;">' + area + '</div>'
+        + '</div>';
+    }).join('');
+  } catch(e) {
+    list.innerHTML = '<div style="color:#ef4444;padding:16px;font-size:13px;">שגיאה: ' + e.message + '</div>';
+  }
+}
+
+// ── RECORDINGS TAB ───────────────────────────────────────────────────
+async function sjLoadRecordings() {
+  var list    = document.getElementById('sj-recordings-list');
+  var countEl = document.getElementById('sj-recordings-count');
+  if (!list) return;
+  list.innerHTML = '<div style="text-align:center;padding:20px;color:#555;font-size:13px;">טוען הקלטות...</div>';
+
+  try {
+    var from = new Date();
+    from.setDate(from.getDate() - 30);
+    var fromISO = from.toISOString();
+
+    var url = SB_URL + '/rest/v1/voice_memos?created_at=gte.' + fromISO + '&order=created_at.desc&limit=50';
+    if (_sjProjectId) {
+      var proj = (window.allProjects||[]).find(function(p){ return p.id===_sjProjectId; });
+      if (proj) url += '&project_hint=ilike.*' + encodeURIComponent(proj.project_name.substring(0,10)) + '*';
+    }
+
+    var res   = await fetch(url, { headers:{ apikey:SB_KEY, Authorization:'Bearer '+SB_KEY } });
+    var memos = res.ok ? await res.json() : [];
+
+    if (countEl) countEl.textContent = memos.length + ' הקלטות (30 ימים אחרונים)';
+
+    if (!memos.length) {
+      list.innerHTML = '<div style="text-align:center;padding:40px;color:#444;"><div style="font-size:40px;margin-bottom:10px;">🎙️</div><div style="font-size:13px;">אין הקלטות' + (_sjProjectId ? ' לפרויקט זה' : ' מ-30 הימים האחרונים') + '</div></div>';
+      return;
+    }
+
+    var PCOLOR = { 'גבוה':'#ef4444','רגיל':'#f59e0b','נמוך':'#22c55e' };
+    var CICON  = { 'משימה':'📋','בעיית_אתר':'⚠️','חומרים':'📦','לקוח':'👤','כספים':'💰','כללי':'📝' };
+
+    list.innerHTML = memos.map(function(m) {
+      var ai  = null;
+      try { ai = m.ai_result ? (typeof m.ai_result==='string' ? JSON.parse(m.ai_result) : m.ai_result) : null; } catch(e){}
+      var time    = new Date(m.created_at).toLocaleString('he-IL',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
+      var summary = (ai&&ai.summary) || (m.transcript||'').substring(0,80) || 'ללא תיאור';
+      var pri     = (ai&&ai.priority)||'רגיל';
+      var cat     = (ai&&ai.category)||'כללי';
+      var pColor  = PCOLOR[pri]||'#f59e0b';
+      var cIcon   = CICON[cat]||'📝';
+      var actions = (ai&&ai.action_items)||[];
+      return '<div style="background:#242438;border:1px solid rgba(255,255,255,0.06);border-right:4px solid '+ pColor +';border-radius:12px;padding:12px 14px;margin-bottom:8px;">'
+        + '<div style="display:flex;align-items:flex-start;gap:8px;">'
+        + '<span style="font-size:18px;">' + cIcon + '</span>'
+        + '<div style="flex:1;"><div style="font-size:13px;font-weight:700;color:#fff;">' + summary.replace(/</g,'&lt;') + '</div>'
+        + '<div style="font-size:10px;color:#555;margin-top:3px;">' + time + (m.project_hint?' · 📁 '+m.project_hint:'') + '</div>'
+        + (actions.length ? '<div style="margin-top:6px;">' + actions.slice(0,2).map(function(a){return'<div style="font-size:11px;color:#888;">▸ '+a.replace(/</g,'&lt;')+'</div>';}).join('') + '</div>' : '')
+        + '</div>'
+        + '<span style="background:'+pColor+'20;color:'+pColor+';border-radius:20px;padding:2px 8px;font-size:10px;font-weight:800;">'+pri+'</span>'
+        + '</div></div>';
+    }).join('');
+  } catch(e) {
+    list.innerHTML = '<div style="color:#ef4444;padding:16px;font-size:13px;">שגיאה: ' + e.message + '</div>';
+  }
+}
+
+// Populate smart journal project filter when notes tab opens
+function sjPopulateProjectFilter() {
+  var sel = document.getElementById('smart-project-filter');
+  if (!sel || !window.allProjects) return;
+  var current = sel.value;
+  sel.innerHTML = '<option value="">📁 כל הפרויקטים</option>';
+  (window.allProjects||[]).forEach(function(p) {
+    var opt = document.createElement('option');
+    opt.value = p.id;
+    opt.textContent = p.project_name;
+    sel.appendChild(opt);
+  });
+  if (current) sel.value = current;
 }
 
 
