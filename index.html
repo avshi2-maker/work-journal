@@ -6882,9 +6882,25 @@ async function snagRunScan() {
     });
   }
 
+  // Add ממ"ד regulatory context if that category is selected
+  var mamadContext = '';
+  if (allCats.some(function(c){ return c.id === 'mamad_snag'; }) || customCats.some(function(t){ return t.includes('ממ'); })) {
+    mamadContext = '\n\nREGULATORY CONTEXT for ממ"ד inspection (Israeli Safe Room):\n'
+      + 'תקנות ההתגוננות האזרחית (מפרטים לבניית מקלטים) תש"ן-1990:\n'
+      + '• Minimum floor area: 9m² net, volume 22.5m³\n'
+      + '• Ceiling height: min 2.5m, max 2.8m\n'
+      + '• Walls: cast-in-place reinforced concrete only (ת"י 118 + ת"י 466)\n'
+      + '• Blast door (דלת הדף): steel, opens outward, approved manufacturer\n'
+      + '• Blast window (חלון הדף): external steel + internal sealed aluminum\n'
+      + '• Air filtration (מנת"ר): NBC filter required per ת"י 4570\n'
+      + '• Airtightness test required per ת"י 4577\n'
+      + '• FORBIDDEN: gas/water/sewage pipes passing through (not serving room)\n'
+      + 'Post-blast assessment: prioritize structural integrity and blast door operability.\n';
+  }
+
   var snagPrompt = 'You are a senior construction quality inspector and defect surveyor with 25+ years experience on Israeli building sites.\n\n'
     + 'Analyze ' + (_snagIsVideo ? 'these ' + _snagFrames.length + ' frames from a site video' : 'this site photo')
-    + ' for construction defects and quality issues.\n\n'
+    + ' for construction defects and quality issues.' + mamadContext + '\n\n'
     + 'For EACH category, return a JSON object. Respond ONLY with valid JSON, no markdown.\n\n'
     + 'JSON structure:\n{\n'
     + [...allCats.map(function(c){ return c.id; }), ...customCats.map(function(_,i){ return 'custom_'+i; })].map(function(id) {
@@ -7255,7 +7271,9 @@ var CAP_STANDARDS = {
   structural_alignment: 'ת"י 466 — דרישות ביצוע בטון מזוין',
   roof_terrace:      'ת"י 1364 — איטום גגות',
   finishes_general:  'מפרט בינ"ל — גימורי בנייה',
-  fire_protection:   'ת"י 1220 — מערכות כיבוי אש / חוק הבנייה'
+  fire_protection:   'ת"י 1220 — מערכות כיבוי אש / חוק הבנייה',
+  mamad_snag:        'תקנות ההתגוננות האזרחית (מפרטים לבניית מקלטים) תש"ן-1990 · ת"י 4577 (אטימות) · ת"י 4570 (מנת"ר) · ת"י 118+466 (בטון)',
+  mamad_safety:      'תקנות ההתגוננות האזרחית תש"ן-1990 · פיקוד העורף · ת"י 4577 · ת"י 4570'
 };
 
 // ── Open modal ─────────────────────────────────────────────────────────
