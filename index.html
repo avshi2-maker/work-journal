@@ -6356,6 +6356,7 @@ async function safetyRunAnalysis() {
     + '- MINOR: Low risk, fix within the day\n'
     + '- OK: No issues found\n'
     + '\nIf a category is not visible in the images, mark as OK with found: []\n'
+    + 'IMPORTANT: ALL text in "found" and "action" fields MUST be written in Hebrew (עברית) only. No English text in any field values.\n'
     + 'BE SPECIFIC about frame numbers when relevant. Return ONLY valid JSON.';
 
   var messages = [{ role: 'user', content: [...imageBlocks, { type: 'text', text: safetyPrompt }] }];
@@ -6499,10 +6500,35 @@ function safetyRenderReport(findings, metadata) {
 
   // ── WhatsApp export button ─────────────────────────────────────────
   _safetyLastFindings = findings;  // store for WhatsApp export
-  html += '<button onclick="safetyExportWhatsApp()" '
-    + 'style="background:rgba(37,211,102,0.15);border:1.5px solid rgba(37,211,102,0.4);color:#25d366;padding:10px 20px;border-radius:12px;cursor:pointer;font-family:Heebo,sans-serif;font-size:13px;font-weight:700;margin-top:8px;">💬 שלח דוח בטיחות ב-WhatsApp</button>';
+  // ── Action bar ────────────────────────────────────────────────────
+  var sProjSel  = document.getElementById('safety-project-sel');
+  var sProjOpts = sProjSel ? sProjSel.innerHTML : '<option value="">📁 כל הפרויקטים</option>';
+  var sProjCurr = sProjSel ? sProjSel.value : '';
+
+  html += '<div id="safety-action-bar" style="background:#242438;border-radius:14px;padding:16px;margin-top:16px;border:1px solid rgba(255,255,255,0.08);">'
+    + '<div style="font-size:11px;font-weight:800;color:#666;text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px;">פעולות לדוח בטיחות</div>'
+    + '<div style="display:flex;gap:10px;align-items:center;margin-bottom:12px;flex-wrap:wrap;">'
+    + '<div style="font-size:12px;color:#888;white-space:nowrap;">📁 קשר לפרויקט:</div>'
+    + '<select id="safety-action-project" style="flex:1;background:#1a1a2e;border:1px solid rgba(255,255,255,0.15);color:#fff;padding:7px 10px;border-radius:8px;font-family:Heebo,sans-serif;font-size:12px;direction:rtl;">'
+    + sProjOpts
+    + '</select>'
+    + '</div>'
+    + '<div style="display:flex;gap:16px;margin-bottom:14px;flex-wrap:wrap;">'
+    + '<label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:12px;color:#ccc;font-family:Heebo,sans-serif;"><input type="checkbox" id="safety-cb-critical" checked style="accent-color:#ef4444;"> 🔴 קריטי</label>'
+    + '<label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:12px;color:#ccc;font-family:Heebo,sans-serif;"><input type="checkbox" id="safety-cb-moderate" checked style="accent-color:#f59e0b;"> 🟡 בינוני</label>'
+    + '<label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:12px;color:#ccc;font-family:Heebo,sans-serif;"><input type="checkbox" id="safety-cb-minor" checked style="accent-color:#3b82f6;"> 🔵 קל</label>'
+    + '<label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:12px;color:#ccc;font-family:Heebo,sans-serif;"><input type="checkbox" id="safety-cb-ok"> ✅ תקין</label>'
+    + '</div>'
+    + '<div style="display:flex;gap:8px;flex-wrap:wrap;">'
+    + '<button onclick="safetyExportWhatsApp()" style="flex:1;min-width:120px;background:rgba(37,211,102,0.15);border:1.5px solid rgba(37,211,102,0.4);color:#25d366;padding:10px 14px;border-radius:10px;cursor:pointer;font-family:Heebo,sans-serif;font-size:12px;font-weight:700;">💬 WhatsApp</button>'
+    + '<button onclick="safetyPrintReport()" style="flex:1;min-width:120px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.15);color:#ccc;padding:10px 14px;border-radius:10px;cursor:pointer;font-family:Heebo,sans-serif;font-size:12px;font-weight:700;">🖨️ הדפס</button>'
+    + '<button onclick="safetyEmailReport()" style="flex:1;min-width:120px;background:rgba(59,130,246,0.12);border:1px solid rgba(59,130,246,0.3);color:#93c5fd;padding:10px 14px;border-radius:10px;cursor:pointer;font-family:Heebo,sans-serif;font-size:12px;font-weight:700;">📧 מייל</button>'
+    + '</div>'
+    + '</div>';
 
   results.innerHTML = html;
+  var sap = document.getElementById('safety-action-project');
+  if (sap && sProjCurr) sap.value = sProjCurr;
 }
 
 // ── WHATSAPP EXPORT ───────────────────────────────────────────────────
@@ -6878,7 +6904,8 @@ async function snagRunScan() {
     + '- MODERATE: Significant quality defect requiring repair before next stage\n'
     + '- MINOR: Cosmetic or minor defect to fix before handover\n'
     + '- NONE: No defects found in this category\n'
-    + '\nBe SPECIFIC about exact locations (e.g. "northeast corner column", "floor level 2 slab"). '
+    + '\nBe SPECIFIC about exact locations. '
+    + 'CRITICAL LANGUAGE RULE: ALL values in findings, location, remedy, responsible_trade fields MUST be in Hebrew (עברית) ONLY. Absolutely no English text in any field values.\n'
     + 'If category not visible in images, mark NONE.\n'
     + 'Return ONLY valid JSON.';
 
@@ -7055,13 +7082,40 @@ function snagRenderReport(findings, allCats, customCats, metadata) {
   });
   html += '</div>';
 
-  // Action buttons row
-  html += '<div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:8px;">'
-    + '<button onclick="snagExportWhatsApp()" style="flex:1;background:rgba(37,211,102,0.15);border:1.5px solid rgba(37,211,102,0.4);color:#25d366;padding:10px 16px;border-radius:12px;cursor:pointer;font-family:Heebo,sans-serif;font-size:13px;font-weight:700;">💬 שלח דוח ב-WhatsApp</button>'
-    + '<button onclick="capOpenModal()" style="flex:2;background:linear-gradient(135deg,#7c3aed,#2d6a9f);border:none;color:#fff;padding:10px 16px;border-radius:12px;cursor:pointer;font-family:Heebo,sans-serif;font-size:13px;font-weight:800;">🔧 צור תוכנית תיקון (CAP)</button>'
+  // ── Action bar ────────────────────────────────────────────────────
+  var projSel   = document.getElementById('safety-project-sel');
+  var projOpts  = projSel ? projSel.innerHTML : '<option value="">📁 כל הפרויקטים</option>';
+  var projCurr  = projSel ? projSel.value : '';
+
+  html += '<div id="snag-action-bar" style="background:#242438;border-radius:14px;padding:16px;margin-top:16px;border:1px solid rgba(255,255,255,0.08);">'
+    + '<div style="font-size:11px;font-weight:800;color:#666;text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px;">פעולות לדוח</div>'
+    // Project selector
+    + '<div style="display:flex;gap:10px;align-items:center;margin-bottom:12px;flex-wrap:wrap;">'
+    + '<div style="font-size:12px;color:#888;white-space:nowrap;">📁 קשר לפרויקט:</div>'
+    + '<select id="snag-action-project" onchange="snagUpdateReportProject(this.value)" style="flex:1;background:#1a1a2e;border:1px solid rgba(255,255,255,0.15);color:#fff;padding:7px 10px;border-radius:8px;font-family:Heebo,sans-serif;font-size:12px;direction:rtl;">'
+    + projOpts
+    + '</select>'
+    + '</div>'
+    // Checkboxes
+    + '<div style="display:flex;gap:16px;margin-bottom:14px;flex-wrap:wrap;">'
+    + '<label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:12px;color:#ccc;font-family:Heebo,sans-serif;"><input type="checkbox" id="snag-cb-critical" checked style="accent-color:#ef4444;"> 🔴 קריטי</label>'
+    + '<label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:12px;color:#ccc;font-family:Heebo,sans-serif;"><input type="checkbox" id="snag-cb-moderate" checked style="accent-color:#f59e0b;"> 🟡 בינוני</label>'
+    + '<label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:12px;color:#ccc;font-family:Heebo,sans-serif;"><input type="checkbox" id="snag-cb-minor" checked style="accent-color:#3b82f6;"> 🔵 קל</label>'
+    + '<label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:12px;color:#ccc;font-family:Heebo,sans-serif;"><input type="checkbox" id="snag-cb-ok"> ✅ תקין</label>'
+    + '</div>'
+    // Action buttons
+    + '<div style="display:flex;gap:8px;flex-wrap:wrap;">'
+    + '<button onclick="snagExportWhatsApp()" style="flex:1;min-width:120px;background:rgba(37,211,102,0.15);border:1.5px solid rgba(37,211,102,0.4);color:#25d366;padding:10px 14px;border-radius:10px;cursor:pointer;font-family:Heebo,sans-serif;font-size:12px;font-weight:700;">💬 WhatsApp</button>'
+    + '<button onclick="snagPrintReport()" style="flex:1;min-width:120px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.15);color:#ccc;padding:10px 14px;border-radius:10px;cursor:pointer;font-family:Heebo,sans-serif;font-size:12px;font-weight:700;">🖨️ הדפס</button>'
+    + '<button onclick="snagEmailReport()" style="flex:1;min-width:120px;background:rgba(59,130,246,0.12);border:1px solid rgba(59,130,246,0.3);color:#93c5fd;padding:10px 14px;border-radius:10px;cursor:pointer;font-family:Heebo,sans-serif;font-size:12px;font-weight:700;">📧 מייל</button>'
+    + '<button onclick="capOpenModal()" style="flex:2;min-width:160px;background:linear-gradient(135deg,#7c3aed,#2d6a9f);border:none;color:#fff;padding:10px 14px;border-radius:10px;cursor:pointer;font-family:Heebo,sans-serif;font-size:12px;font-weight:800;">🔧 צור תוכנית תיקון (CAP)</button>'
+    + '</div>'
     + '</div>';
 
   results.innerHTML = html;
+  // Set project selector to current value
+  var ap = document.getElementById('snag-action-project');
+  if (ap && projCurr) ap.value = projCurr;
 }
 
 // ── WhatsApp export ────────────────────────────────────────────────────
@@ -7729,7 +7783,8 @@ async function snagRunAnalysisForFile(file, fileIdx) {
     + allCats.map(function(c){ return '  "' + c.id + '": { "severity":"NONE|MINOR|MODERATE|CRITICAL", "findings":[], "location":"", "remedy":"", "responsible_trade":"" }'; }).join(',\n')
     + '\n}\n\nCategories:\n'
     + allCats.map(function(c,i){ return (i+1)+'. '+c.name_he+' (id:"'+c.id+'"): '+(c.prompt_en||'Inspect for defects'); }).join('\n')
-    + '\n\nCRITICAL=immediate danger, MODERATE=fix before next stage, MINOR=fix before handover, NONE=ok. Return ONLY JSON.';
+    + '\n\nCRITICAL=immediate danger, MODERATE=fix before next stage, MINOR=fix before handover, NONE=ok.\n'
+    + 'ALL field values MUST be in Hebrew (עברית) only. Return ONLY JSON.';
 
   var res = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
@@ -7904,7 +7959,7 @@ async function safetyRunAnalysisForFile(file, fileIdx) {
         return '"' + cat.id + '":{"severity":"OK|MINOR|MODERATE|CRITICAL","found":[],"action":null}';
       }).join(',')
     + '}\n\nFor each: ' + SAFETY_CATEGORIES.map(function(c){return c.id+': '+c.prompt;}).join(' | ')
-    + '\nReturn ONLY JSON.';
+    + '\nALL field values (found, action) MUST be in Hebrew (עברית) only. Return ONLY JSON.';
 
   var res = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
@@ -7949,6 +8004,178 @@ async function safetyRunAnalysisForFile(file, fileIdx) {
   wrapper.appendChild(rd);
   container.appendChild(wrapper);
   _safetyLastFindings = prevF;
+}
+
+
+
+// ══ REPORT PRINT / EMAIL / PROJECT HELPERS ═══════════════════════════
+
+function snagUpdateReportProject(projId) {
+  var sel = document.getElementById('safety-project-sel');
+  if (sel) sel.value = projId;
+  // Save project link to last snag report in Supabase
+  if (!projId) return;
+  var projName = '';
+  (window.allProjects||[]).forEach(function(p){ if(p.id===projId) projName=p.project_name; });
+  showToast('📁 הדוח קושר ל: ' + projName);
+}
+
+// ── Snag Print ──────────────────────────────────────────────────────
+function snagPrintReport() {
+  var findings  = _snagLastFindings;
+  if (!findings) { showToast('אין דוח להדפסה', 'error'); return; }
+  var inclCrit = document.getElementById('snag-cb-critical')?.checked !== false;
+  var inclMod  = document.getElementById('snag-cb-moderate')?.checked !== false;
+  var inclMin  = document.getElementById('snag-cb-minor')?.checked !== false;
+  var inclOk   = document.getElementById('snag-cb-ok')?.checked;
+  var projName = document.getElementById('snag-action-project')?.selectedOptions[0]?.textContent || '';
+  var now      = new Date().toLocaleString('he-IL');
+  var SEV_HE   = { CRITICAL:'קריטי', MODERATE:'בינוני', MINOR:'קל', NONE:'תקין' };
+  var SEV_COL  = { CRITICAL:'#c00', MODERATE:'#b8860b', MINOR:'#1a3a8f', NONE:'#1a7a3a' };
+
+  var issues = SNAG_CATEGORIES.filter(function(cat) {
+    var f = findings[cat.id];
+    if (!f) return inclOk;
+    var sev = f.severity || 'NONE';
+    if (sev==='CRITICAL' && !inclCrit) return false;
+    if (sev==='MODERATE' && !inclMod)  return false;
+    if (sev==='MINOR'    && !inclMin)  return false;
+    if (sev==='NONE'     && !inclOk)   return false;
+    return true;
+  });
+
+  var html = '<!DOCTYPE html><html dir="rtl"><head><meta charset="UTF-8">'
+    + '<title>דוח ליקויים</title>'
+    + '<style>body{font-family:Arial,sans-serif;direction:rtl;padding:30px;color:#111;font-size:13px;}'
+    + 'h1{font-size:20px;margin-bottom:4px;}h2{font-size:14px;margin:0 0 4px;}'
+    + '.header{border-bottom:2px solid #333;padding-bottom:12px;margin-bottom:20px;}'
+    + '.meta{font-size:11px;color:#666;margin-bottom:4px;}'
+    + '.item{border:1px solid #ddd;border-right:5px solid #ccc;border-radius:6px;padding:12px;margin-bottom:12px;break-inside:avoid;}'
+    + '.finding{font-size:12px;color:#333;padding:2px 0;}li{margin:2px 0;}'
+    + '.remedy{font-size:12px;font-weight:700;margin-top:6px;}'
+    + '@media print{body{padding:10px}.no-print{display:none}}'
+    + '</style></head><body>'
+    + '<div class="header">'
+    + '<h1>🔍 דוח ליקויים — בדיקת איכות בנייה</h1>'
+    + (projName && projName!=='📁 כל הפרויקטים' ? '<div class="meta">📁 פרויקט: ' + projName.replace('📁 ','') + '</div>' : '')
+    + '<div class="meta">📅 תאריך: ' + now + '</div>'
+    + '<div class="meta">⚠️ קריטי: ' + issues.filter(function(c){return (findings[c.id]||{}).severity==='CRITICAL';}).length
+    + ' | 🟡 בינוני: ' + issues.filter(function(c){return (findings[c.id]||{}).severity==='MODERATE';}).length
+    + ' | 🔵 קל: ' + issues.filter(function(c){return (findings[c.id]||{}).severity==='MINOR';}).length + '</div>'
+    + '</div>';
+
+  issues.forEach(function(cat) {
+    var f = findings[cat.id] || { severity:'NONE', findings:[] };
+    var sev = f.severity || 'NONE';
+    var col = SEV_COL[sev] || '#888';
+    html += '<div class="item" style="border-right-color:' + col + ';">'
+      + '<h2>' + (cat.icon||'') + ' ' + cat.name_he + ' — <span style="color:' + col + ';">' + (SEV_HE[sev]||sev) + '</span></h2>'
+      + (f.location ? '<div class="meta">📍 ' + f.location + '</div>' : '')
+      + '<ul>' + (f.findings||[]).map(function(fi){ return '<li class="finding">' + fi + '</li>'; }).join('') + '</ul>'
+      + (f.remedy ? '<div class="remedy" style="color:' + col + ';">🔧 תיקון נדרש: ' + f.remedy + '</div>' : '')
+      + (f.responsible_trade ? '<div class="meta">👷 אחראי: ' + f.responsible_trade + '</div>' : '')
+      + '</div>';
+  });
+
+  html += '<div class="meta" style="margin-top:20px;border-top:1px solid #ddd;padding-top:10px;">הופק ע"י מערכת Beni Work Journal</div>';
+  html += '</body></html>';
+
+  var w = window.open('', '_blank');
+  w.document.write(html);
+  w.document.close();
+  setTimeout(function(){ w.print(); }, 500);
+}
+
+// ── Safety Print ────────────────────────────────────────────────────
+function safetyPrintReport() {
+  var findings = _safetyLastFindings;
+  if (!findings) { showToast('אין דוח להדפסה', 'error'); return; }
+  var inclCrit = document.getElementById('safety-cb-critical')?.checked !== false;
+  var inclMod  = document.getElementById('safety-cb-moderate')?.checked !== false;
+  var inclMin  = document.getElementById('safety-cb-minor')?.checked !== false;
+  var inclOk   = document.getElementById('safety-cb-ok')?.checked;
+  var projName = document.getElementById('safety-action-project')?.selectedOptions[0]?.textContent || '';
+  var now      = new Date().toLocaleString('he-IL');
+  var SEV_HE   = { CRITICAL:'קריטי — עצירת עבודה', MODERATE:'בינוני — תיקון דחוף', MINOR:'קל — לתיקון', OK:'תקין' };
+  var SEV_COL  = { CRITICAL:'#c00', MODERATE:'#b8860b', MINOR:'#1a3a8f', OK:'#1a7a3a' };
+
+  var cats = SAFETY_CATEGORIES.filter(function(cat) {
+    var f = findings[cat.id];
+    if (!f) return inclOk;
+    var sev = f.severity || 'OK';
+    if (sev==='CRITICAL' && !inclCrit) return false;
+    if (sev==='MODERATE' && !inclMod)  return false;
+    if (sev==='MINOR'    && !inclMin)  return false;
+    if (sev==='OK'       && !inclOk)   return false;
+    return true;
+  });
+
+  var html = '<!DOCTYPE html><html dir="rtl"><head><meta charset="UTF-8"><title>דוח בטיחות</title>'
+    + '<style>body{font-family:Arial,sans-serif;direction:rtl;padding:30px;color:#111;font-size:13px;}'
+    + 'h1{font-size:20px;}h2{font-size:14px;margin:0 0 4px;}.meta{font-size:11px;color:#666;}'
+    + '.header{border-bottom:2px solid #333;padding-bottom:12px;margin-bottom:20px;}'
+    + '.item{border:1px solid #ddd;border-right:5px solid #ccc;border-radius:6px;padding:12px;margin-bottom:12px;break-inside:avoid;}'
+    + '@media print{body{padding:10px}}</style></head><body>'
+    + '<div class="header"><h1>🛡️ דוח בטיחות — בדיקת אתר בנייה</h1>'
+    + (projName && projName!=='📁 כל הפרויקטים' ? '<div class="meta">📁 פרויקט: ' + projName.replace('📁 ','') + '</div>' : '')
+    + '<div class="meta">📅 ' + now + '</div></div>';
+
+  cats.forEach(function(cat) {
+    var f = findings[cat.id] || { severity:'OK', found:[], action:null };
+    var sev = f.severity || 'OK';
+    var col = SEV_COL[sev] || '#888';
+    html += '<div class="item" style="border-right-color:' + col + ';">'
+      + '<h2>' + (cat.icon||'') + ' ' + cat.name + ' — <span style="color:' + col + ';">' + (SEV_HE[sev]||sev) + '</span></h2>'
+      + '<ul>' + (f.found||[]).map(function(fi){ return '<li>' + fi + '</li>'; }).join('') + '</ul>'
+      + (f.action ? '<div style="font-weight:700;color:' + col + ';margin-top:6px;">⚡ פעולה נדרשת: ' + f.action + '</div>' : '')
+      + '</div>';
+  });
+
+  html += '</body></html>';
+  var w = window.open('', '_blank');
+  w.document.write(html);
+  w.document.close();
+  setTimeout(function(){ w.print(); }, 500);
+}
+
+// ── Email helpers ────────────────────────────────────────────────────
+function snagEmailReport() {
+  var findings = _snagLastFindings;
+  if (!findings) { showToast('אין דוח לשליחה', 'error'); return; }
+  var projName = document.getElementById('snag-action-project')?.selectedOptions[0]?.textContent?.replace('📁 ','').trim() || 'אתר בנייה';
+  var now      = new Date().toLocaleDateString('he-IL');
+  var body     = 'דוח ליקויים — ' + projName + ' — ' + now + '\n\n';
+  var sevOrder = {CRITICAL:3,MODERATE:2,MINOR:1,NONE:0};
+  SNAG_CATEGORIES.filter(function(c){ return findings[c.id] && (findings[c.id].severity||'NONE')!=='NONE'; })
+    .sort(function(a,b){ return (sevOrder[(findings[b.id]||{}).severity]||0)-(sevOrder[(findings[a.id]||{}).severity]||0); })
+    .forEach(function(cat) {
+      var f = findings[cat.id];
+      var sev = f.severity==='CRITICAL'?'קריטי':f.severity==='MODERATE'?'בינוני':'קל';
+      body += cat.name_he + ' [' + sev + ']\n';
+      (f.findings||[]).forEach(function(fi){ body += '  • ' + fi + '\n'; });
+      if (f.remedy) body += '  תיקון: ' + f.remedy + '\n';
+      body += '\n';
+    });
+  var subject = encodeURIComponent('דוח ליקויים — ' + projName + ' — ' + now);
+  window.location.href = 'mailto:?subject=' + subject + '&body=' + encodeURIComponent(body);
+}
+
+function safetyEmailReport() {
+  var findings = _safetyLastFindings;
+  if (!findings) { showToast('אין דוח לשליחה', 'error'); return; }
+  var projName = document.getElementById('safety-action-project')?.selectedOptions[0]?.textContent?.replace('📁 ','').trim() || 'אתר בנייה';
+  var now      = new Date().toLocaleDateString('he-IL');
+  var body     = 'דוח בטיחות — ' + projName + ' — ' + now + '\n\n';
+  SAFETY_CATEGORIES.filter(function(c){ return findings[c.id] && (findings[c.id].severity||'OK')!=='OK'; })
+    .forEach(function(cat) {
+      var f = findings[cat.id];
+      body += cat.name + ' [' + f.severity + ']\n';
+      (f.found||[]).forEach(function(fi){ body += '  • ' + fi + '\n'; });
+      if (f.action) body += '  פעולה: ' + f.action + '\n';
+      body += '\n';
+    });
+  var subject = encodeURIComponent('דוח בטיחות — ' + projName + ' — ' + now);
+  window.location.href = 'mailto:?subject=' + subject + '&body=' + encodeURIComponent(body);
 }
 
 
