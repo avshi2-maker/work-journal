@@ -5886,6 +5886,7 @@ const SEVERITY = {
 // ── TIMER / TOKEN METER ─────────────────────────────────────────────
 var _safetyTimer     = null;
 var _safetyStartTime = null;
+var _safetyLastFindings = null;  // stored for WhatsApp export
 
 function safetyStartMeter(estimatedTokens) {
   _safetyStartTime = Date.now();
@@ -6271,14 +6272,17 @@ function safetyRenderReport(findings, metadata) {
   html += '</div>';
 
   // ── WhatsApp export button ─────────────────────────────────────────
-  html += '<button onclick="safetyExportWhatsApp(' + JSON.stringify(findings).replace(/</g,'&lt;').replace(/'/g,'\\\'') + ')" '
+  _safetyLastFindings = findings;  // store for WhatsApp export
+  html += '<button onclick="safetyExportWhatsApp()" '
     + 'style="background:rgba(37,211,102,0.15);border:1.5px solid rgba(37,211,102,0.4);color:#25d366;padding:10px 20px;border-radius:12px;cursor:pointer;font-family:Heebo,sans-serif;font-size:13px;font-weight:700;margin-top:8px;">💬 שלח דוח בטיחות ב-WhatsApp</button>';
 
   results.innerHTML = html;
 }
 
 // ── WHATSAPP EXPORT ───────────────────────────────────────────────────
-function safetyExportWhatsApp(findings) {
+function safetyExportWhatsApp() {
+  var findings = _safetyLastFindings;
+  if (!findings) { showToast('אין נתוני דוח', 'error'); return; }
   var projName = document.getElementById('safety-project-sel')?.selectedOptions[0]?.textContent || '';
   var now = new Date().toLocaleString('he-IL',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
   var msg = '🛡️ *דוח בטיחות — ' + now + '*\n';
