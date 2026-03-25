@@ -2008,28 +2008,33 @@ var _galleryProjectId   = null;
 var _galleryProjectName = '';
 var _galleryPhotos      = [];
 
-var ANNEX_LIST = [
-  {num:'01', title:'ציוד מגן אישי (PPE)'},
-  {num:'02', title:'עבודה בחללים מוקפים (Confined Space)'},
-  {num:'03', title:'עבודה בגובה (Work at Heights)'},
-  {num:'04', title:'עבודה בשעות חושך (Dark Hours)'},
-  {num:'05', title:'עבודות חפירה ותעלות (Excavations)'},
-  {num:'06', title:'מגבלות מזג אוויר (Weather Limitations)'},
-  {num:'07', title:'איסור עישון (Smoking Regulation)'},
-  {num:'08', title:'עבודה תחת מנוף (Working under a Crane)'},
-  {num:'09', title:'תכנון מקדים (Pre-task Planning)'},
-  {num:'10', title:'ציות לחוק ותקנות (Additional Regulation)'},
-  {num:'11', title:'ביטוח צד שלישי ועובדים (Insurance)'},
-  {num:'12', title:'הוראות נוספות חובה (Additional Mandatory)'},
-  {num:'13', title:'פסולת מסוכנת, קרטון ומיכלים ריקים'},
-  {num:'14', title:'שימוש בסמים ואלכוהול באתר'},
-  {num:'15', title:'שטחי Lay-Down ומחנה קבלן'},
-  {num:'16', title:'נסיעה בכלי רכב באתר הבנייה'},
-  {num:'17', title:'שימוש בלוחות חשמל וכלי עבודה חשמליים'},
-  {num:'18', title:'שימוש במלגזה, מניטו וטרקטור'},
-  {num:'19', title:'הסעדת עובדים ואזורי אכילה ומנוחה'},
-  {num:'20', title:'מדיניות אי-אלימות והטרדה באתר'},
-];
+// ANNEX_LIST loaded from Supabase safety_categories table
+// Falls back to inline until SQL is run
+var ANNEX_LIST = [];
+async function loadAnnexList() {
+  if (ANNEX_LIST.length > 0) return;
+  // Try loading from safety_categories first
+  await safetyLoadCategories();
+  if (SAFETY_CATEGORIES.length > 0) {
+    ANNEX_LIST = SAFETY_CATEGORIES.map(function(c, i) {
+      return { num: String(i+1).padStart(2,'0'), title: c.name };
+    });
+    return;
+  }
+  // Fallback hardcoded
+  ANNEX_LIST = [
+    {num:'01',title:'ציוד מגן אישי (PPE)'},{num:'02',title:'עבודה בחלל מוקף'},
+    {num:'03',title:'עבודה בגובה'},{num:'04',title:'עבודה בשעות חושך'},
+    {num:'05',title:'עבודות חפירה ותעלות'},{num:'06',title:'מגבלות מזג אוויר'},
+    {num:'07',title:'איסור עישון סמים ואלכוהול'},{num:'08',title:'עבודה תחת מנוף'},
+    {num:'09',title:'תכנון מקדים'},{num:'10',title:'ציות לחוק ותקנות'},
+    {num:'11',title:'ביטוח'},{num:'12',title:'עבודות חמות'},
+    {num:'13',title:'פסולת מסוכנת'},{num:'14',title:'הרמה ידנית'},
+    {num:'15',title:'אזורי אחסון'},{num:'16',title:'נסיעה באתר'},
+    {num:'17',title:'חשמל וכלי עבודה'},{num:'18',title:'מלגזה ומניטו'},
+    {num:'19',title:'תנאי סעד ורווחה'},{num:'20',title:'מדיניות אי-אלימות'},
+  ];
+}
 
 var _annexStorageBase = SB_URL + '/storage/v1/object/public/app-assets/annexes/';
 var ANNEX_CONFIRM_URL = 'https://avshi2-maker.github.io/site-pulse/annex-confirm.html';
@@ -5808,74 +5813,53 @@ var _safetyFrames        = [];   // array of base64 jpeg strings
 var _safetyIsVideo       = false;
 
 // ── Safety categories with icons, keywords & severity weights ─────────
-const SAFETY_CATEGORIES = [
-  {
-    id:      'ppe',
-    icon:    '🦺',
-    name:    'ציוד מגן אישי (PPE)',
-    en:      'Personal Protective Equipment',
-    items:   ['קסדה', 'אפוד בטיחות', 'כפפות', 'נעלי בטיחות', 'משקפי מגן', 'רתמה'],
-    prompt:  'Check for: hard hats on ALL workers, safety vests, gloves, safety boots, eye protection. Note any worker without proper PPE. Count workers visible and how many lack protection.'
-  },
-  {
-    id:      'heights',
-    icon:    '🪜',
-    name:    'עבודה בגובה',
-    en:      'Working at Heights',
-    items:   ['סולם', 'פיגום', 'מעקה', 'רתמה + עוגן', 'רשת מגן'],
-    prompt:  'Check for: work above 2 meters, ladder safety (angle, securing, top support), scaffold guardrails and toe boards, fall arrest harnesses in use, safety nets. Any unprotected edges or openings?'
-  },
-  {
-    id:      'hot_work',
-    icon:    '🔥',
-    name:    'עבודות חמות ומסוכנות',
-    en:      'Hot Work & Spark-Generating Tools',
-    items:   ['ריתוך', 'זוויתן', 'חיתוך', 'מפח', 'חומר בעירה בסביבה'],
-    prompt:  'Check for: welding, angle grinders, cutting tools creating sparks. Is there flammable material nearby? Fire extinguisher present? Workers wearing face shields? Hot work permit area marked?'
-  },
-  {
-    id:      'confined',
-    icon:    '⬛',
-    name:    'מרחב מוגבל',
-    en:      'Confined Space',
-    items:   ['מנהור', 'בור', 'מיכל', 'צינור', 'כניסה/יציאה מוגבלת'],
-    prompt:  'Check for: work inside tanks, pits, tunnels, trenches or any enclosed space. Is there a standby person outside? Ventilation equipment? Entry permit visible? Rescue equipment nearby?'
-  },
-  {
-    id:      'housekeeping',
-    icon:    '🗑️',
-    name:    'סדר וניקיון באתר',
-    en:      'Site Housekeeping',
-    items:   ['מכשולי נפילה', 'חומרים מפוזרים', 'מעברים חסומים', 'פסולת', 'כבלים חשופים'],
-    prompt:  'Check for: trip hazards (cables, debris, materials on walkways), blocked emergency exits, unsorted materials creating instability, standing water, cluttered work areas. Rate overall site tidiness.'
-  },
-  {
-    id:      'electrical',
-    icon:    '⚡',
-    name:    'חשמל וכבלים',
-    en:      'Electrical Hazards',
-    items:   ['חיוטים גלויים', 'לוח חשמל פתוח', 'חיבורים זמניים', 'כבלים על הקרקע'],
-    prompt:  'Check for: exposed wiring, open electrical panels, temporary connections not properly secured, cables lying in water or traffic areas, overloaded power strips, missing insulation.'
-  },
-  {
-    id:      'machinery',
-    icon:    '🏗️',
-    name:    'מכונות כבדות וציוד',
-    en:      'Heavy Machinery & Equipment',
-    items:   ['עגורן', 'מלגזה', 'מיכשור כבד', 'קרבה לעובדים', 'מרחב בטוח'],
-    prompt:  'Check for: cranes, forklifts, excavators operating near workers. Are workers maintaining safe distances? Spotters present? Swing radius marked? Overhead loads above workers?'
-  },
-  {
-    id:      'structural',
-    icon:    '🧱',
-    name:    'יציבות מבנית',
-    en:      'Structural Stability',
-    items:   ['קירות לא מבוססים', 'חפירה ללא תמיכה', 'קריסה אפשרית', 'מעמיס יתר'],
-    prompt:  'Check for: unsupported excavation walls, trench collapse risk, unstable structures or scaffolding, overloaded temporary structures, missing shoring. Any signs of imminent collapse risk?'
-  }
-];
+// SAFETY_CATEGORIES loaded from Supabase safety_categories table
+// Fallback to minimal set if table not yet created
+var SAFETY_CATEGORIES = [];
+var _safetyCatsLoaded = false;
 
-// Severity scoring
+async function safetyLoadCategories() {
+  if (_safetyCatsLoaded && SAFETY_CATEGORIES.length > 0) return;
+  try {
+    var res = await fetch(
+      SB_URL + '/rest/v1/safety_categories?is_active=eq.true&order=sort_order.asc',
+      { headers: { apikey: SB_KEY, Authorization: 'Bearer ' + SB_KEY } }
+    );
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    var rows = await res.json();
+    if (rows && rows.length > 0) {
+      SAFETY_CATEGORIES = rows.map(function(r) {
+        return {
+          id:     r.id,
+          icon:   r.icon,
+          name:   r.name_he,
+          en:     r.name_en,
+          items:  typeof r.items_he === 'string' ? JSON.parse(r.items_he) : (r.items_he || []),
+          prompt: r.prompt_en
+        };
+      });
+      _safetyCatsLoaded = true;
+      console.log('✅ Safety categories loaded from Supabase:', SAFETY_CATEGORIES.length);
+      return;
+    }
+  } catch(e) {
+    console.warn('Safety categories table not found — using fallback. Run SQL to create it.', e.message);
+  }
+  // ── Fallback (used until SQL is run) ──────────────────────────────
+  SAFETY_CATEGORIES = [
+    { id:'ppe',        icon:'🦺', name:'ציוד מגן אישי (PPE)',          en:'PPE',             items:['קסדה','אפוד','נעלי בטיחות'],    prompt:'Check all workers for hard hats, safety vests, gloves, safety boots, eye protection. Count workers missing PPE.' },
+    { id:'heights',    icon:'🪜', name:'עבודה בגובה',                  en:'Working at Heights', items:['סולם','פיגום','מעקה','רתמה'], prompt:'Check elevated work, ladder safety, scaffold guardrails, harnesses clipped to anchors, unguarded edges.' },
+    { id:'hot_work',   icon:'🔥', name:'עבודות חמות',                  en:'Hot Work',        items:['ריתוך','זוויתן','מפח'],          prompt:'Check for welding/grinding/cutting, fire extinguisher within 5m, flammable materials cleared, face shields in use.' },
+    { id:'confined',   icon:'⬛', name:'חלל מוקף',                     en:'Confined Space',  items:['בור','מיכל','מנהרה'],           prompt:'Check enclosed work areas for standby person, ventilation, entry permit, rescue equipment.' },
+    { id:'electrical', icon:'⚡', name:'חשמל',                          en:'Electrical',      items:['חיוטים גלויים','לוח פתוח'],     prompt:'Check for exposed wiring, open panels, damaged cables, makeshift connections.' },
+    { id:'excavation', icon:'⛏️', name:'חפירות',                       en:'Excavations',     items:['תמיכת דפנות','גידור','גישה'],   prompt:'Check trench/excavation wall support, perimeter fencing, safe access, spoil distance from edge.' },
+    { id:'machinery',  icon:'🏗️', name:'מכונות כבדות',                 en:'Heavy Machinery', items:['עגורן','מלגזה'],               prompt:'Check workers under crane loads, pedestrian separation from plant, operator seatbelts.' },
+    { id:'housekeeping',icon:'🗑️',name:'סדר וניקיון',                  en:'Housekeeping',    items:['מכשולי נפילה','מעברים'],        prompt:'Check trip hazards, blocked exits, unstable material stacks, standing water.' }
+  ];
+  _safetyCatsLoaded = true;
+}
+
+// ── Severity scoring ───────────────────────────────────────────────
 const SEVERITY = {
   CRITICAL: { level: 3, color: '#ef4444', bg: 'rgba(239,68,68,0.15)', label: '🔴 קריטי — פעולה מיידית', border: '#ef4444' },
   MODERATE: { level: 2, color: '#f59e0b', bg: 'rgba(245,158,11,0.12)', label: '🟡 בינוני — טיפול נדרש',  border: '#f59e0b' },
@@ -5932,7 +5916,9 @@ function safetyStopMeter(actualInputTokens, actualOutputTokens) {
 // ── INIT ──────────────────────────────────────────────────────────────
 function safetyTabInit() {
   safetyPopulateProjects();
-  safetyLoadHistory();
+  safetyLoadCategories().then(function() {
+    safetyLoadHistory();
+  });
 }
 
 function safetyPopulateProjects() {
@@ -6085,6 +6071,9 @@ function safetyExtractFrames(file, maxFrames) {
 
 // ── MAIN AI ANALYSIS ──────────────────────────────────────────────────
 async function safetyRunAnalysis() {
+  // Ensure categories are loaded from Supabase
+  await safetyLoadCategories();
+
   var progTxt = document.getElementById('safety-progress-text');
   var progBar = document.getElementById('safety-progress-bar');
   var results = document.getElementById('safety-results');
@@ -7339,7 +7328,8 @@ async function loadRecentInspections() {
   }
 }
 
-function renderAnnexWidget() {
+async function renderAnnexWidget() {
+  await loadAnnexList(); // ensure loaded from Supabase
   var container = document.getElementById('annexes-widget-inner');
   if (!container) return;
 
