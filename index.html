@@ -365,6 +365,8 @@ window.addEventListener('unhandledrejection', function(e) {
   <div class="tab-sep"></div>
   <div class="top-tab"        id="tab-eod"     onclick="switchTab('eod')">    <span>🧠</span><span>יומן שטח</span></div>
   <div class="tab-sep"></div>
+  <div class="top-tab"        id="tab-safety"  onclick="switchTab('safety')" style="color:#ef4444;"> <span>🛡️</span><span>ניתוח בטיחות</span></div>
+  <div class="tab-sep"></div>
   <div class="top-tab"        id="tab-gcal"    onclick="switchTab('gcal')">   <span>📅</span><span>יומן Google</span></div>
   <div class="tab-sep"></div>
   <div class="top-tab"        id="tab-journal" onclick="switchTab('journal')"><span>📋</span><span>יומן עבודה יומי</span></div>
@@ -1558,6 +1560,65 @@ window.addEventListener('unhandledrejection', function(e) {
 
 </div></div></div>
 
+<div class="app-panel" id="safety-panel"><div id="safety-content"><div style="padding:70px 24px 60px;min-height:100vh;background:#1a1a2e;font-family:Heebo,sans-serif;direction:rtl;">
+
+  <!-- Header -->
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;flex-wrap:wrap;gap:12px;">
+    <div>
+      <div style="font-size:10px;letter-spacing:3px;color:#ef4444;text-transform:uppercase;margin-bottom:4px;">Safety Intelligence</div>
+      <h1 style="font-size:26px;font-weight:900;color:#fff;">🛡️ ניתוח בטיחות AI</h1>
+      <div style="font-size:12px;color:#555;margin-top:4px;">ניתוח תמונות וסרטונים — זיהוי סיכונים באתר בנייה</div>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center;">
+      <select id="safety-project-sel" style="background:#1a1a2e;border:1px solid rgba(255,255,255,0.15);color:#ccc;padding:8px 12px;border-radius:20px;font-family:Heebo,sans-serif;font-size:12px;direction:rtl;">
+        <option value="">📁 כל הפרויקטים</option>
+      </select>
+    </div>
+  </div>
+
+  <!-- Upload zone -->
+  <div style="background:#1e1e35;border:2px dashed rgba(239,68,68,0.4);border-radius:16px;padding:24px;margin-bottom:24px;text-align:center;">
+    <div style="font-size:40px;margin-bottom:10px;">📸</div>
+    <div style="font-size:15px;font-weight:800;color:#fff;margin-bottom:6px;">העלה תמונה או סרטון לניתוח בטיחות</div>
+    <div style="font-size:12px;color:#555;margin-bottom:18px;">מהגלריה, מהמצלמה, או מ-Google Drive. סרטונים — נדגם עד 8 פריימים.</div>
+    <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;">
+      <label style="display:inline-flex;align-items:center;gap:8px;background:rgba(239,68,68,0.2);border:1.5px solid rgba(239,68,68,0.5);color:#fca5a5;padding:10px 20px;border-radius:12px;cursor:pointer;font-size:13px;font-weight:700;font-family:Heebo,sans-serif;">
+        📁 בחר קובץ
+        <input type="file" id="safety-file-input" accept="image/*,video/*" style="display:none;" onchange="safetyHandleFile(this)">
+      </label>
+      <label style="display:inline-flex;align-items:center;gap:8px;background:rgba(59,130,246,0.15);border:1.5px solid rgba(59,130,246,0.4);color:#93c5fd;padding:10px 20px;border-radius:12px;cursor:pointer;font-size:13px;font-weight:700;font-family:Heebo,sans-serif;">
+        📸 צלם עכשיו
+        <input type="file" id="safety-camera-input" accept="image/*" capture="environment" style="display:none;" onchange="safetyHandleFile(this)">
+      </label>
+    </div>
+  </div>
+
+  <!-- Progress / status -->
+  <div id="safety-progress" style="display:none;background:#242438;border-radius:14px;padding:20px;margin-bottom:20px;">
+    <div id="safety-progress-text" style="font-size:13px;color:#c4b5fd;margin-bottom:10px;text-align:center;">מכין ניתוח...</div>
+    <div style="background:rgba(139,92,246,0.15);border-radius:20px;height:8px;overflow:hidden;">
+      <div id="safety-progress-bar" style="height:100%;background:linear-gradient(90deg,#7c3aed,#ef4444);border-radius:20px;width:0%;transition:width 0.4s;"></div>
+    </div>
+    <div id="safety-frames-preview" style="display:flex;gap:6px;flex-wrap:wrap;margin-top:14px;justify-content:center;"></div>
+  </div>
+
+  <!-- Results area -->
+  <div id="safety-results"></div>
+
+  <!-- History -->
+  <div id="safety-history-wrap" style="margin-top:32px;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+      <div style="font-size:12px;font-weight:800;color:#666;text-transform:uppercase;letter-spacing:.5px;">ניתוחים קודמים</div>
+      <button onclick="safetyLoadHistory()" style="background:none;border:1px solid rgba(255,255,255,0.1);color:#555;padding:5px 12px;border-radius:8px;cursor:pointer;font-family:Heebo,sans-serif;font-size:11px;">🔄 רענן</button>
+    </div>
+    <div id="safety-history-list">
+      <div style="text-align:center;padding:20px;color:#444;font-size:13px;">טוען היסטוריה...</div>
+    </div>
+  </div>
+
+</div></div></div>
+
+
 <div class="app-panel" id="gcal-panel"><div id="gcal-content"><div style="padding:54px 0 0;min-height:100vh;background:#1a1a2e;font-family:Heebo,sans-serif;direction:rtl;display:flex;flex-direction:column">
 
   <div style="padding:16px 24px 0;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
@@ -2084,7 +2145,7 @@ async function switchTab(tab) {
     if (ov) ov.style.display = 'none';
   }
 
-  ['crm','notes','eod','gcal','journal'].forEach(t => {
+  ['crm','notes','eod','safety','gcal','journal'].forEach(t => {
     document.getElementById(`${t}-panel`)?.classList.toggle('active', t===tab);
     document.getElementById(`tab-${t}`)?.classList.toggle('active', t===tab);
   });
@@ -2097,6 +2158,7 @@ async function switchTab(tab) {
   // Panel-specific post-init
   if (tab === 'notes')   { setTimeout(function(){ sjPopulateProjectFilter(); loadNotesWall(); }, 100); }
   if (tab === 'eod')     { setTimeout(loadEODReport, 100); }
+  if (tab === 'safety')  { setTimeout(safetyTabInit, 100); }
   if (tab === 'gcal')    { if (typeof initGcal    === 'function') initGcal();  }
   if (tab === 'journal') { if (typeof initJournalOnce === 'function') initJournalOnce(); }
 }
@@ -5711,6 +5773,527 @@ async function fiLinkProject(memoId, projectId) {
   } catch(e) {
     showToast('שגיאה: ' + e.message, 'error');
   }
+}
+
+
+// ══════════════════════════════════════════════════════════════════════
+// SAFETY INTELLIGENCE ENGINE
+// ══════════════════════════════════════════════════════════════════════
+
+var _safetyCurrentFile   = null;
+var _safetyFrames        = [];   // array of base64 jpeg strings
+var _safetyIsVideo       = false;
+
+// ── Safety categories with icons, keywords & severity weights ─────────
+const SAFETY_CATEGORIES = [
+  {
+    id:      'ppe',
+    icon:    '🦺',
+    name:    'ציוד מגן אישי (PPE)',
+    en:      'Personal Protective Equipment',
+    items:   ['קסדה', 'אפוד בטיחות', 'כפפות', 'נעלי בטיחות', 'משקפי מגן', 'רתמה'],
+    prompt:  'Check for: hard hats on ALL workers, safety vests, gloves, safety boots, eye protection. Note any worker without proper PPE. Count workers visible and how many lack protection.'
+  },
+  {
+    id:      'heights',
+    icon:    '🪜',
+    name:    'עבודה בגובה',
+    en:      'Working at Heights',
+    items:   ['סולם', 'פיגום', 'מעקה', 'רתמה + עוגן', 'רשת מגן'],
+    prompt:  'Check for: work above 2 meters, ladder safety (angle, securing, top support), scaffold guardrails and toe boards, fall arrest harnesses in use, safety nets. Any unprotected edges or openings?'
+  },
+  {
+    id:      'hot_work',
+    icon:    '🔥',
+    name:    'עבודות חמות ומסוכנות',
+    en:      'Hot Work & Spark-Generating Tools',
+    items:   ['ריתוך', 'זוויתן', 'חיתוך', 'מפח', 'חומר בעירה בסביבה'],
+    prompt:  'Check for: welding, angle grinders, cutting tools creating sparks. Is there flammable material nearby? Fire extinguisher present? Workers wearing face shields? Hot work permit area marked?'
+  },
+  {
+    id:      'confined',
+    icon:    '⬛',
+    name:    'מרחב מוגבל',
+    en:      'Confined Space',
+    items:   ['מנהור', 'בור', 'מיכל', 'צינור', 'כניסה/יציאה מוגבלת'],
+    prompt:  'Check for: work inside tanks, pits, tunnels, trenches or any enclosed space. Is there a standby person outside? Ventilation equipment? Entry permit visible? Rescue equipment nearby?'
+  },
+  {
+    id:      'housekeeping',
+    icon:    '🗑️',
+    name:    'סדר וניקיון באתר',
+    en:      'Site Housekeeping',
+    items:   ['מכשולי נפילה', 'חומרים מפוזרים', 'מעברים חסומים', 'פסולת', 'כבלים חשופים'],
+    prompt:  'Check for: trip hazards (cables, debris, materials on walkways), blocked emergency exits, unsorted materials creating instability, standing water, cluttered work areas. Rate overall site tidiness.'
+  },
+  {
+    id:      'electrical',
+    icon:    '⚡',
+    name:    'חשמל וכבלים',
+    en:      'Electrical Hazards',
+    items:   ['חיוטים גלויים', 'לוח חשמל פתוח', 'חיבורים זמניים', 'כבלים על הקרקע'],
+    prompt:  'Check for: exposed wiring, open electrical panels, temporary connections not properly secured, cables lying in water or traffic areas, overloaded power strips, missing insulation.'
+  },
+  {
+    id:      'machinery',
+    icon:    '🏗️',
+    name:    'מכונות כבדות וציוד',
+    en:      'Heavy Machinery & Equipment',
+    items:   ['עגורן', 'מלגזה', 'מיכשור כבד', 'קרבה לעובדים', 'מרחב בטוח'],
+    prompt:  'Check for: cranes, forklifts, excavators operating near workers. Are workers maintaining safe distances? Spotters present? Swing radius marked? Overhead loads above workers?'
+  },
+  {
+    id:      'structural',
+    icon:    '🧱',
+    name:    'יציבות מבנית',
+    en:      'Structural Stability',
+    items:   ['קירות לא מבוססים', 'חפירה ללא תמיכה', 'קריסה אפשרית', 'מעמיס יתר'],
+    prompt:  'Check for: unsupported excavation walls, trench collapse risk, unstable structures or scaffolding, overloaded temporary structures, missing shoring. Any signs of imminent collapse risk?'
+  }
+];
+
+// Severity scoring
+const SEVERITY = {
+  CRITICAL: { level: 3, color: '#ef4444', bg: 'rgba(239,68,68,0.15)', label: '🔴 קריטי — פעולה מיידית', border: '#ef4444' },
+  MODERATE: { level: 2, color: '#f59e0b', bg: 'rgba(245,158,11,0.12)', label: '🟡 בינוני — טיפול נדרש',  border: '#f59e0b' },
+  MINOR:    { level: 1, color: '#3b82f6', bg: 'rgba(59,130,246,0.1)',  label: '🔵 קל — לתשומת לב',     border: '#3b82f6' },
+  OK:       { level: 0, color: '#22c55e', bg: 'rgba(34,197,94,0.08)',  label: '✅ תקין',                 border: '#22c55e' }
+};
+
+// ── INIT ──────────────────────────────────────────────────────────────
+function safetyTabInit() {
+  safetyPopulateProjects();
+  safetyLoadHistory();
+}
+
+function safetyPopulateProjects() {
+  var sel = document.getElementById('safety-project-sel');
+  if (!sel || !window.allProjects) return;
+  var cur = sel.value;
+  sel.innerHTML = '<option value="">📁 כל הפרויקטים</option>';
+  (window.allProjects||[]).forEach(function(p){
+    var o = document.createElement('option');
+    o.value = p.id; o.textContent = p.project_name;
+    sel.appendChild(o);
+  });
+  if (cur) sel.value = cur;
+}
+
+// ── FILE HANDLER ───────────────────────────────────────────────────────
+async function safetyHandleFile(input) {
+  var file = input.files && input.files[0];
+  if (!file) return;
+  input.value = '';
+
+  _safetyCurrentFile = file;
+  _safetyIsVideo     = file.type.startsWith('video/');
+  _safetyFrames      = [];
+
+  var prog    = document.getElementById('safety-progress');
+  var progTxt = document.getElementById('safety-progress-text');
+  var progBar = document.getElementById('safety-progress-bar');
+  var preview = document.getElementById('safety-frames-preview');
+
+  prog.style.display    = 'block';
+  preview.innerHTML     = '';
+  progBar.style.width   = '0%';
+
+  try {
+    if (_safetyIsVideo) {
+      // ── Extract up to 8 frames from video ─────────────────────
+      progTxt.textContent = '🎞️ מחלץ פריימים מהסרטון...';
+      progBar.style.width = '20%';
+      _safetyFrames = await safetyExtractFrames(file, 8);
+      progBar.style.width = '40%';
+
+      // Show frame thumbnails
+      _safetyFrames.forEach(function(b64, i) {
+        var img = document.createElement('img');
+        img.src = 'data:image/jpeg;base64,' + b64;
+        img.style.cssText = 'width:80px;height:55px;object-fit:cover;border-radius:6px;border:1px solid rgba(255,255,255,0.15);';
+        img.title = 'פריים ' + (i+1);
+        preview.appendChild(img);
+      });
+
+      progTxt.textContent = '✅ ' + _safetyFrames.length + ' פריימים — שולח ל-AI לניתוח בטיחות...';
+    } else {
+      // ── Single image ───────────────────────────────────────────
+      progTxt.textContent = '📸 מכין תמונה לניתוח...';
+      progBar.style.width = '30%';
+
+      var b64 = await new Promise(function(resolve, reject){
+        var reader = new FileReader();
+        reader.onload  = function(e){ resolve(e.target.result.split(',')[1]); };
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+      _safetyFrames = [b64];
+
+      var img = document.createElement('img');
+      img.src = 'data:image/jpeg;base64,' + b64;
+      img.style.cssText = 'width:120px;height:80px;object-fit:cover;border-radius:8px;border:2px solid rgba(239,68,68,0.4);';
+      preview.appendChild(img);
+
+      progTxt.textContent = '🧠 שולח לניתוח AI...';
+    }
+
+    progBar.style.width = '55%';
+    await safetyRunAnalysis();
+
+  } catch(e) {
+    progTxt.textContent = '❌ שגיאה: ' + e.message;
+    progBar.style.background = '#ef4444';
+    progBar.style.width = '100%';
+  }
+}
+
+// ── FRAME EXTRACTION ──────────────────────────────────────────────────
+function safetyExtractFrames(file, maxFrames) {
+  return new Promise(function(resolve) {
+    var url    = URL.createObjectURL(file);
+    var video  = document.createElement('video');
+    video.muted = true; video.playsInline = true; video.src = url;
+    var frames = [];
+
+    video.addEventListener('loadedmetadata', function() {
+      var duration = video.duration;
+      var count    = Math.min(maxFrames, Math.max(1, Math.floor(duration / 3)));
+      // Spread frames across video: skip first 0.5s and last 1s
+      var times = [];
+      for (var i = 0; i < count; i++) {
+        times.push(0.5 + (i / (count - 1 || 1)) * (duration - 1.5));
+      }
+
+      var idx = 0;
+      function seekNext() {
+        if (idx >= times.length) {
+          URL.revokeObjectURL(url);
+          video.remove();
+          resolve(frames);
+          return;
+        }
+        video.currentTime = times[idx];
+      }
+
+      video.addEventListener('seeked', function() {
+        try {
+          var canvas = document.createElement('canvas');
+          // Resize to max 640px wide for API efficiency
+          var ratio  = Math.min(640 / (video.videoWidth||640), 1);
+          canvas.width  = Math.round((video.videoWidth||640) * ratio);
+          canvas.height = Math.round((video.videoHeight||360) * ratio);
+          canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
+          frames.push(canvas.toDataURL('image/jpeg', 0.78).split(',')[1]);
+        } catch(e) {}
+        idx++;
+        seekNext();
+      });
+
+      document.body.appendChild(video);
+      video.load();
+      // Small delay to ensure loadedmetadata fired fully
+      setTimeout(seekNext, 100);
+    });
+
+    video.addEventListener('error', function(){ URL.revokeObjectURL(url); resolve(frames); });
+    video.load();
+  });
+}
+
+// ── MAIN AI ANALYSIS ──────────────────────────────────────────────────
+async function safetyRunAnalysis() {
+  var progTxt = document.getElementById('safety-progress-text');
+  var progBar = document.getElementById('safety-progress-bar');
+  var results = document.getElementById('safety-results');
+  var apiKey  = (APP.config && APP.config.anthropic_key) || null;
+
+  if (!apiKey) {
+    showToast('הגדר מפתח Anthropic API תחילה', 'error');
+    document.getElementById('safety-progress').style.display = 'none';
+    return;
+  }
+
+  var findings = {};
+  var totalCategories = SAFETY_CATEGORIES.length;
+
+  // Build image content blocks — one per frame (max 8)
+  var imageBlocks = _safetyFrames.map(function(b64) {
+    return { type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: b64 } };
+  });
+
+  // ── Single API call with ALL frames + comprehensive safety prompt ───
+  var safetyPrompt = 'You are an expert construction site safety inspector with 20+ years experience in Israeli building sites.\n\n'
+    + 'Analyze ' + (_safetyIsVideo ? 'these ' + _safetyFrames.length + ' frames from a site video' : 'this site photo')
+    + ' for the following safety categories.\n\n'
+    + 'For EACH category return a JSON object. Respond ONLY with a valid JSON object, no markdown.\n\n'
+    + 'Required JSON structure:\n'
+    + '{\n'
+    + SAFETY_CATEGORIES.map(function(cat) {
+        return '  "' + cat.id + '": {\n'
+          + '    "severity": "OK|MINOR|MODERATE|CRITICAL",\n'
+          + '    "found": ["specific finding 1 in Hebrew", "finding 2"],\n'
+          + '    "action": "required action in Hebrew or null if OK",\n'
+          + '    "frame_ref": "which frame number shows main issue, or null"\n'
+          + '  }';
+      }).join(',\n')
+    + '\n}\n\n'
+    + 'Category analysis instructions:\n'
+    + SAFETY_CATEGORIES.map(function(cat, i){
+        return (i+1) + '. ' + cat.en + ' (id: "' + cat.id + '"): ' + cat.prompt;
+      }).join('\n')
+    + '\n\nSeverity rules:\n'
+    + '- CRITICAL: Immediate danger to life, work must stop\n'
+    + '- MODERATE: Significant risk, fix within hours\n'
+    + '- MINOR: Low risk, fix within the day\n'
+    + '- OK: No issues found\n'
+    + '\nIf a category is not visible in the images, mark as OK with found: []\n'
+    + 'BE SPECIFIC about frame numbers when relevant. Return ONLY valid JSON.';
+
+  var messages = [{ role: 'user', content: [...imageBlocks, { type: 'text', text: safetyPrompt }] }];
+
+  progTxt.textContent = '🧠 Claude מנתח ' + _safetyFrames.length + ' פריימים ב-8 קטגוריות בטיחות...';
+  progBar.style.width = '70%';
+
+  try {
+    var res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type':'application/json','x-api-key':apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true' },
+      body: JSON.stringify({ model:'claude-sonnet-4-20250514', max_tokens:2000, messages })
+    });
+
+    var data = await res.json();
+    if (!res.ok) throw new Error(data.error?.message || 'API error ' + res.status);
+
+    var raw = data.content && data.content[0] && data.content[0].text;
+    raw = raw.replace(/```json|```/g,'').trim();
+
+    try { findings = JSON.parse(raw); }
+    catch(e) { throw new Error('תגובת AI לא תקינה — נסה שוב'); }
+
+    progBar.style.width = '90%';
+    progTxt.textContent = '✅ ניתוח הושלם — מכין דוח...';
+
+    await new Promise(function(r){ setTimeout(r,300); });
+
+    // ── Render the report ──────────────────────────────────────────
+    safetyRenderReport(findings);
+
+    // ── Save to Supabase ───────────────────────────────────────────
+    var projId   = document.getElementById('safety-project-sel')?.value || null;
+    var projName = projId ? ((window.allProjects||[]).find(function(p){return p.id===projId;})||{}).project_name : null;
+    await safetySaveReport(findings, projId, projName);
+
+    progBar.style.width = '100%';
+    setTimeout(function(){ document.getElementById('safety-progress').style.display='none'; }, 1500);
+    safetyLoadHistory();
+
+  } catch(e) {
+    progTxt.textContent = '❌ ' + e.message;
+    progBar.style.background = '#ef4444';
+    progBar.style.width = '100%';
+    showToast('שגיאה בניתוח: ' + e.message, 'error');
+  }
+}
+
+// ── REPORT RENDERER ───────────────────────────────────────────────────
+function safetyRenderReport(findings, metadata) {
+  var results = document.getElementById('safety-results');
+  if (!results) return;
+
+  var now     = metadata ? new Date(metadata.created_at) : new Date();
+  var dateStr = now.toLocaleString('he-IL',{day:'2-digit',month:'2-digit',year:'2-digit',hour:'2-digit',minute:'2-digit'});
+  var projName = metadata ? (metadata.project_name||'') : (document.getElementById('safety-project-sel')?.selectedOptions[0]?.textContent||'');
+
+  // Score each category
+  var scored = SAFETY_CATEGORIES.map(function(cat) {
+    var f   = findings[cat.id] || { severity:'OK', found:[], action:null };
+    var sev = SEVERITY[f.severity] || SEVERITY.OK;
+    return { cat, f, sev };
+  }).sort(function(a,b){ return b.sev.level - a.sev.level; });
+
+  // Overall score
+  var maxSev  = scored[0].sev;
+  var critCount = scored.filter(function(s){ return s.sev.level === 3; }).length;
+  var modCount  = scored.filter(function(s){ return s.sev.level === 2; }).length;
+  var okCount   = scored.filter(function(s){ return s.sev.level === 0; }).length;
+
+  var overallColor = maxSev.level >= 3 ? '#ef4444' : maxSev.level >= 2 ? '#f59e0b' : maxSev.level >= 1 ? '#3b82f6' : '#22c55e';
+  var overallLabel = maxSev.level >= 3 ? '🔴 אתר — סיכון גבוה' : maxSev.level >= 2 ? '🟡 אתר — דורש טיפול' : maxSev.level >= 1 ? '🔵 אתר — תקין ברובו' : '✅ אתר — תקין לחלוטין';
+
+  var html = '';
+
+  // ── Summary banner ────────────────────────────────────────────────
+  html += '<div style="background:linear-gradient(135deg,' + overallColor + '25,' + overallColor + '10);border:2px solid ' + overallColor + ';border-radius:16px;padding:18px 22px;margin-bottom:20px;">'
+    + '<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">'
+    + '<div>'
+    + '<div style="font-size:18px;font-weight:900;color:' + overallColor + ';">' + overallLabel + '</div>'
+    + '<div style="font-size:12px;color:#888;margin-top:4px;">' + dateStr + (projName ? ' · 📁 ' + projName.replace(/[📁 ]/g,'').trim() : '') + ' · ' + (_safetyIsVideo ? _safetyFrames.length + ' פריימים מסרטון' : 'תמונה') + '</div>'
+    + '</div>'
+    + '<div style="display:flex;gap:12px;text-align:center;">'
+    + (critCount ? '<div><div style="font-size:24px;font-weight:900;color:#ef4444;">' + critCount + '</div><div style="font-size:10px;color:#888;">קריטי</div></div>' : '')
+    + (modCount  ? '<div><div style="font-size:24px;font-weight:900;color:#f59e0b;">' + modCount  + '</div><div style="font-size:10px;color:#888;">בינוני</div></div>' : '')
+    + '<div><div style="font-size:24px;font-weight:900;color:#22c55e;">' + okCount + '</div><div style="font-size:10px;color:#888;">תקין</div></div>'
+    + '</div>'
+    + '</div>'
+    + '</div>';
+
+  // ── Category cards — critical/moderate first ──────────────────────
+  html += '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:14px;margin-bottom:20px;">';
+
+  scored.forEach(function(s) {
+    if (s.sev.level === 0 && s.f.found && s.f.found.length === 0) {
+      // Compact OK card
+      html += '<div style="background:' + s.sev.bg + ';border:1px solid ' + s.sev.border + '40;border-radius:12px;padding:12px 16px;display:flex;align-items:center;gap:10px;">'
+        + '<span style="font-size:22px;">' + s.cat.icon + '</span>'
+        + '<div style="flex:1;">'
+        + '<div style="font-size:13px;font-weight:700;color:#fff;">' + s.cat.name + '</div>'
+        + '<div style="font-size:11px;color:#22c55e;margin-top:2px;">✅ תקין — לא נמצאו בעיות</div>'
+        + '</div></div>';
+      return;
+    }
+
+    // Full card for issues
+    html += '<div style="background:' + s.sev.bg + ';border:2px solid ' + s.sev.border + ';border-radius:14px;padding:16px;">'
+      + '<div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">'
+      + '<span style="font-size:26px;">' + s.cat.icon + '</span>'
+      + '<div style="flex:1;">'
+      + '<div style="font-size:14px;font-weight:900;color:#fff;">' + s.cat.name + '</div>'
+      + '<div style="font-size:11px;margin-top:2px;font-weight:700;color:' + s.sev.color + ';">' + s.sev.label + '</div>'
+      + '</div></div>';
+
+    // Findings list
+    if (s.f.found && s.f.found.length) {
+      html += '<div style="margin-bottom:10px;">';
+      s.f.found.forEach(function(finding){
+        html += '<div style="font-size:12px;color:#ccc;padding:4px 0;border-bottom:1px solid rgba(255,255,255,0.05);">▸ ' + (finding||'').replace(/</g,'&lt;') + '</div>';
+      });
+      html += '</div>';
+    }
+
+    // Required action
+    if (s.f.action) {
+      html += '<div style="background:rgba(0,0,0,0.3);border-radius:8px;padding:8px 12px;font-size:12px;color:' + s.sev.color + ';font-weight:700;">'
+        + '⚡ פעולה נדרשת: ' + s.f.action.replace(/</g,'&lt;') + '</div>';
+    }
+
+    // Frame reference
+    if (s.f.frame_ref && _safetyIsVideo) {
+      html += '<div style="font-size:10px;color:#555;margin-top:6px;">📹 פריים ' + s.f.frame_ref + '</div>';
+    }
+
+    html += '</div>';
+  });
+
+  html += '</div>';
+
+  // ── WhatsApp export button ─────────────────────────────────────────
+  html += '<button onclick="safetyExportWhatsApp(' + JSON.stringify(findings).replace(/</g,'&lt;').replace(/'/g,'\\\'') + ')" '
+    + 'style="background:rgba(37,211,102,0.15);border:1.5px solid rgba(37,211,102,0.4);color:#25d366;padding:10px 20px;border-radius:12px;cursor:pointer;font-family:Heebo,sans-serif;font-size:13px;font-weight:700;margin-top:8px;">💬 שלח דוח בטיחות ב-WhatsApp</button>';
+
+  results.innerHTML = html;
+}
+
+// ── WHATSAPP EXPORT ───────────────────────────────────────────────────
+function safetyExportWhatsApp(findings) {
+  var projName = document.getElementById('safety-project-sel')?.selectedOptions[0]?.textContent || '';
+  var now = new Date().toLocaleString('he-IL',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
+  var msg = '🛡️ *דוח בטיחות — ' + now + '*\n';
+  if (projName && projName !== '📁 כל הפרויקטים') msg += '📁 ' + projName.replace('📁 ','').trim() + '\n';
+  msg += '━━━━━━━━━━━━━━━━━━━━\n\n';
+
+  SAFETY_CATEGORIES.forEach(function(cat) {
+    var f   = findings[cat.id] || { severity:'OK', found:[], action:null };
+    var sev = f.severity;
+    if (sev === 'OK') return;
+    var emoji = sev === 'CRITICAL' ? '🔴' : sev === 'MODERATE' ? '🟡' : '🔵';
+    msg += emoji + ' *' + cat.name + '*\n';
+    (f.found||[]).forEach(function(item){ msg += '  ▸ ' + item + '\n'; });
+    if (f.action) msg += '  ⚡ ' + f.action + '\n';
+    msg += '\n';
+  });
+
+  var crits = SAFETY_CATEGORIES.filter(function(c){ return (findings[c.id]||{}).severity==='CRITICAL'; }).length;
+  var mods  = SAFETY_CATEGORIES.filter(function(c){ return (findings[c.id]||{}).severity==='MODERATE'; }).length;
+  msg += '━━━━━━━━━━━━━━━━━━━━\n';
+  msg += (crits ? '🔴 קריטי: ' + crits + '  ' : '') + (mods ? '🟡 בינוני: ' + mods : '');
+
+  window.open('https://wa.me/?text=' + encodeURIComponent(msg), '_blank');
+}
+
+// ── SAVE TO SUPABASE ──────────────────────────────────────────────────
+async function safetySaveReport(findings, projId, projName) {
+  try {
+    var maxSev = 'OK';
+    SAFETY_CATEGORIES.forEach(function(cat){
+      var s = (findings[cat.id]||{}).severity||'OK';
+      if (s === 'CRITICAL') maxSev = 'CRITICAL';
+      else if (s === 'MODERATE' && maxSev !== 'CRITICAL') maxSev = 'MODERATE';
+      else if (s === 'MINOR' && maxSev === 'OK') maxSev = 'MINOR';
+    });
+
+    await fetch(SB_URL + '/rest/v1/safety_analyses', {
+      method: 'POST',
+      headers: { apikey:SB_KEY, Authorization:'Bearer '+SB_KEY, 'Content-Type':'application/json', Prefer:'return=minimal' },
+      body: JSON.stringify({
+        project_id:   projId || null,
+        project_name: projName || null,
+        findings:     findings,
+        max_severity: maxSev,
+        frame_count:  _safetyFrames.length,
+        is_video:     _safetyIsVideo,
+        created_at:   new Date().toISOString()
+      })
+    });
+  } catch(e) { console.error('Safety save:', e); }
+}
+
+// ── HISTORY LOADER ────────────────────────────────────────────────────
+async function safetyLoadHistory() {
+  var list = document.getElementById('safety-history-list');
+  if (!list) return;
+  list.innerHTML = '<div style="text-align:center;padding:12px;color:#555;font-size:12px;">טוען...</div>';
+
+  try {
+    var res   = await sbQ('safety_analyses', 'select=id,project_name,max_severity,frame_count,is_video,created_at,findings&order=created_at.desc&limit=20');
+    var items = res.data || [];
+
+    if (!items.length) {
+      list.innerHTML = '<div style="text-align:center;padding:20px;color:#444;font-size:13px;">אין ניתוחים עדיין — העלה תמונה או סרטון כדי להתחיל</div>';
+      return;
+    }
+
+    var SEV_EMOJI = { CRITICAL:'🔴', MODERATE:'🟡', MINOR:'🔵', OK:'✅' };
+    var SEV_COLOR = { CRITICAL:'#ef4444', MODERATE:'#f59e0b', MINOR:'#3b82f6', OK:'#22c55e' };
+
+    list.innerHTML = items.map(function(item) {
+      var date = new Date(item.created_at).toLocaleString('he-IL',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
+      var sev  = item.max_severity || 'OK';
+      var findings = typeof item.findings === 'string' ? JSON.parse(item.findings) : item.findings;
+      var issues = SAFETY_CATEGORIES.filter(function(c){ return findings && (findings[c.id]||{}).severity !== 'OK'; });
+
+      return '<div style="background:#242438;border:1px solid rgba(255,255,255,0.06);border-right:4px solid ' + (SEV_COLOR[sev]||'#22c55e') + ';border-radius:12px;padding:12px 16px;margin-bottom:8px;cursor:pointer;" onclick="safetyShowHistoryItem(' + item.id + ')">'
+        + '<div style="display:flex;align-items:center;gap:10px;">'
+        + '<span style="font-size:20px;">' + (SEV_EMOJI[sev]||'✅') + '</span>'
+        + '<div style="flex:1;">'
+        + '<div style="font-size:13px;font-weight:700;color:#fff;">' + (item.project_name||'ללא פרויקט') + '</div>'
+        + '<div style="font-size:11px;color:#555;">' + date + ' · ' + (item.is_video ? item.frame_count + ' פריימים' : 'תמונה') + '</div>'
+        + (issues.length ? '<div style="font-size:11px;color:#888;margin-top:4px;">' + issues.map(function(c){return c.icon + ' ' + c.name.split(' ')[0];}).join(' · ') + '</div>' : '<div style="font-size:11px;color:#22c55e;margin-top:4px;">✅ לא נמצאו בעיות</div>')
+        + '</div></div></div>';
+    }).join('');
+  } catch(e) {
+    list.innerHTML = '<div style="color:#ef4444;padding:12px;font-size:12px;">שגיאה: ' + e.message + '</div>';
+  }
+}
+
+async function safetyShowHistoryItem(id) {
+  var res = await sbQ('safety_analyses', 'select=*&id=eq.' + id);
+  var item = res.data && res.data[0];
+  if (!item) return;
+  var findings = typeof item.findings === 'string' ? JSON.parse(item.findings) : item.findings;
+  _safetyFrames = new Array(item.frame_count||1).fill('');
+  _safetyIsVideo = item.is_video;
+  safetyRenderReport(findings, item);
+  window.scrollTo(0, document.getElementById('safety-results').offsetTop - 80);
 }
 
 
