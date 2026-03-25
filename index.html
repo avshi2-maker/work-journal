@@ -1716,6 +1716,51 @@ window.addEventListener('unhandledrejection', function(e) {
 
 
 
+<!-- ══ CAP MODAL — Correction Action Plan ══════════════════════════ -->
+<div id="cap-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:9000;overflow-y:auto;padding:20px;">
+  <div style="max-width:900px;margin:0 auto;background:#1a1a2e;border-radius:20px;border:1.5px solid rgba(139,92,246,0.4);overflow:hidden;">
+
+    <!-- Modal header -->
+    <div style="background:linear-gradient(135deg,#1e1035,#1a2a3a);padding:20px 24px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid rgba(255,255,255,0.08);">
+      <div>
+        <div style="font-size:10px;letter-spacing:3px;color:#7c3aed;text-transform:uppercase;margin-bottom:4px;">Correction Action Plan</div>
+        <div style="font-size:20px;font-weight:900;color:#fff;">🔧 תוכנית פעולה לתיקון ליקויים</div>
+        <div id="cap-project-label" style="font-size:12px;color:#666;margin-top:4px;"></div>
+      </div>
+      <button onclick="capCloseModal()" style="background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.15);color:#888;width:36px;height:36px;border-radius:8px;cursor:pointer;font-size:18px;line-height:1;">✕</button>
+    </div>
+
+    <!-- Generate instructions button -->
+    <div style="padding:16px 24px;background:#242438;border-bottom:1px solid rgba(255,255,255,0.06);">
+      <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+        <button onclick="capGenerateAll()" id="cap-generate-btn"
+          style="background:linear-gradient(135deg,#7c3aed,#5b21b6);border:none;color:#fff;padding:10px 24px;border-radius:10px;cursor:pointer;font-family:Heebo,sans-serif;font-size:13px;font-weight:800;">
+          🧠 צור הוראות תיקון AI לכל הליקויים
+        </button>
+        <div id="cap-generate-status" style="font-size:12px;color:#888;"></div>
+        <div style="margin-right:auto;display:flex;gap:8px;">
+          <button onclick="capDispatchAll()" style="background:rgba(37,211,102,0.15);border:1.5px solid rgba(37,211,102,0.4);color:#25d366;padding:10px 18px;border-radius:10px;cursor:pointer;font-family:Heebo,sans-serif;font-size:12px;font-weight:700;">
+            💬 שלח לכל הקבלנים
+          </button>
+          <button onclick="capSavePlan()" style="background:rgba(139,92,246,0.15);border:1.5px solid rgba(139,92,246,0.4);color:#c4b5fd;padding:10px 18px;border-radius:10px;cursor:pointer;font-family:Heebo,sans-serif;font-size:12px;font-weight:700;">
+            💾 שמור תוכנית
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- CAP items list -->
+    <div id="cap-items-list" style="padding:20px 24px;display:flex;flex-direction:column;gap:16px;">
+      <div style="text-align:center;padding:40px;color:#555;">טוען ליקויים...</div>
+    </div>
+
+    <!-- Footer -->
+    <div style="padding:16px 24px;border-top:1px solid rgba(255,255,255,0.06);display:flex;gap:10px;justify-content:flex-end;">
+      <button onclick="capCloseModal()" style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);color:#888;padding:10px 24px;border-radius:10px;cursor:pointer;font-family:Heebo,sans-serif;font-size:13px;">סגור</button>
+    </div>
+  </div>
+</div>
+
 <div class="app-panel" id="gcal-panel"><div id="gcal-content"><div style="padding:54px 0 0;min-height:100vh;background:#1a1a2e;font-family:Heebo,sans-serif;direction:rtl;display:flex;flex-direction:column">
 
   <div style="padding:16px 24px 0;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
@@ -2019,8 +2064,27 @@ const sb = window.supabase.createClient(SB_URL, SB_KEY, {
     persistSession: false,
     autoRefreshToken: false,
     detectSessionInUrl: false
+  },
+  global: {
+    headers: { 'X-Client-Info': 'beni-journal/1.0' }
+  },
+  realtime: {
+    params: { eventsPerSecond: 0 }
+  },
+  db: {
+    schema: 'public'
   }
 });
+// Suppress Supabase telemetry fetch to api.supabase.com
+(function() {
+  var _origFetch = window.fetch;
+  window.fetch = function(url) {
+    if (typeof url === 'string' && url.includes('api.supabase.com')) {
+      return Promise.resolve(new Response('{}', { status: 200 }));
+    }
+    return _origFetch.apply(this, arguments);
+  };
+})();
 window.sb = sb;  // expose for journal module reuse
 
 // ── GLOBAL DataCloneError SUPPRESSOR ─────────────────────
@@ -6822,9 +6886,10 @@ function snagRenderReport(findings, allCats, customCats, metadata) {
   });
   html += '</div>';
 
-  // WhatsApp + PDF buttons
+  // Action buttons row
   html += '<div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:8px;">'
-    + '<button onclick="snagExportWhatsApp()" style="flex:1;background:rgba(37,211,102,0.15);border:1.5px solid rgba(37,211,102,0.4);color:#25d366;padding:10px 16px;border-radius:12px;cursor:pointer;font-family:Heebo,sans-serif;font-size:13px;font-weight:700;">💬 שלח דוח ליקויים ב-WhatsApp</button>'
+    + '<button onclick="snagExportWhatsApp()" style="flex:1;background:rgba(37,211,102,0.15);border:1.5px solid rgba(37,211,102,0.4);color:#25d366;padding:10px 16px;border-radius:12px;cursor:pointer;font-family:Heebo,sans-serif;font-size:13px;font-weight:700;">💬 שלח דוח ב-WhatsApp</button>'
+    + '<button onclick="capOpenModal()" style="flex:2;background:linear-gradient(135deg,#7c3aed,#2d6a9f);border:none;color:#fff;padding:10px 16px;border-radius:12px;cursor:pointer;font-family:Heebo,sans-serif;font-size:13px;font-weight:800;">🔧 צור תוכנית תיקון (CAP)</button>'
     + '</div>';
 
   results.innerHTML = html;
@@ -6931,6 +6996,447 @@ async function snagShowHistoryItem(id) {
   _snagLastFindings = findings;
   snagRenderReport(findings, cats, customs, item);
   window.scrollTo(0, document.getElementById('snag-results').offsetTop - 80);
+}
+
+
+
+// ══════════════════════════════════════════════════════════════════════
+// CAP — CORRECTION ACTION PLAN ENGINE
+// ══════════════════════════════════════════════════════════════════════
+
+var _capItems        = [];   // array of {catId, catName, icon, severity, findings, location, remedy, responsible_trade}
+var _capContractors  = [];   // contractors_master list
+var _capProjectId    = null;
+var _capProjectName  = '';
+
+// Deadline days per severity
+var CAP_DEADLINES = { CRITICAL: 1, MODERATE: 7, MINOR: 30 };
+
+// Israeli standards mapping per snag category
+var CAP_STANDARDS = {
+  concrete_cracks:   'ת"י 118 — בטון מזוין / תקנות הבנייה (קורות ועמודים)',
+  rusted_iron:       'ת"י 118 חלק 1 — כיסוי בטון על ברזל מינימלי',
+  painting:          'ת"י 1939 — צביעת בניינים / מפרט בינ"ל 02900',
+  plaster_render:    'ת"י 1125 — טיח פנים וחוץ',
+  waterproofing:     'ת"י 1364 — איטום מבנים / ת"י 1434',
+  tiling:            'ת"י 1555 — ריצוף קרמיקה',
+  doors_windows:     'ת"י 1099 — חלונות ודלתות אלומיניום',
+  excavation_found:  'ת"י 940 — יסודות ועבודות עפר',
+  foundation_iron:   'ת"י 118 + ת"י 466 — ברזל בנייה',
+  aluminum_curtain:  'ת"י 1099 + ת"י 1591 — חזיתות אלומיניום',
+  metal_framing:     'ת"י 1505 — קירות גבס ופרופילים קלים',
+  ac_ducts:          'ת"י 5381 — מיזוג אוויר בבניינים',
+  electrical_ducts:  'תקנות החשמל 1954 / ת"י 61439',
+  plumbing_pipes:    'ת"י 1205 — אינסטלציה סניטרית',
+  floor_levels:      'ת"י 1555 + מפרט טכני כללי — סטיות מותרות',
+  structural_alignment: 'ת"י 466 — דרישות ביצוע בטון מזוין',
+  roof_terrace:      'ת"י 1364 — איטום גגות',
+  finishes_general:  'מפרט בינ"ל — גימורי בנייה',
+  fire_protection:   'ת"י 1220 — מערכות כיבוי אש / חוק הבנייה'
+};
+
+// ── Open modal ─────────────────────────────────────────────────────────
+async function capOpenModal() {
+  var findings = _snagLastFindings;
+  if (!findings || !Object.keys(findings).length) {
+    showToast('הפעל סריקת ליקויים תחילה', 'error');
+    return;
+  }
+
+  document.getElementById('cap-modal').style.display = 'block';
+  document.body.style.overflow = 'hidden';
+
+  // Set project label
+  var projSel = document.getElementById('safety-project-sel');
+  _capProjectId   = projSel?.value || null;
+  _capProjectName = projSel?.selectedOptions[0]?.textContent?.replace('📁 ','').trim() || '';
+  var projLabel = document.getElementById('cap-project-label');
+  if (projLabel) projLabel.textContent = _capProjectName ? '📁 ' + _capProjectName : '';
+
+  // Build items from findings — only non-NONE
+  var sevOrder = { CRITICAL:3, MODERATE:2, MINOR:1, NONE:0 };
+  var allCatDefs = [...SNAG_CATEGORIES];
+  _capItems = allCatDefs
+    .filter(function(cat) {
+      var f = findings[cat.id];
+      return f && f.severity && f.severity !== 'NONE';
+    })
+    .map(function(cat) {
+      var f = findings[cat.id];
+      return {
+        catId:      cat.id,
+        catName:    cat.name_he,
+        icon:       cat.icon || '🔧',
+        severity:   f.severity,
+        findings:   f.findings || [],
+        location:   f.location || '',
+        remedy:     f.remedy || '',
+        responsible_trade: f.responsible_trade || '',
+        // CAP fields — to be filled
+        instruction:    '',   // AI-generated technical instruction
+        standard:       CAP_STANDARDS[cat.id] || '',
+        contractor_id:  '',
+        contractor_name:'',
+        contractor_mobile:'',
+        deadline:       capCalcDeadline(f.severity),
+        cost_min:       '',
+        cost_max:       '',
+        status:         'open'  // open / in_progress / fixed / closed
+      };
+    })
+    .sort(function(a,b){ return (sevOrder[b.severity]||0) - (sevOrder[a.severity]||0); });
+
+  if (!_capItems.length) {
+    document.getElementById('cap-items-list').innerHTML =
+      '<div style="text-align:center;padding:40px;color:#22c55e;font-size:15px;font-weight:700;">✅ לא נמצאו ליקויים הדורשים תיקון</div>';
+    return;
+  }
+
+  // Load contractors
+  await capLoadContractors();
+
+  // Render items
+  capRenderItems();
+}
+
+function capCloseModal() {
+  document.getElementById('cap-modal').style.display = 'none';
+  document.body.style.overflow = '';
+}
+
+function capCalcDeadline(severity) {
+  var days = CAP_DEADLINES[severity] || 7;
+  var d = new Date();
+  d.setDate(d.getDate() + days);
+  return d.toISOString().split('T')[0];
+}
+
+// ── Load contractors ────────────────────────────────────────────────────
+async function capLoadContractors() {
+  if (_capContractors.length > 0) return;
+  try {
+    var res  = await fetch(
+      SB_URL + '/rest/v1/contractors_master?is_active=eq.true&select=id,company_name,contact_name,mobile,main_occupation&order=company_name',
+      { headers: { apikey: SB_KEY, Authorization: 'Bearer ' + SB_KEY } }
+    );
+    _capContractors = res.ok ? await res.json() : [];
+  } catch(e) { _capContractors = []; }
+}
+
+// ── Render all CAP items ────────────────────────────────────────────────
+function capRenderItems() {
+  var list = document.getElementById('cap-items-list');
+  if (!list) return;
+
+  var SEV_COLOR  = { CRITICAL:'#ef4444', MODERATE:'#f59e0b', MINOR:'#3b82f6' };
+  var SEV_BG     = { CRITICAL:'rgba(239,68,68,0.08)', MODERATE:'rgba(245,158,11,0.06)', MINOR:'rgba(59,130,246,0.06)' };
+  var SEV_LABEL  = { CRITICAL:'🔴 קריטי', MODERATE:'🟡 בינוני', MINOR:'🔵 קל' };
+  var SEV_DAYS   = { CRITICAL:'24 שעות', MODERATE:'7 ימים', MINOR:'30 ימים' };
+
+  // Build contractor options HTML
+  var contractorOptions = '<option value="">— בחר קבלן —</option>'
+    + _capContractors.map(function(c) {
+        return '<option value="' + c.id + '" data-name="' + (c.company_name||'').replace(/"/g,'') + '" data-mobile="' + (c.mobile||'') + '">'
+          + (c.company_name||'') + (c.main_occupation ? ' · ' + c.main_occupation : '')
+          + '</option>';
+      }).join('');
+
+  list.innerHTML = _capItems.map(function(item, idx) {
+    var sevColor = SEV_COLOR[item.severity] || '#888';
+    var sevBg    = SEV_BG[item.severity]    || 'transparent';
+    var sevLabel = SEV_LABEL[item.severity] || item.severity;
+    var sevDays  = SEV_DAYS[item.severity]  || '7 ימים';
+
+    return '<div id="cap-item-' + idx + '" style="background:' + sevBg + ';border:1.5px solid ' + sevColor + '40;border-right:4px solid ' + sevColor + ';border-radius:14px;padding:18px;font-family:Heebo,sans-serif;">'
+
+      // ── Item header ──────────────────────────────────────────────────
+      + '<div style="display:flex;align-items:flex-start;gap:12px;margin-bottom:14px;flex-wrap:wrap;">'
+      + '<span style="font-size:28px;">' + item.icon + '</span>'
+      + '<div style="flex:1;">'
+      + '<div style="font-size:15px;font-weight:900;color:#fff;">' + item.catName + '</div>'
+      + '<div style="font-size:12px;font-weight:700;color:' + sevColor + ';margin-top:3px;">' + sevLabel + ' — דדליין: ' + sevDays + '</div>'
+      + (item.location ? '<div style="font-size:11px;color:#888;margin-top:4px;">📍 ' + item.location.replace(/</g,'&lt;') + '</div>' : '')
+      + '</div>'
+      // Status badge
+      + '<select onchange="capUpdateStatus(' + idx + ',this.value)" style="background:#1a1a2e;border:1px solid rgba(255,255,255,0.15);color:#ccc;padding:6px 10px;border-radius:8px;font-family:Heebo,sans-serif;font-size:11px;font-weight:700;">'
+      + '<option value="open" ' + (item.status==='open'?'selected':'') + '>🔴 פתוח</option>'
+      + '<option value="in_progress" ' + (item.status==='in_progress'?'selected':'') + '>🟡 בטיפול</option>'
+      + '<option value="fixed" ' + (item.status==='fixed'?'selected':'') + '>🟢 תוקן</option>'
+      + '<option value="closed" ' + (item.status==='closed'?'selected':'') + '>✅ סגור</option>'
+      + '</select>'
+      + '</div>'
+
+      // ── Findings summary ─────────────────────────────────────────────
+      + '<div style="background:rgba(0,0,0,0.25);border-radius:8px;padding:10px 12px;margin-bottom:12px;">'
+      + item.findings.map(function(f){ return '<div style="font-size:12px;color:#ccc;padding:2px 0;">▸ ' + f.replace(/</g,'&lt;') + '</div>'; }).join('')
+      + '</div>'
+
+      // ── Technical instruction (AI-generated or editable) ─────────────
+      + '<div style="margin-bottom:12px;">'
+      + '<div style="font-size:11px;font-weight:800;color:#7c3aed;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;">🔧 הוראת תיקון טכנית:</div>'
+      + '<div style="position:relative;">'
+      + '<textarea id="cap-instruction-' + idx + '" rows="3" oninput="_capItems[' + idx + '].instruction=this.value"'
+      + ' style="width:100%;background:#1a1a2e;border:1px solid rgba(139,92,246,0.3);color:#fff;padding:10px 80px 10px 12px;border-radius:8px;font-family:Heebo,sans-serif;font-size:13px;resize:vertical;direction:rtl;outline:none;line-height:1.6;box-sizing:border-box;"'
+      + ' placeholder="לחץ \'צור הוראות AI\' לייצור אוטומטי, או הקלד ידנית...">'
+      + (item.instruction || '') + '</textarea>'
+      + '<button onclick="capGenerateOne(' + idx + ')" title="צור עם AI" style="position:absolute;top:8px;left:8px;background:rgba(139,92,246,0.2);border:1px solid rgba(139,92,246,0.4);color:#c4b5fd;padding:4px 8px;border-radius:6px;cursor:pointer;font-size:10px;font-weight:700;font-family:Heebo,sans-serif;">🧠 AI</button>'
+      + '</div></div>'
+
+      // ── Israeli standard ─────────────────────────────────────────────
+      + '<div style="margin-bottom:12px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;">'
+      + '<div style="font-size:11px;font-weight:800;color:#9a6f00;white-space:nowrap;">📋 תקן ישראלי:</div>'
+      + '<input id="cap-standard-' + idx + '" value="' + item.standard.replace(/"/g,'&quot;') + '" oninput="_capItems[' + idx + '].standard=this.value"'
+      + ' style="flex:1;background:#1a1a2e;border:1px solid rgba(154,111,0,0.3);color:#c9a84c;padding:6px 10px;border-radius:6px;font-family:Heebo,sans-serif;font-size:12px;direction:rtl;outline:none;min-width:120px;">'
+      + '</div>'
+
+      // ── Contractor assignment + deadline + cost ───────────────────────
+      + '<div style="display:grid;grid-template-columns:2fr 1fr 1fr;gap:10px;margin-bottom:12px;flex-wrap:wrap;">'
+      // Contractor picker
+      + '<div>'
+      + '<div style="font-size:10px;font-weight:800;color:#666;text-transform:uppercase;margin-bottom:4px;">👷 קבלן אחראי</div>'
+      + '<select id="cap-contractor-' + idx + '" onchange="capAssignContractor(' + idx + ',this)"'
+      + ' style="width:100%;background:#1a1a2e;border:1px solid rgba(255,255,255,0.12);color:#fff;padding:8px 10px;border-radius:8px;font-family:Heebo,sans-serif;font-size:12px;direction:rtl;">'
+      + contractorOptions.replace(
+          'value="' + item.contractor_id + '"',
+          'value="' + item.contractor_id + '" selected'
+        )
+      + '</select></div>'
+      // Deadline
+      + '<div>'
+      + '<div style="font-size:10px;font-weight:800;color:#666;text-transform:uppercase;margin-bottom:4px;">📅 דדליין</div>'
+      + '<input type="date" id="cap-deadline-' + idx + '" value="' + item.deadline + '" oninput="_capItems[' + idx + '].deadline=this.value"'
+      + ' style="width:100%;background:#1a1a2e;border:1px solid rgba(255,255,255,0.12);color:#fff;padding:8px 10px;border-radius:8px;font-family:Heebo,sans-serif;font-size:12px;box-sizing:border-box;">'
+      + '</div>'
+      // Cost estimate
+      + '<div>'
+      + '<div style="font-size:10px;font-weight:800;color:#666;text-transform:uppercase;margin-bottom:4px;">💰 עלות משוערת (₪)</div>'
+      + '<input placeholder="מ... עד..." id="cap-cost-' + idx + '" oninput="_capItems[' + idx + '].cost_min=this.value"'
+      + ' style="width:100%;background:#1a1a2e;border:1px solid rgba(255,255,255,0.12);color:#fff;padding:8px 10px;border-radius:8px;font-family:Heebo,sans-serif;font-size:12px;direction:rtl;outline:none;box-sizing:border-box;">'
+      + '</div>'
+      + '</div>'
+
+      // ── Send to contractor button ─────────────────────────────────────
+      + '<div style="display:flex;gap:8px;margin-top:4px;">'
+      + '<button onclick="capSendItemWA(' + idx + ')" style="flex:1;background:rgba(37,211,102,0.15);border:1.5px solid rgba(37,211,102,0.4);color:#25d366;padding:9px 12px;border-radius:8px;cursor:pointer;font-family:Heebo,sans-serif;font-size:12px;font-weight:700;">💬 שלח לקבלן ב-WhatsApp</button>'
+      + '<button onclick="capMarkFixed(' + idx + ')" style="background:rgba(34,197,94,0.1);border:1px solid rgba(34,197,94,0.3);color:#22c55e;padding:9px 14px;border-radius:8px;cursor:pointer;font-family:Heebo,sans-serif;font-size:12px;font-weight:700;">✅ סמן כתוקן</button>'
+      + '</div>'
+
+      + '</div>';
+  }).join('');
+}
+
+// ── Assign contractor ───────────────────────────────────────────────────
+function capAssignContractor(idx, sel) {
+  var opt = sel.selectedOptions[0];
+  if (!opt || !opt.value) return;
+  _capItems[idx].contractor_id     = opt.value;
+  _capItems[idx].contractor_name   = opt.dataset.name || opt.textContent.split(' · ')[0];
+  _capItems[idx].contractor_mobile = opt.dataset.mobile || '';
+}
+
+function capUpdateStatus(idx, status) {
+  _capItems[idx].status = status;
+}
+
+function capMarkFixed(idx) {
+  _capItems[idx].status = 'fixed';
+  var sel = document.querySelector('#cap-item-' + idx + ' select');
+  if (sel) sel.value = 'fixed';
+  showToast('✅ ' + _capItems[idx].catName + ' — סומן כתוקן');
+}
+
+// ── Generate AI instructions for ONE item ──────────────────────────────
+async function capGenerateOne(idx) {
+  var item   = _capItems[idx];
+  var apiKey = (APP.config && APP.config.anthropic_key) || null;
+  if (!apiKey) { showToast('הגדר מפתח API תחילה', 'error'); return; }
+
+  var ta = document.getElementById('cap-instruction-' + idx);
+  if (ta) ta.value = '🧠 מייצר הוראת תיקון...';
+
+  var prompt = 'אתה מהנדס בנייה מנוסה המנסח הוראות תיקון טכניות לאתרי בנייה בישראל.\n\n'
+    + 'ליקוי שזוהה: ' + item.catName + '\n'
+    + 'חומרה: ' + item.severity + '\n'
+    + 'ממצאים: ' + item.findings.join(', ') + '\n'
+    + (item.location ? 'מיקום: ' + item.location + '\n' : '')
+    + (item.standard ? 'תקן רלוונטי: ' + item.standard + '\n' : '')
+    + '\nכתוב הוראת תיקון טכנית בעברית הכוללת:\n'
+    + '1. תיאור התיקון הנדרש בדיוק\n'
+    + '2. חומרים/שיטות עבודה נדרשות\n'
+    + '3. בדיקה שיש לבצע לאחר התיקון\n'
+    + '4. הפניה לתקן ישראלי רלוונטי\n\n'
+    + 'כתוב 3-4 משפטים טכניים וברורים בעברית בלבד. ללא כותרות, ללא מספור.';
+
+  try {
+    var res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type':'application/json','x-api-key':apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true' },
+      body: JSON.stringify({ model:'claude-sonnet-4-20250514', max_tokens:300, messages:[{role:'user',content:prompt}] })
+    });
+    var data = await res.json();
+    var text = data.content && data.content[0] && data.content[0].text;
+    if (text) {
+      _capItems[idx].instruction = text.trim();
+      if (ta) ta.value = text.trim();
+    }
+  } catch(e) {
+    if (ta) ta.value = 'שגיאה: ' + e.message;
+  }
+}
+
+// ── Generate AI instructions for ALL items ─────────────────────────────
+async function capGenerateAll() {
+  var apiKey = (APP.config && APP.config.anthropic_key) || null;
+  if (!apiKey) { showToast('הגדר מפתח API תחילה', 'error'); return; }
+
+  var btn = document.getElementById('cap-generate-btn');
+  var status = document.getElementById('cap-generate-status');
+  if (btn) btn.disabled = true;
+
+  for (var i = 0; i < _capItems.length; i++) {
+    if (status) status.textContent = 'מייצר ' + (i+1) + '/' + _capItems.length + '...';
+    await capGenerateOne(i);
+    await new Promise(function(r){ setTimeout(r, 400); }); // avoid rate limit
+  }
+
+  if (btn) btn.disabled = false;
+  if (status) status.textContent = '✅ הוראות תיקון נוצרו לכל הליקויים';
+  showToast('✅ כל הוראות התיקון נוצרו');
+}
+
+// ── Send single item WhatsApp ───────────────────────────────────────────
+function capSendItemWA(idx) {
+  var item     = _capItems[idx];
+  var projName = _capProjectName || '';
+  var deadline = item.deadline ? new Date(item.deadline + 'T12:00:00').toLocaleDateString('he-IL',{day:'2-digit',month:'2-digit',year:'numeric'}) : '';
+
+  var SEV_LABEL = { CRITICAL:'🔴 קריטי', MODERATE:'🟡 בינוני', MINOR:'🔵 קל' };
+  var sevLabel  = SEV_LABEL[item.severity] || item.severity;
+
+  var msg = '🔧 *הוראת תיקון רשמית*\n';
+  if (projName) msg += '📁 פרויקט: ' + projName + '\n';
+  msg += '━━━━━━━━━━━━━━━━━━━━\n\n';
+  msg += sevLabel + ' | *' + item.catName + '*\n';
+  if (item.location) msg += '📍 מיקום: ' + item.location + '\n';
+  msg += '\n*ממצאים:*\n';
+  item.findings.forEach(function(f){ msg += '▸ ' + f + '\n'; });
+  if (item.instruction) msg += '\n*הוראת תיקון:*\n' + item.instruction + '\n';
+  if (item.standard) msg += '\n📋 תקן: ' + item.standard + '\n';
+  if (deadline) msg += '\n⏰ *דדליין לתיקון: ' + deadline + '*\n';
+  if (item.cost_min) msg += '💰 עלות משוערת: ' + item.cost_min + '\n';
+  msg += '\n━━━━━━━━━━━━━━━━━━━━\n';
+  msg += 'נא לאשר קבלת הוראה זו ולעדכן על מועד ביצוע.';
+
+  // Send to specific contractor if assigned, else open picker
+  var url;
+  if (item.contractor_mobile) {
+    var phone = '972' + item.contractor_mobile.replace(/[^0-9]/g,'').replace(/^0/,'');
+    url = 'https://wa.me/' + phone + '?text=' + encodeURIComponent(msg);
+  } else {
+    url = 'https://wa.me/?text=' + encodeURIComponent(msg);
+  }
+
+  var a = document.createElement('a');
+  a.href = url; a.target = '_blank'; a.rel = 'noopener';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+}
+
+// ── Send ALL items grouped by contractor ───────────────────────────────
+function capDispatchAll() {
+  // Group items by contractor
+  var byContractor = {};
+  _capItems.forEach(function(item) {
+    var key  = item.contractor_id || '_unassigned';
+    var name = item.contractor_name || 'לא שויך';
+    var mob  = item.contractor_mobile || '';
+    if (!byContractor[key]) byContractor[key] = { name, mobile: mob, items: [] };
+    byContractor[key].items.push(item);
+  });
+
+  var projName = _capProjectName || '';
+  var keys     = Object.keys(byContractor);
+
+  if (keys.length === 0) { showToast('אין ליקויים לשליחה', 'error'); return; }
+
+  // Open one WA per contractor with slight delay
+  keys.forEach(function(key, i) {
+    setTimeout(function() {
+      var group    = byContractor[key];
+      var SEV_LABEL= { CRITICAL:'🔴 קריטי', MODERATE:'🟡 בינוני', MINOR:'🔵 קל' };
+      var now      = new Date().toLocaleDateString('he-IL',{day:'2-digit',month:'2-digit',year:'numeric'});
+
+      var msg = '🔧 *תוכנית תיקון ליקויים — ' + now + '*\n';
+      if (projName) msg += '📁 פרויקט: ' + projName + '\n';
+      if (group.name !== 'לא שויך') msg += '👷 לידי: ' + group.name + '\n';
+      msg += '━━━━━━━━━━━━━━━━━━━━\n\n';
+
+      group.items.forEach(function(item, j) {
+        var sevLabel = SEV_LABEL[item.severity] || item.severity;
+        var deadline = item.deadline ? new Date(item.deadline + 'T12:00:00').toLocaleDateString('he-IL',{day:'2-digit',month:'2-digit',year:'numeric'}) : '';
+        msg += (j+1) + '. ' + sevLabel + ' | *' + item.catName + '*\n';
+        if (item.location) msg += '   📍 ' + item.location + '\n';
+        item.findings.forEach(function(f){ msg += '   ▸ ' + f + '\n'; });
+        if (item.instruction) msg += '   🔧 ' + item.instruction.substring(0,120) + (item.instruction.length>120?'...':'') + '\n';
+        if (item.standard) msg += '   📋 ' + item.standard + '\n';
+        if (deadline) msg += '   ⏰ דדליין: ' + deadline + '\n';
+        msg += '\n';
+      });
+
+      msg += '━━━━━━━━━━━━━━━━━━━━\nנא לאשר קבלה ולעדכן מועד ביצוע.';
+
+      var url;
+      if (group.mobile) {
+        var phone = '972' + group.mobile.replace(/[^0-9]/g,'').replace(/^0/,'');
+        url = 'https://wa.me/' + phone + '?text=' + encodeURIComponent(msg);
+      } else {
+        url = 'https://wa.me/?text=' + encodeURIComponent(msg);
+      }
+
+      var a = document.createElement('a');
+      a.href = url; a.target = '_blank'; a.rel = 'noopener';
+      document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    }, i * 1200); // 1.2s apart so browser doesn't block popups
+  });
+
+  showToast('💬 שולח ל-' + keys.length + ' קבלנים...');
+}
+
+// ── Save CAP to Supabase ───────────────────────────────────────────────
+async function capSavePlan() {
+  try {
+    // Read current values from DOM before saving
+    _capItems.forEach(function(item, idx) {
+      var ta  = document.getElementById('cap-instruction-' + idx);
+      var std = document.getElementById('cap-standard-' + idx);
+      var dl  = document.getElementById('cap-deadline-' + idx);
+      var cost= document.getElementById('cap-cost-' + idx);
+      if (ta)   item.instruction = ta.value;
+      if (std)  item.standard    = std.value;
+      if (dl)   item.deadline    = dl.value;
+      if (cost) item.cost_min    = cost.value;
+    });
+
+    var res = await fetch(SB_URL + '/rest/v1/snag_cap', {
+      method: 'POST',
+      headers: { apikey:SB_KEY, Authorization:'Bearer '+SB_KEY, 'Content-Type':'application/json', Prefer:'return=minimal' },
+      body: JSON.stringify({
+        project_id:   _capProjectId || null,
+        project_name: _capProjectName || null,
+        items:        _capItems,
+        status:       'active',
+        created_at:   new Date().toISOString()
+      })
+    });
+
+    if (res.ok || res.status === 201) {
+      showToast('✅ תוכנית התיקון נשמרה');
+    } else {
+      var err = await res.json().catch(()=>({}));
+      showToast('שגיאה בשמירה: ' + (err.message || res.status), 'error');
+    }
+  } catch(e) {
+    showToast('שגיאה: ' + e.message, 'error');
+  }
 }
 
 
