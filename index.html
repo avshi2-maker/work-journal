@@ -1441,7 +1441,8 @@ window.addEventListener('unhandledrejection', function(e) {
   <div id="sj-panel-photos" style="display:none;">
     <div style="display:flex;gap:8px;margin-bottom:16px;align-items:center;flex-wrap:wrap;">
       <div style="font-size:13px;color:#888;">תמונות מהשטח לפי פרויקט</div>
-      <div style="margin-right:auto;" id="sj-photos-count" style="font-size:12px;color:#555;"></div>
+      <div id="sj-photos-count" style="font-size:12px;color:#555;flex:1;"></div>
+      <button onclick="switchTab('crm');showPage('dashboard')" style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);color:#888;padding:6px 14px;border-radius:20px;cursor:pointer;font-family:Heebo,sans-serif;font-size:11px;font-weight:700;">🏠 לוח בקרה</button>
     </div>
     <div id="sj-photos-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;">
       <div style="grid-column:1/-1;text-align:center;padding:40px;color:#444;">
@@ -1455,7 +1456,9 @@ window.addEventListener('unhandledrejection', function(e) {
   <div id="sj-panel-videos" style="display:none;">
     <div style="display:flex;gap:8px;margin-bottom:16px;align-items:center;flex-wrap:wrap;">
       <div style="font-size:13px;color:#888;">סרטוני שטח מ-Google Drive</div>
-      <div id="sj-videos-count" style="font-size:12px;color:#555;margin-right:auto;"></div>
+      <div id="sj-videos-count" style="font-size:12px;color:#555;flex:1;"></div>
+      <button onclick="switchTab('crm');showPage('dashboard')" style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);color:#888;padding:6px 14px;border-radius:20px;cursor:pointer;font-family:Heebo,sans-serif;font-size:11px;font-weight:700;">🏠 לוח בקרה</button>
+      <button onclick="switchTab('safety')" style="background:rgba(239,68,68,0.15);border:1px solid rgba(239,68,68,0.3);color:#fca5a5;padding:6px 14px;border-radius:20px;cursor:pointer;font-family:Heebo,sans-serif;font-size:11px;font-weight:700;">🛡️ ניתח בטיחות</button>
     </div>
     <div id="sj-videos-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px;">
       <div style="grid-column:1/-1;text-align:center;padding:40px;color:#444;">
@@ -1593,13 +1596,33 @@ window.addEventListener('unhandledrejection', function(e) {
     </div>
   </div>
 
-  <!-- Progress / status -->
-  <div id="safety-progress" style="display:none;background:#242438;border-radius:14px;padding:20px;margin-bottom:20px;">
-    <div id="safety-progress-text" style="font-size:13px;color:#c4b5fd;margin-bottom:10px;text-align:center;">מכין ניתוח...</div>
-    <div style="background:rgba(139,92,246,0.15);border-radius:20px;height:8px;overflow:hidden;">
-      <div id="safety-progress-bar" style="height:100%;background:linear-gradient(90deg,#7c3aed,#ef4444);border-radius:20px;width:0%;transition:width 0.4s;"></div>
+  <!-- Progress / status — fixed position so it never causes layout shake -->
+  <div id="safety-progress" style="display:none;background:#1e1e35;border:1.5px solid rgba(139,92,246,0.4);border-radius:14px;padding:20px;margin-bottom:20px;">
+    <!-- Status row -->
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;gap:12px;flex-wrap:wrap;">
+      <div id="safety-progress-text" style="font-size:13px;color:#c4b5fd;font-weight:700;">מכין ניתוח...</div>
+      <!-- Live clock -->
+      <div style="display:flex;gap:12px;align-items:center;">
+        <div style="text-align:center;">
+          <div id="safety-clock" style="font-size:18px;font-weight:900;color:#f59e0b;font-family:monospace;">0:00</div>
+          <div style="font-size:9px;color:#555;text-transform:uppercase;letter-spacing:.5px;">זמן</div>
+        </div>
+        <div style="text-align:center;">
+          <div id="safety-tokens" style="font-size:18px;font-weight:900;color:#c4b5fd;font-family:monospace;">~0</div>
+          <div style="font-size:9px;color:#555;text-transform:uppercase;letter-spacing:.5px;">טוקנים</div>
+        </div>
+        <div style="text-align:center;">
+          <div id="safety-cost" style="font-size:18px;font-weight:900;color:#22c55e;font-family:monospace;">$0.00</div>
+          <div style="font-size:9px;color:#555;text-transform:uppercase;letter-spacing:.5px;">עלות</div>
+        </div>
+      </div>
     </div>
-    <div id="safety-frames-preview" style="display:flex;gap:6px;flex-wrap:wrap;margin-top:14px;justify-content:center;"></div>
+    <!-- Progress bar -->
+    <div style="background:rgba(139,92,246,0.12);border-radius:20px;height:8px;overflow:hidden;margin-bottom:14px;">
+      <div id="safety-progress-bar" style="height:100%;background:linear-gradient(90deg,#7c3aed,#ef4444);border-radius:20px;width:0%;transition:width 0.6s ease;"></div>
+    </div>
+    <!-- Frame thumbnails -->
+    <div id="safety-frames-preview" style="display:flex;gap:6px;flex-wrap:wrap;justify-content:center;min-height:20px;"></div>
   </div>
 
   <!-- Results area -->
@@ -5860,6 +5883,51 @@ const SEVERITY = {
   OK:       { level: 0, color: '#22c55e', bg: 'rgba(34,197,94,0.08)',  label: '✅ תקין',                 border: '#22c55e' }
 };
 
+// ── TIMER / TOKEN METER ─────────────────────────────────────────────
+var _safetyTimer     = null;
+var _safetyStartTime = null;
+
+function safetyStartMeter(estimatedTokens) {
+  _safetyStartTime = Date.now();
+  var elapsed  = 0;
+  // Estimate token count based on frames: ~1700 tokens per image + ~800 prompt
+  var estInput  = (estimatedTokens || (_safetyFrames.length * 1700 + 800));
+  var estOutput = 600; // roughly 600 output tokens
+  clearInterval(_safetyTimer);
+  _safetyTimer = setInterval(function() {
+    elapsed = Math.floor((Date.now() - _safetyStartTime) / 1000);
+    var mins = Math.floor(elapsed / 60);
+    var secs = elapsed % 60;
+    var clockEl  = document.getElementById('safety-clock');
+    var tokenEl  = document.getElementById('safety-tokens');
+    var costEl   = document.getElementById('safety-cost');
+    if (clockEl) clockEl.textContent = mins + ':' + (secs<10?'0':'') + secs;
+    // Animate token count up to estimated over ~15 seconds
+    var pct     = Math.min(1, elapsed / 15);
+    var curTok  = Math.round((estInput + estOutput) * pct);
+    if (tokenEl) tokenEl.textContent = '~' + curTok.toLocaleString();
+    // Cost: $3/M input + $15/M output
+    var cost = (estInput * 3 / 1000000) + (estOutput * 15 / 1000000);
+    if (costEl) costEl.textContent = '$' + cost.toFixed(3);
+  }, 500);
+}
+
+function safetyStopMeter(actualInputTokens, actualOutputTokens) {
+  clearInterval(_safetyTimer);
+  var elapsed = Math.floor((Date.now() - (_safetyStartTime||Date.now())) / 1000);
+  var mins = Math.floor(elapsed / 60);
+  var secs = elapsed % 60;
+  var inTok  = actualInputTokens  || (_safetyFrames.length * 1700 + 800);
+  var outTok = actualOutputTokens || 500;
+  var cost   = (inTok * 3 / 1000000) + (outTok * 15 / 1000000);
+  var clockEl = document.getElementById('safety-clock');
+  var tokenEl = document.getElementById('safety-tokens');
+  var costEl  = document.getElementById('safety-cost');
+  if (clockEl) clockEl.textContent = mins + ':' + (secs<10?'0':'') + secs;
+  if (tokenEl) tokenEl.textContent = (inTok + outTok).toLocaleString();
+  if (costEl)  costEl.textContent  = '$' + cost.toFixed(3);
+}
+
 // ── INIT ──────────────────────────────────────────────────────────────
 function safetyTabInit() {
   safetyPopulateProjects();
@@ -5950,53 +6018,67 @@ async function safetyHandleFile(input) {
 // ── FRAME EXTRACTION ──────────────────────────────────────────────────
 function safetyExtractFrames(file, maxFrames) {
   return new Promise(function(resolve) {
-    var url    = URL.createObjectURL(file);
-    var video  = document.createElement('video');
-    video.muted = true; video.playsInline = true; video.src = url;
-    var frames = [];
+    var url   = URL.createObjectURL(file);
+    var video = document.createElement('video');
+    video.muted = true; video.playsInline = true; video.preload = 'metadata';
+    // Hide completely — no layout impact
+    video.style.cssText = 'position:fixed;left:-9999px;top:-9999px;width:1px;height:1px;opacity:0;pointer-events:none;';
+    document.body.appendChild(video);
+    video.src = url;
 
-    video.addEventListener('loadedmetadata', function() {
-      var duration = video.duration;
-      var count    = Math.min(maxFrames, Math.max(1, Math.floor(duration / 3)));
-      // Spread frames across video: skip first 0.5s and last 1s
-      var times = [];
-      for (var i = 0; i < count; i++) {
-        times.push(0.5 + (i / (count - 1 || 1)) * (duration - 1.5));
+    var frames  = [];
+    var times   = [];
+    var idx     = 0;
+    var seeking = false;
+
+    function cleanup() {
+      try { URL.revokeObjectURL(url); } catch(e){}
+      try { video.remove(); } catch(e){}
+    }
+
+    function captureAndAdvance() {
+      if (seeking) return; // guard against double-fire
+      seeking = false;
+      try {
+        var ratio  = Math.min(640 / (video.videoWidth || 640), 1);
+        var canvas = document.createElement('canvas');
+        canvas.width  = Math.round((video.videoWidth  || 640) * ratio);
+        canvas.height = Math.round((video.videoHeight || 360) * ratio);
+        canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
+        var b64 = canvas.toDataURL('image/jpeg', 0.75).split(',')[1];
+        if (b64) frames.push(b64);
+      } catch(e) {}
+      idx++;
+      seekToNext();
+    }
+
+    function seekToNext() {
+      if (idx >= times.length) {
+        cleanup();
+        resolve(frames);
+        return;
       }
+      seeking = true;
+      video.currentTime = times[idx];
+    }
 
-      var idx = 0;
-      function seekNext() {
-        if (idx >= times.length) {
-          URL.revokeObjectURL(url);
-          video.remove();
-          resolve(frames);
-          return;
-        }
-        video.currentTime = times[idx];
-      }
-
-      video.addEventListener('seeked', function() {
-        try {
-          var canvas = document.createElement('canvas');
-          // Resize to max 640px wide for API efficiency
-          var ratio  = Math.min(640 / (video.videoWidth||640), 1);
-          canvas.width  = Math.round((video.videoWidth||640) * ratio);
-          canvas.height = Math.round((video.videoHeight||360) * ratio);
-          canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
-          frames.push(canvas.toDataURL('image/jpeg', 0.78).split(',')[1]);
-        } catch(e) {}
-        idx++;
-        seekNext();
-      });
-
-      document.body.appendChild(video);
-      video.load();
-      // Small delay to ensure loadedmetadata fired fully
-      setTimeout(seekNext, 100);
+    video.addEventListener('seeked', function onSeeked() {
+      seeking = false;
+      captureAndAdvance();
     });
 
-    video.addEventListener('error', function(){ URL.revokeObjectURL(url); resolve(frames); });
-    video.load();
+    video.addEventListener('loadedmetadata', function() {
+      var dur   = isFinite(video.duration) ? video.duration : 10;
+      var count = Math.min(maxFrames, Math.max(1, Math.floor(dur / 2)));
+      for (var i = 0; i < count; i++) {
+        times.push(0.3 + (i / Math.max(count - 1, 1)) * (dur - 0.6));
+      }
+      seekToNext();
+    });
+
+    video.addEventListener('error', function() { cleanup(); resolve(frames); });
+    // Timeout safety — if nothing happens after 30s, resolve with what we have
+    setTimeout(function() { if (frames.length === 0 && times.length === 0) { cleanup(); resolve(frames); } }, 30000);
   });
 }
 
@@ -6053,6 +6135,7 @@ async function safetyRunAnalysis() {
 
   progTxt.textContent = '🧠 Claude מנתח ' + _safetyFrames.length + ' פריימים ב-8 קטגוריות בטיחות...';
   progBar.style.width = '70%';
+  safetyStartMeter();
 
   try {
     var res = await fetch('https://api.anthropic.com/v1/messages', {
@@ -6065,6 +6148,7 @@ async function safetyRunAnalysis() {
     if (!res.ok) throw new Error(data.error?.message || 'API error ' + res.status);
 
     var raw = data.content && data.content[0] && data.content[0].text;
+    safetyStopMeter(data.usage && data.usage.input_tokens, data.usage && data.usage.output_tokens);
     raw = raw.replace(/```json|```/g,'').trim();
 
     try { findings = JSON.parse(raw); }
