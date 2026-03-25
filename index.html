@@ -1594,11 +1594,13 @@ window.addEventListener('unhandledrejection', function(e) {
     <!-- Upload zone -->
     <div style="background:#1e1e35;border:2px dashed rgba(239,68,68,0.4);border-radius:16px;padding:20px;margin-bottom:20px;text-align:center;">
       <div style="font-size:36px;margin-bottom:8px;">📸</div>
-      <div style="font-size:14px;font-weight:800;color:#fff;margin-bottom:4px;">העלה תמונה או סרטון לניתוח בטיחות</div>
-      <div style="font-size:11px;color:#555;margin-bottom:16px;">סרטונים — נדגם עד 8 פריימים · 20 קטגוריות בטיחות</div>
+      <div style="font-size:14px;font-weight:800;color:#fff;margin-bottom:4px;">העלה תמונה, סרטון, PDF או קובץ HTML</div>
+      <div style="font-size:11px;color:#666;margin-bottom:4px;">🖼️ תמונות: JPG · PNG · GIF · WebP</div>
+      <div style="font-size:11px;color:#666;margin-bottom:4px;">🎬 סרטונים: MP4 · MOV · WebM · AVI · M4V — נדגם עד 8 פריימים</div>
+      <div style="font-size:11px;color:#666;margin-bottom:16px;">📄 PDF — נקרא ומנותח ישירות · 🌐 HTML — מחלץ טקסט לניתוח</div>
       <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;">
         <label style="display:inline-flex;align-items:center;gap:8px;background:rgba(239,68,68,0.2);border:1.5px solid rgba(239,68,68,0.5);color:#fca5a5;padding:10px 20px;border-radius:12px;cursor:pointer;font-size:13px;font-weight:700;font-family:Heebo,sans-serif;">
-          📁 בחר קובץ<input type="file" id="safety-file-input" accept="image/*,video/*" style="display:none;" onchange="safetyHandleFile(this)">
+          📁 בחר קובץ<input type="file" id="safety-file-input" accept="image/*,video/mp4,video/quicktime,video/webm,video/avi,video/x-m4v,.pdf,.html,.htm" multiple style="display:none;" onchange="safetyHandleFile(this)">
         </label>
         <label style="display:inline-flex;align-items:center;gap:8px;background:rgba(59,130,246,0.15);border:1.5px solid rgba(59,130,246,0.4);color:#93c5fd;padding:10px 20px;border-radius:12px;cursor:pointer;font-size:13px;font-weight:700;font-family:Heebo,sans-serif;">
           📸 צלם עכשיו<input type="file" id="safety-camera-input" accept="image/*" capture="environment" style="display:none;" onchange="safetyHandleFile(this)">
@@ -1639,11 +1641,13 @@ window.addEventListener('unhandledrejection', function(e) {
     <!-- Upload zone -->
     <div style="background:#1e1e35;border:2px dashed rgba(59,130,246,0.4);border-radius:16px;padding:20px;margin-bottom:20px;text-align:center;">
       <div style="font-size:36px;margin-bottom:8px;">🔍</div>
-      <div style="font-size:14px;font-weight:800;color:#fff;margin-bottom:4px;">העלה תמונה או סרטון לבדיקת ליקויי בנייה</div>
-      <div style="font-size:11px;color:#555;margin-bottom:16px;">AI יזהה ליקויי איכות, פגמים ועבודה לקויה</div>
+      <div style="font-size:14px;font-weight:800;color:#fff;margin-bottom:4px;">העלה תמונה, סרטון, PDF או קובץ HTML לבדיקת ליקויים</div>
+      <div style="font-size:11px;color:#666;margin-bottom:4px;">🖼️ תמונות: JPG · PNG · GIF · WebP</div>
+      <div style="font-size:11px;color:#666;margin-bottom:4px;">🎬 סרטונים: MP4 · MOV · WebM · AVI · M4V — עד 8 פריימים לניתוח</div>
+      <div style="font-size:11px;color:#666;margin-bottom:16px;">📄 PDF — ניתוח ישיר של תוכן הדוח · 🌐 HTML — ניתוח תוכן הדף</div>
       <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;">
         <label style="display:inline-flex;align-items:center;gap:8px;background:rgba(59,130,246,0.2);border:1.5px solid rgba(59,130,246,0.5);color:#93c5fd;padding:10px 20px;border-radius:12px;cursor:pointer;font-size:13px;font-weight:700;font-family:Heebo,sans-serif;">
-          📁 בחר קובץ<input type="file" id="snag-file-input" accept="image/*,video/*" style="display:none;" onchange="snagHandleFile(this)">
+          📁 בחר קובץ<input type="file" id="snag-file-input" accept="image/*,video/mp4,video/quicktime,video/webm,video/avi,video/x-m4v,.pdf,.html,.htm" multiple style="display:none;" onchange="snagHandleFile(this)">
         </label>
         <label style="display:inline-flex;align-items:center;gap:8px;background:rgba(139,92,246,0.15);border:1.5px solid rgba(139,92,246,0.4);color:#c4b5fd;padding:10px 20px;border-radius:12px;cursor:pointer;font-size:13px;font-weight:700;font-family:Heebo,sans-serif;">
           📸 צלם עכשיו<input type="file" id="snag-camera-input" accept="image/*" capture="environment" style="display:none;" onchange="snagHandleFile(this)">
@@ -5949,6 +5953,8 @@ async function fiLinkProject(memoId, projectId) {
 var _safetyCurrentFile   = null;
 var _safetyFrames        = [];   // array of base64 jpeg strings
 var _safetyIsVideo       = false;
+var _safetyMediaType     = 'image/jpeg';  // actual uploaded file media type
+var _safetyHtmlText      = '';   // extracted text from HTML files
 
 // ── Safety categories with icons, keywords & severity weights ─────────
 // SAFETY_CATEGORIES loaded from Supabase safety_categories table
@@ -6051,6 +6057,51 @@ function safetyStopMeter(actualInputTokens, actualOutputTokens) {
   if (costEl)  costEl.textContent  = '$' + cost.toFixed(3);
 }
 
+// ── FILE TYPE HELPERS ────────────────────────────────────────────────
+function fileIsImage(file) {
+  return file.type.startsWith('image/');
+}
+function fileIsVideo(file) {
+  return file.type.startsWith('video/') ||
+    /\.(mp4|mov|webm|avi|m4v|mkv|wmv)$/i.test(file.name);
+}
+function fileIsPDF(file) {
+  return file.type === 'application/pdf' || /\.pdf$/i.test(file.name);
+}
+function fileIsHTML(file) {
+  return file.type === 'text/html' || /\.html?$/i.test(file.name);
+}
+
+// Read file as base64 (images/pdf)
+function readFileAsBase64(file) {
+  return new Promise(function(resolve, reject) {
+    var reader = new FileReader();
+    reader.onload  = function(e){ resolve(e.target.result.split(',')[1]); };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+// Read file as text (HTML)
+function readFileAsText(file) {
+  return new Promise(function(resolve, reject) {
+    var reader = new FileReader();
+    reader.onload  = function(e){ resolve(e.target.result); };
+    reader.onerror = reject;
+    reader.readAsText(file, 'UTF-8');
+  });
+}
+
+// Strip HTML tags to plain text
+function htmlToText(html) {
+  var tmp = document.createElement('div');
+  tmp.innerHTML = html;
+  // Remove scripts, styles
+  tmp.querySelectorAll('script,style,noscript').forEach(function(el){ el.remove(); });
+  return (tmp.textContent || tmp.innerText || '').replace(/\s+/g,' ').trim().substring(0, 8000);
+}
+
+
 // ── INIT ──────────────────────────────────────────────────────────────
 function safetyTabInit() {
   safetyPopulateProjects();
@@ -6076,13 +6127,20 @@ function safetyPopulateProjects() {
 
 // ── FILE HANDLER ───────────────────────────────────────────────────────
 async function safetyHandleFile(input) {
-  var file = input.files && input.files[0];
-  if (!file) return;
+  var files = Array.from(input.files || []);
+  if (!files.length) return;
   input.value = '';
 
+  if (files.length > 1) {
+    await safetyHandleMultipleFiles(files);
+    return;
+  }
+
+  var file = files[0];
   _safetyCurrentFile = file;
-  _safetyIsVideo     = file.type.startsWith('video/');
+  _safetyIsVideo     = fileIsVideo(file);
   _safetyFrames      = [];
+  _safetyMediaType   = file.type || 'image/jpeg';
 
   var prog    = document.getElementById('safety-progress');
   var progTxt = document.getElementById('safety-progress-text');
@@ -6095,13 +6153,11 @@ async function safetyHandleFile(input) {
 
   try {
     if (_safetyIsVideo) {
-      // ── Extract up to 8 frames from video ─────────────────────
-      progTxt.textContent = '🎞️ מחלץ פריימים מהסרטון...';
+      // ── Video: extract up to 8 frames ─────────────────────────
+      progTxt.textContent = '🎞️ מחלץ פריימים מהסרטון (' + file.name + ')...';
       progBar.style.width = '20%';
       _safetyFrames = await safetyExtractFrames(file, 8);
       progBar.style.width = '40%';
-
-      // Show frame thumbnails
       _safetyFrames.forEach(function(b64, i) {
         var img = document.createElement('img');
         img.src = 'data:image/jpeg;base64,' + b64;
@@ -6109,26 +6165,52 @@ async function safetyHandleFile(input) {
         img.title = 'פריים ' + (i+1);
         preview.appendChild(img);
       });
+      if (_safetyFrames.length === 0) throw new Error('לא ניתן לחלץ פריימים — נסה MP4 או MOV');
+      progTxt.textContent = '✅ ' + _safetyFrames.length + ' פריימים — שולח לניתוח AI...';
 
-      progTxt.textContent = '✅ ' + _safetyFrames.length + ' פריימים — שולח ל-AI לניתוח בטיחות...';
+    } else if (fileIsPDF(file)) {
+      // ── PDF: send as document type to Claude ──────────────────
+      progTxt.textContent = '📄 קורא PDF...';
+      progBar.style.width = '30%';
+      var pdfB64 = await readFileAsBase64(file);
+      _safetyFrames = [pdfB64];
+      _safetyMediaType = 'application/pdf';
+      progTxt.textContent = '📄 PDF מוכן — שולח לניתוח AI...';
+      // Show PDF label
+      var lbl = document.createElement('div');
+      lbl.style.cssText = 'background:rgba(239,68,68,0.15);border:1px solid rgba(239,68,68,0.3);color:#fca5a5;padding:8px 16px;border-radius:8px;font-size:12px;font-weight:700;font-family:Heebo,sans-serif;';
+      lbl.textContent = '📄 ' + file.name;
+      preview.appendChild(lbl);
+
+    } else if (fileIsHTML(file)) {
+      // ── HTML: extract text → send as text message ─────────────
+      progTxt.textContent = '🌐 מחלץ טקסט מקובץ HTML...';
+      progBar.style.width = '30%';
+      var htmlText = await readFileAsText(file);
+      var plainText = htmlToText(htmlText);
+      _safetyHtmlText = plainText;  // stored separately, not as image frame
+      _safetyFrames = [];           // no frames for HTML
+      _safetyMediaType = 'text/html';
+      progTxt.textContent = '🌐 HTML מוכן (' + plainText.length + ' תווים) — שולח לניתוח...';
+      var lbl = document.createElement('div');
+      lbl.style.cssText = 'background:rgba(59,130,246,0.15);border:1px solid rgba(59,130,246,0.3);color:#93c5fd;padding:8px 16px;border-radius:8px;font-size:12px;font-weight:700;font-family:Heebo,sans-serif;';
+      lbl.textContent = '🌐 ' + file.name + ' — ' + plainText.length + ' תווים';
+      preview.appendChild(lbl);
+
     } else {
-      // ── Single image ───────────────────────────────────────────
+      // ── Image ─────────────────────────────────────────────────
       progTxt.textContent = '📸 מכין תמונה לניתוח...';
       progBar.style.width = '30%';
-
-      var b64 = await new Promise(function(resolve, reject){
-        var reader = new FileReader();
-        reader.onload  = function(e){ resolve(e.target.result.split(',')[1]); };
-        reader.onerror = reject;
-        reader.readAsDataURL(file);
-      });
+      _safetyMediaType = file.type || 'image/jpeg';
+      if (!['image/jpeg','image/png','image/gif','image/webp'].includes(_safetyMediaType)) {
+        _safetyMediaType = 'image/jpeg';
+      }
+      var b64 = await readFileAsBase64(file);
       _safetyFrames = [b64];
-
       var img = document.createElement('img');
-      img.src = 'data:image/jpeg;base64,' + b64;
+      img.src = 'data:' + _safetyMediaType + ';base64,' + b64;
       img.style.cssText = 'width:120px;height:80px;object-fit:cover;border-radius:8px;border:2px solid rgba(239,68,68,0.4);';
       preview.appendChild(img);
-
       progTxt.textContent = '🧠 שולח לניתוח AI...';
     }
 
@@ -6229,9 +6311,24 @@ async function safetyRunAnalysis() {
   var totalCategories = SAFETY_CATEGORIES.length;
 
   // Build image content blocks — one per frame (max 8)
-  var imageBlocks = _safetyFrames.map(function(b64) {
-    return { type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: b64 } };
-  });
+  // Build content blocks based on file type
+  var imageBlocks = [];
+  if (_safetyMediaType === 'text/html' && _safetyHtmlText) {
+    // HTML: send as text
+    imageBlocks = [{ type: 'text', text: 'תוכן הדף/הדוח לניתוח:\n\n' + _safetyHtmlText }];
+  } else if (_safetyMediaType === 'application/pdf') {
+    // PDF: use document type
+    imageBlocks = _safetyFrames.map(function(b64) {
+      return { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: b64 } };
+    });
+  } else {
+    // Images / video frames
+    imageBlocks = _safetyFrames.map(function(b64, idx) {
+      var mtype = (_safetyIsVideo || idx > 0) ? 'image/jpeg' : (_safetyMediaType || 'image/jpeg');
+      if (!['image/jpeg','image/png','image/gif','image/webp'].includes(mtype)) mtype = 'image/jpeg';
+      return { type: 'image', source: { type: 'base64', media_type: mtype, data: b64 } };
+    });
+  }
 
   // ── Single API call with ALL frames + comprehensive safety prompt ───
   var safetyPrompt = 'You are an expert construction site safety inspector with 20+ years experience in Israeli building sites.\n\n'
@@ -6531,6 +6628,8 @@ var SNAG_CATEGORIES      = [];
 var _snagCatsLoaded      = false;
 var _snagFrames          = [];
 var _snagIsVideo         = false;
+var _snagMediaType       = 'image/jpeg';  // actual file media type
+var _snagHtmlText        = '';   // extracted text from HTML files
 var _snagLastFindings    = null;
 var _snagTimer           = null;
 var _snagStartTime       = null;
@@ -6592,82 +6691,110 @@ function snagSelectAll(checked) {
 
 // ── File handler ──────────────────────────────────────────────────────
 async function snagHandleFile(input) {
-  var file = input.files && input.files[0];
-  if (!file) return;
+  var files = Array.from(input.files || []);
+  if (!files.length) return;
   input.value = '';
-  _snagIsVideo = file.type.startsWith('video/');
-  _snagFrames  = [];
 
-  // Show scan button highlighted
+  if (files.length > 1) {
+    // Multi-file mode — queue all and process sequentially
+    await snagHandleMultipleFiles(files);
+    return;
+  }
+
+  var file = files[0];
+  _snagIsVideo   = fileIsVideo(file);
+  _snagFrames    = [];
+  _snagMediaType = file.type || 'image/jpeg';
+  _snagHtmlText  = '';
+
   var btn = document.getElementById('snag-scan-btn');
-  if (btn) btn.style.background = 'linear-gradient(135deg,#9a6f00,#c9a84c)';
+  // Remove old preview
+  var ep = document.getElementById('snag-image-preview-wrap');
+  if (ep) ep.remove();
 
   if (_snagIsVideo) {
-    // Extract frames
+    // ── Video: extract frames ─────────────────────────────────────
     var prog = document.getElementById('snag-progress');
     var txt  = document.getElementById('snag-progress-text');
     var bar  = document.getElementById('snag-progress-bar');
     var prev = document.getElementById('snag-frames-preview');
-    prog.style.display = 'block'; prev.innerHTML = '';
-    bar.style.width = '0%';
-    if (txt) txt.textContent = '🎞️ מחלץ פריימים...';
-    _snagFrames = await safetyExtractFrames(file, 8); // reuse safety extractor
-    bar.style.width = '40%';
+    if (prog) prog.style.display = 'block';
+    if (prev) prev.innerHTML = '';
+    if (bar) bar.style.width = '0%';
+    if (txt) txt.textContent = '🎞️ מחלץ פריימים (' + file.name + ')...';
+    _snagFrames = await safetyExtractFrames(file, 8);
+    if (_snagFrames.length === 0) {
+      if (txt) txt.textContent = '❌ לא ניתן לחלץ פריימים — נסה MP4 או MOV';
+      return;
+    }
+    if (bar) bar.style.width = '40%';
     _snagFrames.forEach(function(b64, i) {
       var img = document.createElement('img');
       img.src = 'data:image/jpeg;base64,' + b64;
       img.style.cssText = 'width:80px;height:55px;object-fit:cover;border-radius:6px;border:1px solid rgba(255,255,255,0.15);';
-      prev.appendChild(img);
+      if (prev) prev.appendChild(img);
     });
     if (txt) txt.textContent = '✅ ' + _snagFrames.length + ' פריימים — לחץ "הפעל סריקה"';
-    bar.style.width = '100%';
-    setTimeout(function(){ prog.style.display='none'; }, 2000);
+    if (bar) bar.style.width = '100%';
+    if (btn) { btn.textContent = '🔍 הפעל סריקת ליקויים AI — ' + _snagFrames.length + ' פריימים ✅'; btn.style.background = 'linear-gradient(135deg,#22c55e,#15803d)'; btn.scrollIntoView({behavior:'smooth',block:'center'}); }
+    setTimeout(function(){ if(prog) prog.style.display='none'; }, 2500);
+
+  } else if (fileIsPDF(file)) {
+    // ── PDF ───────────────────────────────────────────────────────
+    _snagMediaType = 'application/pdf';
+    var pdfB64 = await readFileAsBase64(file);
+    _snagFrames = [pdfB64];
+    snagShowFilePreview('📄 ' + file.name + ' — PDF מוכן לסריקה ✅', '#f59e0b');
+    if (btn) { btn.textContent = '🔍 הפעל סריקת ליקויים AI — PDF ✅'; btn.style.background = 'linear-gradient(135deg,#9a6f00,#c9a84c)'; btn.scrollIntoView({behavior:'smooth',block:'center'}); }
+
+  } else if (fileIsHTML(file)) {
+    // ── HTML ──────────────────────────────────────────────────────
+    _snagMediaType = 'text/html';
+    var htmlRaw  = await readFileAsText(file);
+    _snagHtmlText = htmlToText(htmlRaw);
+    snagShowFilePreview('🌐 ' + file.name + ' — ' + _snagHtmlText.length + ' תווים חולצו ✅', '#93c5fd');
+    if (btn) { btn.textContent = '🔍 הפעל סריקת ליקויים AI — HTML ✅'; btn.style.background = 'linear-gradient(135deg,#1a3d5c,#2d6a9f)'; btn.scrollIntoView({behavior:'smooth',block:'center'}); }
+
   } else {
-    // Single image — read to base64
-    var b64 = await new Promise(function(resolve, reject) {
-      var reader = new FileReader();
-      reader.onload  = function(e){ resolve(e.target.result.split(',')[1]); };
-      reader.onerror = reject;
-      reader.readAsDataURL(file);
-    });
+    // ── Image ─────────────────────────────────────────────────────
+    if (!['image/jpeg','image/png','image/gif','image/webp'].includes(_snagMediaType)) {
+      _snagMediaType = 'image/jpeg';
+    }
+    var b64 = await readFileAsBase64(file);
     _snagFrames = [b64];
 
-    // ── Show image preview above scan button ──────────────────────────
-    var existingPreview = document.getElementById('snag-image-preview-wrap');
-    if (existingPreview) existingPreview.remove();
-
-    var previewWrap = document.createElement('div');
-    previewWrap.id = 'snag-image-preview-wrap';
-    previewWrap.style.cssText = 'margin-bottom:16px;border-radius:12px;overflow:hidden;border:2px solid rgba(59,130,246,0.4);position:relative;';
-
-    var previewImg = document.createElement('img');
-    previewImg.src = 'data:image/jpeg;base64,' + b64;
-    previewImg.style.cssText = 'width:100%;max-height:280px;object-fit:contain;background:#0a0a1a;display:block;';
-
-    var previewLabel = document.createElement('div');
-    previewLabel.style.cssText = 'position:absolute;bottom:0;left:0;right:0;background:rgba(0,0,0,0.7);padding:8px 14px;font-size:12px;color:#93c5fd;font-weight:700;font-family:Heebo,sans-serif;direction:rtl;';
-    previewLabel.textContent = '📸 ' + file.name + ' — מוכן לסריקה ✅';
-
-    previewWrap.appendChild(previewImg);
-    previewWrap.appendChild(previewLabel);
-
-    // Insert before scan button
+    var wrap = document.createElement('div');
+    wrap.id = 'snag-image-preview-wrap';
+    wrap.style.cssText = 'margin-bottom:16px;border-radius:12px;overflow:hidden;border:2px solid rgba(59,130,246,0.4);position:relative;';
+    var pImg = document.createElement('img');
+    pImg.src = 'data:' + _snagMediaType + ';base64,' + b64;
+    pImg.style.cssText = 'width:100%;max-height:280px;object-fit:contain;background:#0a0a1a;display:block;';
+    var pLbl = document.createElement('div');
+    pLbl.style.cssText = 'position:absolute;bottom:0;left:0;right:0;background:rgba(0,0,0,0.75);padding:8px 14px;font-size:12px;color:#93c5fd;font-weight:700;font-family:Heebo,sans-serif;direction:rtl;';
+    pLbl.textContent = '📸 ' + file.name + ' — מוכן לסריקה ✅';
+    wrap.appendChild(pImg); wrap.appendChild(pLbl);
     var scanBtn = document.getElementById('snag-scan-btn');
-    if (scanBtn) scanBtn.parentNode.insertBefore(previewWrap, scanBtn);
-
-    // Update button text and scroll to it
-    if (btn) {
-      btn.textContent = '🔍 הפעל סריקת ליקויים AI';
-      btn.style.background = 'linear-gradient(135deg,#22c55e,#15803d)';
-      btn.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    }
+    if (scanBtn) scanBtn.parentNode.insertBefore(wrap, scanBtn);
+    if (btn) { btn.textContent = '🔍 הפעל סריקת ליקויים AI'; btn.style.background = 'linear-gradient(135deg,#22c55e,#15803d)'; btn.scrollIntoView({behavior:'smooth',block:'center'}); }
   }
+}
+
+function snagShowFilePreview(label, color) {
+  var scanBtn = document.getElementById('snag-scan-btn');
+  if (!scanBtn) return;
+  var ep = document.getElementById('snag-image-preview-wrap');
+  if (ep) ep.remove();
+  var wrap = document.createElement('div');
+  wrap.id = 'snag-image-preview-wrap';
+  wrap.style.cssText = 'margin-bottom:16px;border-radius:10px;border:2px solid ' + color + '60;background:' + color + '15;padding:12px 16px;font-size:13px;font-weight:700;color:' + color + ';font-family:Heebo,sans-serif;direction:rtl;';
+  wrap.textContent = label;
+  scanBtn.parentNode.insertBefore(wrap, scanBtn);
 }
 
 // ── Main scan ─────────────────────────────────────────────────────────
 async function snagRunScan() {
-  if (!_snagFrames.length) {
-    showToast('בחר תמונה או סרטון תחילה', 'error');
+  if (!_snagFrames.length && !_snagHtmlText) {
+    showToast('בחר תמונה, סרטון, PDF או HTML תחילה', 'error');
     return;
   }
 
@@ -6702,9 +6829,21 @@ async function snagRunScan() {
   // Start timer
   snagStartMeter();
 
-  var imageBlocks = _snagFrames.map(function(b64) {
-    return { type:'image', source:{ type:'base64', media_type:'image/jpeg', data:b64 } };
-  });
+  // Build content blocks based on file type
+  var imageBlocks = [];
+  if (_snagMediaType === 'text/html' && _snagHtmlText) {
+    imageBlocks = [{ type: 'text', text: 'תוכן הדף/הדוח לניתוח:\n\n' + _snagHtmlText }];
+  } else if (_snagMediaType === 'application/pdf') {
+    imageBlocks = _snagFrames.map(function(b64) {
+      return { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: b64 } };
+    });
+  } else {
+    imageBlocks = _snagFrames.map(function(b64, idx) {
+      var mtype = (_snagIsVideo || idx > 0) ? 'image/jpeg' : (_snagMediaType || 'image/jpeg');
+      if (!['image/jpeg','image/png','image/gif','image/webp'].includes(mtype)) mtype = 'image/jpeg';
+      return { type:'image', source:{ type:'base64', media_type:mtype, data:b64 } };
+    });
+  }
 
   // Build comprehensive snag prompt
   var catList = allCats.map(function(c, i) {
@@ -7467,6 +7606,349 @@ async function capSavePlan() {
   } catch(e) {
     showToast('שגיאה: ' + e.message, 'error');
   }
+}
+
+
+// ══ MULTI-FILE PROCESSING ═════════════════════════════════════════════
+
+// Snag: process multiple files sequentially
+async function snagHandleMultipleFiles(files) {
+  var results = document.getElementById('snag-results');
+  if (results) results.innerHTML = '';
+
+  // Remove old preview
+  var ep = document.getElementById('snag-image-preview-wrap');
+  if (ep) ep.remove();
+
+  // Show queue header
+  var queueWrap = document.createElement('div');
+  queueWrap.id  = 'snag-multi-queue';
+  queueWrap.style.cssText = 'margin-bottom:20px;';
+  queueWrap.innerHTML = '<div style="font-size:13px;font-weight:800;color:#93c5fd;margin-bottom:10px;">📂 ' + files.length + ' קבצים בתור לניתוח:</div>'
+    + files.map(function(f,i){
+        return '<div id="snag-q-' + i + '" style="display:flex;align-items:center;gap:10px;padding:8px 12px;background:#242438;border-radius:8px;margin-bottom:6px;font-family:Heebo,sans-serif;direction:rtl;">'
+          + '<span id="snag-q-icon-' + i + '" style="font-size:16px;">⏳</span>'
+          + '<span style="font-size:12px;color:#ccc;flex:1;">' + f.name.replace(/</g,'&lt;') + '</span>'
+          + '<span id="snag-q-status-' + i + '" style="font-size:11px;color:#555;">ממתין...</span>'
+          + '</div>';
+      }).join('');
+
+  var scanBtn = document.getElementById('snag-scan-btn');
+  if (scanBtn) scanBtn.parentNode.insertBefore(queueWrap, scanBtn);
+
+  // Results container for multi-mode
+  var multiResults = document.createElement('div');
+  multiResults.id = 'snag-multi-results';
+  multiResults.style.cssText = 'display:flex;flex-direction:column;gap:24px;';
+  if (results) results.appendChild(multiResults);
+
+  // Process each file
+  for (var i = 0; i < files.length; i++) {
+    var file = files[i];
+    var iconEl   = document.getElementById('snag-q-icon-' + i);
+    var statusEl = document.getElementById('snag-q-status-' + i);
+    var rowEl    = document.getElementById('snag-q-' + i);
+
+    if (iconEl)   iconEl.textContent   = '🔄';
+    if (statusEl) statusEl.textContent = 'מעבד...';
+    if (statusEl) statusEl.style.color = '#f59e0b';
+    if (rowEl)    rowEl.style.background = 'rgba(59,130,246,0.1)';
+
+    try {
+      // Prepare file
+      _snagIsVideo   = fileIsVideo(file);
+      _snagFrames    = [];
+      _snagMediaType = file.type || 'image/jpeg';
+      _snagHtmlText  = '';
+
+      if (_snagIsVideo) {
+        _snagFrames = await safetyExtractFrames(file, 6);
+      } else if (fileIsPDF(file)) {
+        _snagMediaType = 'application/pdf';
+        _snagFrames    = [await readFileAsBase64(file)];
+      } else if (fileIsHTML(file)) {
+        _snagMediaType = 'text/html';
+        _snagHtmlText  = htmlToText(await readFileAsText(file));
+      } else {
+        if (!['image/jpeg','image/png','image/gif','image/webp'].includes(_snagMediaType)) _snagMediaType = 'image/jpeg';
+        _snagFrames = [await readFileAsBase64(file)];
+      }
+
+      // Run scan and capture result
+      var fileFindings = await snagRunAnalysisForFile(file, i);
+
+      if (fileFindings) {
+        if (iconEl)   iconEl.textContent   = '✅';
+        if (statusEl) { statusEl.textContent = 'הושלם'; statusEl.style.color = '#22c55e'; }
+        if (rowEl)    rowEl.style.background = 'rgba(34,197,94,0.08)';
+      } else {
+        throw new Error('אין תוצאות');
+      }
+
+    } catch(e) {
+      if (iconEl)   iconEl.textContent   = '❌';
+      if (statusEl) { statusEl.textContent = 'שגיאה: ' + e.message; statusEl.style.color = '#ef4444'; }
+      if (rowEl)    rowEl.style.background = 'rgba(239,68,68,0.08)';
+    }
+
+    // Small pause between files to avoid rate limiting
+    if (i < files.length - 1) await new Promise(function(r){ setTimeout(r, 800); });
+  }
+
+  showToast('✅ ' + files.length + ' קבצים עובדו');
+}
+
+// Run analysis for a single file and render into multi-results container
+async function snagRunAnalysisForFile(file, fileIdx) {
+  var apiKey = (APP.config && APP.config.anthropic_key) || null;
+  if (!apiKey) return null;
+
+  var selectedIds = Array.from(document.querySelectorAll('.snag-cat-cb:checked')).map(function(cb){ return cb.dataset.id; });
+  var customCats  = Array.from(document.querySelectorAll('.snag-custom-cat')).map(function(el){ return el.value.trim(); }).filter(Boolean);
+  var allCats     = SNAG_CATEGORIES.filter(function(c){ return selectedIds.includes(c.id); });
+  if (!allCats.length && !customCats.length) return null;
+
+  // Build image blocks
+  var imageBlocks = [];
+  if (_snagMediaType === 'text/html' && _snagHtmlText) {
+    imageBlocks = [{ type:'text', text:'תוכן לניתוח:\n\n' + _snagHtmlText }];
+  } else if (_snagMediaType === 'application/pdf') {
+    imageBlocks = _snagFrames.map(function(b64){ return { type:'document', source:{ type:'base64', media_type:'application/pdf', data:b64 } }; });
+  } else {
+    imageBlocks = _snagFrames.map(function(b64, idx) {
+      var mtype = (_snagIsVideo || idx > 0) ? 'image/jpeg' : (_snagMediaType || 'image/jpeg');
+      if (!['image/jpeg','image/png','image/gif','image/webp'].includes(mtype)) mtype = 'image/jpeg';
+      return { type:'image', source:{ type:'base64', media_type:mtype, data:b64 } };
+    });
+  }
+
+  var snagPrompt = 'You are a senior construction quality inspector. Analyze this '
+    + (_snagIsVideo ? 'video (' + _snagFrames.length + ' frames)' : 'image/document')
+    + ' for construction defects. Respond ONLY with valid JSON, no markdown.\n\n'
+    + 'JSON structure:\n{\n'
+    + allCats.map(function(c){ return '  "' + c.id + '": { "severity":"NONE|MINOR|MODERATE|CRITICAL", "findings":[], "location":"", "remedy":"", "responsible_trade":"" }'; }).join(',\n')
+    + '\n}\n\nCategories:\n'
+    + allCats.map(function(c,i){ return (i+1)+'. '+c.name_he+' (id:"'+c.id+'"): '+(c.prompt_en||'Inspect for defects'); }).join('\n')
+    + '\n\nCRITICAL=immediate danger, MODERATE=fix before next stage, MINOR=fix before handover, NONE=ok. Return ONLY JSON.';
+
+  var res = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: { 'Content-Type':'application/json','x-api-key':apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true' },
+    body: JSON.stringify({ model:'claude-sonnet-4-20250514', max_tokens:2000,
+      messages:[{ role:'user', content:[...imageBlocks, { type:'text', text:snagPrompt }] }] })
+  });
+  var data = await res.json();
+  if (!res.ok) throw new Error(data.error?.message || 'API ' + res.status);
+  var raw = (data.content&&data.content[0]&&data.content[0].text||'').replace(/```json|```/g,'').trim();
+  var findings = {};
+  try { findings = JSON.parse(raw); } catch(e) { throw new Error('JSON parse error'); }
+
+  // Save to Supabase
+  var projId   = document.getElementById('safety-project-sel')?.value || null;
+  var projName = projId ? ((window.allProjects||[]).find(function(p){return p.id===projId;})||{}).project_name : null;
+  await snagSaveReport(findings, allCats, customCats, projId, projName);
+
+  // Render into multi-results container
+  var container = document.getElementById('snag-multi-results') || document.getElementById('snag-results');
+  if (!container) return findings;
+
+  var wrapper = document.createElement('div');
+  wrapper.style.cssText = 'border:1.5px solid rgba(255,255,255,0.1);border-radius:16px;overflow:hidden;';
+
+  // File header
+  var fileHeader = document.createElement('div');
+  fileHeader.style.cssText = 'background:#242438;padding:12px 16px;display:flex;align-items:center;gap:10px;border-bottom:1px solid rgba(255,255,255,0.06);';
+  var fileIcon = _snagIsVideo ? '🎬' : fileIsPDF({type:_snagMediaType}) ? '📄' : fileIsHTML({type:_snagMediaType}) ? '🌐' : '📸';
+  fileHeader.innerHTML = '<span style="font-size:18px;">' + fileIcon + '</span>'
+    + '<span style="font-size:13px;font-weight:700;color:#fff;direction:rtl;">' + file.name.replace(/</g,'&lt;') + '</span>'
+    + '<span style="margin-right:auto;font-size:11px;color:#555;">' + (_snagIsVideo ? _snagFrames.length + ' פריימים' : 'קובץ יחיד') + '</span>';
+  wrapper.appendChild(fileHeader);
+
+  // Report content
+  var reportDiv = document.createElement('div');
+  reportDiv.style.cssText = 'padding:16px;';
+
+  // Store findings temporarily and render
+  var prevFindings = _snagLastFindings;
+  var prevFrames   = _snagFrames.slice();
+  var prevIsVideo  = _snagIsVideo;
+  _snagLastFindings = findings;
+
+  // Build mini report HTML
+  var SEV = { CRITICAL:{c:'#ef4444',bg:'rgba(239,68,68,0.12)',l:'🔴 קריטי'}, MODERATE:{c:'#f59e0b',bg:'rgba(245,158,11,0.1)',l:'🟡 בינוני'}, MINOR:{c:'#3b82f6',bg:'rgba(59,130,246,0.08)',l:'🔵 קל'}, NONE:{c:'#22c55e',bg:'rgba(34,197,94,0.06)',l:'✅ תקין'} };
+  var sevOrd = {CRITICAL:3,MODERATE:2,MINOR:1,NONE:0};
+  var scored = allCats.map(function(cat){ var f=findings[cat.id]||{severity:'NONE',findings:[]}; return {cat,f,s:SEV[f.severity]||SEV.NONE,lv:sevOrd[f.severity]||0}; }).sort(function(a,b){return b.lv-a.lv;});
+  var maxLv  = scored[0]?.lv||0;
+  var banner = maxLv>=3?'🔴 ליקויים קריטיים':maxLv>=2?'🟡 ליקויים משמעותיים':maxLv>=1?'🔵 ליקויים קלים':'✅ לא נמצאו ליקויים';
+  var bannerColor = maxLv>=3?'#ef4444':maxLv>=2?'#f59e0b':maxLv>=1?'#3b82f6':'#22c55e';
+
+  var html = '<div style="font-size:15px;font-weight:900;color:' + bannerColor + ';margin-bottom:12px;">' + banner + '</div>';
+  html += '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:10px;margin-bottom:12px;">';
+  scored.forEach(function(s) {
+    if (s.lv === 0) {
+      html += '<div style="background:' + s.s.bg + ';border:1px solid ' + s.s.c + '30;border-radius:10px;padding:10px 12px;display:flex;align-items:center;gap:8px;">'
+        + '<span style="font-size:18px;">' + (s.cat.icon||'🔧') + '</span>'
+        + '<div><div style="font-size:12px;font-weight:700;color:#fff;">' + s.cat.name_he + '</div>'
+        + '<div style="font-size:10px;color:#22c55e;">✅ תקין</div></div></div>';
+      return;
+    }
+    html += '<div style="background:' + s.s.bg + ';border:1.5px solid ' + s.s.c + ';border-radius:10px;padding:12px;">'
+      + '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">'
+      + '<span style="font-size:20px;">' + (s.cat.icon||'🔧') + '</span>'
+      + '<div><div style="font-size:12px;font-weight:800;color:#fff;">' + s.cat.name_he + '</div>'
+      + '<div style="font-size:10px;color:' + s.s.c + ';font-weight:700;">' + s.s.l + '</div></div></div>';
+    if (s.f.findings&&s.f.findings.length) {
+      s.f.findings.forEach(function(fi){ html += '<div style="font-size:11px;color:#ccc;padding:2px 0;">▸ ' + (fi||'').replace(/</g,'&lt;') + '</div>'; });
+    }
+    if (s.f.remedy) html += '<div style="font-size:11px;color:' + s.s.c + ';font-weight:700;margin-top:6px;">🔧 ' + s.f.remedy.replace(/</g,'&lt;') + '</div>';
+    html += '</div>';
+  });
+  html += '</div>';
+  reportDiv.innerHTML = html;
+  wrapper.appendChild(reportDiv);
+  container.appendChild(wrapper);
+
+  _snagLastFindings = prevFindings; // restore
+  return findings;
+}
+
+// Safety: process multiple files
+async function safetyHandleMultipleFiles(files) {
+  var results = document.getElementById('safety-results');
+  if (results) results.innerHTML = '';
+
+  var queueWrap = document.createElement('div');
+  queueWrap.id  = 'safety-multi-queue';
+  queueWrap.style.cssText = 'margin-bottom:20px;';
+  queueWrap.innerHTML = '<div style="font-size:13px;font-weight:800;color:#fca5a5;margin-bottom:10px;">📂 ' + files.length + ' קבצים בתור לניתוח בטיחות:</div>'
+    + files.map(function(f,i){
+        return '<div id="safety-q-' + i + '" style="display:flex;align-items:center;gap:10px;padding:8px 12px;background:#242438;border-radius:8px;margin-bottom:6px;font-family:Heebo,sans-serif;direction:rtl;">'
+          + '<span id="safety-q-icon-' + i + '" style="font-size:16px;">⏳</span>'
+          + '<span style="font-size:12px;color:#ccc;flex:1;">' + f.name.replace(/</g,'&lt;') + '</span>'
+          + '<span id="safety-q-status-' + i + '" style="font-size:11px;color:#555;">ממתין...</span>'
+          + '</div>';
+      }).join('');
+
+  var prog = document.getElementById('safety-progress');
+  if (prog) prog.parentNode.insertBefore(queueWrap, prog);
+
+  var multiResults = document.createElement('div');
+  multiResults.id = 'safety-multi-results';
+  multiResults.style.cssText = 'display:flex;flex-direction:column;gap:24px;';
+  if (results) results.appendChild(multiResults);
+
+  for (var i = 0; i < files.length; i++) {
+    var file = files[i];
+    var iconEl   = document.getElementById('safety-q-icon-' + i);
+    var statusEl = document.getElementById('safety-q-status-' + i);
+    var rowEl    = document.getElementById('safety-q-' + i);
+    if (iconEl)   iconEl.textContent   = '🔄';
+    if (statusEl) { statusEl.textContent = 'מעבד...'; statusEl.style.color = '#f59e0b'; }
+    if (rowEl)    rowEl.style.background = 'rgba(59,130,246,0.1)';
+
+    try {
+      _safetyIsVideo   = fileIsVideo(file);
+      _safetyFrames    = [];
+      _safetyMediaType = file.type || 'image/jpeg';
+      _safetyHtmlText  = '';
+
+      if (_safetyIsVideo) {
+        _safetyFrames = await safetyExtractFrames(file, 6);
+      } else if (fileIsPDF(file)) {
+        _safetyMediaType = 'application/pdf';
+        _safetyFrames    = [await readFileAsBase64(file)];
+      } else if (fileIsHTML(file)) {
+        _safetyMediaType = 'text/html';
+        _safetyHtmlText  = htmlToText(await readFileAsText(file));
+      } else {
+        if (!['image/jpeg','image/png','image/gif','image/webp'].includes(_safetyMediaType)) _safetyMediaType = 'image/jpeg';
+        _safetyFrames    = [await readFileAsBase64(file)];
+      }
+
+      await safetyRunAnalysisForFile(file, i);
+
+      if (iconEl)   iconEl.textContent   = '✅';
+      if (statusEl) { statusEl.textContent = 'הושלם'; statusEl.style.color = '#22c55e'; }
+      if (rowEl)    rowEl.style.background = 'rgba(34,197,94,0.08)';
+    } catch(e) {
+      if (iconEl)   iconEl.textContent   = '❌';
+      if (statusEl) { statusEl.textContent = e.message; statusEl.style.color = '#ef4444'; }
+    }
+    if (i < files.length - 1) await new Promise(function(r){ setTimeout(r, 800); });
+  }
+  showToast('✅ ' + files.length + ' קבצים עובדו');
+}
+
+async function safetyRunAnalysisForFile(file, fileIdx) {
+  var apiKey = (APP.config && APP.config.anthropic_key) || null;
+  if (!apiKey) return;
+  await safetyLoadCategories();
+
+  var imageBlocks = [];
+  if (_safetyMediaType === 'text/html' && _safetyHtmlText) {
+    imageBlocks = [{ type:'text', text:'תוכן לניתוח:\n\n' + _safetyHtmlText }];
+  } else if (_safetyMediaType === 'application/pdf') {
+    imageBlocks = _safetyFrames.map(function(b64){ return { type:'document', source:{ type:'base64', media_type:'application/pdf', data:b64 } }; });
+  } else {
+    imageBlocks = _safetyFrames.map(function(b64, idx) {
+      var mtype = (_safetyIsVideo || idx > 0) ? 'image/jpeg' : (_safetyMediaType || 'image/jpeg');
+      if (!['image/jpeg','image/png','image/gif','image/webp'].includes(mtype)) mtype = 'image/jpeg';
+      return { type:'image', source:{ type:'base64', media_type:mtype, data:b64 } };
+    });
+  }
+
+  var safetyPrompt = 'You are a construction site safety inspector. Analyze this '
+    + (_safetyIsVideo ? 'video (' + _safetyFrames.length + ' frames)' : 'image/document')
+    + '. Respond ONLY with valid JSON.\n\n{'
+    + SAFETY_CATEGORIES.map(function(cat){
+        return '"' + cat.id + '":{"severity":"OK|MINOR|MODERATE|CRITICAL","found":[],"action":null}';
+      }).join(',')
+    + '}\n\nFor each: ' + SAFETY_CATEGORIES.map(function(c){return c.id+': '+c.prompt;}).join(' | ')
+    + '\nReturn ONLY JSON.';
+
+  var res = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: { 'Content-Type':'application/json','x-api-key':apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true' },
+    body: JSON.stringify({ model:'claude-sonnet-4-20250514', max_tokens:2000,
+      messages:[{ role:'user', content:[...imageBlocks, { type:'text', text:safetyPrompt }] }] })
+  });
+  var data = await res.json();
+  if (!res.ok) throw new Error(data.error?.message || 'API ' + res.status);
+
+  var raw = (data.content&&data.content[0]&&data.content[0].text||'').replace(/```json|```/g,'').trim();
+  var findings = {};
+  try { findings = JSON.parse(raw); } catch(e) { throw new Error('JSON error'); }
+
+  // Save + render
+  var projId   = document.getElementById('safety-project-sel')?.value || null;
+  var projName = projId ? ((window.allProjects||[]).find(function(p){return p.id===projId;})||{}).project_name : null;
+  await safetySaveReport(findings, projId, projName);
+
+  var container = document.getElementById('safety-multi-results') || document.getElementById('safety-results');
+  if (!container) return;
+
+  var wrapper = document.createElement('div');
+  wrapper.style.cssText = 'border:1.5px solid rgba(255,255,255,0.08);border-radius:16px;overflow:hidden;';
+  var fh = document.createElement('div');
+  fh.style.cssText = 'background:#242438;padding:12px 16px;display:flex;align-items:center;gap:10px;border-bottom:1px solid rgba(255,255,255,0.06);';
+  fh.innerHTML = '<span style="font-size:18px;">' + (_safetyIsVideo?'🎬':fileIsPDF({name:file.name})?'📄':'📸') + '</span>'
+    + '<span style="font-size:13px;font-weight:700;color:#fff;direction:rtl;">' + file.name.replace(/</g,'&lt;') + '</span>';
+  wrapper.appendChild(fh);
+
+  var rd = document.createElement('div');
+  rd.style.cssText = 'padding:16px;';
+  var prevF = _safetyLastFindings;
+  _safetyLastFindings = findings;
+  var fr = _safetyFrames.slice();
+  var iv = _safetyIsVideo;
+  safetyRenderReport(findings);
+  var rendered = document.getElementById('safety-results');
+  if (rendered && rendered.children.length > 0) {
+    rd.appendChild(rendered.children[0].cloneNode(true));
+  }
+  wrapper.appendChild(rd);
+  container.appendChild(wrapper);
+  _safetyLastFindings = prevF;
 }
 
 
