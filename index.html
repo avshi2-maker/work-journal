@@ -8738,59 +8738,61 @@ var _ragDamageContext  = null;   // structured damage assessment from vision
 var _ragPOPlan         = null;   // last generated PO plan
 
 // ── SYSTEM PROMPT for PO generation (structured JSON output) ──────────
-const RAG_PO_SYSTEM = `אתה מהנדס בנייה בכיר המתמחה בממ"ד ובנייה עמידת הדף בישראל.
-תפקידך: לנתח נזק מתמונה + מסמכים טכניים ולייצר תוכנית תיקון מלאה כ-JSON.
-
-חוקים:
-1. ענה ONLY ב-JSON תקני — אין markdown, אין טקסט לפני או אחרי
-2. כל שדות טקסט — בעברית בלבד
-3. מחירים — בשקלים, מ-Supabase cost records שצורפו
-4. זמנים — בימי עבודה
-5. תקנים — ציין מספר תקן מדויק`;
+// System prompt built with string concat — no quote nesting issues
+var RAG_PO_SYSTEM = 'אתה מהנדס בנייה בכיר המתמחה בבנייה עמידת הדף בישראל.\n'
+  + 'תפקידך: לנתח נזק מתמונה + מסמכים טכניים ולייצר תוכנית תיקון מלאה כ-JSON.\n\n'
+  + 'חוקים:\n'
+  + '1. ענה ONLY ב-JSON תקני — אין markdown, אין טקסט לפני או אחרי\n'
+  + '2. כל שדות טקסט — בעברית בלבד\n'
+  + '3. מחירים — בשקלים, מנתוני Supabase שצורפו\n'
+  + '4. זמנים — בימי עבודה\n'
+  + '5. תקנים — ציין מספר תקן מדויק\n'
+  + '6. אסור גרשיים כפולים בתוך ערכי מחרוזת — במקום ממ"ד כתוב ממד, במקום ת"י כתוב תי';
 
 // ── PO JSON schema that Claude must return ────────────────────────────
-const RAG_PO_SCHEMA = `{
-  "damage_assessment": {
-    "severity": "CRITICAL",
-    "blast_tier": "T2",
-    "damage_types": ["נזק הדף", "חשיפת זיון", "התקלפות"],
-    "affected_area_m2": 0.5,
-    "immediate_danger": true,
-    "engineering_note": "נדרש שחזור מבני מלא לפני חזרה לשימוש"
-  },
-  "recommended_method": {
-    "method_id": "RECAST",
-    "method_name": "יציקה מחדש",
-    "rationale": "שחזור מלא עם בטון B35 — מאפשר הסמכה מחדש של הממ"ד",
-    "certifiable": true,
-    "hfc_approval_required": true
-  },
-  "po_data": {
-    "project_name": "שיקום ממ"ד — יציקה מחדש",
-    "project_location": "",
-    "start_date_days_from_now": 2,
-    "duration_days": 14,
-    "notes": "הזמנה כפופה לאישור מהנדס קונסטרוקציה ופיקוד העורף",
-    "sections": [
-      {
-        "section_title": "פיקוח ותמיכה זמנית",
-        "section_type": "LABOR",
-        "items": [
-          {
-            "description": "הקמת פיגום ותמיכה זמנית",
-            "unit": "ס"ע",
-            "quantity": 8,
-            "unit_price": 210,
-            "labor_hours": 8,
-            "trade": "תבניתן",
-            "standard_ref": "ת"י 118",
-            "notes": ""
-          }
-        ]
-      }
-    ]
-  }
-}`;
+// Schema built with string concat to avoid ANY quote issues in Hebrew strings
+var RAG_PO_SCHEMA = '{'
+  + '"damage_assessment":{'
+  +   '"severity":"CRITICAL",'
+  +   '"blast_tier":"T2",'
+  +   '"damage_types":["נזק הדף","חשיפת זיון","התקלפות"],'
+  +   '"affected_area_m2":0.5,'
+  +   '"immediate_danger":true,'
+  +   '"engineering_note":"נדרש שחזור מבני מלא"'
+  + '},'
+  + '"recommended_method":{'
+  +   '"method_id":"RECAST",'
+  +   '"method_name":"יציקה מחדש",'
+  +   '"rationale":"שחזור מלא עם בטון B35 מאפשר הסמכה מחדש",'
+  +   '"certifiable":true,'
+  +   '"hfc_approval_required":true'
+  + '},'
+  + '"po_data":{'
+  +   '"project_name":"שיקום ממד",'
+  +   '"project_location":"",'
+  +   '"start_date_days_from_now":2,'
+  +   '"duration_days":14,'
+  +   '"notes":"הזמנה כפופה לאישור מהנדס קונסטרוקציה ופיקוד העורף",'
+  +   '"sections":['
+  +     '{'
+  +       '"section_title":"פיקוח ותמיכה זמנית",'
+  +       '"section_type":"LABOR",'
+  +       '"items":['
+  +         '{'
+  +           '"description":"הקמת פיגום ותמיכה זמנית",'
+  +           '"unit":"se",'
+  +           '"quantity":8,'
+  +           '"unit_price":210,'
+  +           '"labor_hours":8,'
+  +           '"trade":"תבניתן",'
+  +           '"standard_ref":"ti118",'
+  +           '"notes":""'
+  +         '}'
+  +       ']'
+  +     '}'
+  +   ']'
+  + '}'
+  + '}';
 
 
 // ── Handle photo upload ───────────────────────────────────────────────
@@ -8859,16 +8861,7 @@ async function ragAnalyzeDamagePhoto() {
     }
     if (actionsDiv) actionsDiv.style.display = 'flex';
 
-    // Auto-inject into chat
-    var history = document.getElementById('rag-chat-history');
-    var emptyState = history?.querySelector('[style*="text-align:center"]');
-    if (emptyState) emptyState.remove();
-    var analysisBubble = document.createElement('div');
-    analysisBubble.style.cssText = 'background:rgba(139,92,246,0.1);border:1px solid rgba(139,92,246,0.25);border-radius:12px;padding:12px 16px;font-size:12px;color:#c4b5fd;direction:rtl;';
-    analysisBubble.innerHTML = '<div style="font-weight:800;margin-bottom:6px;">📸 ניתוח תמונת נזק:</div>'
-      + (analysis||'').replace(/\n/g,'<br>').replace(/</g,'&lt;');
-    history?.appendChild(analysisBubble);
-    history?.scrollTo(0, history.scrollHeight);
+    // Analysis already shown in the photo preview zone — no duplicate bubble needed
 
   } catch(e) {
     if (analysisDiv) analysisDiv.innerHTML = '❌ שגיאה: ' + e.message;
@@ -8953,14 +8946,13 @@ async function ragGeneratePO() {
       + 'מחירים: השתמש בנתוני העלות מ-Supabase שסופקו למעלה\n'
       + 'כלול 12-16 שורות סה"כ\n\n'
       + 'JSON Schema:\n' + RAG_PO_SCHEMA
-      + '\n\nכללים קריטיים ל-JSON:\n'
-      + '1. התחל ישירות עם { — אין טקסט לפני\n'
-      + '2. כל מחרוזת בגרשיים כפולות " — אין גרשיים עבריים ״׳\n'
-      + '3. אין שורות חדשות בתוך ערכי מחרוזת — רק \\n\n'
-      + '4. מספרים ללא גרשיים: "quantity": 3 לא "quantity": "3"\n'
-      + '5. null (לא "null") לערכים ריקים\n'
-      + '6. אין תגיות markdown, אין ```json\n'
-      + 'ענה רק ב-JSON. אסור כל טקסט אחר.'
+      + '\n\nכללי JSON קריטיים:\n'
+      + '1. התחל עם { ישירות ללא טקסט לפני\n'
+      + '2. אסור גרשיים כפולים בתוך ערכי מחרוזת — שמות כמו ממד ולא ממ"ד, תי118 ולא ת"י 118\n'
+      + '3. מספרים ללא גרשיים: 8 ולא "8"\n'
+      + '4. null ללא גרשיים לערכים ריקים\n'
+      + '5. אין markdown, אין ```json\n'
+      + 'ענה ב-JSON בלבד. אסור כל טקסט אחר.'
     });
 
     // ── Step 4: Call Claude ───────────────────────────────────────────
