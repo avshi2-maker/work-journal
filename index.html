@@ -369,6 +369,8 @@ window.addEventListener('unhandledrejection', function(e) {
   <div class="tab-sep"></div>
   <div class="top-tab"        id="tab-rag"     onclick="switchTab('rag')" style="color:#c4b5fd;"> <span>🏗️</span><span>יעוץ ממ"ד</span></div>
   <div class="tab-sep"></div>
+  <div class="top-tab"        id="tab-micharon" onclick="switchTab('micharon')" style="color:#22c55e;"><span>📋</span><span>מחירון</span></div>
+  <div class="tab-sep"></div>
   <div class="top-tab"        id="tab-gcal"    onclick="switchTab('gcal')">   <span>📅</span><span>יומן Google</span></div>
   <div class="tab-sep"></div>
   <div class="top-tab"        id="tab-journal" onclick="switchTab('journal')"><span>📋</span><span>יומן עבודה יומי</span></div>
@@ -1922,6 +1924,85 @@ window.addEventListener('unhandledrejection', function(e) {
 </div></div></div>
 
 
+<!-- ══ מחירון PANEL ══ -->
+<div class="app-panel" id="micharon-panel"><div id="micharon-content">
+<div style="padding:70px 24px 60px;min-height:100vh;background:#1a1a2e;font-family:Heebo,sans-serif;direction:rtl;">
+
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;flex-wrap:wrap;gap:12px;">
+    <div>
+      <div style="font-size:10px;letter-spacing:3px;color:#22c55e;text-transform:uppercase;margin-bottom:4px;">משרד הבינוי והשיכון · דצמבר 2025</div>
+      <h1 style="font-size:22px;font-weight:900;color:#fff;">📋 מחירון כללי לבינוי</h1>
+      <div style="font-size:12px;color:#555;margin-top:3px;">2,683 סעיפים · 14 פרקים · AI התאמה אוטומטית לכתב כמויות</div>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;">
+      <select id="mc-chapter-sel" onchange="mcFilter()" style="background:#1a1a2e;border:1px solid rgba(255,255,255,0.12);color:#ccc;padding:7px 10px;border-radius:10px;font-family:Heebo,sans-serif;font-size:11px;direction:rtl;max-width:200px;">
+        <option value="">📚 כל הפרקים</option>
+      </select>
+      <select id="mc-unit-sel" onchange="mcFilter()" style="background:#1a1a2e;border:1px solid rgba(255,255,255,0.12);color:#ccc;padding:7px 10px;border-radius:10px;font-family:Heebo,sans-serif;font-size:11px;direction:rtl;">
+        <option value="">📐 כל יחידות</option>
+        <option>מ"ק</option><option>מ"ר</option><option>מטר</option>
+        <option>טון</option><option>יח'</option><option>קומפ</option>
+      </select>
+    </div>
+  </div>
+
+  <!-- Search -->
+  <div style="background:#242438;border-radius:12px;padding:12px;margin-bottom:14px;border:1px solid rgba(255,255,255,0.06);">
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+      <input id="mc-q" type="text" placeholder="🔍 חפש סעיף... (בטון, זיון, קווי מים, תאורה, אספלט...)"
+        style="flex:1;min-width:180px;background:#1a1a2e;border:1px solid rgba(34,197,94,0.35);color:#fff;padding:10px 14px;border-radius:9px;font-family:Heebo,sans-serif;font-size:13px;direction:rtl;outline:none;"
+        oninput="mcSearchDebounce(this.value)">
+      <button onclick="mcSearch(document.getElementById('mc-q').value)"
+        style="background:linear-gradient(135deg,#166534,#22c55e);border:none;color:#fff;padding:10px 20px;border-radius:9px;cursor:pointer;font-family:Heebo,sans-serif;font-size:13px;font-weight:700;">🔍 חפש</button>
+      <button onclick="mcAIMatch()"
+        style="background:linear-gradient(135deg,#7c3aed,#5b21b6);border:none;color:#fff;padding:10px 18px;border-radius:9px;cursor:pointer;font-family:Heebo,sans-serif;font-size:13px;font-weight:700;">🧠 AI — התאם להזמנה</button>
+    </div>
+    <div id="mc-ai-status" style="font-size:11px;color:#888;margin-top:8px;display:none;"></div>
+  </div>
+
+  <!-- Stats -->
+  <div id="mc-stats" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:8px;margin-bottom:14px;"></div>
+
+  <!-- Table -->
+  <div style="background:#242438;border-radius:12px;overflow:hidden;border:1px solid rgba(255,255,255,0.05);">
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-bottom:1px solid rgba(255,255,255,0.05);">
+      <div id="mc-count" style="font-size:11px;font-weight:700;color:#22c55e;"></div>
+      <div style="display:flex;gap:6px;">
+        <button onclick="mcExportCSV()" style="background:rgba(34,197,94,0.1);border:1px solid rgba(34,197,94,0.25);color:#86efac;padding:4px 10px;border-radius:7px;cursor:pointer;font-family:Heebo,sans-serif;font-size:10px;font-weight:700;">📥 CSV</button>
+        <button onclick="mcSendToPO()" style="background:rgba(201,168,76,0.12);border:1px solid rgba(201,168,76,0.25);color:#c9a84c;padding:4px 10px;border-radius:7px;cursor:pointer;font-family:Heebo,sans-serif;font-size:10px;font-weight:700;">📄 סמנים → הזמנה</button>
+      </div>
+    </div>
+    <div style="overflow-x:auto;">
+      <table style="width:100%;border-collapse:collapse;font-size:12px;" id="mc-tbl">
+        <thead>
+          <tr style="background:#1a1a2e;">
+            <th style="padding:8px 10px;color:#22c55e;font-size:10px;width:28px;"><input type="checkbox" id="mc-all-cb" onchange="mcSelectAll(this.checked)" style="accent-color:#22c55e;cursor:pointer;width:13px;height:13px;"></th>
+            <th style="padding:8px 10px;text-align:right;color:#22c55e;font-size:10px;white-space:nowrap;">קוד</th>
+            <th style="padding:8px 10px;text-align:right;color:#22c55e;font-size:10px;">תיאור</th>
+            <th style="padding:8px 10px;text-align:center;color:#22c55e;font-size:10px;">יחידה</th>
+            <th style="padding:8px 10px;text-align:left;color:#22c55e;font-size:10px;direction:ltr;">מחיר ₪</th>
+            <th style="padding:8px 10px;text-align:center;color:#22c55e;font-size:10px;"></th>
+          </tr>
+        </thead>
+        <tbody id="mc-body">
+          <tr><td colspan="6" style="text-align:center;padding:30px;color:#444;">⏳ טוען...</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <!-- Pagination -->
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 14px;border-top:1px solid rgba(255,255,255,0.05);">
+      <button onclick="mcPage(-1)" style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.08);color:#666;padding:5px 12px;border-radius:7px;cursor:pointer;font-family:Heebo,sans-serif;font-size:11px;">→ הקודם</button>
+      <div id="mc-pager" style="font-size:11px;color:#444;"></div>
+      <button onclick="mcPage(1)" style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.08);color:#666;padding:5px 12px;border-radius:7px;cursor:pointer;font-family:Heebo,sans-serif;font-size:11px;">הבא ←</button>
+    </div>
+  </div>
+
+  <!-- AI Match Results -->
+  <div id="mc-ai-panel" style="display:none;margin-top:16px;background:#1e1e35;border:1.5px solid rgba(139,92,246,0.4);border-radius:12px;padding:16px;"></div>
+
+</div></div></div>
+
+
 <div class="app-panel" id="gcal-panel"><div id="gcal-content"><div style="padding:54px 0 0;min-height:100vh;background:#1a1a2e;font-family:Heebo,sans-serif;direction:rtl;display:flex;flex-direction:column">
 
   <div style="padding:16px 24px 0;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
@@ -2472,7 +2553,7 @@ async function switchTab(tab) {
     if (ov) ov.style.display = 'none';
   }
 
-  ['crm','notes','eod','safety','rag','gcal','journal'].forEach(t => {
+  ['crm','notes','eod','safety','rag','micharon','gcal','journal'].forEach(t => {
     document.getElementById(`${t}-panel`)?.classList.toggle('active', t===tab);
     document.getElementById(`tab-${t}`)?.classList.toggle('active', t===tab);
   });
@@ -2486,7 +2567,8 @@ async function switchTab(tab) {
   if (tab === 'notes')   { setTimeout(function(){ sjPopulateProjectFilter(); loadNotesWall(); }, 100); }
   if (tab === 'eod')     { setTimeout(loadEODReport, 100); }
   if (tab === 'safety')  { setTimeout(safetyTabInit, 100); }
-  if (tab === 'rag')     { setTimeout(ragTabInit, 100); }
+  if (tab === 'rag')      { setTimeout(ragTabInit, 100); }
+  if (tab === 'micharon') { setTimeout(micharonTabInit, 100); }
   if (tab === 'gcal')    { if (typeof initGcal    === 'function') initGcal();  }
   if (tab === 'journal') { if (typeof initJournalOnce === 'function') initJournalOnce(); }
 }
@@ -9736,6 +9818,499 @@ async function ragHistShowDetail(id) {
   } catch(e) {
     if (bodyEl) bodyEl.innerHTML = '<div style="color:#ef4444;padding:14px;font-size:12px;">שגיאה: ' + e.message + '</div>';
   }
+}
+
+
+// ══════════════════════════════════════════════════════════════════════
+// מחירון כללי ENGINE — DOM-based, zero quote-nesting issues
+// משרד הבינוי והשיכון דצמבר 2025 · 2,683 items · 14 chapters
+// ══════════════════════════════════════════════════════════════════════
+
+var MC = {
+  all:      [],    // full dataset
+  filtered: [],    // after search/filter
+  selected: {},    // { item_code: item }
+  page:     0,
+  pageSize: 50,
+  lastQ:    '',
+  timer:    null
+};
+
+// ── Init ──────────────────────────────────────────────────────────────
+async function micharonTabInit() {
+  if (MC.all.length > 0) { mcRender(); return; }
+  mcStatus('⏳ טוען 2,683 סעיפי מחירון...', true);
+  try {
+    var res = await fetch(
+      SB_URL + '/rest/v1/price_items?select=item_code,chapter,chapter_name,sub_chapter_name,description,unit,price&order=item_code.asc&limit=3000',
+      { headers: { apikey: SB_KEY, Authorization: 'Bearer ' + SB_KEY, Range: '0-2999' } }
+    );
+    if (!res.ok) throw new Error('HTTP ' + res.status + ' — הרץ micharon_schema SQL תחילה');
+    MC.all = (await res.json()) || [];
+    MC.filtered = MC.all;
+    mcBuildChapterFilter();
+    mcRenderStats();
+    mcRender();
+    mcStatus('');
+  } catch(e) {
+    mcStatus('❌ ' + e.message, true);
+    var b = document.getElementById('mc-body');
+    if (b) {
+      b.innerHTML = '';
+      var tr = b.insertRow(); var td = tr.insertCell();
+      td.colSpan = 6; td.style.cssText = 'text-align:center;padding:30px;color:#ef4444;font-size:12px;';
+      td.textContent = '❌ ' + e.message + ' — הרץ micharon_schema_25032026.sql + micharon_data_25032026.sql בסופאבייס';
+    }
+  }
+}
+
+function mcBuildChapterFilter() {
+  var sel = document.getElementById('mc-chapter-sel');
+  if (!sel) return;
+  var chapters = {};
+  MC.all.forEach(function(i) { if (!chapters[i.chapter]) chapters[i.chapter] = i.chapter_name || ('פרק ' + i.chapter); });
+  sel.innerHTML = '';
+  var opt0 = document.createElement('option'); opt0.value = ''; opt0.textContent = 'כל הפרקים (' + MC.all.length + ')'; sel.appendChild(opt0);
+  Object.keys(chapters).sort(function(a,b){ return parseInt(a)-parseInt(b); }).forEach(function(ch) {
+    var cnt = MC.all.filter(function(i){ return i.chapter===ch; }).length;
+    var opt = document.createElement('option'); opt.value = ch;
+    opt.textContent = (chapters[ch]||'').replace('פרק 0','פ ').split(':').pop().trim().substring(0,28) + ' (' + cnt + ')';
+    sel.appendChild(opt);
+  });
+}
+
+function mcRenderStats() {
+  var el = document.getElementById('mc-stats');
+  if (!el) return;
+  var chs = new Set(MC.all.map(function(i){ return i.chapter; })).size;
+  var maxP = Math.max.apply(null, MC.all.map(function(i){ return parseFloat(i.price)||0; }));
+  el.innerHTML = '';
+  [
+    ['rgba(34,197,94,0.18)',  MC.all.length.toLocaleString(), 'סעיפים'],
+    ['rgba(59,130,246,0.18)', chs, 'פרקים'],
+    ['rgba(245,158,11,0.18)', '₪' + Math.round(maxP/1000) + 'K', 'מחיר מקס'],
+    ['rgba(139,92,246,0.18)', 'דצ׳ 2025', 'עדכון']
+  ].forEach(function(s) {
+    var d = document.createElement('div');
+    d.style.cssText = 'background:' + s[0] + ';border-radius:9px;padding:9px 12px;text-align:center;';
+    var v = document.createElement('div'); v.style.cssText = 'font-size:15px;font-weight:900;color:#fff;'; v.textContent = s[1];
+    var l = document.createElement('div'); l.style.cssText = 'font-size:10px;color:rgba(255,255,255,0.5);margin-top:2px;'; l.textContent = s[2];
+    d.appendChild(v); d.appendChild(l); el.appendChild(d);
+  });
+}
+
+// ── Search & Filter ───────────────────────────────────────────────────
+function mcSearchDebounce(q) {
+  clearTimeout(MC.timer);
+  MC.timer = setTimeout(function(){ mcSearch(q); }, 280);
+}
+
+function mcSearch(q) {
+  MC.lastQ = (q||'').trim();
+  mcFilter();
+}
+
+function mcFilter() {
+  var q  = MC.lastQ.toLowerCase();
+  var ch = (document.getElementById('mc-chapter-sel')?.value) || '';
+  var un = (document.getElementById('mc-unit-sel')?.value)    || '';
+
+  MC.filtered = MC.all.filter(function(item) {
+    if (ch && item.chapter !== ch) return false;
+    if (un && item.unit    !== un) return false;
+    if (!q) return true;
+    return (item.description||'').toLowerCase().includes(q)
+        || (item.item_code||'').includes(q)
+        || (item.sub_chapter_name||'').toLowerCase().includes(q);
+  });
+  MC.page = 0;
+  mcRender();
+}
+
+// ── Render table ──────────────────────────────────────────────────────
+function mcRender() {
+  var body = document.getElementById('mc-body');
+  var cntEl  = document.getElementById('mc-count');
+  var pagerEl= document.getElementById('mc-pager');
+  if (!body) return;
+
+  var start = MC.page * MC.pageSize;
+  var end   = Math.min(start + MC.pageSize, MC.filtered.length);
+  var slice = MC.filtered.slice(start, end);
+
+  if (cntEl)  cntEl.textContent  = MC.filtered.length.toLocaleString() + ' סעיפים';
+  if (pagerEl) pagerEl.textContent = 'עמוד ' + (MC.page+1) + ' / ' + Math.max(1, Math.ceil(MC.filtered.length/MC.pageSize));
+
+  body.innerHTML = '';
+  if (!slice.length) {
+    var tr0 = body.insertRow(); var td0 = tr0.insertCell();
+    td0.colSpan = 6; td0.style.cssText = 'text-align:center;padding:24px;color:#555;font-size:12px;';
+    td0.textContent = 'לא נמצאו סעיפים';
+    return;
+  }
+
+  var q = MC.lastQ.toLowerCase();
+  slice.forEach(function(item) {
+    var tr = body.insertRow();
+    tr.style.borderBottom = '1px solid rgba(255,255,255,0.04)';
+    if (MC.selected[item.item_code]) tr.style.background = 'rgba(34,197,94,0.07)';
+
+    // Checkbox
+    var tdCb = tr.insertCell(); tdCb.style.cssText = 'padding:6px 10px;text-align:center;';
+    var cb = document.createElement('input'); cb.type = 'checkbox';
+    cb.style.cssText = 'accent-color:#22c55e;width:13px;height:13px;cursor:pointer;';
+    cb.checked = !!MC.selected[item.item_code];
+    cb.onchange = (function(it){ return function(){ if(this.checked) MC.selected[it.item_code]=it; else delete MC.selected[it.item_code]; }; })(item);
+    tdCb.appendChild(cb);
+
+    // Code
+    var tdCode = tr.insertCell(); tdCode.style.cssText = 'padding:6px 10px;font-family:monospace;font-size:11px;color:#22c55e;white-space:nowrap;direction:ltr;';
+    tdCode.textContent = item.item_code || '';
+
+    // Description (with highlight)
+    var tdDesc = tr.insertCell(); tdDesc.style.cssText = 'padding:6px 10px;font-size:12px;color:#e2e8f0;direction:rtl;line-height:1.5;max-width:380px;';
+    var descText = (item.description||'');
+    if (q && descText.toLowerCase().includes(q)) {
+      var idx = descText.toLowerCase().indexOf(q);
+      var mark = document.createElement('mark');
+      mark.style.cssText = 'background:rgba(34,197,94,0.3);color:#fff;border-radius:2px;padding:0 2px;';
+      mark.textContent = descText.substring(idx, idx + q.length);
+      var span = document.createElement('span');
+      span.appendChild(document.createTextNode(descText.substring(0, idx)));
+      span.appendChild(mark);
+      span.appendChild(document.createTextNode(descText.substring(idx + q.length)));
+      tdDesc.appendChild(span);
+    } else {
+      tdDesc.textContent = descText;
+    }
+
+    // Unit
+    var tdUnit = tr.insertCell(); tdUnit.style.cssText = 'padding:6px 10px;text-align:center;font-size:11px;color:#93c5fd;white-space:nowrap;';
+    tdUnit.textContent = item.unit || '—';
+
+    // Price
+    var tdPrice = tr.insertCell(); tdPrice.style.cssText = 'padding:6px 10px;text-align:left;font-weight:700;color:#c9a84c;white-space:nowrap;direction:ltr;';
+    var p = parseFloat(item.price)||0;
+    tdPrice.textContent = p > 0 ? '₪' + p.toLocaleString('he-IL',{minimumFractionDigits:2,maximumFractionDigits:2}) : '—';
+
+    // Add button
+    var tdBtn = tr.insertCell(); tdBtn.style.cssText = 'padding:6px 10px;text-align:center;';
+    var btn = document.createElement('button');
+    btn.textContent = '+ הזמנה';
+    btn.style.cssText = 'background:rgba(201,168,76,0.12);border:1px solid rgba(201,168,76,0.3);color:#c9a84c;padding:3px 8px;border-radius:5px;cursor:pointer;font-family:Heebo,sans-serif;font-size:10px;font-weight:700;';
+    btn.onclick = (function(it){ return function(){ mcAddToPO(it); }; })(item);
+    tdBtn.appendChild(btn);
+  });
+}
+
+function mcPage(dir) {
+  var max = Math.ceil(MC.filtered.length / MC.pageSize) - 1;
+  MC.page = Math.max(0, Math.min(max, MC.page + dir));
+  mcRender();
+  document.getElementById('micharon-content')?.scrollTo(0, 0);
+}
+
+function mcSelectAll(checked) {
+  MC.all.forEach(function(item) {
+    if (checked) MC.selected[item.item_code] = item;
+    else delete MC.selected[item.item_code];
+  });
+  mcRender();
+}
+
+// ── Add to PO ─────────────────────────────────────────────────────────
+function mcAddToPO(item) {
+  var desc  = '[' + item.item_code + '] ' + (item.description||'').substring(0, 70);
+  var price = parseFloat(item.price)||0;
+  var unit  = item.unit || "יח'";
+  switchTab('crm');
+  setTimeout(function(){
+    showPage('new-po');
+    setTimeout(function(){
+      pofAddRow(desc, unit, '', price, true);
+      showToast('✅ ' + item.item_code + ' נוסף — קבע כמות', 'success');
+    }, 350);
+  }, 250);
+}
+
+function mcSendToPO() {
+  var items = Object.values(MC.selected);
+  if (!items.length) { showToast('סמן סעיפים תחילה', 'error'); return; }
+  switchTab('crm');
+  setTimeout(function(){
+    showPage('new-po');
+    setTimeout(function(){
+      items.forEach(function(item) {
+        pofAddRow('[' + item.item_code + '] ' + (item.description||'').substring(0,70),
+          item.unit||"יח'", '', parseFloat(item.price)||0, true);
+      });
+      showToast('✅ ' + items.length + ' סעיפים נוספו — קבע כמויות', 'success');
+      MC.selected = {};
+    }, 350);
+  }, 250);
+}
+
+function mcExportCSV() {
+  var items = Object.keys(MC.selected).length > 0 ? Object.values(MC.selected) : MC.filtered;
+  var BOM = '\uFEFF';
+  var csv = BOM + 'קוד,פרק,תיאור,יחידה,מחיר\n' + items.map(function(item) {
+    var d = (item.description||'').replace(/"/g,'""');
+    return '"' + item.item_code + '","' + (item.chapter_name||'') + '","' + d + '","' + (item.unit||'') + '",' + (item.price||'');
+  }).join('\n');
+  var blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
+  var url  = URL.createObjectURL(blob);
+  var a = Object.assign(document.createElement('a'), {href:url, download:'micharon_' + new Date().toISOString().split('T')[0] + '.csv'});
+  document.body.appendChild(a); a.click(); setTimeout(function(){ URL.revokeObjectURL(url); a.remove(); }, 500);
+  showToast('📥 ' + items.length + ' סעיפים יוצאו');
+}
+
+// ══ AI MATCH ENGINE ═══════════════════════════════════════════════════
+// Match PO line descriptions → מחירון items using Claude
+// Supports: exact match, similar/fuzzy, and none
+// ══════════════════════════════════════════════════════════════════════
+async function mcAIMatch() {
+  var apiKey = (APP.config && APP.config.anthropic_key) || null;
+  if (!apiKey) { showToast('הגדר מפתח Anthropic API', 'error'); return; }
+  if (!MC.all.length) { showToast('טוען מחירון תחילה...', 'error'); return; }
+
+  // Collect PO items currently in the open PO form
+  var poItems = [];
+  document.querySelectorAll('#pof-items-body tr').forEach(function(tr) {
+    var inp = tr.querySelector('input[type="text"]');
+    var txt = inp?.value?.trim() || '';
+    if (txt && !txt.startsWith('━━━')) poItems.push(txt);
+  });
+
+  if (!poItems.length) {
+    showToast('פתח הזמנת עבודה עם פריטים תחילה (לוח בקרה ← הזמנות עבודה)', 'error');
+    return;
+  }
+
+  var panel = document.getElementById('mc-ai-panel');
+  mcStatus('🧠 Claude מתאים ' + poItems.length + ' פריטים למחירון...', true);
+  if (panel) { panel.style.display = 'block'; panel.innerHTML = ''; }
+  var loadDiv = document.createElement('div');
+  loadDiv.style.cssText = 'text-align:center;padding:20px;color:#888;font-size:13px;';
+  loadDiv.textContent = '🧠 Claude מנתח ומתאים...';
+  if (panel) panel.appendChild(loadDiv);
+
+  // Build smart relevant subset of price list for Claude
+  // Search each PO word against מחירון descriptions
+  var queryWords = poItems.join(' ').split(/\s+/).filter(function(w){ return w.length > 2; });
+  var scored = MC.all.map(function(item) {
+    var score = queryWords.filter(function(w){ return (item.description||'').includes(w); }).length;
+    return { item: item, score: score };
+  }).filter(function(x){ return x.score > 0; })
+    .sort(function(a,b){ return b.score - a.score; })
+    .slice(0, 300)
+    .map(function(x){ return x.item; });
+
+  // Fallback: add all chapter-2 items (concrete) as baseline
+  var ch2 = MC.all.filter(function(i){ return i.chapter === '2'; });
+  var combined = scored.concat(ch2.filter(function(i){
+    return !scored.find(function(s){ return s.item_code === i.item_code; });
+  })).slice(0, 350);
+
+  var priceList = combined.map(function(item) {
+    return item.item_code + ' | ' + (item.description||'').substring(0, 55) + ' | ' + (item.unit||'') + ' | ' + (item.price||'0');
+  }).join('\n');
+
+  var prompt = 'אתה מומחה כתב כמויות ומחירון בנייה ישראלי. עברית בלבד.\n\n'
+    + 'פריטים בהזמנת העבודה:\n'
+    + poItems.map(function(d,i){ return (i+1) + '. ' + d; }).join('\n')
+    + '\n\nמחירון משרד הבינוי (קוד | תיאור | יחידה | מחיר):\n'
+    + priceList
+    + '\n\nמשימה: עבור כל פריט — מצא ההתאמה הטובה ביותר:\n'
+    + '- EXACT: זהה ממש\n- SIMILAR: דומה/קרוב\n- NONE: לא קיים במחירון\n\n'
+    + 'ענה JSON בלבד — אין טקסט אחר:\n'
+    + '{"matches":[{"po_item":"תיאור","item_code":"XX.XXX.XXXX","match_type":"EXACT","unit_price":0,"unit":"","rationale":"הסבר קצר בעברית"}]}';
+
+  try {
+    var res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json','x-api-key':apiKey,
+        'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+      body: JSON.stringify({ model:'claude-sonnet-4-20250514', max_tokens:2500,
+        messages:[{role:'user', content:prompt}] })
+    });
+    var data = await res.json();
+    if (!res.ok) throw new Error((data.error?.message) || 'API error ' + res.status);
+
+    var raw = ((data.content||[])[0]?.text||'').replace(/```json\s*/gi,'').replace(/```/g,'').trim();
+    var s = raw.indexOf('{'); var e = raw.lastIndexOf('}');
+    if (s < 0 || e < 0) throw new Error('תגובת JSON לא תקינה');
+    var result = JSON.parse(raw.substring(s, e+1));
+    mcRenderMatches(result.matches || []);
+    mcStatus('✅ ' + (result.matches||[]).length + ' פריטים הותאמו', false);
+
+  } catch(err) {
+    mcStatus('❌ ' + err.message, true);
+    if (panel) {
+      panel.innerHTML = '';
+      var errDiv = document.createElement('div');
+      errDiv.style.cssText = 'color:#ef4444;padding:14px;font-size:12px;direction:rtl;';
+      errDiv.textContent = '❌ ' + err.message;
+      var retryBtn = document.createElement('button');
+      retryBtn.textContent = '🔄 נסה שוב'; retryBtn.style.cssText = 'margin-top:8px;background:rgba(201,168,76,0.2);border:1px solid rgba(201,168,76,0.4);color:#c9a84c;padding:6px 14px;border-radius:7px;cursor:pointer;font-family:Heebo,sans-serif;font-size:12px;';
+      retryBtn.onclick = mcAIMatch;
+      panel.appendChild(errDiv); panel.appendChild(retryBtn);
+    }
+  }
+}
+
+function mcRenderMatches(matches) {
+  var panel = document.getElementById('mc-ai-panel');
+  if (!panel) return;
+  panel.innerHTML = '';
+
+  // Header
+  var hdr = document.createElement('div');
+  hdr.style.cssText = 'font-size:14px;font-weight:800;color:#c4b5fd;margin-bottom:12px;';
+  hdr.textContent = '🧠 התאמות AI — מחירון משרד הבינוי והשיכון';
+  panel.appendChild(hdr);
+
+  var sub = document.createElement('div');
+  sub.style.cssText = 'font-size:11px;color:#555;margin-bottom:14px;';
+  sub.textContent = matches.length + ' פריטים · לחץ "עדכן מחיר" להחלת המחיר על ההזמנה הפתוחה';
+  panel.appendChild(sub);
+
+  if (!matches.length) {
+    var noResult = document.createElement('div');
+    noResult.style.cssText = 'color:#888;padding:12px;font-size:12px;';
+    noResult.textContent = 'לא נמצאו התאמות';
+    panel.appendChild(noResult);
+    return;
+  }
+
+  var COLORS = { EXACT: '#22c55e', SIMILAR: '#f59e0b', NONE: '#555' };
+  var ICONS  = { EXACT: '🟢', SIMILAR: '🟡', NONE: '⚫' };
+
+  matches.forEach(function(m) {
+    var hasMatch = m.item_code && m.item_code !== 'null' && m.match_type !== 'NONE';
+    var color    = COLORS[m.match_type] || '#555';
+
+    var card = document.createElement('div');
+    card.style.cssText = 'background:#242438;border-radius:10px;padding:12px 14px;margin-bottom:10px;border-right:4px solid ' + color + ';';
+
+    // Row: left=info, right=price+button
+    var row = document.createElement('div');
+    row.style.cssText = 'display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap;';
+
+    // Left: PO item + match info
+    var left = document.createElement('div');
+    left.style.cssText = 'flex:1;min-width:0;';
+
+    var label = document.createElement('div');
+    label.style.cssText = 'font-size:10px;color:#888;margin-bottom:4px;';
+    label.textContent = 'פריט בהזמנה:';
+    left.appendChild(label);
+
+    var poText = document.createElement('div');
+    poText.style.cssText = 'font-size:13px;color:#fff;direction:rtl;margin-bottom:6px;font-weight:600;';
+    poText.textContent = m.po_item || '';
+    left.appendChild(poText);
+
+    if (hasMatch) {
+      var codeEl = document.createElement('div');
+      codeEl.style.cssText = 'font-size:11px;color:' + color + ';font-family:monospace;margin-bottom:2px;';
+      codeEl.textContent = (ICONS[m.match_type]||'') + ' ' + m.item_code + ' · ' + m.match_type;
+      left.appendChild(codeEl);
+
+      if (m.rationale) {
+        var rat = document.createElement('div');
+        rat.style.cssText = 'font-size:11px;color:#888;direction:rtl;';
+        rat.textContent = m.rationale;
+        left.appendChild(rat);
+      }
+    } else {
+      var noMatch = document.createElement('div');
+      noMatch.style.cssText = 'font-size:11px;color:#555;';
+      noMatch.textContent = '⚫ לא נמצאה התאמה במחירון';
+      left.appendChild(noMatch);
+    }
+
+    row.appendChild(left);
+
+    // Right: price + button
+    if (hasMatch && m.unit_price > 0) {
+      var right = document.createElement('div');
+      right.style.cssText = 'text-align:left;direction:ltr;flex-shrink:0;';
+
+      var priceEl = document.createElement('div');
+      priceEl.style.cssText = 'font-size:18px;font-weight:900;color:#c9a84c;';
+      priceEl.textContent = '₪' + parseFloat(m.unit_price).toLocaleString('he-IL', {maximumFractionDigits:2});
+      right.appendChild(priceEl);
+
+      var unitEl = document.createElement('div');
+      unitEl.style.cssText = 'font-size:9px;color:#555;text-align:center;margin-bottom:6px;';
+      unitEl.textContent = 'לכל ' + (m.unit||'יח');
+      right.appendChild(unitEl);
+
+      var btn = document.createElement('button');
+      btn.textContent = '✓ עדכן מחיר';
+      btn.style.cssText = 'background:rgba(201,168,76,0.18);border:1px solid rgba(201,168,76,0.4);color:#c9a84c;padding:5px 10px;border-radius:6px;cursor:pointer;font-family:Heebo,sans-serif;font-size:11px;font-weight:700;white-space:nowrap;display:block;width:100%;';
+      btn.onclick = (function(match){ return function(){ mcApplyPrice(match); }; })(m);
+      right.appendChild(btn);
+
+      row.appendChild(right);
+    }
+
+    card.appendChild(row);
+    panel.appendChild(card);
+  });
+
+  // Apply all button
+  var goodMatches = matches.filter(function(m){ return m.item_code && m.match_type !== 'NONE' && m.unit_price > 0; });
+  if (goodMatches.length > 1) {
+    var applyAllBtn = document.createElement('button');
+    applyAllBtn.style.cssText = 'width:100%;margin-top:6px;background:linear-gradient(135deg,#166534,#22c55e);border:none;color:#fff;padding:12px;border-radius:10px;cursor:pointer;font-family:Heebo,sans-serif;font-size:13px;font-weight:800;';
+    applyAllBtn.textContent = '✅ החל את כל המחירים על ההזמנה (' + goodMatches.length + ' סעיפים)';
+    applyAllBtn.onclick = function() {
+      goodMatches.forEach(function(m){ mcApplyPrice(m, true); });
+      showToast('✅ ' + goodMatches.length + ' מחירים עודכנו — בדוק הזמנה');
+      switchTab('crm');
+      setTimeout(function(){ showPage('new-po'); }, 400);
+    };
+    panel.appendChild(applyAllBtn);
+  }
+}
+
+// ── Apply a matched price to the open PO form ─────────────────────────
+function mcApplyPrice(m, silent) {
+  var poRows = document.querySelectorAll('#pof-items-body tr');
+  var updated = false;
+
+  // Try to find matching row by text similarity
+  var poItemLower = (m.po_item||'').toLowerCase().substring(0, 30);
+  poRows.forEach(function(tr) {
+    if (updated) return;
+    var inp = tr.querySelector('input[type="text"]');
+    var priceInp = tr.querySelectorAll('input[type="number"]')[1];
+    if (!inp || !priceInp) return;
+    var trTxt = inp.value.toLowerCase();
+    if (trTxt.includes(poItemLower.substring(0,20)) || trTxt.includes(m.item_code||'')) {
+      priceInp.value = m.unit_price;
+      if (!inp.value.includes('[' + m.item_code)) {
+        inp.value = '[' + m.item_code + '] ' + inp.value.replace(/^\[.*?\]\s*/, '');
+      }
+      tr.style.background = 'rgba(34,197,94,0.09)';
+      updated = true;
+    }
+  });
+
+  // Not found → add new row
+  if (!updated) {
+    pofAddRow('[' + m.item_code + '] ' + (m.po_item||'').substring(0,70), m.unit||"יח'", 1, m.unit_price, true);
+  }
+  pofRecalc();
+  if (!silent) showToast('✅ ₪' + parseFloat(m.unit_price).toLocaleString() + ' עודכן');
+}
+
+function mcStatus(msg, show) {
+  var el = document.getElementById('mc-ai-status');
+  if (!el) return;
+  el.style.display = (msg && show !== false) ? 'block' : 'none';
+  el.textContent   = msg || '';
 }
 
 
