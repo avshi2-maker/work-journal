@@ -2750,10 +2750,14 @@ async function pofSaveToSupabase(d) {
       total_with_vat:     d.total,
       status:             'active'
     }).select().single();
-    if (error) throw error;
+    if (error) {
+      console.error('PO save error — Supabase:', error.message, error.details, error.hint);
+      console.error('Missing column? Run purchase_orders_fix_25032026.sql in Supabase SQL editor');
+      return null;
+    }
     return data;
   } catch(e) {
-    console.error('PO save error:', e);
+    console.error('PO save exception:', e);
     return null;
   }
 }
@@ -2764,14 +2768,16 @@ async function pofSaveAndPDF() {
   if (!d.projectName)    { alert('נא למלא שם פרויקט'); return; }
   if (d.rows.length === 0){ alert('נא להוסיף לפחות שורת עבודה'); return; }
 
-  // Save to Supabase
+  // Save to Supabase (non-blocking — PDF opens regardless)
   const saved = await pofSaveToSupabase(d);
   if (saved) {
+    showToast('✅ הזמנה נשמרה: ' + d.poNumber, 'success');
   } else {
-    if (!confirm('שגיאה בשמירה ב-Supabase. להמשיך ולפתוח PDF בכל זאת?')) return;
+    // Don't block PDF — just show a non-intrusive toast
+    showToast('⚠️ הזמנה נשמרה כ-PDF (שגיאת Supabase — הרץ purchase_orders_fix SQL)', 'error');
   }
 
-  // Generate print preview
+  // Generate print preview regardless of save status
   pofOpenPrintPreview(d);
 
   // Refresh badge count
