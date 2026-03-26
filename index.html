@@ -6,7 +6,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#f5e9c4">
-<title>יומן פעילות — בני פרסקי</title>
+<title id="app-title-tag">יומן פעילות</title>
 <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;600;700;800;900&family=Rubik:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
 /* JOURNAL STYLES */
@@ -325,7 +325,6 @@ tbody tr:last-child td{border-bottom:none;}
 }
 
 
-
 </style><!-- loaded from Supabase Storage by bootstrap() -->
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📋</text></svg>">
 <script>
@@ -383,7 +382,7 @@ window.addEventListener('unhandledrejection', function(e) {
 <nav class="sidebar">
   <div class="sidebar-logo">
     <div class="brand">יומן פעילות</div>
-    <div class="sub">מנוהל AI | בני פרסקי</div>
+    <div class="sub">מנוהל AI | <span id="app-manager-name">בני פרסקי</span></div>
     <div class="sidebar-clock">
       <div class="clock-time" id="sidebar-clock-time">00:00:00</div>
       <div class="clock-date" id="sidebar-clock-date"></div>
@@ -652,11 +651,11 @@ window.addEventListener('unhandledrejection', function(e) {
           <span style="margin-right:auto;font-size:11px;color:rgba(255,255,255,0.5);">קבוע</span>
         </div>
         <div style="padding:14px 16px;display:flex;flex-direction:column;gap:10px;">
-          <div><label style="font-size:11px;font-weight:600;color:#888;display:block;margin-bottom:3px;">שם</label><input type="text" id="pof-orderer-name" value="בני פרסקי ניהול פרויקטים" readonly style="width:100%;opacity:0.6;cursor:not-allowed;"></div>
-          <div><label style="font-size:11px;font-weight:600;color:#888;display:block;margin-bottom:3px;">ח.פ</label><input type="text" id="pof-orderer-hp" value="123456789" readonly style="width:100%;opacity:0.6;cursor:not-allowed;"></div>
-          <div><label style="font-size:11px;font-weight:600;color:#888;display:block;margin-bottom:3px;">כתובת</label><input type="text" id="pof-orderer-address" value="הרצליה, ישראל" readonly style="width:100%;opacity:0.6;cursor:not-allowed;"></div>
-          <div><label style="font-size:11px;font-weight:600;color:#888;display:block;margin-bottom:3px;">טלפון</label><input type="text" id="pof-orderer-phone" value="054-1234567" readonly style="width:100%;opacity:0.6;cursor:not-allowed;"></div>
-          <div><label style="font-size:11px;font-weight:600;color:#888;display:block;margin-bottom:3px;">אימייל</label><input type="text" id="pof-orderer-email" value="beni@example.com" readonly style="width:100%;opacity:0.6;cursor:not-allowed;"></div>
+          <div><label style="font-size:11px;font-weight:600;color:#888;display:block;margin-bottom:3px;">שם</label><input type="text" id="pof-orderer-name" id="pof-orderer-name-val" readonly style="width:100%;opacity:0.6;cursor:not-allowed;"></div>
+          <div><label style="font-size:11px;font-weight:600;color:#888;display:block;margin-bottom:3px;">ח.פ</label><input type="text" id="pof-orderer-hp" id="pof-orderer-hp-val" readonly style="width:100%;opacity:0.6;cursor:not-allowed;"></div>
+          <div><label style="font-size:11px;font-weight:600;color:#888;display:block;margin-bottom:3px;">כתובת</label><input type="text" id="pof-orderer-address" id="pof-orderer-addr-val" readonly style="width:100%;opacity:0.6;cursor:not-allowed;"></div>
+          <div><label style="font-size:11px;font-weight:600;color:#888;display:block;margin-bottom:3px;">טלפון</label><input type="text" id="pof-orderer-phone" id="pof-orderer-phone-val" readonly style="width:100%;opacity:0.6;cursor:not-allowed;"></div>
+          <div><label style="font-size:11px;font-weight:600;color:#888;display:block;margin-bottom:3px;">אימייל</label><input type="text" id="pof-orderer-email" id="pof-orderer-email-val" readonly style="width:100%;opacity:0.6;cursor:not-allowed;"></div>
         </div>
       </div>
 
@@ -1723,7 +1722,6 @@ window.addEventListener('unhandledrejection', function(e) {
 </div></div></div>
 
 
-
 <!-- ══ CAP MODAL — Correction Action Plan ══════════════════════════ -->
 <div id="cap-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:9000;overflow-y:auto;padding:20px;">
   <div style="max-width:900px;margin:0 auto;background:#1a1a2e;border-radius:20px;border:1.5px solid rgba(139,92,246,0.4);overflow:hidden;">
@@ -2329,9 +2327,6 @@ const sb = window.supabase.createClient(SB_URL, SB_KEY, {
 })();
 window.sb = sb;  // expose for journal module reuse
 
-// ── GLOBAL DataCloneError SUPPRESSOR ─────────────────────
-// Browser extension SW intercepts Supabase postMessage and throws DataCloneError.
-// Catch it globally so it never reaches our try/catch blocks.
 window.addEventListener('unhandledrejection', function(e) {
   if (e.reason && (e.reason.name === 'DataCloneError' ||
       (e.reason.message||'').includes('postMessage') ||
@@ -2347,9 +2342,6 @@ window.addEventListener('error', function(e) {
   }
 }, true);
 let supabaseClient = sb;
-// ── SB QUERY WRAPPER ─────────────────────────────────────────────────────────
-// Supabase query wrapper — sb.from() with DataCloneError suppression
-// sbQ — plain XHR only (immune to DataCloneError from browser extensions)
 function sbQ(tableName, queryString) {
   var url = SB_URL + '/rest/v1/' + tableName + (queryString ? '?' + queryString : '');
   var headers = { 'apikey': SB_KEY, 'Authorization': 'Bearer ' + SB_KEY, 'Accept': 'application/json' };
@@ -2464,7 +2456,6 @@ async function loadAnnexHistory() {
 }
 
 
-
 // Storage base URL for panel HTML, CSS, and JS modules
 const STORAGE = 'https://avshi2-maker.github.io/work-journal';
 
@@ -2480,7 +2471,6 @@ let allContractors = [], allProjects = [], allTransactions = [], allReports = []
 let allNotes = [], ganttTasks = [], allQuotes = [], allPOs = [];
 let currentNoteColor = 'yellow';
 let activeNoteFilter = 'all';
-
 
 
 // ══════════════════════════════════════════════════════
@@ -2499,6 +2489,27 @@ async function bootstrap() {
         APP.lookup[r.category].push({ value: r.value, group: r.group_name });
       });
       (cfgRes.data||[]).forEach(r => { APP.config[r.key] = r.value; });
+      // Populate PO orderer fields from app_config
+      // ── Apply app_config to PO orderer form ─────────────────────────
+      var _cfg = function(id, key) {
+        var el = document.getElementById(id);
+        if (el && APP.config[key]) el.value = APP.config[key];
+      };
+      _cfg('pof-orderer-name-val',  'orderer_name');
+      _cfg('pof-orderer-hp-val',    'orderer_hp');
+      _cfg('pof-orderer-addr-val',  'orderer_address');
+      _cfg('pof-orderer-phone-val', 'orderer_phone');
+      _cfg('pof-orderer-email-val', 'orderer_email');
+      if (APP.config.vat_rate) POF_VAT = parseFloat(APP.config.vat_rate) || 0.18;
+      // Update dynamic name/title elements
+      if (APP.config.app_title) {
+        var titleTag = document.getElementById('app-title-tag');
+        if (titleTag) titleTag.textContent = APP.config.app_title;
+      }
+      if (APP.config.manager_name) {
+        var nameEl = document.getElementById('app-manager-name');
+        if (nameEl) nameEl.textContent = APP.config.manager_name;
+      }
     } catch(e) {
     }
 
@@ -2688,7 +2699,7 @@ function populateEquipmentSelect() {
 // ══════════════════════════════════════════════════════
 // PO FORM — פתיחת הזמנות עבודה
 // ══════════════════════════════════════════════════════
-const POF_VAT = 0.18;
+var POF_VAT = 0.18; // overridden by app_config vat_rate in bootstrap()
 let pofRowCount = 0;
 const POF_UNITS = ["ס\"ע","מ\"ר","מ\"ל","יח'","טון","שעות","פאושלי","קג","מ\"ק"];
 
@@ -2846,9 +2857,9 @@ async function pofSaveToSupabase(d) {
 
 async function pofSaveAndPDF() {
   const d = pofCollect();
-  if (!d.contractorName) { alert('נא למלא שם קבלן'); return; }
-  if (!d.projectName)    { alert('נא למלא שם פרויקט'); return; }
-  if (d.rows.length === 0){ alert('נא להוסיף לפחות שורת עבודה'); return; }
+  if (!d.contractorName) { showToast('נא למלא שם קבלן', 'error'); return; }
+  if (!d.projectName)    { showToast('נא למלא שם פרויקט', 'error'); return; }
+  if (d.rows.length === 0){ showToast('נא להוסיף לפחות שורת עבודה', 'error'); return; }
 
   // Save to Supabase (non-blocking — PDF opens regardless)
   const saved = await pofSaveToSupabase(d);
@@ -2980,7 +2991,7 @@ ${d.notes?`<div class="notes" style="margin-top:14px;"><strong>הערות:</stro
 
 function pofSendWhatsApp() {
   const d = pofCollect();
-  if (!d.contractorPhone) { alert('נא למלא טלפון קבלן'); return; }
+  if (!d.contractorPhone) { showToast('נא למלא טלפון קבלן', 'error'); return; }
   const phone = d.contractorPhone.replace(/\D/g,'');
   const il = phone.startsWith('0') ? '972'+phone.slice(1) : phone;
   const fmt = n => '₪'+n.toLocaleString('he-IL',{minimumFractionDigits:2});
@@ -3096,11 +3107,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   } catch(e){}
 });
 
-// ══════════════════════════════════════════════════════
-// BENI NOTES OCR MODULE
-// Two types: 1) Personal notes -> מזכרים  2) Takeoffs -> project
-// ══════════════════════════════════════════════════════
-// OCR via API disabled — key management issue
 
 // ===== INLINED MODULES =====
 
@@ -3592,7 +3598,7 @@ function sendSelectedReports(type){const ids=getSelectedReportIds();if(!ids.leng
 let _sendMode='email';
 function openReportSendModal(mode){_sendMode=mode;const ids=getSelectedReportIds();if(!ids.length)return;document.getElementById('send-modal-title').textContent=mode==='whatsapp'?'💬 שליחה ב-WhatsApp':'📧 שליחה בדוא״ל';document.getElementById('send-modal-btn-label').textContent=mode==='whatsapp'?'💬 שלח WhatsApp':'📧 שלח דוא״ל';const checked=Array.from(document.querySelectorAll('.report-cb:checked'));document.getElementById('send-modal-report-list').innerHTML=checked.map(c=>`<div>• דוח ${c.dataset.number} — ${c.dataset.project} (${c.dataset.date})</div>`).join('');const clist=document.getElementById('send-contractors-list');const isWA=mode==='whatsapp';clist.innerHTML=(allContractors||[]).filter(c=>c.is_active).map(c=>{const phone=c.mobile||'';const email=c.email||'';const hasContact=isWA?!!phone:!!email;const detail=isWA?(phone?'📱 '+phone:'—'):(email?'✉️ '+email:'—');return`<label style="display:flex;align-items:center;gap:10px;padding:7px 8px;border-radius:7px;cursor:pointer;${hasContact?'':'opacity:0.45;pointer-events:none;'}"><input type="checkbox" class="send-contractor-cb" data-id="${c.id}" data-phone="${phone}" data-email="${email}" style="width:15px;height:15px;cursor:pointer;" ${hasContact?'':'disabled'}><div style="flex:1"><div style="font-weight:700;font-size:13px">${esc(c.company_name)}</div><div style="font-size:11px;color:var(--text3)">${detail}</div></div></label>`;}).join('');['new-rcpt-name','new-rcpt-company','new-rcpt-phone','new-rcpt-email'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});document.getElementById('new-rcpt-save').checked=false;document.getElementById('send-rcpt-message').value='';switchRcptTab('contractors');document.getElementById('modal-send-reports').style.display='flex';}
 function switchRcptTab(tab){const isCont=tab==='contractors';document.getElementById('rcpt-panel-contractors').style.display=isCont?'block':'none';document.getElementById('rcpt-panel-new').style.display=isCont?'none':'block';}
-async function executeSendReports(){const isWA=_sendMode==='whatsapp';const msg=document.getElementById('send-rcpt-message').value.trim();const checked=Array.from(document.querySelectorAll('.report-cb:checked'));const reportSummary=checked.map(c=>`דוח ${c.dataset.number} - ${c.dataset.project} (${c.dataset.date})`).join('\n');const fullMsg=(msg?msg+'\n\n':'')+reportSummary;const activeTab=document.getElementById('rcpt-panel-new').style.display==='block'?'new':'contractors';if(activeTab==='contractors'){const selected=Array.from(document.querySelectorAll('.send-contractor-cb:checked'));if(!selected.length){alert('יש לבחור לפחות קבלן אחד');return;}for(const cb of selected){if(isWA){const ph=cb.dataset.phone.replace(/[-\s]/g,'');const intl=ph.startsWith('0')?'972'+ph.slice(1):ph;(function(){var _a=document.createElement('a');_a.href=`https://wa.me/${intl}?text=${encodeURIComponent(fullMsg)}`;_a.target='_blank';_a.rel='noopener';document.body.appendChild(_a);_a.click();document.body.removeChild(_a);})();}else{window.location.href=`mailto:${cb.dataset.email}?subject=${encodeURIComponent('דוחות עבודה')}&body=${encodeURIComponent(fullMsg)}`;}};}else{const name=document.getElementById('new-rcpt-name').value.trim();const phone=document.getElementById('new-rcpt-phone').value.trim();const email=document.getElementById('new-rcpt-email').value.trim();if(!name){alert('יש להזין שם');return;}if(isWA&&!phone){alert('יש להזין טלפון');return;}if(!isWA&&!email){alert('יש להזין דוא״ל');return;}if(isWA){const intl=phone.replace(/[-\s]/g,'').replace(/^0/,'972');(function(){var _a=document.createElement('a');_a.href=`https://wa.me/${intl}?text=${encodeURIComponent(fullMsg)}`;_a.target='_blank';_a.rel='noopener';document.body.appendChild(_a);_a.click();document.body.removeChild(_a);})();}else{window.location.href=`mailto:${email}?subject=${encodeURIComponent('דוחות עבודה')}&body=${encodeURIComponent(fullMsg)}`;}}closeModal('modal-send-reports');clearReportSelection();}
+async function executeSendReports(){const isWA=_sendMode==='whatsapp';const msg=document.getElementById('send-rcpt-message').value.trim();const checked=Array.from(document.querySelectorAll('.report-cb:checked'));const reportSummary=checked.map(c=>`דוח ${c.dataset.number} - ${c.dataset.project} (${c.dataset.date})`).join('\n');const fullMsg=(msg?msg+'\n\n':'')+reportSummary;const activeTab=document.getElementById('rcpt-panel-new').style.display==='block'?'new':'contractors';if(activeTab==='contractors'){const selected=Array.from(document.querySelectorAll('.send-contractor-cb:checked'));if(!selected.length){showToast('יש לבחור לפחות קבלן אחד', 'error'); return;}for(const cb of selected){if(isWA){const ph=cb.dataset.phone.replace(/[-\s]/g,'');const intl=ph.startsWith('0')?'972'+ph.slice(1):ph;(function(){var _a=document.createElement('a');_a.href=`https://wa.me/${intl}?text=${encodeURIComponent(fullMsg)}`;_a.target='_blank';_a.rel='noopener';document.body.appendChild(_a);_a.click();document.body.removeChild(_a);})();}else{window.location.href=`mailto:${cb.dataset.email}?subject=${encodeURIComponent('דוחות עבודה')}&body=${encodeURIComponent(fullMsg)}`;}};}else{const name=document.getElementById('new-rcpt-name').value.trim();const phone=document.getElementById('new-rcpt-phone').value.trim();const email=document.getElementById('new-rcpt-email').value.trim();if(!name){showToast('יש להזין שם', 'error'); return;}if(isWA&&!phone){showToast('יש להזין טלפון', 'error'); return;}if(!isWA&&!email){showToast('יש להזין דוא״ל', 'error'); return;}if(isWA){const intl=phone.replace(/[-\s]/g,'').replace(/^0/,'972');(function(){var _a=document.createElement('a');_a.href=`https://wa.me/${intl}?text=${encodeURIComponent(fullMsg)}`;_a.target='_blank';_a.rel='noopener';document.body.appendChild(_a);_a.click();document.body.removeChild(_a);})();}else{window.location.href=`mailto:${email}?subject=${encodeURIComponent('דוחות עבודה')}&body=${encodeURIComponent(fullMsg)}`;}}closeModal('modal-send-reports');clearReportSelection();}
 
 // ── QUOTES MODULE ─────────────────────────────────────────
 const QSTATUS_HE={draft:'טיוטה',sent:'נשלחה',approved:'אושרה',rejected:'נדחתה'};
@@ -3631,7 +3637,7 @@ async function deleteQuoteItem(itemId,qid){if(!confirm('מחק שורה זו?'))
 async function updateQuoteStatus(qid,newStatus){await sb.from('quotes').update({status:newStatus}).eq('id',qid);const q=(window._quotesAll||[]).find(x=>x.id===qid);if(q)q.status=newStatus;}
 async function deleteQuote(qid){if(!confirm('מחק הצעה זו לגמרי?'))return;await sb.from('quote_items').delete().eq('quote_id',qid);await sb.from('quotes').delete().eq('id',qid);window._quotesAll=(window._quotesAll||[]).filter(q=>q.id!==qid);window._quoteItemsAll=(window._quoteItemsAll||[]).filter(i=>i.quote_id!==qid);const card=document.getElementById('qcard-'+qid);if(card)card.remove();}
 function openNewQuoteModal(){const nqsel=document.getElementById('nq-project');nqsel.innerHTML='<option value="">בחר פרויקט...</option>'+(allProjects||[]).map(p=>`<option value="${p.id}">${esc(p.project_name)}</option>`).join('');document.getElementById('nq-title').value='';document.getElementById('nq-status').value='draft';document.getElementById('modal-new-quote').style.display='flex';}
-async function saveNewQuote(){const project_id=document.getElementById('nq-project').value;const title=document.getElementById('nq-title').value.trim();const status=document.getElementById('nq-status').value;if(!project_id){alert('יש לבחור פרויקט');return;}const{data:newQ,error}=await sb.from('quotes').insert({project_id,title:title||'הצעה חדשה',status}).select().single();if(error||!newQ){alert('שגיאה ביצירת הצעה');return;}window._quotesAll=[newQ,...(window._quotesAll||[])];closeModal('modal-new-quote');const list=document.getElementById('quotes-list');const emptyMsg=list.querySelector('.quote-empty');if(emptyMsg)list.innerHTML='';const div=document.createElement('div');div.innerHTML=renderQuoteCard(newQ,[]);list.prepend(div.firstElementChild);toggleQuoteCard(newQ.id);}
+async function saveNewQuote(){const project_id=document.getElementById('nq-project').value;const title=document.getElementById('nq-title').value.trim();const status=document.getElementById('nq-status').value;if(!project_id){showToast('יש לבחור פרויקט', 'error'); return;}const{data:newQ,error}=await sb.from('quotes').insert({project_id,title:title||'הצעה חדשה',status}).select().single();if(error||!newQ){showToast('שגיאה ביצירת הצעה', 'error'); return;}window._quotesAll=[newQ,...(window._quotesAll||[])];closeModal('modal-new-quote');const list=document.getElementById('quotes-list');const emptyMsg=list.querySelector('.quote-empty');if(emptyMsg)list.innerHTML='';const div=document.createElement('div');div.innerHTML=renderQuoteCard(newQ,[]);list.prepend(div.firstElementChild);toggleQuoteCard(newQ.id);}
 function printQuote(qid){const q=(window._quotesAll||[]).find(x=>x.id===qid);const items=(window._quoteItemsAll||[]).filter(i=>i.quote_id===qid);const proj=(allProjects||[]).find(p=>p.id===q?.project_id);const total=items.reduce((a,i)=>a+(parseFloat(i.unit_cost||0)*parseFloat(i.quantity||1)),0);const rows=items.map((item,i)=>{const con=(allContractors||[]).find(c=>c.id===item.contractor_id);return`<tr style="background:${i%2?'#f9f9f9':'white'}"><td>${i+1}</td><td>${esc(con?.company_name||'—')}</td><td>${esc(item.description||'')}</td><td style="text-align:left">₪${fmtMoney(item.unit_cost||0)}</td><td style="text-align:center">${item.quantity||1}</td><td style="text-align:left;font-weight:700">₪${fmtMoney(parseFloat(item.unit_cost||0)*parseFloat(item.quantity||1))}</td></tr>`;}).join('');const win=window.open('','_blank');win.document.write(`<!DOCTYPE html><html dir="rtl"><head><meta charset="UTF-8"><title>הצעת מחיר</title><style>body{font-family:Arial;padding:30px;direction:rtl}table{width:100%;border-collapse:collapse}th{background:#1a3d5c;color:white;padding:9px}td{padding:8px;border-bottom:1px solid #ddd}.total-row{background:#eef5ff;font-weight:800}@media print{button{display:none}}</style></head><body><button onclick=\"window.close()\" style=\"position:fixed;top:12px;right:12px;background:#1a3d5c;color:#fff;border:none;padding:8px 18px;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;z-index:9999;font-family:Heebo,sans-serif;box-shadow:0 2px 10px rgba(0,0,0,0.25);">✕ סגור חלון</button><button onclick="window.close()" style="position:fixed;top:12px;right:12px;background:#1a3d5c;color:white;border:none;padding:8px 16px;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;z-index:9999;font-family:Heebo,sans-serif;box-shadow:0 2px 8px rgba(0,0,0,0.2);">✕ סגור</button><h1>📋 ${esc(q?.title||'הצעת מחיר')}</h1><div>פרויקט: ${esc(proj?.project_name||'—')} | ${new Date().toLocaleDateString('he-IL')}</div><button onclick="window.print()" style="background:#1a3d5c;color:white;border:none;padding:8px 20px;border-radius:6px;cursor:pointer;margin:16px 0">🖨️ הדפס</button><table><thead><tr><th>#</th><th>קבלן</th><th>תיאור</th><th>עלות יחידה</th><th>כמות</th><th>סה״כ</th></tr></thead><tbody>${rows}</tbody><tfoot><tr class="total-row"><td colspan="5" style="text-align:right">סה״כ</td><td>₪${fmtMoney(total)}</td></tr></tfoot></table></body></html>`);win.document.close();}
 
 // ── CHANGE ORDERS ─────────────────────────────────────────
@@ -3646,7 +3652,7 @@ function renderCOCards(qid){const cos=window._allCOs.filter(c=>c.quote_id===qid)
 function renderCOCard(co,qid){const items=window._allCOItems.filter(i=>i.change_order_id===co.id);const qItems=(window._quoteItemsAll||[]).filter(i=>i.quote_id===qid);const contr=(allContractors||[]).find(c=>c.id===co.contractor_id);const demand=items.reduce((a,i)=>a+(parseFloat(i.unit_cost||0)*parseFloat(i.quantity||1)),0);const approved=items.reduce((a,i)=>i.approved?(a+parseFloat(i.approved_amount||0)):a,0);const origTotal=qItems.reduce((a,i)=>a+(parseFloat(i.unit_cost||0)*parseFloat(i.quantity||1)),0);const finalPrice=origTotal+approved;const statusCss=CO_STATUS_CSS[co.status]||'costatus-open';const statusHe=CO_STATUS_HE[co.status]||co.status;return`<div class="co-card" id="cocard-${co.id}"><div class="co-card-hdr" onclick="toggleCOCard('${co.id}')"><div class="co-card-title">⚡ ${esc(co.title||'פקודת שינוי')}</div>${contr?`<span style="font-size:12px;color:#666;">👷 ${esc(contr.company_name)}</span>`:''}  <span class="co-status ${statusCss}">${statusHe}</span><span style="font-size:13px;font-weight:800;color:#c9860a;">₪${fmtMoney(demand)}</span><span style="font-size:13px;font-weight:800;color:#1e6b30;">₪${fmtMoney(approved)} מאושר</span><span style="font-size:14px;color:#888;" id="cotoggle-${co.id}">▼</span></div><div class="co-body" id="cobody-${co.id}"><div class="co-add-bar"><select onchange="updateCOStatus('${co.id}','${qid}',this.value)" style="padding:6px 10px;border:1.5px solid #f0d080;border-radius:7px;font-size:12px;font-family:inherit;background:#fffdf4;"><option value="open" ${co.status==='open'?'selected':''}>פתוח</option><option value="negotiating" ${co.status==='negotiating'?'selected':''}>במו"מ</option><option value="approved" ${co.status==='approved'?'selected':''}>אושר</option><option value="rejected" ${co.status==='rejected'?'selected':''}>נדחה</option></select><button class="btn-co-add" onclick="addCOItem('${co.id}','${qid}')">➕ הוסף דרישה</button><button onclick="deleteCO('${co.id}','${qid}')" style="background:#fee;color:#c00;border:1px solid #fcc;border-radius:7px;padding:6px 12px;font-size:12px;cursor:pointer;font-family:inherit;">🗑️ מחק</button></div></div></div>`;}
 function toggleCOCard(coid){const body=document.getElementById('cobody-'+coid);const toggle=document.getElementById('cotoggle-'+coid);const isOpen=body.classList.contains('open');body.classList.toggle('open',!isOpen);if(toggle)toggle.textContent=isOpen?'▼':'▲';}
 function openNewCOModal(qid,projectId){window._newCOquoteId=qid;window._newCOprojectId=projectId;document.getElementById('co-title').value='';document.getElementById('co-contractor-notes').value='';document.getElementById('co-status').value='open';const sel=document.getElementById('co-contractor');sel.innerHTML='<option value="">בחר קבלן...</option>'+(allContractors||[]).filter(c=>c.is_active).map(c=>`<option value="${c.id}">${esc(c.company_name)}</option>`).join('');document.getElementById('modal-new-co').style.display='flex';}
-async function saveNewCO(){const title=document.getElementById('co-title').value.trim();if(!title){alert('יש להזין כותרת');return;}const{data:co,error}=await sb.from('change_orders').insert({quote_id:window._newCOquoteId,project_id:window._newCOprojectId,contractor_id:document.getElementById('co-contractor').value||null,title,contractor_notes:document.getElementById('co-contractor-notes').value.trim(),status:document.getElementById('co-status').value}).select().single();if(error||!co){alert('שגיאה');return;}window._allCOs.unshift(co);closeModal('modal-new-co');const body=document.getElementById('co-body-'+co.quote_id);if(body&&!body.classList.contains('open'))toggleCOSection(co.quote_id);else renderCOCards(co.quote_id);}
+async function saveNewCO(){const title=document.getElementById('co-title').value.trim();if(!title){showToast('יש להזין כותרת', 'error'); return;}const{data:co,error}=await sb.from('change_orders').insert({quote_id:window._newCOquoteId,project_id:window._newCOprojectId,contractor_id:document.getElementById('co-contractor').value||null,title,contractor_notes:document.getElementById('co-contractor-notes').value.trim(),status:document.getElementById('co-status').value}).select().single();if(error||!co){showToast('שגיאה', 'error'); return;}window._allCOs.unshift(co);closeModal('modal-new-co');const body=document.getElementById('co-body-'+co.quote_id);if(body&&!body.classList.contains('open'))toggleCOSection(co.quote_id);else renderCOCards(co.quote_id);}
 window._coPending={};
 function coItemChange(itemId,field,value){if(!window._coPending[itemId])window._coPending[itemId]={};window._coPending[itemId][field]=value;const cached=window._allCOItems.find(i=>i.id===itemId);if(cached)cached[field]=value;clearTimeout(window._coPending[itemId]._t);window._coPending[itemId]._t=setTimeout(async()=>{const ch={...window._coPending[itemId]};delete ch._t;if(Object.keys(ch).length)await sb.from('change_order_items').update(ch).eq('id',itemId);delete window._coPending[itemId];},800);}
 async function coBeniApprove(itemId,coId,qid,checked){window._allCOItems.find(i=>i.id===itemId).approved=checked;await sb.from('change_order_items').update({approved:checked}).eq('id',itemId);rebuildCoApprovedSum();renderCOCards(qid);}
@@ -3750,7 +3756,7 @@ function buildContractorColorMap(tasks){const ids=[...new Set(tasks.map(t=>t.con
 function openAddTaskModal(){document.getElementById('gantt-task-id').value='';document.getElementById('gtask-name').value='';document.getElementById('gtask-start').value=new Date().toISOString().split('T')[0];document.getElementById('gtask-end').value='';document.getElementById('gtask-status').value='planned';document.getElementById('gtask-progress').value='0';document.getElementById('gtask-notes').value='';document.getElementById('gantt-modal-title').textContent='➕ הוסף משימה';document.getElementById('gantt-delete-btn').style.display='none';populateGanttFilters();document.getElementById('gantt-modal').style.display='flex';}
 function editGanttTask(id){const t=ganttTasks.find(x=>x.id===id);if(!t)return;document.getElementById('gantt-task-id').value=id;document.getElementById('gtask-name').value=t.task_name||'';document.getElementById('gtask-start').value=t.start_date||'';document.getElementById('gtask-end').value=t.end_date||'';document.getElementById('gtask-status').value=t.status||'planned';document.getElementById('gtask-progress').value=t.progress||0;document.getElementById('gtask-notes').value=t.notes||'';document.getElementById('gantt-modal-title').textContent='✏️ ערוך משימה';document.getElementById('gantt-delete-btn').style.display='';populateGanttFilters();const projSel=document.getElementById('gtask-project');if(projSel){projSel.value=t.project_id||'';updateGanttContractors();}setTimeout(()=>{const ctSel=document.getElementById('gtask-contractor');if(ctSel)ctSel.value=t.contractor_id||'';},100);document.getElementById('gantt-modal').style.display='flex';}
 function closeGanttModal(){document.getElementById('gantt-modal').style.display='none';}
-async function saveGanttTask(){const id=document.getElementById('gantt-task-id').value;const data={task_name:document.getElementById('gtask-name').value.trim(),project_id:document.getElementById('gtask-project').value||null,contractor_id:document.getElementById('gtask-contractor').value||null,start_date:document.getElementById('gtask-start').value,end_date:document.getElementById('gtask-end').value,status:document.getElementById('gtask-status').value,progress:parseInt(document.getElementById('gtask-progress').value)||0,notes:document.getElementById('gtask-notes').value};if(!data.task_name||!data.start_date||!data.end_date){alert('נא למלא שם, תחילה וסיום');return;}window.showLoading&&window.showLoading(true);try{let error;if(id){({error}=await sb.from('gantt_tasks').update(data).eq('id',id));}else{({error}=await sb.from('gantt_tasks').insert(data));}if(error)throw error;closeGanttModal();await loadGantt();showToast(id?'✅ משימה עודכנה':'✅ משימה נוספה');}catch(e){showToast('שגיאה: '+e.message);}finally{window.showLoading&&window.showLoading(false);}}
+async function saveGanttTask(){const id=document.getElementById('gantt-task-id').value;const data={task_name:document.getElementById('gtask-name').value.trim(),project_id:document.getElementById('gtask-project').value||null,contractor_id:document.getElementById('gtask-contractor').value||null,start_date:document.getElementById('gtask-start').value,end_date:document.getElementById('gtask-end').value,status:document.getElementById('gtask-status').value,progress:parseInt(document.getElementById('gtask-progress').value)||0,notes:document.getElementById('gtask-notes').value};if(!data.task_name||!data.start_date||!data.end_date){showToast('נא למלא שם, תחילה וסיום', 'error'); return;}window.showLoading&&window.showLoading(true);try{let error;if(id){({error}=await sb.from('gantt_tasks').update(data).eq('id',id));}else{({error}=await sb.from('gantt_tasks').insert(data));}if(error)throw error;closeGanttModal();await loadGantt();showToast(id?'✅ משימה עודכנה':'✅ משימה נוספה');}catch(e){showToast('שגיאה: '+e.message);}finally{window.showLoading&&window.showLoading(false);}}
 async function deleteGanttTask(){const id=document.getElementById('gantt-task-id').value;if(!id||!confirm('למחוק משימה זו?'))return;window.showLoading&&window.showLoading(true);await sb.from('gantt_tasks').delete().eq('id',id);window.showLoading&&window.showLoading(false);closeGanttModal();await loadGantt();showToast('🗑️ משימה נמחקה');}
 async function updateGanttContractors(){const sel=document.getElementById('gtask-contractor');if(!sel)return;sel.innerHTML='<option value="">ללא קבלן ספציפי</option>'+(allContractors||[]).filter(c=>c.is_active).map(c=>`<option value="${c.id}">${esc(c.company_name)}</option>`).join('');}
 
@@ -3892,10 +3898,6 @@ function populateJournalProjectDropdown(preselectName){
 }
 
 
-// ══════════════════════════════════════════════════════════════════
-// GENERATE PO PDF — Professional Hebrew purchase order
-// Replaces the old basic printQuote with a fully designed PDF
-// ══════════════════════════════════════════════════════════════════
 function generatePOPdf(po) {
   if (!po) { showToast('שגיאה: לא נמצאו נתוני הזמנה', 'error'); return; }
   const now    = new Date();
@@ -4146,8 +4148,6 @@ function downloadMockupXLS() {
 }
 
 
-
-
 // -- notes --
 // ══════════════════════════════════════════════════════
 // SMART NOTES MODULE
@@ -4296,7 +4296,7 @@ async function journalOcrSend(dest) {
         report_number: reportNum,
         report_date:   new Date().toISOString().split('T')[0],
         project_name:  'דוח שטח — OCR',
-        manager_name:  'בני פרסקי',
+        manager_name: (APP.config&&APP.config.manager_name)||'בני פרסקי',
         general_notes: text,
         status:        'draft'
       });
@@ -4423,7 +4423,7 @@ function noteTextWithLinks(t){
   });
 }
 
-async function saveNote(){const text=document.getElementById('note-text-input')?.value?.trim();if(!text){alert('כתוב הערה תחילה');return;}const projectId=document.getElementById('note-project-select')?.value||null;showLoading(true);try{const{error}=await sb.from('beni_notes').insert({note_text:text,color:currentNoteColor,project_id:projectId||null});if(error)throw error;clearNoteForm();await loadNotesWall();showToast('✅ הערה נשמרה');}catch(e){showToast('❌ שגיאה: '+e.message);}finally{showLoading(false);}}
+async function saveNote(){const text=document.getElementById('note-text-input')?.value?.trim();if(!text){showToast('כתוב הערה תחילה', 'error'); return;}const projectId=document.getElementById('note-project-select')?.value||null;showLoading(true);try{const{error}=await sb.from('beni_notes').insert({note_text:text,color:currentNoteColor,project_id:projectId||null});if(error)throw error;clearNoteForm();await loadNotesWall();showToast('✅ הערה נשמרה');}catch(e){showToast('❌ שגיאה: '+e.message);}finally{showLoading(false);}}
 
 async function deleteNote(id){if(!confirm('למחוק הערה זו?'))return;await sb.from('beni_notes').delete().eq('id',id);await loadNotesWall();showToast('🗑️ הערה נמחקה');}
 
@@ -4434,12 +4434,9 @@ function clearNoteForm(){const inp=document.getElementById('note-text-input');if
 function filterNotes(color){activeNoteFilter=color;document.querySelectorAll('.note-filter').forEach(b=>{b.style.opacity=(b.dataset.filter===color)?'1':'0.5';b.style.fontWeight=(b.dataset.filter===color)?'900':'700';});renderNotes(color==='all'?allNotes:allNotes.filter(n=>n.color===color));}
 function filterNotesByKeyword(kw){const filtered=allNotes.filter(n=>!kw||n.note_text.toLowerCase().includes(kw.toLowerCase()));renderNotes(activeNoteFilter==='all'?filtered:filtered.filter(n=>n.color===activeNoteFilter));}
 function filterNotesByDate(){const from=document.getElementById('note-date-from')?.value;const to=document.getElementById('note-date-to')?.value;let filtered=allNotes;if(from)filtered=filtered.filter(n=>n.created_at>=from);if(to)filtered=filtered.filter(n=>n.created_at<=to+'T23:59:59');renderNotes(activeNoteFilter==='all'?filtered:filtered.filter(n=>n.color===activeNoteFilter));}
-function printNotes(){const visible=allNotes.filter(n=>activeNoteFilter==='all'||n.color===activeNoteFilter);if(!visible.length){alert('אין הערות להדפסה');return;}const rows=visible.map(n=>{const c=NOTE_COLORS[n.color]||NOTE_COLORS.yellow;const date=new Date(n.created_at).toLocaleDateString('he-IL');return'<div class="note" style="border-right:4px solid '+c.bg+';padding:12px 16px;margin-bottom:16px"><strong style="color:'+c.bg+'">'+c.label+'</strong><p style="font-size:14px;line-height:1.9;white-space:pre-wrap">'+escNote(n.note_text)+'</p><div style="font-size:11px;color:#888;margin-top:6px">'+date+'</div></div>';}).join('');const w=window.open('','_blank');w.document.write('<html dir="rtl"><head><title>יומן חכם</title></head><body style="font-family:Heebo,sans-serif;padding:30px;direction:rtl"><button onclick=\"window.close()\" style=\"position:fixed;top:12px;right:12px;background:#1a3d5c;color:#fff;border:none;padding:8px 18px;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;z-index:9999;font-family:Heebo,sans-serif;box-shadow:0 2px 10px rgba(0,0,0,0.25);">✕ סגור חלון</button><h1>📝 יומן חכם — בני פרסקי</h1>'+rows+'</body></html>');w.document.close();setTimeout(()=>w.print(),500);}
+function printNotes(){const visible=allNotes.filter(n=>activeNoteFilter==='all'||n.color===activeNoteFilter);if(!visible.length){showToast('אין הערות להדפסה', 'error'); return;}const rows=visible.map(n=>{const c=NOTE_COLORS[n.color]||NOTE_COLORS.yellow;const date=new Date(n.created_at).toLocaleDateString('he-IL');return'<div class="note" style="border-right:4px solid '+c.bg+';padding:12px 16px;margin-bottom:16px"><strong style="color:'+c.bg+'">'+c.label+'</strong><p style="font-size:14px;line-height:1.9;white-space:pre-wrap">'+escNote(n.note_text)+'</p><div style="font-size:11px;color:#888;margin-top:6px">'+date+'</div></div>';}).join('');const w=window.open('','_blank');w.document.write('<html dir="rtl"><head><title>יומן חכם</title></head><body style="font-family:Heebo,sans-serif;padding:30px;direction:rtl"><button onclick=\"window.close()\" style=\"position:fixed;top:12px;right:12px;background:#1a3d5c;color:#fff;border:none;padding:8px 18px;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;z-index:9999;font-family:Heebo,sans-serif;box-shadow:0 2px 10px rgba(0,0,0,0.25);">✕ סגור חלון</button><h1>📝 יומן חכם — בני פרסקי</h1>'+rows+'</body></html>');w.document.close();setTimeout(()=>w.print(),500);}
 function printNote(id){const n=allNotes.find(x=>x.id===id);if(!n)return;const c=NOTE_COLORS[n.color]||NOTE_COLORS.yellow;const w=window.open('','_blank');const date=new Date(n.created_at).toLocaleDateString('he-IL');w.document.write('<html dir="rtl"><head><title>הערה</title></head><body style="font-family:Heebo,sans-serif;padding:40px;direction:rtl"><button onclick=\"window.close()\" style=\"position:fixed;top:12px;right:12px;background:#1a3d5c;color:#fff;border:none;padding:8px 18px;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;z-index:9999;font-family:Heebo,sans-serif;box-shadow:0 2px 10px rgba(0,0,0,0.25);">✕ סגור חלון</button><span style="background:'+c.bg+';color:#fff;padding:4px 12px;border-radius:8px;font-size:12px;font-weight:700;">'+c.label+'</span><p style="font-size:16px;line-height:2;white-space:pre-wrap;margin-top:16px">'+escNote(n.note_text)+'</p><div style="font-size:12px;color:#888;margin-top:20px">'+date+'</div></body></html>');w.document.close();setTimeout(()=>w.print(),300);}
-function toggleNoteVoice(){if(!('webkitSpeechRecognition' in window||'SpeechRecognition' in window)){alert('דפדפן זה אינו תומך בזיהוי קול');return;}if(noteVoiceActive){if(noteVoiceRecog)noteVoiceRecog.stop();noteVoiceActive=false;const btn=document.getElementById('note-voice-btn');if(btn){btn.textContent='🎤 הקלט';btn.style.background='rgba(154,111,0,0.2)';}return;}const SR=window.SpeechRecognition||window.webkitSpeechRecognition;noteVoiceRecog=new SR();noteVoiceRecog.lang='he-IL';noteVoiceRecog.continuous=true;noteVoiceRecog.interimResults=false;noteVoiceRecog.onresult=e=>{const transcript=Array.from(e.results).map(r=>r[0].transcript).join(' ');const inp=document.getElementById('note-text-input');if(inp)inp.value=(inp.value?inp.value+' ':'')+transcript;};noteVoiceRecog.onerror=()=>{noteVoiceActive=false;const btn=document.getElementById('note-voice-btn');if(btn){btn.textContent='🎤 הקלט';btn.style.background='rgba(154,111,0,0.2)';}};noteVoiceRecog.start();noteVoiceActive=true;const btn=document.getElementById('note-voice-btn');if(btn){btn.textContent='⏹ עצור';btn.style.background='rgba(239,68,68,0.3)';btn.style.borderColor='#ef4444';btn.style.color='#ef4444';}}
-
-
-
+function toggleNoteVoice(){if(!('webkitSpeechRecognition' in window||'SpeechRecognition' in window)){showToast('דפדפן זה אינו תומך בזיהוי קול', 'error'); return;}if(noteVoiceActive){if(noteVoiceRecog)noteVoiceRecog.stop();noteVoiceActive=false;const btn=document.getElementById('note-voice-btn');if(btn){btn.textContent='🎤 הקלט';btn.style.background='rgba(154,111,0,0.2)';}return;}const SR=window.SpeechRecognition||window.webkitSpeechRecognition;noteVoiceRecog=new SR();noteVoiceRecog.lang='he-IL';noteVoiceRecog.continuous=true;noteVoiceRecog.interimResults=false;noteVoiceRecog.onresult=e=>{const transcript=Array.from(e.results).map(r=>r[0].transcript).join(' ');const inp=document.getElementById('note-text-input');if(inp)inp.value=(inp.value?inp.value+' ':'')+transcript;};noteVoiceRecog.onerror=()=>{noteVoiceActive=false;const btn=document.getElementById('note-voice-btn');if(btn){btn.textContent='🎤 הקלט';btn.style.background='rgba(154,111,0,0.2)';}};noteVoiceRecog.start();noteVoiceActive=true;const btn=document.getElementById('note-voice-btn');if(btn){btn.textContent='⏹ עצור';btn.style.background='rgba(239,68,68,0.3)';btn.style.borderColor='#ef4444';btn.style.color='#ef4444';}}
 
 
 // -- app --
@@ -4540,7 +4537,7 @@ function clearAllData() {
     document.getElementById('totalWorkHours').textContent = '0';
     document.getElementById('totalWorkerHours').textContent = '0';
     
-    alert('✅ כל הנתונים נמחקו!');
+    showToast('✅ כל הנתונים נמחקו!');
 }
 
 function startNewReport() {
@@ -4564,7 +4561,7 @@ function startNewReport() {
     // Scroll to top
     window.scrollTo({ top: 0, behavior: 'smooth' });
     
-    alert('✅ דוח חדש התחיל!\n\nמספר דוח: ' + currentReportNumber);
+    showToast('✅ דוח חדש התחיל!\n\nמספר דוח: ' + currentReportNumber, 'error');
 }
 
 // ============================================
@@ -4716,11 +4713,11 @@ function initializeVoiceRecognition() {
             console.error('❌ Voice error:', event.error);
             
             if (event.error === 'no-speech') {
-                alert('לא זוהה דיבור. נסה שוב ודבר בבירור.');
+                showToast('לא זוהה דיבור. נסה שוב ודבר בבירור.');
             } else if (event.error === 'not-allowed') {
-                alert('נא לאשר גישה למיקרופון בהגדרות הדפדפן.');
+                showToast('נא לאשר גישה למיקרופון בהגדרות הדפדפן.');
             } else if (event.error !== 'aborted') {
-                alert('שגיאה בהקלטה: ' + event.error);
+                showToast('שגיאה בהקלטה: ' + event.error, 'error');
             }
             
             stopVoiceRecording();
@@ -4739,14 +4736,13 @@ function initializeVoiceRecognition() {
         };
         
     } else {
-        alert('הקלטה קולית לא נתמכת בדפדפן זה. השתמש ב-Chrome.');
+        showToast('הקלטה קולית לא נתמכת בדפדפן זה. השתמש ב-Chrome.');
     }
 }
 
 function startVoiceRecording(targetId) {
     if (!voiceRecognition) {
-        alert('הקלטה קולית לא נתמכת בדפדפן זה');
-        return;
+        showToast('הקלטה קולית לא נתמכת בדפדפן זה', 'error'); return;
     }
     
     currentVoiceTarget = targetId;
@@ -5263,7 +5259,7 @@ async function saveDraft() {
         const data = collectFormData();
         
         if (!data.project_name) {
-            alert('❌ נא למלא שם פרוייקט');
+            showToast('❌ נא למלא שם פרוייקט');
             showLoading(false);
             return;
         }
@@ -5298,11 +5294,11 @@ async function saveDraft() {
         
         await uploadPhotos(report.id, selectedPhotos, 'manager');
         
-        alert('✅ טיוטה נשמרה!');
+        showToast('✅ טיוטה נשמרה!');
         
     } catch (error) {
         console.error('Error:', error);
-        alert('❌ שגיאה: ' + error.message);
+        showToast('❌ שגיאה: ' + error.message, 'error');
     } finally {
         showLoading(false);
     }
@@ -5315,7 +5311,7 @@ async function sendReport() {
         const data = collectFormData();
         
         if (!data.project_name) {
-            alert('❌ נא למלא שם פרוייקט');
+            showToast('❌ נא למלא שם פרוייקט');
             showLoading(false);
             return;
         }
@@ -5362,11 +5358,11 @@ async function sendReport() {
         
         window.open(`https://wa.me/?text=${encodeURIComponent(message)}`);
         
-        alert('✅ דוח נשלח!\n\nקישור: ' + shareURL);
+        showToast('✅ דוח נשלח!\n\nקישור: ' + shareURL, 'error');
         
     } catch (error) {
         console.error('Error:', error);
-        alert('❌ שגיאה: ' + error.message);
+        showToast('❌ שגיאה: ' + error.message, 'error');
     } finally {
         showLoading(false);
     }
@@ -5475,8 +5471,7 @@ async function loadReportForOwner(token) {
         if (error) throw error;
         
         if (!data || !data.report) {
-            alert('❌ דוח לא נמצא');
-            return;
+            showToast('❌ דוח לא נמצא', 'error'); return;
         }
         
         currentReport = data;
@@ -5496,7 +5491,7 @@ async function loadReportForOwner(token) {
         
     } catch (error) {
         console.error('Error:', error);
-        alert('❌ שגיאה: ' + error.message);
+        showToast('❌ שגיאה: ' + error.message, 'error');
     } finally {
         showLoading(false);
     }
@@ -5656,8 +5651,7 @@ async function approveReport() {
     const remarks = document.getElementById('ownerRemarks').value;
     
     if (!ownerName) {
-        alert('❌ נא למלא שם');
-        return;
+        showToast('❌ נא למלא שם', 'error'); return;
     }
     
     showLoading(true);
@@ -5685,7 +5679,7 @@ async function approveReport() {
             signature_path: signaturePath
         });
         
-        alert('✅ דוח אושר!');
+        showToast('✅ דוח אושר!');
         
         const message = `✅ *דוח אושר*\n\n` +
             `🏗️ ${currentReport.report.project_name}\n` +
@@ -5697,7 +5691,7 @@ async function approveReport() {
         
     } catch (error) {
         console.error('Error:', error);
-        alert('❌ שגיאה: ' + error.message);
+        showToast('❌ שגיאה: ' + error.message, 'error');
     } finally {
         showLoading(false);
     }
@@ -5723,9 +5717,6 @@ function showLoading(show) {
 }
 
 
-
-
-
 // ── DASHBOARD WIDGET FUNCTIONS ─────────────────────────────
 
 function _beniAgo(iso){if(!iso)return'';const d=Math.floor((Date.now()-new Date(iso))/1000);if(d<60)return'עכשיו';if(d<3600)return Math.floor(d/60)+' דק׳';if(d<86400)return Math.floor(d/3600)+' שע׳';return Math.floor(d/86400)+' ימים';}
@@ -5747,7 +5738,7 @@ async function _spSendLink() {
   var cName = cSel && cSel.selectedOptions[0] ? cSel.selectedOptions[0].text : '';
   var pId   = pSel ? pSel.value : '';
   var pName = pSel && pSel.selectedOptions[0] ? pSel.selectedOptions[0].text : '';
-  if (!cId) { alert('בחר קבלן תחילה'); return; }
+  if (!cId) { showToast('בחר קבלן תחילה', 'error'); return; }
   var contractor = (allContractors || []).find(function(c){ return c.id === cId; });
   var mobile = contractor ? (contractor.mobile || '') : '';
   var preview = document.getElementById('sp-link-preview');
@@ -5802,8 +5793,6 @@ async function loadBeniTasks(){const list=document.getElementById('beni-tasks-li
 async function _beniDone(id){const row=document.getElementById('btr-'+id);const check=row&&row.querySelector('.beni-check');const txt=row&&row.querySelector('.beni-task-txt');if(check){check.classList.add('done');check.textContent='✓';}if(txt)txt.classList.add('done');try{await fetch(SB_URL+'/rest/v1/reminders?id=eq.'+id,{method:'PATCH',headers:{apikey:SB_KEY,Authorization:'Bearer '+SB_KEY,'Content-Type':'application/json',Prefer:'return=minimal'},body:JSON.stringify({is_done:true,done_at:new Date().toISOString()})});}catch(e){console.error(e);}setTimeout(()=>{if(row)row.style.opacity='0.25';},500);setTimeout(loadBeniTasks,1400);}
 
 // ── DAILY CALLS WIDGET ────────────────────────────────────
-
-
 
 
 async function loadSiteReports() {
@@ -6229,7 +6218,6 @@ async function safetyLoadCategories() {
         };
       });
       _safetyCatsLoaded = true;
-      console.log('✅ Safety categories loaded from Supabase:', SAFETY_CATEGORIES.length);
       return;
     }
   } catch(e) {
@@ -6883,7 +6871,6 @@ async function safetyShowHistoryItem(id) {
 }
 
 
-
 // ══ SAFETY / SNAG SUB-TAB SWITCHER ════════════════════════════════════
 function switchSafetySubTab(tab) {
   document.getElementById('safety-sub-safety').style.display = tab === 'safety' ? 'block' : 'none';
@@ -7482,7 +7469,6 @@ async function snagShowHistoryItem(id) {
   snagRenderReport(findings, cats, customs, item);
   window.scrollTo(0, document.getElementById('snag-results').offsetTop - 80);
 }
-
 
 
 // ══════════════════════════════════════════════════════════════════════
@@ -8271,7 +8257,6 @@ async function safetyRunAnalysisForFile(file, fileIdx) {
 }
 
 
-
 // ══ REPORT PRINT / EMAIL / PROJECT HELPERS ═══════════════════════════
 
 function snagUpdateReportProject(projId) {
@@ -8443,11 +8428,6 @@ function safetyEmailReport() {
 }
 
 
-
-// ══════════════════════════════════════════════════════════════════════
-// ממ"ד RAG ENGINE — Journal CRM Integration
-// Query: Hebrew natural language → Supabase keyword search → Claude synthesis
-// ══════════════════════════════════════════════════════════════════════
 
 var _ragHistory = [];  // conversation history for multi-turn
 
@@ -8673,7 +8653,6 @@ function ragClearHistory() {
 }
 
 
-
 // ══ RAG TAB UI CONTROLLER ═════════════════════════════════════════════
 
 function ragTabInit() {
@@ -8814,11 +8793,6 @@ async function ragSubmit() {
 }
 
 
-
-// ══════════════════════════════════════════════════════════════════════
-// RAG → PO ENGINE
-// Flow: Photo → Vision analysis → RAG retrieval → Claude PO JSON → fill PO form
-// ══════════════════════════════════════════════════════════════════════
 
 var _ragPhotoB64       = null;   // current uploaded photo base64
 var _ragPhotoMediaType = 'image/jpeg';
@@ -8965,9 +8939,6 @@ function ragAskAboutPhoto() {
   }
 }
 
-// ══════════════════════════════════════════════════════════════════════
-// CORE: Generate complete PO from photo analysis + RAG
-// ══════════════════════════════════════════════════════════════════════
 async function ragGeneratePO() {
   var apiKey = (APP.config && APP.config.anthropic_key) || null;
   if (!apiKey) { ragShowError('מפתח Anthropic API חסר — הגדר ב-app_config בסופאבייס'); return; }
@@ -9501,9 +9472,6 @@ function ragShowSuccessNav(title, instruction) {
 }
 
 
-// ══════════════════════════════════════════════════════════════════════
-// ROBUST JSON PARSER — handles all common Claude output issues
-// ══════════════════════════════════════════════════════════════════════
 function ragSafeParseJSON(raw) {
   if (!raw) return null;
 
@@ -9566,11 +9534,6 @@ function ragSafeParseJSON(raw) {
 }
 
 
-// ══════════════════════════════════════════════════════════════════════
-// QA LOG — Save all photo analyses + AI answers to Supabase
-// Answers Beni's question: "Where do we keep all the QA & AI answers?"
-// Stored in: mamad_query_log table (already exists)
-// ══════════════════════════════════════════════════════════════════════
 async function ragSavePhotoQA(photoB64, damageAnalysis, poJsonPlan, questions, answers, projectId) {
   try {
     var region = document.getElementById('rag-region-sel')?.value || 'מרכז';
@@ -9601,12 +9564,10 @@ async function ragSavePhotoQA(photoB64, damageAnalysis, poJsonPlan, questions, a
         'Content-Type': 'application/json', Prefer: 'return=minimal' },
       body: JSON.stringify(payload)
     });
-    console.log('✅ Photo QA saved to mamad_query_log');
   } catch(e) {
     console.warn('ragSavePhotoQA save failed (non-critical):', e.message);
   }
 }
-
 
 
 // ══ RAG HISTORY TAB ═══════════════════════════════════════════════════
@@ -9821,10 +9782,6 @@ async function ragHistShowDetail(id) {
 }
 
 
-// ══════════════════════════════════════════════════════════════════════
-// מחירון כללי ENGINE — DOM-based, zero quote-nesting issues
-// משרד הבינוי והשיכון דצמבר 2025 · 2,683 items · 14 chapters
-// ══════════════════════════════════════════════════════════════════════
 
 var MC = {
   all:      [],    // full dataset
@@ -10064,10 +10021,6 @@ function mcExportCSV() {
   showToast('📥 ' + items.length + ' סעיפים יוצאו');
 }
 
-// ══ AI MATCH ENGINE ═══════════════════════════════════════════════════
-// Match PO line descriptions → מחירון items using Claude
-// Supports: exact match, similar/fuzzy, and none
-// ══════════════════════════════════════════════════════════════════════
 async function mcAIMatch() {
   var apiKey = (APP.config && APP.config.anthropic_key) || null;
   if (!apiKey) { showToast('הגדר מפתח Anthropic API', 'error'); return; }
@@ -10830,7 +10783,7 @@ async function eodSaveReport() {
       report_date:    _eodDate,
       project_name:   projMatch?.project_name || projName || 'יומן שטח',
       project_id:     projMatch?.id || null,
-      manager_name:   'בני פרסקי',
+      manager_name: (APP.config&&APP.config.manager_name)||'בני פרסקי',
       general_notes:  generalNotes,
       status:         'draft'
     });
@@ -11104,7 +11057,7 @@ async function weeklySaveAsReport() {
       report_number: reportNum,
       report_date:   from.toISOString().split('T')[0],
       project_name:  'סיכום שבועי',
-      manager_name:  'בני פרסקי',
+      manager_name: (APP.config&&APP.config.manager_name)||'בני פרסקי',
       general_notes: _weeklyAIReport.substring(0,500) + '\n\nשיחות: '+calls.length+' | משימות: '+tasks.length+' | מדידות: '+takeoffs.length+' | שולם: ₪'+totalPaid.toLocaleString(),
       status:        'draft'
     });
@@ -11363,9 +11316,9 @@ async function _spDelete(id){if(!confirm('מחוק דוח זה?'))return;try{awa
 function addContractorRow(data={}){const tbody=document.getElementById('contractorsBody');const emptyRow=tbody.querySelector('.contractors-empty');if(emptyRow)emptyRow.closest('tr').remove();const tr=document.createElement('tr');tr.innerHTML='<td><input type="text" placeholder="שם חברה / קבלן" class="contr-company" value="'+(data.company_name||'')+'"></td><td><input type="text" placeholder="שם איש קשר" class="contr-contact" value="'+(data.contact_name||'')+'"></td><td><input type="tel" placeholder="05X-XXXXXXX" class="contr-mobile" value="'+(data.mobile||'')+'" style="min-width:120px"></td><td><input type="tel" placeholder="0X-XXXXXXX" class="contr-office" value="'+(data.office_tel||'')+'" style="min-width:110px"></td><td><select class="contr-occupation">'+OCCUPATION_OPTIONS.map(o=>'<option value="'+o+'" '+(o===data.main_occupation?'selected':'')+'>'+( o||'— בחר עיסוק —')+'</option>').join('')+'</select></td><td><input type="text" placeholder="מה הוא עושה בפרוייקט זה?" class="contr-activity" value="'+(data.project_activity||'')+'" style="min-width:160px"></td><td class="td-actions"><button type="button" class="btn-remove-contractor" onclick="removeContractorRow(this)" title="הסר">×</button></td>';tbody.appendChild(tr);}
 function removeContractorRow(btn){const tbody=document.getElementById('contractorsBody');btn.closest('tr').remove();if(tbody.rows.length===0){const tr=document.createElement('tr');tr.innerHTML='<td colspan="7" class="contractors-empty">לחץ ״➕ הוסף קבלן״</td>';tbody.appendChild(tr);}}
 
-function addEquipmentFromList(){const sel=document.getElementById('equipmentQuickSelect');if(!sel)return;const val=sel.value;if(!val){alert('בחר ציוד מהרשימה תחילה');return;}if(val==='__other__'){addEquipmentRow('');sel.value='';return;}addEquipmentRow(val);sel.value='';}
+function addEquipmentFromList(){const sel=document.getElementById('equipmentQuickSelect');if(!sel)return;const val=sel.value;if(!val){showToast('בחר ציוד מהרשימה תחילה', 'error'); return;}if(val==='__other__'){addEquipmentRow('');sel.value='';return;}addEquipmentRow(val);sel.value='';}
 
-function addMaterialFromList(){const sel=document.getElementById('materialQuickSelect');if(!sel)return;const val=sel.value;if(!val){alert('בחר חומר מהרשימה תחילה');return;}if(val==='__other__'){addMaterialRow('');sel.value='';return;}addMaterialRow(val);sel.value='';}
+function addMaterialFromList(){const sel=document.getElementById('materialQuickSelect');if(!sel)return;const val=sel.value;if(!val){showToast('בחר חומר מהרשימה תחילה', 'error'); return;}if(val==='__other__'){addMaterialRow('');sel.value='';return;}addMaterialRow(val);sel.value='';}
 
 function addTomorrowRow(){
   const container=document.getElementById('tomorrowExtraRows');
@@ -11559,10 +11512,10 @@ async function sendAnnexes() {
   var pId   = pSel ? pSel.value : '';
   var pName = pSel && pSel.selectedOptions[0] ? pSel.selectedOptions[0].dataset.name : '';
 
-  if (!cId) { alert('בחר קבלן תחילה'); return; }
+  if (!cId) { showToast('בחר קבלן תחילה', 'error'); return; }
 
   var selected = Array.from(document.querySelectorAll('.annex-cb:checked')).map(function(cb){ return cb.value; });
-  if (!selected.length) { alert('בחר לפחות נספח אחד'); return; }
+  if (!selected.length) { showToast('בחר לפחות נספח אחד', 'error'); return; }
 
   try {
     // INSERT into contractor_annexes_sent → get confirm_token
@@ -11598,12 +11551,12 @@ async function sendAnnexes() {
     }).join(NL);
 
     var msg = 'שלום ' + cName + ',' + NL + NL +
-              'בני פרסקי שולח לך את נספחי הבטיחות הבאים לחוזה:' + NL +
+              ((APP.config&&APP.config.orderer_short)||'בני פרסקי') + ' שולח לך את נספחי הבטיחות הבאים לחוזה:' + NL +
               (pName ? 'פרויקט: ' + pName : '') + NL + NL +
               annexLines + NL + NL +
               '✅ לאישור קבלת הנספחים — לחץ כאן:' + NL +
               confirmUrl + NL + NL +
-              'תודה — בני פרסקי 🏗️';
+              'תודה — '+((APP.config&&APP.config.orderer_short)||'בני פרסקי')+' 🏗️';
 
     var waUrl = (phone ? 'https://wa.me/' + phone : 'https://wa.me/') + '?text=' + encodeURIComponent(msg);
     var _a = document.createElement('a');
@@ -11705,7 +11658,7 @@ function onJournalProjectChange(sel){const customRow=document.getElementById('pr
 async function _spConfirmReject() {
   var reportId = document.getElementById('sp-reject-id').value;
   var reason   = document.getElementById('sp-reject-reason').value.trim();
-  if (!reason) { alert('נא להזין סיבת דחייה'); return; }
+  if (!reason) { showToast('נא להזין סיבת דחייה', 'error'); return; }
   var r            = _spReportCache[reportId] || {};
   var contractorId = r.contractor_id || null;
   var contractor   = (allContractors||[]).find(function(c){ return c.id===contractorId; });
@@ -12170,7 +12123,7 @@ ${t.notes ? `<div class="notes"><strong>הערות:</strong><br>${t.notes}</div>
       project_name: projName,
       project_id: t.project_id || null,
       report_date: t.takeoff_date || new Date().toISOString().split('T')[0],
-      manager_name: 'בני פרסקי',
+      manager_name: (APP.config&&APP.config.manager_name)||'בני פרסקי',
       general_notes: 'טייקאוף: ' + total.toFixed(2) + ' מ"ר | ' + rows.length + ' אזורים',
       status: 'draft'
     });
@@ -12180,7 +12133,6 @@ ${t.notes ? `<div class="notes"><strong>הערות:</strong><br>${t.notes}</div>
     }
   } catch(e) { console.error('report save:', e.message); }
 }
-
 
 
 function openLinkModal(takeoffId) {
