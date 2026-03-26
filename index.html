@@ -1836,6 +1836,21 @@ window.addEventListener('unhandledrejection', function(e) {
   </div>
 
   <!-- Chat history -->
+  <!-- Sub-tab switcher: Chat | History -->
+  <div style="display:flex;gap:4px;margin-bottom:18px;background:#242438;border-radius:12px;padding:4px;">
+    <button id="rag-subtab-chat" onclick="ragSwitchSubTab('chat')"
+      style="flex:1;padding:9px;border-radius:9px;border:none;cursor:pointer;font-family:Heebo,sans-serif;font-size:12px;font-weight:700;background:#7c3aed;color:#fff;transition:all .15s;">
+      💬 שיחה
+    </button>
+    <button id="rag-subtab-history" onclick="ragSwitchSubTab('history')"
+      style="flex:1;padding:9px;border-radius:9px;border:none;cursor:pointer;font-family:Heebo,sans-serif;font-size:12px;font-weight:700;background:transparent;color:#888;transition:all .15s;">
+      📋 היסטוריית ניתוחים
+    </button>
+  </div>
+
+  <!-- CHAT sub-panel -->
+  <div id="rag-sub-chat">
+
   <div id="rag-chat-history" style="display:flex;flex-direction:column;gap:16px;margin-bottom:20px;min-height:80px;">
     <div style="text-align:center;padding:40px;color:#333;font-size:13px;">
       <div style="font-size:32px;margin-bottom:8px;">🏗️</div>
@@ -1864,6 +1879,45 @@ window.addEventListener('unhandledrejection', function(e) {
 
   <!-- Retrieved components indicator -->
   <div id="rag-retrieved-bar" style="display:none;margin-top:10px;padding:8px 14px;background:#1e1e35;border-radius:8px;font-size:11px;color:#666;direction:rtl;"></div>
+
+  </div><!-- end rag-sub-chat -->
+
+  <!-- HISTORY sub-panel -->
+  <div id="rag-sub-history" style="display:none;">
+
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px;">
+      <div style="font-size:13px;font-weight:800;color:#c4b5fd;">📋 כל ניתוחי הממ"ד שנשמרו</div>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <select id="rag-hist-filter" onchange="ragHistLoad()" style="background:#1a1a2e;border:1px solid rgba(255,255,255,0.12);color:#ccc;padding:6px 10px;border-radius:8px;font-family:Heebo,sans-serif;font-size:11px;direction:rtl;">
+          <option value="all">כל הסוגים</option>
+          <option value="photo">📸 ניתוחי תמונה</option>
+          <option value="chat">💬 שאלות צ'אט</option>
+          <option value="po">📄 הזמנות עבודה</option>
+        </select>
+        <button onclick="ragHistLoad()" style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);color:#666;padding:6px 12px;border-radius:8px;cursor:pointer;font-family:Heebo,sans-serif;font-size:11px;">🔄 רענן</button>
+      </div>
+    </div>
+
+    <!-- Stats row -->
+    <div id="rag-hist-stats" style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:16px;"></div>
+
+    <!-- List -->
+    <div id="rag-hist-list" style="display:flex;flex-direction:column;gap:10px;">
+      <div style="text-align:center;padding:40px;color:#444;font-size:13px;">לחץ רענן לטעינת ההיסטוריה</div>
+    </div>
+
+    <!-- Detail modal -->
+    <div id="rag-hist-detail" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:9100;overflow-y:auto;padding:20px;">
+      <div style="max-width:800px;margin:0 auto;background:#1a1a2e;border-radius:16px;border:1.5px solid rgba(139,92,246,0.4);overflow:hidden;">
+        <div style="background:#242438;padding:14px 20px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid rgba(255,255,255,0.06);">
+          <div style="font-size:14px;font-weight:800;color:#c4b5fd;" id="rag-detail-title">פרטי ניתוח</div>
+          <button onclick="document.getElementById('rag-hist-detail').style.display='none'" style="background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.15);color:#888;width:32px;height:32px;border-radius:8px;cursor:pointer;font-size:16px;">✕</button>
+        </div>
+        <div id="rag-detail-body" style="padding:20px;direction:rtl;font-family:Heebo,sans-serif;"></div>
+      </div>
+    </div>
+
+  </div><!-- end rag-sub-history -->
 
 </div></div></div>
 
@@ -8535,9 +8589,32 @@ function ragClearHistory() {
 // ══ RAG TAB UI CONTROLLER ═════════════════════════════════════════════
 
 function ragTabInit() {
-  // Populate project selector if needed — RAG tab is ready on load
   var input = document.getElementById('rag-input');
   if (input) input.focus();
+  // Pre-load history count silently
+  ragHistLoadCount();
+}
+
+async function ragHistLoadCount() {
+  try {
+    var res = await fetch(
+      SB_URL + '/rest/v1/mamad_query_log?select=id&limit=1&order=created_at.desc',
+      { headers: { apikey: SB_KEY, Authorization: 'Bearer ' + SB_KEY } }
+    );
+    if (res.ok) {
+      var countRes = await fetch(
+        SB_URL + '/rest/v1/mamad_query_log?select=id',
+        { headers: { apikey: SB_KEY, Authorization: 'Bearer ' + SB_KEY,
+          'Prefer': 'count=exact', 'Range': '0-0' } }
+      );
+      var range = countRes.headers.get('Content-Range');
+      var total = range ? range.split('/')[1] : null;
+      if (total && parseInt(total) > 0) {
+        var histBtn = document.getElementById('rag-subtab-history');
+        if (histBtn) histBtn.textContent = '📋 היסטוריה (' + total + ')';
+      }
+    }
+  } catch(e) { /* non-critical */ }
 }
 
 function ragClearChat() {
@@ -9435,6 +9512,219 @@ async function ragSavePhotoQA(photoB64, damageAnalysis, poJsonPlan, questions, a
     console.log('✅ Photo QA saved to mamad_query_log');
   } catch(e) {
     console.warn('ragSavePhotoQA save failed (non-critical):', e.message);
+  }
+}
+
+
+
+// ══ RAG HISTORY TAB ═══════════════════════════════════════════════════
+
+function ragSwitchSubTab(tab) {
+  document.getElementById('rag-sub-chat').style.display    = tab === 'chat'    ? 'block' : 'none';
+  document.getElementById('rag-sub-history').style.display = tab === 'history' ? 'block' : 'none';
+  var cb = document.getElementById('rag-subtab-chat');
+  var hb = document.getElementById('rag-subtab-history');
+  if (cb) { cb.style.background = tab==='chat'    ? '#7c3aed' : 'transparent'; cb.style.color = tab==='chat'    ? '#fff' : '#888'; }
+  if (hb) { hb.style.background = tab==='history' ? '#7c3aed' : 'transparent'; hb.style.color = tab==='history' ? '#fff' : '#888'; }
+  if (tab === 'history') ragHistLoad();
+}
+
+// ── Load history from mamad_query_log ────────────────────────────────
+async function ragHistLoad() {
+  var list    = document.getElementById('rag-hist-list');
+  var stats   = document.getElementById('rag-hist-stats');
+  var filter  = document.getElementById('rag-hist-filter')?.value || 'all';
+  if (!list) return;
+
+  list.innerHTML = '<div style="text-align:center;padding:20px;color:#555;font-size:12px;">⏳ טוען...</div>';
+
+  try {
+    var res = await fetch(
+      SB_URL + '/rest/v1/mamad_query_log?select=id,query_text,user_context,tokens_used,cost_usd,created_at&order=created_at.desc&limit=50',
+      { headers: { apikey: SB_KEY, Authorization: 'Bearer ' + SB_KEY } }
+    );
+    var items = res.ok ? await res.json() : [];
+
+    if (!items || !items.length) {
+      list.innerHTML = '<div style="text-align:center;padding:40px;color:#444;font-size:13px;">אין ניתוחים שמורים עדיין</div>';
+      return;
+    }
+
+    // Filter
+    var filtered = items.filter(function(item) {
+      if (filter === 'all')   return true;
+      if (filter === 'photo') return (item.user_context||'').includes('photo') || (item.query_text||'').includes('📸');
+      if (filter === 'po')    return (item.user_context||'').includes('po') || (item.query_text||'').includes('הזמנת');
+      if (filter === 'chat')  return !(item.user_context||'').includes('photo') && !(item.user_context||'').includes('po');
+      return true;
+    });
+
+    // Stats
+    var totalTokens = items.reduce(function(s,i){ return s + (i.tokens_used||0); }, 0);
+    var totalCost   = items.reduce(function(s,i){ return s + (parseFloat(i.cost_usd)||0); }, 0);
+    var photoCount  = items.filter(function(i){ return (i.user_context||'').includes('photo'); }).length;
+    var poCount     = items.filter(function(i){ return (i.user_context||'').includes('po'); }).length;
+
+    if (stats) {
+      var sc = function(bg, val, label) {
+        return '<div style="background:' + bg + ';border-radius:10px;padding:10px 14px;text-align:center;">'
+          + '<div style="font-size:18px;font-weight:900;color:#fff;">' + val + '</div>'
+          + '<div style="font-size:10px;color:rgba(255,255,255,0.6);margin-top:2px;">' + label + '</div></div>';
+      };
+      stats.innerHTML =
+        sc('rgba(139,92,246,0.25)', filtered.length, 'ניתוחים')
+        + sc('rgba(59,130,246,0.2)', photoCount, '📸 תמונות')
+        + sc('rgba(201,168,76,0.25)', poCount, '📄 הזמנות')
+        + sc('rgba(34,197,94,0.2)', '$' + totalCost.toFixed(2), 'עלות AI');
+    }
+
+    if (!filtered.length) {
+      list.innerHTML = '<div style="text-align:center;padding:20px;color:#555;font-size:12px;">אין תוצאות לסינון זה</div>';
+      return;
+    }
+
+    // Render list
+    list.innerHTML = filtered.map(function(item) {
+      var date = new Date(item.created_at).toLocaleString('he-IL',{day:'2-digit',month:'2-digit',year:'2-digit',hour:'2-digit',minute:'2-digit'});
+      var ctx  = item.user_context || 'chat';
+      var icon = ctx.includes('photo') ? '📸' : ctx.includes('po') ? '📄' : '💬';
+      var title = (item.query_text || '').substring(0, 80).replace(/</g,'&lt;');
+      var tokens= item.tokens_used ? item.tokens_used.toLocaleString() + ' טוקנים' : '';
+      var cost  = item.cost_usd ? '$' + parseFloat(item.cost_usd).toFixed(3) : '';
+      var borderColor = ctx.includes('photo') ? '#3b82f6' : ctx.includes('po') ? '#c9a84c' : '#7c3aed';
+
+      return '<div style="background:#242438;border:1px solid rgba(255,255,255,0.06);border-right:4px solid ' + borderColor + ';border-radius:12px;padding:12px 16px;cursor:pointer;transition:background .15s;" '
+        + 'onclick="ragHistShowDetail(\'' + item.id + '\')" '
+        + 'onmouseover="this.style.background=\'rgba(139,92,246,0.08)\'" onmouseout="this.style.background=\'#242438\'">'
+        + '<div style="display:flex;align-items:center;gap:10px;">'
+        + '<span style="font-size:20px;">' + icon + '</span>'
+        + '<div style="flex:1;min-width:0;">'
+        + '<div style="font-size:13px;font-weight:700;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;direction:rtl;">' + title + '</div>'
+        + '<div style="font-size:11px;color:#555;margin-top:3px;display:flex;gap:10px;flex-wrap:wrap;">'
+        + '<span>📅 ' + date + '</span>'
+        + (tokens ? '<span>⚡ ' + tokens + '</span>' : '')
+        + (cost   ? '<span>💰 ' + cost   + '</span>' : '')
+        + '</div></div>'
+        + '<span style="font-size:18px;color:#444;">›</span>'
+        + '</div></div>';
+    }).join('');
+
+  } catch(e) {
+    list.innerHTML = '<div style="color:#ef4444;padding:14px;font-size:12px;direction:rtl;">שגיאה: ' + e.message + '</div>';
+  }
+}
+
+// ── Show full detail of one history item ─────────────────────────────
+async function ragHistShowDetail(id) {
+  var modal   = document.getElementById('rag-hist-detail');
+  var titleEl = document.getElementById('rag-detail-title');
+  var bodyEl  = document.getElementById('rag-detail-body');
+  if (!modal || !bodyEl) return;
+
+  modal.style.display = 'block';
+  if (bodyEl) bodyEl.innerHTML = '<div style="text-align:center;padding:30px;color:#555;">⏳ טוען...</div>';
+
+  try {
+    var res  = await fetch(
+      SB_URL + '/rest/v1/mamad_query_log?id=eq.' + id + '&select=*',
+      { headers: { apikey: SB_KEY, Authorization: 'Bearer ' + SB_KEY } }
+    );
+    var rows = res.ok ? await res.json() : [];
+    var item = rows[0];
+    if (!item) throw new Error('לא נמצא');
+
+    var date = new Date(item.created_at).toLocaleString('he-IL',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'});
+    var ctx  = item.user_context || 'chat';
+    var icon = ctx.includes('photo') ? '📸' : ctx.includes('po') ? '📄' : '💬';
+    if (titleEl) titleEl.textContent = icon + ' ' + date;
+
+    var resp = null;
+    try { resp = typeof item.response_text === 'string' ? JSON.parse(item.response_text) : item.response_text; } catch(e){}
+
+    var html = '';
+
+    // Meta bar
+    html += '<div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:16px;font-size:11px;">';
+    if (item.tokens_used) html += '<div style="background:rgba(139,92,246,0.15);border-radius:20px;padding:4px 12px;color:#c4b5fd;">⚡ ' + item.tokens_used.toLocaleString() + ' טוקנים</div>';
+    if (item.cost_usd)    html += '<div style="background:rgba(34,197,94,0.12);border-radius:20px;padding:4px 12px;color:#86efac;">💰 $' + parseFloat(item.cost_usd).toFixed(4) + '</div>';
+    if (item.project_id)  html += '<div style="background:rgba(59,130,246,0.12);border-radius:20px;padding:4px 12px;color:#93c5fd;">📁 פרויקט</div>';
+    html += '</div>';
+
+    // Query
+    html += '<div style="margin-bottom:16px;">';
+    html += '<div style="font-size:11px;font-weight:800;color:#7c3aed;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;">שאלה / נושא:</div>';
+    html += '<div style="background:rgba(139,92,246,0.1);border-radius:8px;padding:10px 14px;font-size:13px;color:#e2e8f0;direction:rtl;">' + (item.query_text||'').replace(/</g,'&lt;') + '</div>';
+    html += '</div>';
+
+    // If it's a photo analysis — show damage analysis
+    if (resp && resp.damage_analysis) {
+      html += '<div style="margin-bottom:16px;">';
+      html += '<div style="font-size:11px;font-weight:800;color:#ef4444;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;">🔍 ניתוח נזק Vision:</div>';
+      html += '<div style="background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.2);border-radius:8px;padding:10px 14px;font-size:12px;color:#fca5a5;direction:rtl;line-height:1.7;">' + (resp.damage_analysis||'').replace(/</g,'&lt;').replace(/\n/g,'<br>') + '</div>';
+      html += '</div>';
+    }
+
+    // PO plan summary
+    if (resp && resp.po_plan_summary) {
+      var s = resp.po_plan_summary;
+      html += '<div style="margin-bottom:16px;">';
+      html += '<div style="font-size:11px;font-weight:800;color:#c9a84c;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;">📄 סיכום הזמנת עבודה:</div>';
+      html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">';
+      var sc2 = function(label, val, color) {
+        return '<div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:8px 12px;">'
+          + '<div style="font-size:10px;color:#666;margin-bottom:2px;">' + label + '</div>'
+          + '<div style="font-size:13px;font-weight:700;color:' + (color||'#fff') + ';">' + (val||'—') + '</div></div>';
+      };
+      html += sc2('שיטת תיקון', s.method, '#c4b5fd');
+      html += sc2('חומרה', s.severity, s.severity==='CRITICAL'?'#ef4444':s.severity==='MODERATE'?'#f59e0b':'#3b82f6');
+      html += sc2('שטח פגוע', s.area_m2 ? s.area_m2 + ' מ"ר' : '—', '#93c5fd');
+      html += sc2('מספר שלבים', s.sections ? s.sections + ' שלבים' : '—', '#86efac');
+      html += '</div></div>';
+    }
+
+    // Q&A from conversation
+    if (resp && resp.conversation_qa && resp.conversation_qa.length) {
+      html += '<div style="margin-bottom:16px;">';
+      html += '<div style="font-size:11px;font-weight:800;color:#93c5fd;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;">💬 שאלות ותשובות (' + resp.conversation_qa.length + '):</div>';
+      resp.conversation_qa.forEach(function(qa, i) {
+        html += '<div style="margin-bottom:10px;border:1px solid rgba(255,255,255,0.06);border-radius:10px;overflow:hidden;">';
+        html += '<div style="background:rgba(139,92,246,0.12);padding:8px 12px;font-size:12px;font-weight:700;color:#c4b5fd;direction:rtl;">'
+          + 'ש' + (i+1) + ': ' + (qa.question||'').substring(0,120).replace(/</g,'&lt;') + '</div>';
+        html += '<div style="padding:8px 12px;font-size:12px;color:#ccc;direction:rtl;line-height:1.7;">'
+          + (qa.answer||'').substring(0,400).replace(/</g,'&lt;').replace(/\n/g,'<br>')
+          + (qa.answer && qa.answer.length > 400 ? '...' : '') + '</div>';
+        html += '</div>';
+      });
+      html += '</div>';
+    }
+
+    // Raw response fallback (chat-only queries)
+    if (!resp || (!resp.damage_analysis && !resp.conversation_qa)) {
+      var rawText = typeof item.response_text === 'string' ? item.response_text : JSON.stringify(item.response_text, null, 2);
+      if (rawText) {
+        html += '<div style="margin-bottom:12px;">';
+        html += '<div style="font-size:11px;font-weight:800;color:#888;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;">תגובת AI:</div>';
+        html += '<div style="background:rgba(0,0,0,0.25);border-radius:8px;padding:10px 14px;font-size:12px;color:#aaa;direction:rtl;line-height:1.7;max-height:300px;overflow-y:auto;">'
+          + rawText.substring(0,1500).replace(/</g,'&lt;').replace(/\n/g,'<br>')
+          + (rawText.length > 1500 ? '<div style="color:#555;margin-top:8px;">... ' + (rawText.length-1500) + ' תווים נוספים</div>' : '')
+          + '</div></div>';
+      }
+    }
+
+    // Components retrieved
+    if (item.components_retrieved && item.components_retrieved.length) {
+      var comps = typeof item.components_retrieved === 'string' ? JSON.parse(item.components_retrieved) : item.components_retrieved;
+      if (comps.length) {
+        html += '<div style="margin-top:8px;font-size:11px;color:#555;">📚 רכיבים: '
+          + comps.map(function(c){ return '<span style="background:rgba(139,92,246,0.1);border:1px solid rgba(139,92,246,0.2);color:#a78bfa;padding:2px 8px;border-radius:8px;margin-right:4px;">' + c + '</span>'; }).join('')
+          + '</div>';
+      }
+    }
+
+    if (bodyEl) bodyEl.innerHTML = html;
+
+  } catch(e) {
+    if (bodyEl) bodyEl.innerHTML = '<div style="color:#ef4444;padding:14px;font-size:12px;">שגיאה: ' + e.message + '</div>';
   }
 }
 
