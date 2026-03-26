@@ -8674,46 +8674,47 @@ const RAG_PO_SYSTEM = `אתה מהנדס בנייה בכיר המתמחה בממ
 // ── PO JSON schema that Claude must return ────────────────────────────
 const RAG_PO_SCHEMA = `{
   "damage_assessment": {
-    "severity": "CRITICAL|MODERATE|MINOR",
-    "blast_tier": "T1|T2|T3",
-    "damage_types": ["רשימת סוגי נזק שזוהו"],
-    "affected_area_m2": <number>,
-    "immediate_danger": true|false,
-    "engineering_note": "הערה הנדסית קצרה"
+    "severity": "CRITICAL",
+    "blast_tier": "T2",
+    "damage_types": ["נזק הדף", "חשיפת זיון", "התקלפות"],
+    "affected_area_m2": 0.5,
+    "immediate_danger": true,
+    "engineering_note": "נדרש שחזור מבני מלא לפני חזרה לשימוש"
   },
   "recommended_method": {
-    "method_id": "RECAST|JACKETING",
-    "method_name": "שם השיטה בעברית",
-    "rationale": "הסבר קצר מדוע שיטה זו",
-    "certifiable": true|false,
-    "hfc_approval_required": true|false
+    "method_id": "RECAST",
+    "method_name": "יציקה מחדש",
+    "rationale": "שחזור מלא עם בטון B35 — מאפשר הסמכה מחדש של הממ"ד",
+    "certifiable": true,
+    "hfc_approval_required": true
   },
   "po_data": {
-    "project_name": "שיקום ממ\"ד — תיאור קצר",
+    "project_name": "שיקום ממ"ד — יציקה מחדש",
     "project_location": "",
     "start_date_days_from_now": 2,
-    "duration_days": <number>,
-    "notes": "הערות טכניות, תנאים, דרישות פיקוד העורף",
+    "duration_days": 14,
+    "notes": "הזמנה כפופה לאישור מהנדס קונסטרוקציה ופיקוד העורף",
     "sections": [
       {
-        "section_title": "שם השלב",
-        "section_type": "LABOR|MATERIALS|OVERHEAD|QA",
+        "section_title": "פיקוח ותמיכה זמנית",
+        "section_type": "LABOR",
         "items": [
           {
-            "description": "תיאור מדויק של הפריט/עבודה",
-            "unit": "מ\"ר|יחידה|ק\"ג|מ\"ק|ס\"ע|מ'",
-            "quantity": <number>,
-            "unit_price": <number>,
-            "labor_hours": <number or null>,
-            "trade": "תחום המקצוע",
-            "standard_ref": "ת\"י XXXX או null",
-            "notes": "הערת שורה"
+            "description": "הקמת פיגום ותמיכה זמנית",
+            "unit": "ס"ע",
+            "quantity": 8,
+            "unit_price": 210,
+            "labor_hours": 8,
+            "trade": "תבניתן",
+            "standard_ref": "ת"י 118",
+            "notes": ""
           }
         ]
       }
     ]
   }
 }`;
+
 
 // ── Handle photo upload ───────────────────────────────────────────────
 async function ragHandlePhoto(input) {
@@ -8875,7 +8876,14 @@ async function ragGeneratePO() {
       + 'מחירים: השתמש בנתוני העלות מ-Supabase שסופקו למעלה\n'
       + 'כלול 12-16 שורות סה"כ\n\n'
       + 'JSON Schema:\n' + RAG_PO_SCHEMA
-      + '\n\nחשוב מאוד: ענה ONLY ב-JSON תקני. אין טקסט לפני או אחרי. התחל ישירות עם { .'
+      + '\n\nכללים קריטיים ל-JSON:\n'
+      + '1. התחל ישירות עם { — אין טקסט לפני\n'
+      + '2. כל מחרוזת בגרשיים כפולות " — אין גרשיים עבריים ״׳\n'
+      + '3. אין שורות חדשות בתוך ערכי מחרוזת — רק \\n\n'
+      + '4. מספרים ללא גרשיים: "quantity": 3 לא "quantity": "3"\n'
+      + '5. null (לא "null") לערכים ריקים\n'
+      + '6. אין תגיות markdown, אין ```json\n'
+      + 'ענה רק ב-JSON. אסור כל טקסט אחר.'
     });
 
     // ── Step 4: Call Claude ───────────────────────────────────────────
@@ -8913,27 +8921,20 @@ async function ragGeneratePO() {
     }
     raw = raw.substring(jsonStart, jsonEnd + 1);
 
-    var plan;
-    try {
-      plan = JSON.parse(raw);
-    } catch(parseErr) {
-      // Last resort: try to fix common issues
-      var fixed = raw
-        .replace(/,\s*}/g, '}')          // trailing commas in objects
-        .replace(/,\s*\]/g, ']')          // trailing commas in arrays
-        .replace(/[\u0000-\u001F]/g, ' ') // control chars
-        .replace(/\n/g, '\\n');           // unescaped newlines in strings
-      try {
-        plan = JSON.parse(fixed);
-      } catch(e2) {
-        console.error('JSON parse failed. Raw:', raw.substring(0, 800));
-        throw new Error('שגיאת JSON — ' + parseErr.message.substring(0, 80));
-      }
+    var plan = ragSafeParseJSON(raw);
+    if (!plan) {
+      console.error('JSON parse failed. Raw response was:', raw.substring(0, 1000));
+      throw new Error('Claude החזיר JSON לא תקני. בדוק Console (F12) לראות את התגובה המלאה ושלח לתמיכה.');
     }
 
     _ragPOPlan = plan;
     clearInterval(_tokenCheckInterval);
-    ragUpdateProgress('✅ תוכנית מוכנה — מכין תצוגה מקדימה...', 90);
+    ragUpdateProgress('✅ תוכנית מוכנה — שומר ומכין תצוגה...', 90);
+
+    // Save the full QA session to mamad_query_log
+    var qaQuestions = _ragHistory.filter(function(t){ return t.role==='user'; }).map(function(t){ return t.content; });
+    var qaAnswers   = _ragHistory.filter(function(t){ return t.role==='assistant'; }).map(function(t){ return t.content; });
+    ragSavePhotoQA(_ragPhotoB64, _ragDamageContext, plan, qaQuestions, qaAnswers, null);
 
     // ── Step 5: Show preview in chat, then fill PO ───────────────────
     await new Promise(function(r){ setTimeout(r, 400); });
@@ -9328,6 +9329,113 @@ function ragShowSuccessNav(title, instruction) {
   navBtn.onclick = function(){ switchTab('crm'); setTimeout(function(){ showPage('new-po'); }, 400); };
   wrap.appendChild(icon); wrap.appendChild(body); wrap.appendChild(navBtn);
   hist.appendChild(wrap); hist.scrollTo(0, hist.scrollHeight);
+}
+
+
+// ══════════════════════════════════════════════════════════════════════
+// ROBUST JSON PARSER — handles all common Claude output issues
+// ══════════════════════════════════════════════════════════════════════
+function ragSafeParseJSON(raw) {
+  if (!raw) return null;
+
+  // Step 1: Strip markdown fences
+  raw = raw.replace(/```json\s*/gi, '').replace(/```\s*/g, '').trim();
+
+  // Step 2: Extract JSON object boundaries
+  var start = raw.indexOf('{');
+  var end   = raw.lastIndexOf('}');
+  if (start === -1 || end === -1 || end <= start) return null;
+  raw = raw.substring(start, end + 1);
+
+  // Step 3: Try direct parse first
+  try { return JSON.parse(raw); } catch(e1) { /* continue to repair */ }
+
+  // Step 4: Repair common issues line by line (avoids regex-with-newlines)
+  var lines = raw.split('\n');
+  var repaired = lines.map(function(line) {
+    // Replace Hebrew double-quote chars that break JSON
+    return line.replace(/״/g, '\"').replace(/׳/g, "'");
+  }).join('\n');
+
+  // Remove trailing commas before } or ]
+  repaired = repaired.replace(/,(\s*[}\]])/g, '$1');
+  // Fix <number> placeholders
+  repaired = repaired.replace(/:\s*<number>/g, ': 0');
+  repaired = repaired.replace(/:\s*<number or null>/g, ': null');
+  repaired = repaired.replace(/:\s*"true\|false"/g, ': false');
+  repaired = repaired.replace(/:\s*"RECAST\|JACKETING"/g, ': "RECAST"');
+  repaired = repaired.replace(/:\s*"T1\|T2\|T3"/g, ': "T2"');
+  repaired = repaired.replace(/:\s*"CRITICAL\|MODERATE\|MINOR"/g, ': "MODERATE"');
+
+  try { return JSON.parse(repaired); } catch(e2) { /* continue */ }
+
+  // Step 5: Most aggressive — remove all actual newlines inside string values
+  // Walk char by char tracking if inside a string
+  var chars  = repaired.split('');
+  var result = [];
+  var inStr  = false;
+  var esc    = false;
+  for (var i = 0; i < chars.length; i++) {
+    var ch = chars[i];
+    if (esc) { result.push(ch); esc = false; continue; }
+    if (ch === '\\') { result.push(ch); esc = true; continue; }
+    if (ch === '"') { inStr = !inStr; result.push(ch); continue; }
+    if (inStr && (ch === '\n' || ch === '\r')) {
+      result.push(' '); // replace bare newline inside string with space
+      continue;
+    }
+    result.push(ch);
+  }
+  var cleaned = result.join('');
+  // One more trailing-comma pass
+  cleaned = cleaned.replace(/,(\s*[}\]])/g, '$1');
+
+  try { return JSON.parse(cleaned); } catch(e3) {
+    console.error('ragSafeParseJSON all attempts failed. First 500 chars:', raw.substring(0, 500));
+    return null;
+  }
+}
+
+
+// ══════════════════════════════════════════════════════════════════════
+// QA LOG — Save all photo analyses + AI answers to Supabase
+// Answers Beni's question: "Where do we keep all the QA & AI answers?"
+// Stored in: mamad_query_log table (already exists)
+// ══════════════════════════════════════════════════════════════════════
+async function ragSavePhotoQA(photoB64, damageAnalysis, poJsonPlan, questions, answers, projectId) {
+  try {
+    var region = document.getElementById('rag-region-sel')?.value || 'מרכז';
+    var payload = {
+      query_text:           '📸 ניתוח תמונת נזק — ' + new Date().toLocaleString('he-IL'),
+      query_lang:           'he',
+      components_retrieved: ['WALL-BLAST-T2-001'],
+      response_text:        JSON.stringify({
+        damage_analysis:  damageAnalysis || '',
+        po_plan_summary:  poJsonPlan ? {
+          method:   (poJsonPlan.recommended_method||{}).method_name,
+          severity: (poJsonPlan.damage_assessment||{}).severity,
+          area_m2:  (poJsonPlan.damage_assessment||{}).affected_area_m2,
+          sections: (poJsonPlan.po_data?.sections||[]).length
+        } : null,
+        conversation_qa: (questions||[]).map(function(q,i){
+          return { question: q, answer: (answers||[])[i] || '' };
+        }),
+        region: region
+      }, null, 2),
+      project_id:  projectId || null,
+      user_context: 'photo_analysis_with_po'
+    };
+
+    await fetch(SB_URL + '/rest/v1/mamad_query_log', {
+      method: 'POST',
+      headers: { apikey: SB_KEY, Authorization: 'Bearer ' + SB_KEY,
+        'Content-Type': 'application/json', Prefer: 'return=minimal' },
+      body: JSON.stringify(payload)
+    });
+    console.log('✅ Photo QA saved to mamad_query_log');
+  } catch(e) {
+    console.warn('ragSavePhotoQA save failed (non-critical):', e.message);
+  }
 }
 
 
