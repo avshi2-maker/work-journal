@@ -10501,7 +10501,15 @@ async function qRunAll() {
     card.style.cssText = 'background:#1a1a2e;border:1.5px solid rgba(255,255,255,0.06);border-right:4px solid ' + colors[n-1] + ';border-radius:14px;padding:18px 20px;';
     card.innerHTML = '<div style="font-size:11px;color:' + colors[n-1] + ';font-weight:800;margin-bottom:8px;">שאלה ' + n + '</div>'
       + '<div style="font-size:14px;color:#fff;direction:rtl;margin-bottom:12px;font-weight:600;">' + q.replace(/</g,'&lt;') + '</div>'
-      + '<div id="q-answer-' + n + '" style="font-size:13px;color:#64748b;direction:rtl;">⏳ מחפש...</div>';
+      + '<div id="q-meter-' + n + '" style="display:flex;align-items:center;gap:12px;margin-bottom:10px;font-size:11px;color:#475569;font-family:monospace;">'
+      + '  <span id="q-timer-' + n + '">⏱ 0.0s</span>'
+      + '  <span id="q-tokens-' + n + '">🔢 0 tokens</span>'
+      + '  <span id="q-cost-' + n + '">💰 $0.000</span>'
+      + '  <span id="q-progress-' + n + '" style="flex:1;background:rgba(255,255,255,0.05);border-radius:4px;height:4px;overflow:hidden;">'
+      + '    <span id="q-bar-' + n + '" style="display:block;height:4px;background:linear-gradient(90deg,#38bdf8,#a78bfa);width:0%;transition:width 0.3s;"></span>'
+      + '  </span>'
+      + '</div>'
+      + '<div id="q-answer-' + n + '" style="font-size:14px;color:#f1f5f9;direction:rtl;line-height:1.9;font-weight:600;">⏳ מחפש...</div>';
     document.getElementById('q-results').appendChild(card);
   });
 
@@ -10525,6 +10533,47 @@ async function qRunAll() {
 async function qRunSingle(num, question, apiKey) {
   var ansEl = document.getElementById('q-answer-' + num);
   if (!ansEl) return;
+
+  // Start live timer + progress bar
+  var _startTime = Date.now();
+  var _timerEl   = document.getElementById('q-timer-'    + num);
+  var _tokensEl  = document.getElementById('q-tokens-'   + num);
+  var _costEl    = document.getElementById('q-cost-'     + num);
+  var _barEl     = document.getElementById('q-bar-'      + num);
+  var _meterEl   = document.getElementById('q-meter-'    + num);
+  var _timerInterval = setInterval(function() {
+    var secs = ((Date.now() - _startTime) / 1000).toFixed(1);
+    if (_timerEl) _timerEl.textContent = '⏱ ' + secs + 's';
+    var pct = Math.min(85, (Date.now() - _startTime) / 80);
+    if (_barEl) _barEl.style.width = pct + '%';
+  }, 100);
+
+  // ── Off-topic detector ────────────────────────────────────────────
+  // Keywords that belong to the construction RAG
+  var RAG_KEYWORDS = [
+    'ממד','ממ"ד','בטון','זיון','פלדה','קיר','תקרה','רצפה','יציקה',
+    'טיח','צבע','איטום','שיפוץ','בנייה','בניין','מבנה','היתר',
+    'מדרגות','נגישות','כבש','מעקה','גדר','חיזוק','cfrp','jacketing',
+    'מחירון','כתב כמויות','הזמנת עבודה','קבלן','פרויקט','אתר',
+    'ת"י','תקן','תקנות','מפרט','בלמ"ס','מידות','עובי','קוטר',
+    'סטייה','חוזק','דרישה','ביצוע','אחריות','בדיקה','פיגום'
+  ];
+
+  var qLow = question.toLowerCase();
+  var isConstruction = RAG_KEYWORDS.some(function(kw) {
+    return qLow.includes(kw.toLowerCase());
+  });
+
+  if (!isConstruction) {
+    // Off-topic — show redirect card, open Claude.ai, stop
+    clearInterval(_timerInterval);
+    if (_barEl) { _barEl.style.width = '100%'; _barEl.style.background = '#f59e0b'; }
+    var claudeUrl = 'https://claude.ai/new?q=' + encodeURIComponent(question);
+    ansEl.innerHTML = qRenderOffTopic(question, claudeUrl);
+    // Auto-open Claude.ai in new tab after 1.5s
+    setTimeout(function() { window.open(claudeUrl, '_blank'); }, 1500);
+    return;
+  }
 
   try {
     // 1. Parallel: search all 3 spec tables + price items
@@ -10596,8 +10645,22 @@ async function qRunSingle(num, question, apiKey) {
     });
 
     var data = await res.json();
+    clearInterval(_timerInterval);
     if (!res.ok) throw new Error((data.error && data.error.message) || 'API error');
     var text = (data.content && data.content[0] && data.content[0].text) || '';
+
+    // Show final metrics
+    var elapsed = ((Date.now() - _startTime) / 1000).toFixed(1);
+    var inputTok  = (data.usage && data.usage.input_tokens)  || 0;
+    var outputTok = (data.usage && data.usage.output_tokens) || 0;
+    var totalTok  = inputTok + outputTok;
+    // Sonnet pricing: $3/M input, $15/M output
+    var cost = ((inputTok * 3 + outputTok * 15) / 1000000).toFixed(4);
+    if (_timerEl)  _timerEl.textContent  = '⏱ ' + elapsed + 's';
+    if (_tokensEl) _tokensEl.textContent = '🔢 ' + totalTok.toLocaleString() + ' tokens';
+    if (_costEl)   _costEl.textContent   = '💰 $' + cost;
+    if (_barEl)    _barEl.style.width    = '100%';
+    if (_barEl)    _barEl.style.background = 'linear-gradient(90deg,#22c55e,#38bdf8)';
 
     // 4. Render answer
     var formatted = qFormatAnswer(text);
@@ -10636,6 +10699,8 @@ async function qRunSingle(num, question, apiKey) {
     ansEl.parentElement.appendChild(actBar);
 
   } catch(err) {
+    clearInterval(_timerInterval);
+    if (_barEl) { _barEl.style.width='100%'; _barEl.style.background='#ef4444'; }
     ansEl.innerHTML = '<span style="color:#ef4444;">❌ שגיאה: ' + err.message + '</span>';
   }
 }
@@ -10683,12 +10748,60 @@ async function qFetchPrices(question) {
 
 // ── Format Claude response ─────────────────────────────────────────────
 function qFormatAnswer(text) {
-  if (!text) return '<span style="color:#475569;">אין תשובה</span>';
+  if (!text) return '<span style="color:#94a3b8;">אין תשובה</span>';
   var NL = String.fromCharCode(10);
   return text
-    .replace(/\*\*([^*]+)\*\*/g, '<strong style="color:#38bdf8;display:block;margin-top:10px;margin-bottom:4px;font-size:12px;text-transform:uppercase;letter-spacing:0.5px;">$1</strong>')
+    // Section headers **bold**
+    .replace(/\*\*([^*\n]+)\*\*/g,
+      '<div style="color:#38bdf8;font-size:11px;font-weight:900;text-transform:uppercase;letter-spacing:1px;margin-top:14px;margin-bottom:6px;padding-bottom:4px;border-bottom:1px solid rgba(56,189,248,0.2);">$1</div>')
+    // Numbered list items
+    .replace(/^(\d+\. )(.+)$/gm,
+      '<div style="display:flex;gap:8px;margin-bottom:6px;"><span style="color:#38bdf8;font-weight:800;min-width:18px;">$1</span><span style="color:#f1f5f9;font-weight:600;line-height:1.7;">$2</span></div>')
+    // Bullet list items
+    .replace(/^[•\-] (.+)$/gm,
+      '<div style="display:flex;gap:8px;margin-bottom:5px;"><span style="color:#a78bfa;font-weight:900;">▸</span><span style="color:#f1f5f9;font-weight:600;line-height:1.7;">$1</span></div>')
+    // Newlines
     .split(NL).join('<br>')
     .replace(/(<br>){3,}/g, '<br><br>');
+}
+
+// ── Off-topic redirect card ────────────────────────────────────────────
+function qRenderOffTopic(question, claudeUrl) {
+  var d = document.createElement('div');
+  d.style.cssText = 'background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.25);border-radius:10px;padding:14px 16px;';
+
+  var title = document.createElement('div');
+  title.style.cssText = 'font-size:13px;font-weight:800;color:#fbbf24;margin-bottom:8px;';
+  title.textContent = '📡 שאלה זו אינה קשורה לבנייה';
+  d.appendChild(title);
+
+  var msg = document.createElement('div');
+  msg.style.cssText = 'font-size:13px;color:#e2e8f0;font-weight:600;direction:rtl;margin-bottom:10px;line-height:1.7;';
+  msg.innerHTML = 'המערכת מתמחה ב: ממ"ד · בטון · טיח · צבע · שיפוץ · מחירון בנייה · תקנות.<br>שאלתך נשלחת לקלוד — תיפתח בחלון חדש.';
+  d.appendChild(msg);
+
+  var bar = document.createElement('div');
+  bar.style.cssText = 'display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;';
+
+  var link = document.createElement('a');
+  link.href = claudeUrl; link.target = '_blank';
+  link.style.cssText = 'display:inline-flex;align-items:center;gap:6px;background:linear-gradient(135deg,#92400e,#f59e0b);color:#fff;padding:8px 16px;border-radius:8px;cursor:pointer;font-family:Heebo,sans-serif;font-size:12px;font-weight:800;text-decoration:none;';
+  link.textContent = '🌐 פתח ב-Claude.ai';
+  bar.appendChild(link);
+
+  var clearBtn = document.createElement('button');
+  clearBtn.style.cssText = 'background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);color:#94a3b8;padding:8px 14px;border-radius:8px;cursor:pointer;font-family:Heebo,sans-serif;font-size:12px;font-weight:700;';
+  clearBtn.textContent = '🔄 שאל שאלת בנייה';
+  clearBtn.onclick = function(){ qClearAll(); };
+  bar.appendChild(clearBtn);
+  d.appendChild(bar);
+
+  var tip = document.createElement('div');
+  tip.style.cssText = 'font-size:10px;color:#78716c;';
+  tip.textContent = '💡 דוגמאות: "מה חוזק בטון לממ"ד?" · "עלות טיח חוץ למ"ר?" · "מה נדרש להיתר שיפוץ?"';
+  d.appendChild(tip);
+
+  return d.outerHTML;
 }
 
 // ── Send question to PO form ───────────────────────────────────────────
