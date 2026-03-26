@@ -8863,7 +8863,7 @@ async function ragAnalyzeDamagePhoto() {
 
     if (analysisDiv) {
       analysisDiv.innerHTML = '<div style="font-size:11px;color:#7c3aed;font-weight:700;margin-bottom:6px;">🔍 ניתוח Vision — זוהה:</div>'
-        + '<div style="color:#e2e8f0;direction:rtl;">' + (analysis||'').replace(/\n/g,'<br>').replace(/</g,'&lt;') + '</div>';
+        + '<div style="color:#e2e8f0;direction:rtl;line-height:1.8;">' + ragFormatAnalysis(analysis) + '</div>';
     }
     if (actionsDiv) actionsDiv.style.display = 'flex';
 
@@ -9291,6 +9291,18 @@ function ragFillPOForm() {
 }
 
 
+// ── Format Claude markdown/HTML analysis text for display ────────────
+function ragFormatAnalysis(text) {
+  if (!text) return '';
+  var NL = String.fromCharCode(10);
+  return text
+    .replace(/\*\*([^*]+)\*\*/g, '<strong style="color:#c4b5fd;">$1</strong>')
+    .replace(/\*([^*\n]+)\*/g, '<em>$1</em>')
+    .split(NL).join('<br>')
+    .replace(/\\n/g, '<br>');
+}
+
+
 // ── RAG Progress Panel Helpers ─────────────────────────────────────────
 
 function ragShowProgress() {
@@ -9658,7 +9670,7 @@ async function ragHistShowDetail(id) {
     if (resp && resp.damage_analysis) {
       html += '<div style="margin-bottom:16px;">';
       html += '<div style="font-size:11px;font-weight:800;color:#ef4444;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;">🔍 ניתוח נזק Vision:</div>';
-      html += '<div style="background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.2);border-radius:8px;padding:10px 14px;font-size:12px;color:#fca5a5;direction:rtl;line-height:1.7;">' + (resp.damage_analysis||'').replace(/</g,'&lt;').replace(/\n/g,'<br>') + '</div>';
+      html += '<div style="background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.2);border-radius:8px;padding:10px 14px;font-size:12px;color:#fca5a5;direction:rtl;line-height:1.8;">' + ragFormatAnalysis(resp.damage_analysis||'') + '</div>';
       html += '</div>';
     }
 
