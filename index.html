@@ -8514,67 +8514,83 @@ async function ragQuery(userQuery, projectId) {
 
 // ── Retrieve: keyword search against Supabase ─────────────────────────
 async function ragRetrieve(query) {
+  var results = { mamad: [], spec: [], renovation: [] };
+  var q = encodeURIComponent(query.substring(0, 200));
+  var h = { apikey: SB_KEY, Authorization: 'Bearer ' + SB_KEY };
+  var qLow = query.toLowerCase();
+
+  // ── 1. mamad components ───────────────────────────────────────────
   try {
-    // Extract tier hint from query
     var tierMatch = query.match(/T([123])|דרגה\s*([123])/i);
     var tier = tierMatch ? 'T' + (tierMatch[1] || tierMatch[2]) : null;
-
-    // Extract component type hint
-    var typeHints = {
-      'קיר': 'קיר', 'wall': 'קיר',
-      'תקרה': 'תקרה', 'slab': 'תקרה',
-      'דלת': 'דלת', 'door': 'דלת',
-      'חלון': 'חלון', 'window': 'חלון',
-      'אוורור': 'אוורור', 'nbc': 'אוורור', 'מנת"ר': 'אוורור', 'vent': 'אוורור'
-    };
+    var typeHints = { 'קיר':'קיר','wall':'קיר','תקרה':'תקרה','slab':'תקרה',
+      'דלת':'דלת','door':'דלת','חלון':'חלון','window':'חלון',
+      'אוורור':'אוורור','nbc':'אוורור','vent':'אוורור' };
     var compType = null;
-    var qLower = query.toLowerCase();
-    for (var hint in typeHints) {
-      if (qLower.includes(hint)) { compType = typeHints[hint]; break; }
-    }
-
-    // Use Supabase RPC keyword search
-    var params = {
-      search_query: query.substring(0, 200),
-      max_results: 4
-    };
-    if (tier) params.tier_filter = tier;
+    for (var hint in typeHints) { if (qLow.includes(hint)) { compType = typeHints[hint]; break; } }
+    var params = { search_query: query.substring(0, 200), max_results: 3 };
+    if (tier)     params.tier_filter = tier;
     if (compType) params.type_filter = compType;
-
     var rpcRes = await fetch(
-      SB_URL + '/rest/v1/rpc/mamad_keyword_search?' + Object.keys(params).map(function(k){
-        return k + '=' + encodeURIComponent(params[k]);
-      }).join('&'),
-      { headers: { apikey: SB_KEY, Authorization: 'Bearer ' + SB_KEY } }
-    );
-
-    var results = rpcRes.ok ? await rpcRes.json() : [];
-
-    // If no results, fall back to getting all components of matching tier
-    if (!results || results.length === 0) {
-      var fallback = await fetch(
-        SB_URL + '/rest/v1/mamad_components?select=component_id,component_name,component_type,blast_tier,full_record'
-        + (tier ? '&blast_tier=eq.' + tier : '') + '&limit=5',
-        { headers: { apikey: SB_KEY, Authorization: 'Bearer ' + SB_KEY } }
-      );
-      results = fallback.ok ? await fallback.json() : [];
+      SB_URL + '/rest/v1/rpc/mamad_keyword_search?' +
+      Object.keys(params).map(function(k){ return k + '=' + encodeURIComponent(params[k]); }).join('&'),
+      { headers: h });
+    results.mamad = rpcRes.ok ? (await rpcRes.json() || []) : [];
+    if (!results.mamad.length) {
+      var fb = await fetch(SB_URL + '/rest/v1/mamad_components?select=component_id,component_name,component_type,blast_tier,full_record' + (tier ? '&blast_tier=eq.' + tier : '') + '&limit=3', { headers: h });
+      results.mamad = fb.ok ? (await fb.json() || []) : [];
     }
+  } catch(e) {}
 
-    return results || [];
-  } catch(e) {
-    console.error('RAG retrieve:', e);
-    return [];
-  }
+  // ── 2. mamad spec chapters ────────────────────────────────────────
+  try {
+    var specRes = await fetch(SB_URL + '/rest/v1/rpc/mamad_spec_search?search_query=' + q + '&max_results=2', { headers: h });
+    results.spec = specRes.ok ? (await specRes.json() || []) : [];
+    if (!results.spec.length) {
+      var sWord = query.split(' ').filter(function(w){ return w.length > 3; })[0] || query.substring(0,10);
+      var sfb = await fetch(SB_URL + '/rest/v1/mamad_spec_chapters?select=spec_id,title_he,topic,key_specs,standards,text_content&text_content=ilike.*' + encodeURIComponent(sWord) + '*&limit=2', { headers: h });
+      results.spec = sfb.ok ? (await sfb.json() || []) : [];
+    }
+  } catch(e) {}
+
+  // ── 3. renovation spec ────────────────────────────────────────────
+  try {
+    var catMap = {
+      concrete:      ['בטון','זיון','פלדה','יציקה','חוזק','cfrp','jacketing','ליבה','חשיפה'],
+      paint:         ['טיח','צבע','צביעה','איטום','חזית','הדבקות','ריסוס'],
+      renovation:    ['שיפוץ','היתר','אסבסט','גובה','פירוק','רישוי'],
+      accessibility: ['נגישות','מדרגות','כבש','מדרכה','מעקה','עולה','מדרך']
+    };
+    var detCat = null;
+    for (var cat in catMap) {
+      if (catMap[cat].some(function(kw){ return qLow.includes(kw); })) { detCat = cat; break; }
+    }
+    var renUrl = SB_URL + '/rest/v1/rpc/renovation_spec_search?search_query=' + q + '&max_results=3' + (detCat ? '&cat_filter=' + encodeURIComponent(detCat) : '');
+    var renRes = await fetch(renUrl, { headers: h });
+    results.renovation = renRes.ok ? (await renRes.json() || []) : [];
+    if (!results.renovation.length) {
+      var rWord = query.split(' ').filter(function(w){ return w.length > 3; })[0] || query.substring(0,10);
+      var rfb = await fetch(SB_URL + '/rest/v1/renovation_spec?select=spec_id,category,title_he,standard_ref,key_rules,numeric_vals,text_content&text_content=ilike.*' + encodeURIComponent(rWord) + '*&limit=3', { headers: h });
+      results.renovation = rfb.ok ? (await rfb.json() || []) : [];
+    }
+  } catch(e) {}
+
+  return results;
 }
 
 // ── Build context string for Claude ──────────────────────────────────
 function ragBuildContext(retrieved, query) {
-  if (!retrieved || !retrieved.length) {
+  // Support both old array format and new {mamad, spec, renovation} dict
+  var mamadItems   = Array.isArray(retrieved) ? retrieved : (retrieved.mamad     || []);
+  var specItems    = Array.isArray(retrieved) ? []        : (retrieved.spec      || []);
+  var renovItems   = Array.isArray(retrieved) ? []        : (retrieved.renovation|| []);
+  var hasAny = mamadItems.length || specItems.length || renovItems.length;
+  if (!hasAny) {
     return 'לא נמצאו רשומות רלוונטיות במאגר הידע עבור שאלה זו.';
   }
 
   var ctx = '## רשומות רלוונטיות ממאגר הידע ממ"ד\n\n';
-  retrieved.forEach(function(item, i) {
+  mamadItems.forEach(function(item, i) {
     var rec = item.full_record || item;
     ctx += '### רשומה ' + (i+1) + ': ' + (item.component_name || rec['שם_רכיב'] || '') + '\n';
     ctx += '**מזהה:** ' + (item.component_id || rec['רכיב_מזהה']) + '\n';
@@ -8611,6 +8627,40 @@ function ragBuildContext(retrieved, query) {
 
     ctx += '\n';
   });
+
+
+  // ── ממ"ד Spec chapters ────────────────────────────────────────────
+  if (specItems.length) {
+    ctx += '\n## מפרט בלמ"ס — הנחיות הנדסיות\n\n';
+    specItems.forEach(function(s) {
+      ctx += '### ' + (s.title_he || '') + '\n';
+      if (s.standard_ref || s.standards) ctx += '**תקן:** ' + (s.standard_ref || (s.standards||[]).join(', ')) + '\n';
+      var ks = s.key_specs || [];
+      if (typeof ks === 'string') { try { ks = JSON.parse(ks); } catch(e) { ks = []; } }
+      if (ks.length) ctx += '**דרישות עיקריות:** ' + ks.slice(0,4).join(' | ') + '\n';
+      if (s.text_snippet || s.text_content) ctx += (s.text_snippet || (s.text_content||'').substring(0,300)) + '\n';
+      ctx += '\n';
+    });
+  }
+
+  // ── Renovation + Concrete + Paint spec ───────────────────────────
+  if (renovItems.length) {
+    ctx += '\n## מפרט שיפוץ, בטון וצבע — תקנות ישראליות\n\n';
+    renovItems.forEach(function(r) {
+      ctx += '### ' + (r.title_he || '') + ' [' + (r.category||'') + ']\n';
+      if (r.standard_ref) ctx += '**תקן:** ' + r.standard_ref + '\n';
+      var kr = r.key_rules || [];
+      if (typeof kr === 'string') { try { kr = JSON.parse(kr); } catch(e) { kr = []; } }
+      if (kr.length) ctx += '**כללים:** ' + kr.slice(0,4).join(' | ') + '\n';
+      var nv = r.numeric_vals || [];
+      if (typeof nv === 'string') { try { nv = JSON.parse(nv); } catch(e) { nv = []; } }
+      if (nv.length) {
+        ctx += '**ערכים מספריים:** ' + nv.map(function(v){ return v.param + ': ' + v.value + (v.unit?' '+v.unit:''); }).slice(0,4).join(', ') + '\n';
+      }
+      if (r.text_snippet || r.text_content) ctx += (r.text_snippet || (r.text_content||'').substring(0,250)) + '\n';
+      ctx += '\n';
+    });
+  }
 
   return ctx;
 }
