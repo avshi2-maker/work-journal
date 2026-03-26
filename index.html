@@ -370,6 +370,8 @@ window.addEventListener('unhandledrejection', function(e) {
   <div class="tab-sep"></div>
   <div class="top-tab"        id="tab-micharon" onclick="switchTab('micharon')" style="color:#22c55e;"><span>📋</span><span>מחירון</span></div>
   <div class="tab-sep"></div>
+  <div class="top-tab"        id="tab-query"    onclick="switchTab('query')"    style="color:#38bdf8;"><span>🔍</span><span>שאילתות</span></div>
+  <div class="tab-sep"></div>
   <div class="top-tab"        id="tab-gcal"    onclick="switchTab('gcal')">   <span>📅</span><span>יומן Google</span></div>
   <div class="tab-sep"></div>
   <div class="top-tab"        id="tab-journal" onclick="switchTab('journal')"><span>📋</span><span>יומן עבודה יומי</span></div>
@@ -2001,6 +2003,104 @@ window.addEventListener('unhandledrejection', function(e) {
 </div></div></div>
 
 
+<!-- ══ שאילתות QUERY PANEL ══════════════════════════════════════════ -->
+<div class="app-panel" id="query-panel">
+<div style="padding:70px 20px 80px;min-height:100vh;background:#0f0f1a;font-family:Heebo,sans-serif;direction:rtl;">
+
+  <!-- Header -->
+  <div style="text-align:center;margin-bottom:24px;">
+    <div style="font-size:10px;letter-spacing:4px;color:#38bdf8;text-transform:uppercase;margin-bottom:6px;">מפרטים · מחירים · הוראות ביצוע</div>
+    <h1 style="font-size:26px;font-weight:900;color:#fff;margin:0;">🔍 שאילתות מקצועיות</h1>
+    <div style="font-size:12px;color:#475569;margin-top:6px;">שאל 3 שאלות במקביל — קבל תשובות מותאמות ממ״ד · בטון · צבע · תקנות · מחירים</div>
+  </div>
+
+  <!-- 3 Query Boxes -->
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px;margin-bottom:20px;" id="query-boxes-grid">
+
+    <!-- Box 1 -->
+    <div style="background:#1a1a2e;border:1.5px solid rgba(56,189,248,0.25);border-radius:14px;padding:14px;" id="qbox-1">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+        <div style="font-size:11px;font-weight:800;color:#38bdf8;">שאלה 1</div>
+        <div style="display:flex;gap:6px;">
+          <button onclick="qVoice(1)" title="קלט קולי" style="background:rgba(56,189,248,0.12);border:1px solid rgba(56,189,248,0.3);color:#38bdf8;width:30px;height:30px;border-radius:8px;cursor:pointer;font-size:14px;">🎤</button>
+          <button onclick="qClear(1)" title="נקה" style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);color:#555;width:30px;height:30px;border-radius:8px;cursor:pointer;font-size:12px;">✕</button>
+        </div>
+      </div>
+      <textarea id="q-input-1" placeholder="לדוגמה: מה חוזק בטון נדרש לממ״ד T2?" rows="3"
+        style="width:100%;background:#0f0f1a;border:1px solid rgba(255,255,255,0.1);color:#e2e8f0;padding:10px;border-radius:9px;font-family:Heebo,sans-serif;font-size:13px;direction:rtl;resize:vertical;outline:none;box-sizing:border-box;line-height:1.6;"
+        onkeydown="if(event.key==='Enter'&&event.ctrlKey)qRunAll()"></textarea>
+      <div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap;" id="q-chips-1">
+        <span onclick="qChip(1,'מה חוזק בטון נדרש לממ״ד?')" style="cursor:pointer;background:rgba(56,189,248,0.08);border:1px solid rgba(56,189,248,0.2);color:#7dd3fc;padding:3px 8px;border-radius:12px;font-size:10px;">ממ״ד בטון</span>
+        <span onclick="qChip(1,'מה מחיר תיקון זיון חשוף?')" style="cursor:pointer;background:rgba(56,189,248,0.08);border:1px solid rgba(56,189,248,0.2);color:#7dd3fc;padding:3px 8px;border-radius:12px;font-size:10px;">תיקון זיון</span>
+        <span onclick="qChip(1,'מה דרישות טיח חוץ תקני?')" style="cursor:pointer;background:rgba(56,189,248,0.08);border:1px solid rgba(56,189,248,0.2);color:#7dd3fc;padding:3px 8px;border-radius:12px;font-size:10px;">טיח חוץ</span>
+      </div>
+    </div>
+
+    <!-- Box 2 -->
+    <div style="background:#1a1a2e;border:1.5px solid rgba(167,139,250,0.25);border-radius:14px;padding:14px;" id="qbox-2">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+        <div style="font-size:11px;font-weight:800;color:#a78bfa;">שאלה 2</div>
+        <div style="display:flex;gap:6px;">
+          <button onclick="qVoice(2)" title="קלט קולי" style="background:rgba(167,139,250,0.12);border:1px solid rgba(167,139,250,0.3);color:#a78bfa;width:30px;height:30px;border-radius:8px;cursor:pointer;font-size:14px;">🎤</button>
+          <button onclick="qClear(2)" title="נקה" style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);color:#555;width:30px;height:30px;border-radius:8px;cursor:pointer;font-size:12px;">✕</button>
+        </div>
+      </div>
+      <textarea id="q-input-2" placeholder="לדוגמה: כמה עולה שכבת CFRP לחיזוק קורה?" rows="3"
+        style="width:100%;background:#0f0f1a;border:1px solid rgba(255,255,255,0.1);color:#e2e8f0;padding:10px;border-radius:9px;font-family:Heebo,sans-serif;font-size:13px;direction:rtl;resize:vertical;outline:none;box-sizing:border-box;line-height:1.6;"
+        onkeydown="if(event.key==='Enter'&&event.ctrlKey)qRunAll()"></textarea>
+      <div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap;">
+        <span onclick="qChip(2,'מה עלות jacketing לקיר?')" style="cursor:pointer;background:rgba(167,139,250,0.08);border:1px solid rgba(167,139,250,0.2);color:#c4b5fd;padding:3px 8px;border-radius:12px;font-size:10px;">jacketing</span>
+        <span onclick="qChip(2,'מה דרישות צביעה חיצונית?')" style="cursor:pointer;background:rgba(167,139,250,0.08);border:1px solid rgba(167,139,250,0.2);color:#c4b5fd;padding:3px 8px;border-radius:12px;font-size:10px;">צביעה חוץ</span>
+        <span onclick="qChip(2,'מה מחיר פלדת זיון לטון?')" style="cursor:pointer;background:rgba(167,139,250,0.08);border:1px solid rgba(167,139,250,0.2);color:#c4b5fd;padding:3px 8px;border-radius:12px;font-size:10px;">פלדת זיון</span>
+      </div>
+    </div>
+
+    <!-- Box 3 -->
+    <div style="background:#1a1a2e;border:1.5px solid rgba(34,197,94,0.25);border-radius:14px;padding:14px;" id="qbox-3">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+        <div style="font-size:11px;font-weight:800;color:#22c55e;">שאלה 3</div>
+        <div style="display:flex;gap:6px;">
+          <button onclick="qVoice(3)" title="קלט קולי" style="background:rgba(34,197,94,0.12);border:1px solid rgba(34,197,94,0.3);color:#22c55e;width:30px;height:30px;border-radius:8px;cursor:pointer;font-size:14px;">🎤</button>
+          <button onclick="qClear(3)" title="נקה" style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);color:#555;width:30px;height:30px;border-radius:8px;cursor:pointer;font-size:12px;">✕</button>
+        </div>
+      </div>
+      <textarea id="q-input-3" placeholder="לדוגמה: מה נדרש להיתר שיפוץ חזית?" rows="3"
+        style="width:100%;background:#0f0f1a;border:1px solid rgba(255,255,255,0.1);color:#e2e8f0;padding:10px;border-radius:9px;font-family:Heebo,sans-serif;font-size:13px;direction:rtl;resize:vertical;outline:none;box-sizing:border-box;line-height:1.6;"
+        onkeydown="if(event.key==='Enter'&&event.ctrlKey)qRunAll()"></textarea>
+      <div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap;">
+        <span onclick="qChip(3,'מה נדרש להיתר ממ״ד חדש?')" style="cursor:pointer;background:rgba(34,197,94,0.08);border:1px solid rgba(34,197,94,0.2);color:#86efac;padding:3px 8px;border-radius:12px;font-size:10px;">היתר ממ״ד</span>
+        <span onclick="qChip(3,'מה דרישות נגישות מדרגות?')" style="cursor:pointer;background:rgba(34,197,94,0.08);border:1px solid rgba(34,197,94,0.2);color:#86efac;padding:3px 8px;border-radius:12px;font-size:10px;">נגישות</span>
+        <span onclick="qChip(3,'מה מחיר איטום גג למ״ר?')" style="cursor:pointer;background:rgba(34,197,94,0.08);border:1px solid rgba(34,197,94,0.2);color:#86efac;padding:3px 8px;border-radius:12px;font-size:10px;">איטום גג</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Action bar -->
+  <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-bottom:24px;">
+    <button onclick="qRunAll()"
+      style="background:linear-gradient(135deg,#0369a1,#38bdf8);border:none;color:#fff;padding:13px 36px;border-radius:12px;cursor:pointer;font-family:Heebo,sans-serif;font-size:15px;font-weight:900;letter-spacing:0.5px;">
+      ⚡ שלח את כל השאלות
+    </button>
+    <button onclick="qPrint()"
+      style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.15);color:#94a3b8;padding:13px 24px;border-radius:12px;cursor:pointer;font-family:Heebo,sans-serif;font-size:14px;font-weight:700;">
+      🖨️ הדפס תשובות
+    </button>
+    <button onclick="qClearAll()"
+      style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);color:#475569;padding:13px 20px;border-radius:12px;cursor:pointer;font-family:Heebo,sans-serif;font-size:14px;font-weight:700;">
+      🗑️ נקה הכל
+    </button>
+  </div>
+
+  <!-- Status bar -->
+  <div id="q-status" style="display:none;text-align:center;margin-bottom:16px;font-size:12px;color:#64748b;"></div>
+
+  <!-- Results area -->
+  <div id="q-results" style="display:flex;flex-direction:column;gap:16px;"></div>
+
+</div>
+</div>
+
+
 <div class="app-panel" id="gcal-panel"><div id="gcal-content"><div style="padding:54px 0 0;min-height:100vh;background:#1a1a2e;font-family:Heebo,sans-serif;direction:rtl;display:flex;flex-direction:column">
 
   <div style="padding:16px 24px 0;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
@@ -2564,7 +2664,7 @@ async function switchTab(tab) {
     if (ov) ov.style.display = 'none';
   }
 
-  ['crm','notes','eod','safety','rag','micharon','gcal','journal'].forEach(t => {
+  ['crm','notes','eod','safety','rag','micharon','query','gcal','journal'].forEach(t => {
     document.getElementById(`${t}-panel`)?.classList.toggle('active', t===tab);
     document.getElementById(`tab-${t}`)?.classList.toggle('active', t===tab);
   });
@@ -2580,6 +2680,7 @@ async function switchTab(tab) {
   if (tab === 'safety')  { setTimeout(safetyTabInit, 100); }
   if (tab === 'rag')      { setTimeout(ragTabInit, 100); }
   if (tab === 'micharon') { setTimeout(micharonTabInit, 100); }
+  if (tab === 'query')    { setTimeout(queryTabInit, 100); }
   if (tab === 'gcal')    { if (typeof initGcal    === 'function') initGcal();  }
   if (tab === 'journal') { if (typeof initJournalOnce === 'function') initJournalOnce(); }
 }
@@ -10314,6 +10415,343 @@ function mcStatus(msg, show) {
   if (!el) return;
   el.style.display = (msg && show !== false) ? 'block' : 'none';
   el.textContent   = msg || '';
+}
+
+
+
+// ══════════════════════════════════════════════════════════════════════
+// QUERY TAB ENGINE — 3 parallel professional queries
+// Sources: mamad_spec_chapters + renovation_spec + price_items + Claude
+// ══════════════════════════════════════════════════════════════════════
+
+var Q = {
+  voices:  [null, null, null],
+  running: false
+};
+
+function queryTabInit() {
+  // Nothing to pre-load — queries are on demand
+}
+
+// ── Voice input ────────────────────────────────────────────────────────
+function qVoice(num) {
+  if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+    showToast('קלט קולי לא נתמך בדפדפן זה', 'error'); return;
+  }
+  var SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (Q.voices[num-1]) {
+    Q.voices[num-1].stop(); Q.voices[num-1] = null; return;
+  }
+  var rec = new SpeechRec();
+  rec.lang = 'he-IL'; rec.continuous = false; rec.interimResults = false;
+  rec.onresult = function(e) {
+    var txt = e.results[0][0].transcript;
+    document.getElementById('q-input-' + num).value = txt;
+    Q.voices[num-1] = null;
+  };
+  rec.onerror = function() { Q.voices[num-1] = null; };
+  rec.onend   = function() { Q.voices[num-1] = null; };
+  rec.start();
+  Q.voices[num-1] = rec;
+  showToast('🎤 מקשיב לשאלה ' + num + '...', 'success');
+}
+
+function qChip(num, text) {
+  document.getElementById('q-input-' + num).value = text;
+}
+
+function qClear(num) {
+  document.getElementById('q-input-' + num).value = '';
+  var res = document.getElementById('q-result-' + num);
+  if (res) res.remove();
+}
+
+function qClearAll() {
+  [1,2,3].forEach(function(n){ qClear(n); });
+  document.getElementById('q-results').innerHTML = '';
+  document.getElementById('q-status').style.display = 'none';
+}
+
+// ── Main runner ────────────────────────────────────────────────────────
+async function qRunAll() {
+  if (Q.running) return;
+  var apiKey = APP.config && APP.config.anthropic_key;
+  if (!apiKey) { showToast('מפתח Anthropic API חסר', 'error'); return; }
+
+  var questions = [1,2,3].map(function(n) {
+    return (document.getElementById('q-input-' + n).value || '').trim();
+  }).filter(function(q) { return q.length > 0; });
+
+  if (!questions.length) { showToast('הכנס לפחות שאלה אחת', 'error'); return; }
+
+  Q.running = true;
+  document.getElementById('q-results').innerHTML = '';
+  qStatus('⏳ מחפש מפרטים ומחירים עבור ' + questions.length + ' שאלות...');
+
+  // Create placeholder cards immediately so results show in order
+  [1,2,3].forEach(function(n) {
+    var q = (document.getElementById('q-input-' + n).value || '').trim();
+    if (!q) return;
+    var existing = document.getElementById('q-result-' + n);
+    if (existing) existing.remove();
+
+    var colors = ['#38bdf8','#a78bfa','#22c55e'];
+    var card = document.createElement('div');
+    card.id = 'q-result-' + n;
+    card.style.cssText = 'background:#1a1a2e;border:1.5px solid rgba(255,255,255,0.06);border-right:4px solid ' + colors[n-1] + ';border-radius:14px;padding:18px 20px;';
+    card.innerHTML = '<div style="font-size:11px;color:' + colors[n-1] + ';font-weight:800;margin-bottom:8px;">שאלה ' + n + '</div>'
+      + '<div style="font-size:14px;color:#fff;direction:rtl;margin-bottom:12px;font-weight:600;">' + q.replace(/</g,'&lt;') + '</div>'
+      + '<div id="q-answer-' + n + '" style="font-size:13px;color:#64748b;direction:rtl;">⏳ מחפש...</div>';
+    document.getElementById('q-results').appendChild(card);
+  });
+
+  // Run all queries in parallel
+  var promises = [1,2,3].map(function(n) {
+    var q = (document.getElementById('q-input-' + n).value || '').trim();
+    if (!q) return Promise.resolve();
+    return qRunSingle(n, q, apiKey);
+  });
+
+  try {
+    await Promise.all(promises);
+    qStatus('✅ הושלם — ' + questions.length + ' תשובות');
+  } catch(e) {
+    qStatus('⚠️ חלק מהשאלות נכשלו');
+  }
+  Q.running = false;
+}
+
+// ── Single query: fetch specs + prices + ask Claude ───────────────────
+async function qRunSingle(num, question, apiKey) {
+  var ansEl = document.getElementById('q-answer-' + num);
+  if (!ansEl) return;
+
+  try {
+    // 1. Parallel: search all 3 spec tables + price items
+    var [mamadRes, renovRes, priceRes] = await Promise.all([
+      qFetchSpec('mamad_spec_chapters', question),
+      qFetchSpec('renovation_spec', question),
+      qFetchPrices(question)
+    ]);
+
+    // 2. Build context
+    var context = '';
+    if (mamadRes.length) {
+      context += '== מפרט ממ״ד (בלמ״ס) ==\n';
+      mamadRes.forEach(function(r) {
+        context += r.title_he + '\n';
+        if (r.key_specs) {
+          try { var ks = typeof r.key_specs==='string'?JSON.parse(r.key_specs):r.key_specs; if(Array.isArray(ks)) context += ks.join('\n') + '\n'; } catch(e){}
+        }
+        if (r.text_content) context += (r.text_content||'').substring(0,400) + '\n';
+        context += '\n';
+      });
+    }
+    if (renovRes.length) {
+      context += '== מפרט שיפוץ ותקנות ==\n';
+      renovRes.forEach(function(r) {
+        context += (r.title_he||'') + ' [' + (r.standard_ref||'') + ']\n';
+        if (r.key_rules) {
+          try { var kr = typeof r.key_rules==='string'?JSON.parse(r.key_rules):r.key_rules; if(Array.isArray(kr)) context += kr.join('\n') + '\n'; } catch(e){}
+        }
+        if (r.numeric_vals) {
+          try { var nv = typeof r.numeric_vals==='string'?JSON.parse(r.numeric_vals):r.numeric_vals; if(Array.isArray(nv)) nv.forEach(function(v){ context += v.param+': '+v.value+' '+v.unit+'\n'; }); } catch(e){}
+        }
+        context += '\n';
+      });
+    }
+    if (priceRes.length) {
+      context += '== מחירון משרד הבינוי (דצמבר 2025) ==\n';
+      priceRes.forEach(function(r) {
+        context += r.item_code + ' | ' + (r.description||'').substring(0,60) + ' | ' + r.unit + ' | ₪' + r.price + '\n';
+      });
+    }
+
+    if (!context.trim()) context = 'אין נתונים ספציפיים בבסיס הנתונים — ענה מידע הנדסי כללי.';
+
+    // 3. Ask Claude
+    var prompt = 'אתה יועץ הנדסי בנייה ישראלי מקצועי. עברית בלבד. תשובה ממוקדת ומעשית.\n\n'
+      + 'בסיס ידע רלוונטי:\n' + context + '\n'
+      + 'שאלה: ' + question + '\n\n'
+      + 'ענה בפורמט הבא (השתמש ב-** לכותרות):\n'
+      + '**תשובה:** [תשובה ישירה 1-2 משפטים]\n'
+      + '**מפרט/תקן:** [הדרישות המדויקות עם מספרים]\n'
+      + '**הוראות ביצוע:** [3-5 שלבי ביצוע]\n'
+      + '**מחיר:** [סעיף מחירון + מחיר אם רלוונטי]\n'
+      + 'אם המידע לא קיים בבסיס הנתונים — ציין זאת וענה מידע כללי.';
+
+    var res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true'
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 1200,
+        messages: [{ role: 'user', content: prompt }]
+      })
+    });
+
+    var data = await res.json();
+    if (!res.ok) throw new Error((data.error && data.error.message) || 'API error');
+    var text = (data.content && data.content[0] && data.content[0].text) || '';
+
+    // 4. Render answer
+    var formatted = qFormatAnswer(text);
+    ansEl.innerHTML = formatted;
+
+    // Add action buttons
+    var actBar = document.createElement('div');
+    actBar.style.cssText = 'margin-top:14px;display:flex;gap:8px;flex-wrap:wrap;border-top:1px solid rgba(255,255,255,0.05);padding-top:12px;';
+
+    // Send to PO button
+    var poBtn = document.createElement('button');
+    poBtn.textContent = '📄 שלח להזמנה';
+    poBtn.style.cssText = 'background:rgba(201,168,76,0.12);border:1px solid rgba(201,168,76,0.3);color:#c9a84c;padding:5px 12px;border-radius:8px;cursor:pointer;font-family:Heebo,sans-serif;font-size:11px;font-weight:700;';
+    poBtn.onclick = (function(q){ return function(){ qSendToPO(q); }; })(question);
+    actBar.appendChild(poBtn);
+
+    // Copy answer button
+    var copyBtn = document.createElement('button');
+    copyBtn.textContent = '📋 העתק';
+    copyBtn.style.cssText = 'background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);color:#94a3b8;padding:5px 12px;border-radius:8px;cursor:pointer;font-family:Heebo,sans-serif;font-size:11px;font-weight:700;';
+    copyBtn.onclick = function(){ navigator.clipboard.writeText(text).then(function(){ showToast('✅ הועתק'); }); };
+    actBar.appendChild(copyBtn);
+
+    // Source chips
+    if (mamadRes.length || renovRes.length) {
+      var srcSpan = document.createElement('span');
+      srcSpan.style.cssText = 'font-size:10px;color:#475569;align-self:center;margin-right:auto;';
+      var sources = [];
+      if (mamadRes.length) sources.push('מפרט בלמ״ס');
+      if (renovRes.length) sources.push('תקנות/מפרט');
+      if (priceRes.length) sources.push('מחירון 2025');
+      srcSpan.textContent = 'מקורות: ' + sources.join(' · ');
+      actBar.appendChild(srcSpan);
+    }
+
+    ansEl.parentElement.appendChild(actBar);
+
+  } catch(err) {
+    ansEl.innerHTML = '<span style="color:#ef4444;">❌ שגיאה: ' + err.message + '</span>';
+  }
+}
+
+// ── Fetch specs from Supabase ──────────────────────────────────────────
+async function qFetchSpec(table, question) {
+  try {
+    // Search by keyword in title and text content
+    var words = question.replace(/[?!.]/g,'').split(/\s+/)
+      .filter(function(w){ return w.length > 2; }).slice(0, 4);
+    if (!words.length) return [];
+
+    var filters = words.map(function(w) {
+      return 'text_content.ilike.*' + encodeURIComponent(w) + '*,title_he.ilike.*' + encodeURIComponent(w) + '*';
+    }).join(',');
+
+    var url = SB_URL + '/rest/v1/' + table + '?or=(' + filters + ')&limit=4';
+    var res = await fetch(url, {
+      headers: { apikey: SB_KEY, Authorization: 'Bearer ' + SB_KEY }
+    });
+    if (!res.ok) return [];
+    return (await res.json()) || [];
+  } catch(e) { return []; }
+}
+
+// ── Fetch prices from price_items ─────────────────────────────────────
+async function qFetchPrices(question) {
+  try {
+    var words = question.replace(/[?!.]/g,'').split(/\s+/)
+      .filter(function(w){ return w.length > 2; }).slice(0, 3);
+    if (!words.length) return [];
+
+    var filters = words.map(function(w) {
+      return 'description.ilike.*' + encodeURIComponent(w) + '*';
+    }).join(',');
+
+    var url = SB_URL + '/rest/v1/price_items?or=(' + filters + ')&price=not.is.null&limit=6&select=item_code,description,unit,price';
+    var res = await fetch(url, {
+      headers: { apikey: SB_KEY, Authorization: 'Bearer ' + SB_KEY }
+    });
+    if (!res.ok) return [];
+    return (await res.json()) || [];
+  } catch(e) { return []; }
+}
+
+// ── Format Claude response ─────────────────────────────────────────────
+function qFormatAnswer(text) {
+  if (!text) return '<span style="color:#475569;">אין תשובה</span>';
+  var NL = String.fromCharCode(10);
+  return text
+    .replace(/\*\*([^*]+)\*\*/g, '<strong style="color:#38bdf8;display:block;margin-top:10px;margin-bottom:4px;font-size:12px;text-transform:uppercase;letter-spacing:0.5px;">$1</strong>')
+    .split(NL).join('<br>')
+    .replace(/(<br>){3,}/g, '<br><br>');
+}
+
+// ── Send question to PO form ───────────────────────────────────────────
+function qSendToPO(question) {
+  switchTab('crm');
+  setTimeout(function(){
+    showPage('new-po');
+    setTimeout(function(){
+      pofAddRow(question, "יח'", 1, 0, true);
+      showToast('✅ שאלה נוספה להזמנה — עדכן מחיר וכמות');
+    }, 350);
+  }, 250);
+}
+
+// ── Print ──────────────────────────────────────────────────────────────
+function qPrint() {
+  var results = document.getElementById('q-results');
+  if (!results || !results.children.length) { showToast('אין תשובות להדפסה', 'error'); return; }
+
+  var managerName = (APP.config && APP.config.manager_name) || 'בני פרסקי';
+  var w = window.open('', '_blank');
+  var NL = String.fromCharCode(10);
+
+  w.document.write('<!DOCTYPE html><html dir="rtl"><head><meta charset="UTF-8">'
+    + '<title>שאילתות מקצועיות — ' + managerName + '</title>'
+    + '<style>body{font-family:Arial,sans-serif;direction:rtl;padding:30px;color:#1a1a2e;max-width:900px;margin:0 auto;}'
+    + 'h1{font-size:20px;border-bottom:2px solid #38bdf8;padding-bottom:8px;}'
+    + '.card{border:1px solid #ddd;border-radius:8px;padding:16px;margin-bottom:16px;break-inside:avoid;}'
+    + '.q-title{color:#38bdf8;font-size:11px;font-weight:800;text-transform:uppercase;margin-bottom:6px;}'
+    + '.q-text{font-size:15px;font-weight:700;margin-bottom:10px;}'
+    + '.answer{font-size:13px;line-height:1.8;}'
+    + 'strong{color:#0369a1;display:block;margin-top:8px;}'
+    + '.footer{font-size:10px;color:#999;margin-top:20px;text-align:center;}'
+    + '@media print{.no-print{display:none}}'
+    + '</style></head><body>'
+    + '<h1>🔍 שאילתות מקצועיות</h1>'
+    + '<div style="font-size:11px;color:#999;margin-bottom:20px;">'
+    + new Date().toLocaleDateString('he-IL') + ' | ' + managerName
+    + '</div>');
+
+  Array.from(results.children).forEach(function(card, idx) {
+    var qText = card.querySelector('div[style*="font-weight:600"]');
+    var answer = card.querySelector('[id^="q-answer-"]');
+    var actions = card.querySelectorAll('button, span');
+
+    w.document.write('<div class="card">'
+      + '<div class="q-title">שאלה ' + (idx+1) + '</div>'
+      + '<div class="q-text">' + (qText ? qText.innerHTML : '') + '</div>'
+      + '<div class="answer">' + (answer ? answer.innerHTML : '') + '</div>'
+      + '</div>');
+  });
+
+  w.document.write('<div class="footer">הופק ממערכת ' + managerName + ' | ' + new Date().toLocaleDateString('he-IL') + '</div>'
+    + '</body></html>');
+  w.document.close();
+  setTimeout(function(){ w.print(); }, 500);
+}
+
+function qStatus(msg) {
+  var el = document.getElementById('q-status');
+  if (!el) return;
+  el.style.display = msg ? 'block' : 'none';
+  el.textContent = msg;
 }
 
 
