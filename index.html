@@ -367,6 +367,8 @@ window.addEventListener('unhandledrejection', function(e) {
   <div class="tab-sep"></div>
   <div class="top-tab"        id="tab-safety"  onclick="switchTab('safety')" style="color:#ef4444;"> <span>🛡️</span><span>ניתוח בטיחות</span></div>
   <div class="tab-sep"></div>
+  <div class="top-tab"        id="tab-rag"     onclick="switchTab('rag')" style="color:#c4b5fd;"> <span>🏗️</span><span>יעוץ ממ"ד</span></div>
+  <div class="tab-sep"></div>
   <div class="top-tab"        id="tab-gcal"    onclick="switchTab('gcal')">   <span>📅</span><span>יומן Google</span></div>
   <div class="tab-sep"></div>
   <div class="top-tab"        id="tab-journal" onclick="switchTab('journal')"><span>📋</span><span>יומן עבודה יומי</span></div>
@@ -1765,6 +1767,107 @@ window.addEventListener('unhandledrejection', function(e) {
   </div>
 </div>
 
+<div class="app-panel" id="rag-panel"><div id="rag-content"><div style="padding:70px 24px 60px;min-height:100vh;background:#1a1a2e;font-family:Heebo,sans-serif;direction:rtl;">
+
+  <!-- Header -->
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:12px;">
+    <div>
+      <div style="font-size:10px;letter-spacing:3px;color:#7c3aed;text-transform:uppercase;margin-bottom:4px;">RAG · מאגר ידע ממ"ד</div>
+      <h1 style="font-size:24px;font-weight:900;color:#fff;">🏗️ יעוץ הנדסי ממ"ד</h1>
+      <div style="font-size:12px;color:#555;margin-top:4px;">שאל כל שאלה על בנייה, תיקון, מפרטים ועלויות ממ"ד — מאגר 15 רכיבים הנדסיים</div>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+      <select id="rag-region-sel" style="background:#1a1a2e;border:1px solid rgba(255,255,255,0.15);color:#ccc;padding:8px 12px;border-radius:20px;font-family:Heebo,sans-serif;font-size:12px;direction:rtl;">
+        <option value="מרכז">📍 מרכז (ת"א)</option>
+        <option value="ירושלים">📍 ירושלים</option>
+        <option value="צפון">📍 צפון (חיפה)</option>
+        <option value="דרום">📍 דרום (ב"ש)</option>
+      </select>
+      <button onclick="ragClearHistory();ragClearChat()" style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);color:#666;padding:7px 14px;border-radius:20px;cursor:pointer;font-family:Heebo,sans-serif;font-size:11px;font-weight:700;">🗑️ נקה שיחה</button>
+    </div>
+  </div>
+
+  <!-- Photo upload zone + damage analysis -->
+  <div id="rag-photo-zone" style="background:#1e1e35;border:2px dashed rgba(139,92,246,0.4);border-radius:14px;padding:16px;margin-bottom:16px;">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
+      <div>
+        <div style="font-size:13px;font-weight:800;color:#c4b5fd;margin-bottom:4px;">📸 צלם/העלה תמונת נזק לניתוח אוטומטי</div>
+        <div style="font-size:11px;color:#555;">Claude Vision יזהה את הנזק, ישלוף רשומות רלוונטיות ויציע תוכנית תיקון + הזמנת עבודה</div>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <label style="display:inline-flex;align-items:center;gap:6px;background:rgba(139,92,246,0.2);border:1.5px solid rgba(139,92,246,0.5);color:#c4b5fd;padding:9px 16px;border-radius:10px;cursor:pointer;font-size:12px;font-weight:700;font-family:Heebo,sans-serif;">
+          📁 בחר תמונה<input type="file" id="rag-photo-input" accept="image/*" style="display:none;" onchange="ragHandlePhoto(this)">
+        </label>
+        <label style="display:inline-flex;align-items:center;gap:6px;background:rgba(59,130,246,0.15);border:1.5px solid rgba(59,130,246,0.4);color:#93c5fd;padding:9px 16px;border-radius:10px;cursor:pointer;font-size:12px;font-weight:700;font-family:Heebo,sans-serif;">
+          📷 צלם עכשיו<input type="file" id="rag-camera-input" accept="image/*" capture="environment" style="display:none;" onchange="ragHandlePhoto(this)">
+        </label>
+      </div>
+    </div>
+    <!-- Photo preview + analysis result -->
+    <div id="rag-photo-preview" style="display:none;margin-top:14px;display:none;">
+      <div style="display:flex;gap:14px;align-items:flex-start;flex-wrap:wrap;">
+        <img id="rag-photo-img" style="width:160px;height:120px;object-fit:cover;border-radius:10px;border:2px solid rgba(139,92,246,0.4);flex-shrink:0;" src="">
+        <div style="flex:1;min-width:200px;">
+          <div id="rag-photo-analysis" style="font-size:12px;color:#ccc;line-height:1.6;background:rgba(0,0,0,0.3);border-radius:8px;padding:10px 14px;direction:rtl;">
+            🔍 מנתח תמונה...
+          </div>
+          <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;" id="rag-photo-actions" style="display:none;">
+            <button id="rag-gen-po-btn" onclick="ragGeneratePO()" style="background:linear-gradient(135deg,#9a6f00,#c9a84c);border:none;color:#1a1a2e;padding:10px 20px;border-radius:10px;cursor:pointer;font-family:Heebo,sans-serif;font-size:13px;font-weight:900;">
+              📄 צור הזמנת עבודה מהניתוח
+            </button>
+            <button onclick="ragAskAboutPhoto()" style="background:rgba(139,92,246,0.2);border:1.5px solid rgba(139,92,246,0.4);color:#c4b5fd;padding:10px 16px;border-radius:10px;cursor:pointer;font-family:Heebo,sans-serif;font-size:12px;font-weight:700;">
+              💬 שאל שאלה על הנזק
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Quick questions -->
+  <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px;" id="rag-quick-btns">
+    <div style="font-size:11px;color:#555;width:100%;margin-bottom:2px;">שאלות מהירות:</div>
+    <button onclick="ragQuickAsk('מה עובי קיר ממ"ד תקני דרגה T2 ומה הזיון הנדרש?')" style="background:rgba(139,92,246,0.12);border:1px solid rgba(139,92,246,0.3);color:#c4b5fd;padding:7px 12px;border-radius:20px;cursor:pointer;font-family:Heebo,sans-serif;font-size:11px;">קיר T2 — עובי וזיון</button>
+    <button onclick="ragQuickAsk('מה מחיר בניית ממ"ד דירתי 9 מ"ר באזור המרכז?')" style="background:rgba(139,92,246,0.12);border:1px solid rgba(139,92,246,0.3);color:#c4b5fd;padding:7px 12px;border-radius:20px;cursor:pointer;font-family:Heebo,sans-serif;font-size:11px;">עלות ממ"ד 9 מ"ר</button>
+    <button onclick="ragQuickAsk('יש לי סדקים בקיר ממ"ד אחרי פגיעה — כיצד לתקן?')" style="background:rgba(239,68,68,0.12);border:1px solid rgba(239,68,68,0.3);color:#fca5a5;padding:7px 12px;border-radius:20px;cursor:pointer;font-family:Heebo,sans-serif;font-size:11px;">תיקון סדקים אחרי פגיעה</button>
+    <button onclick="ragQuickAsk('מה ההבדל בין דרגה T1 ל-T2 ל-T3?')" style="background:rgba(139,92,246,0.12);border:1px solid rgba(139,92,246,0.3);color:#c4b5fd;padding:7px 12px;border-radius:20px;cursor:pointer;font-family:Heebo,sans-serif;font-size:11px;">הבדלי דרגות T1/T2/T3</button>
+    <button onclick="ragQuickAsk('מה דרישות הדלת ממ"ד? ת"י 4422')" style="background:rgba(139,92,246,0.12);border:1px solid rgba(139,92,246,0.3);color:#c4b5fd;padding:7px 12px;border-radius:20px;cursor:pointer;font-family:Heebo,sans-serif;font-size:11px;">דלת ממ"ד — ת"י 4422</button>
+    <button onclick="ragQuickAsk('מה בדיקות בקרת האיכות הנדרשות לפני יציקת ממ"ד?')" style="background:rgba(139,92,246,0.12);border:1px solid rgba(139,92,246,0.3);color:#c4b5fd;padding:7px 12px;border-radius:20px;cursor:pointer;font-family:Heebo,sans-serif;font-size:11px;">בדיקות QA לפני יציקה</button>
+  </div>
+
+  <!-- Chat history -->
+  <div id="rag-chat-history" style="display:flex;flex-direction:column;gap:16px;margin-bottom:20px;min-height:80px;">
+    <div style="text-align:center;padding:40px;color:#333;font-size:13px;">
+      <div style="font-size:32px;margin-bottom:8px;">🏗️</div>
+      <div>שאל שאלה על ממ"ד — תיקון, בנייה, מפרטים, עלויות</div>
+      <div style="font-size:11px;color:#444;margin-top:8px;">המערכת שולפת ממאגר 15 רכיבים הנדסיים עם 205 פריטי עלות</div>
+    </div>
+  </div>
+
+  <!-- Input area -->
+  <div style="background:#242438;border-radius:14px;padding:14px;border:1px solid rgba(255,255,255,0.08);">
+    <textarea id="rag-input" rows="3" placeholder="שאל שאלה הנדסית על ממ&quot;ד... (לדוגמה: מה עובי קיר T2? כיצד לתקן חשיפת זיון? מה מחיר מנת&quot;ר?)"
+      style="width:100%;background:#1a1a2e;border:1px solid rgba(139,92,246,0.3);color:#fff;padding:12px;border-radius:10px;font-family:Heebo,sans-serif;font-size:14px;resize:none;direction:rtl;outline:none;line-height:1.6;box-sizing:border-box;margin-bottom:10px;"
+      onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();ragSubmit();}"></textarea>
+    <div style="display:flex;gap:10px;align-items:center;justify-content:flex-start;">
+      <button onclick="ragSubmit()" id="rag-send-btn"
+        style="background:linear-gradient(135deg,#7c3aed,#5b21b6);border:none;color:#fff;padding:10px 28px;border-radius:10px;cursor:pointer;font-family:Heebo,sans-serif;font-size:13px;font-weight:800;">
+        🏗️ שאל
+      </button>
+      <div id="rag-status" style="font-size:12px;color:#888;"></div>
+      <div style="margin-right:auto;display:flex;gap:12px;font-size:11px;color:#444;">
+        <div id="rag-token-count"></div>
+        <div id="rag-cost-display"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Retrieved components indicator -->
+  <div id="rag-retrieved-bar" style="display:none;margin-top:10px;padding:8px 14px;background:#1e1e35;border-radius:8px;font-size:11px;color:#666;direction:rtl;"></div>
+
+</div></div></div>
+
+
 <div class="app-panel" id="gcal-panel"><div id="gcal-content"><div style="padding:54px 0 0;min-height:100vh;background:#1a1a2e;font-family:Heebo,sans-serif;direction:rtl;display:flex;flex-direction:column">
 
   <div style="padding:16px 24px 0;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
@@ -2315,7 +2418,7 @@ async function switchTab(tab) {
     if (ov) ov.style.display = 'none';
   }
 
-  ['crm','notes','eod','safety','gcal','journal'].forEach(t => {
+  ['crm','notes','eod','safety','rag','gcal','journal'].forEach(t => {
     document.getElementById(`${t}-panel`)?.classList.toggle('active', t===tab);
     document.getElementById(`tab-${t}`)?.classList.toggle('active', t===tab);
   });
@@ -2329,6 +2432,7 @@ async function switchTab(tab) {
   if (tab === 'notes')   { setTimeout(function(){ sjPopulateProjectFilter(); loadNotesWall(); }, 100); }
   if (tab === 'eod')     { setTimeout(loadEODReport, 100); }
   if (tab === 'safety')  { setTimeout(safetyTabInit, 100); }
+  if (tab === 'rag')     { setTimeout(ragTabInit, 100); }
   if (tab === 'gcal')    { if (typeof initGcal    === 'function') initGcal();  }
   if (tab === 'journal') { if (typeof initJournalOnce === 'function') initJournalOnce(); }
 }
@@ -8194,6 +8298,852 @@ function safetyEmailReport() {
     });
   var subject = encodeURIComponent('דוח בטיחות — ' + projName + ' — ' + now);
   window.location.href = 'mailto:?subject=' + subject + '&body=' + encodeURIComponent(body);
+}
+
+
+
+// ══════════════════════════════════════════════════════════════════════
+// ממ"ד RAG ENGINE — Journal CRM Integration
+// Query: Hebrew natural language → Supabase keyword search → Claude synthesis
+// ══════════════════════════════════════════════════════════════════════
+
+var _ragHistory = [];  // conversation history for multi-turn
+
+// System prompt from topic4_example_prompts.md
+const RAG_SYSTEM_PROMPT = `אתה מסייע הנדסי מתמחה בבניית ממ"ד (מרחב מוגן דירתי) ובנייה עמידת הדף בישראל.
+אתה עונה לקבלנים, מהנדסים ומפקחים בשטח על בסיס מסמכים טכניים שנשלפים ממאגר הידע.
+
+## כללי ציטוט (חובה)
+- כל עובדה טכנית חייבת להיות מלווה בציטוט: [מקור: <שם_רכיב>, <סעיף>]
+- ציין תקנים במפורש: ת"י 4422, ת"י 466, ת"י 118, הנחיות פיקוד העורף
+- אל תשנה מספרים, מידות ואחוזים — ציטוט מדויק בלבד
+
+## מבנה תשובה
+**תכנון:** מפרטים הנדסיים ומידות
+**שיטת ביצוע:** שלבי עבודה מעשיים לקבלן
+**עלות ותמחור:** אומדן עלויות לפי אזור (אם נשאל)
+**בקרת איכות:** בדיקות ואישורים נדרשים
+**תיקון (אם רלוונטי):** שיטת תיקון לנזק שתואר
+
+## הצהרת אחריות (הוסף לכל תשובה)
+⚠️ המידע מבוסס על מסמכי מאגר הידע. כל החלטה הנדסית בפועל חייבת אישור מהנדס קונסטרוקציה מורשה ופיקוד העורף.
+
+ענה בעברית בלבד. היה תמציתי ומעשי — הקבלן באתר.`;
+
+// ── Main RAG query function ───────────────────────────────────────────
+async function ragQuery(userQuery, projectId) {
+  var apiKey = (APP.config && APP.config.anthropic_key) || null;
+  if (!apiKey) return { error: 'הגדר מפתח Anthropic API' };
+  if (!userQuery || !userQuery.trim()) return { error: 'הכנס שאלה' };
+
+  try {
+    // ── Step 1: Retrieve relevant components from Supabase ───────────
+    var retrieved = await ragRetrieve(userQuery);
+
+    // ── Step 2: Build context from retrieved records ─────────────────
+    var context = ragBuildContext(retrieved, userQuery);
+
+    // ── Step 3: Query Claude with context + conversation history ─────
+    var messages = [
+      ..._ragHistory,
+      { role: 'user', content: context + '\n\n---\nשאלה: ' + userQuery }
+    ];
+
+    var res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type':'application/json','x-api-key':apiKey,
+        'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 1500,
+        system: RAG_SYSTEM_PROMPT,
+        messages: messages
+      })
+    });
+
+    var data = await res.json();
+    if (!res.ok) throw new Error(data.error?.message || 'API error ' + res.status);
+
+    var answer = data.content && data.content[0] && data.content[0].text;
+    var inTok  = data.usage?.input_tokens  || 0;
+    var outTok = data.usage?.output_tokens || 0;
+    var cost   = (inTok * 3 / 1e6) + (outTok * 15 / 1e6);
+
+    // Add to conversation history (keep last 6 turns)
+    _ragHistory.push({ role: 'user', content: userQuery });
+    _ragHistory.push({ role: 'assistant', content: answer });
+    if (_ragHistory.length > 12) _ragHistory = _ragHistory.slice(-12);
+
+    // Log to Supabase
+    await ragLogQuery(userQuery, retrieved.map(function(r){ return r.component_id; }),
+      answer, inTok + outTok, cost, projectId);
+
+    return {
+      answer:     answer,
+      retrieved:  retrieved,
+      tokens:     inTok + outTok,
+      cost:       cost
+    };
+
+  } catch(e) {
+    return { error: e.message };
+  }
+}
+
+// ── Retrieve: keyword search against Supabase ─────────────────────────
+async function ragRetrieve(query) {
+  try {
+    // Extract tier hint from query
+    var tierMatch = query.match(/T([123])|דרגה\s*([123])/i);
+    var tier = tierMatch ? 'T' + (tierMatch[1] || tierMatch[2]) : null;
+
+    // Extract component type hint
+    var typeHints = {
+      'קיר': 'קיר', 'wall': 'קיר',
+      'תקרה': 'תקרה', 'slab': 'תקרה',
+      'דלת': 'דלת', 'door': 'דלת',
+      'חלון': 'חלון', 'window': 'חלון',
+      'אוורור': 'אוורור', 'nbc': 'אוורור', 'מנת"ר': 'אוורור', 'vent': 'אוורור'
+    };
+    var compType = null;
+    var qLower = query.toLowerCase();
+    for (var hint in typeHints) {
+      if (qLower.includes(hint)) { compType = typeHints[hint]; break; }
+    }
+
+    // Use Supabase RPC keyword search
+    var params = {
+      search_query: query.substring(0, 200),
+      max_results: 4
+    };
+    if (tier) params.tier_filter = tier;
+    if (compType) params.type_filter = compType;
+
+    var rpcRes = await fetch(
+      SB_URL + '/rest/v1/rpc/mamad_keyword_search?' + Object.keys(params).map(function(k){
+        return k + '=' + encodeURIComponent(params[k]);
+      }).join('&'),
+      { headers: { apikey: SB_KEY, Authorization: 'Bearer ' + SB_KEY } }
+    );
+
+    var results = rpcRes.ok ? await rpcRes.json() : [];
+
+    // If no results, fall back to getting all components of matching tier
+    if (!results || results.length === 0) {
+      var fallback = await fetch(
+        SB_URL + '/rest/v1/mamad_components?select=component_id,component_name,component_type,blast_tier,full_record'
+        + (tier ? '&blast_tier=eq.' + tier : '') + '&limit=5',
+        { headers: { apikey: SB_KEY, Authorization: 'Bearer ' + SB_KEY } }
+      );
+      results = fallback.ok ? await fallback.json() : [];
+    }
+
+    return results || [];
+  } catch(e) {
+    console.error('RAG retrieve:', e);
+    return [];
+  }
+}
+
+// ── Build context string for Claude ──────────────────────────────────
+function ragBuildContext(retrieved, query) {
+  if (!retrieved || !retrieved.length) {
+    return 'לא נמצאו רשומות רלוונטיות במאגר הידע עבור שאלה זו.';
+  }
+
+  var ctx = '## רשומות רלוונטיות ממאגר הידע ממ"ד\n\n';
+  retrieved.forEach(function(item, i) {
+    var rec = item.full_record || item;
+    ctx += '### רשומה ' + (i+1) + ': ' + (item.component_name || rec['שם_רכיב'] || '') + '\n';
+    ctx += '**מזהה:** ' + (item.component_id || rec['רכיב_מזהה']) + '\n';
+    ctx += '**דרגה:** ' + (item.blast_tier || rec['דרגת_הדף']) + '\n';
+
+    // Design params (key numbers)
+    var dp = rec['פרמטרי_תכנון'];
+    if (dp) {
+      if (dp['עובי_מ"מ']) ctx += '**עובי:** ' + JSON.stringify(dp['עובי_מ"מ']) + ' מ"מ\n';
+      if (dp['חוזק_בטון_fck_MPa']) ctx += '**בטון:** ' + JSON.stringify(dp['חוזק_בטון_fck_MPa']) + ' MPa\n';
+      if (dp['קוטר_מוט_מ"מ']) ctx += '**זיון:** ø' + (Array.isArray(dp['קוטר_מוט_מ"מ']) ? dp['קוטר_מוט_מ"מ'].join('/') : dp['קוטר_מוט_מ"מ']) + ' מ"מ\n';
+    }
+
+    // Construction overview
+    var bld = rec['שיטת_בנייה'];
+    if (bld && bld['היקף_ושימוש']) {
+      ctx += '**היקף:** ' + bld['היקף_ושימוש'].substring(0, 300) + '\n';
+    }
+
+    // Repair methods if relevant
+    var rep = rec['שיטת_תיקון'];
+    if (rep && rep['סוגי_נזק'] && query.match(/תיקון|נזק|סדק|תיקן|repair|damage|crack/i)) {
+      ctx += '**שיטות תיקון:**\n';
+      (rep['סוגי_נזק'] || []).slice(0, 2).forEach(function(dmg) {
+        ctx += '- ' + dmg['סוג_נזק'] + ': ' + (dmg['חומר_תיקון'] || '').substring(0, 150) + '\n';
+      });
+    }
+
+    // Standards
+    var stds = rec['תקנים'];
+    if (stds && stds.length) {
+      ctx += '**תקנים:** ' + stds.map(function(s){ return s['מספר_תקן']; }).join(', ') + '\n';
+    }
+
+    ctx += '\n';
+  });
+
+  return ctx;
+}
+
+// ── Fetch cost summary for a component ───────────────────────────────
+async function ragGetCosts(componentId, region) {
+  region = region || 'מרכז';
+  try {
+    var res = await fetch(
+      SB_URL + '/rest/v1/rpc/mamad_cost_summary?p_component_id=' +
+      encodeURIComponent(componentId) + '&p_region=' + encodeURIComponent(region),
+      { headers: { apikey: SB_KEY, Authorization: 'Bearer ' + SB_KEY } }
+    );
+    return res.ok ? await res.json() : [];
+  } catch(e) { return []; }
+}
+
+// ── Log query to Supabase ─────────────────────────────────────────────
+async function ragLogQuery(query, componentIds, response, tokens, cost, projectId) {
+  try {
+    await fetch(SB_URL + '/rest/v1/mamad_query_log', {
+      method: 'POST',
+      headers: { apikey:SB_KEY, Authorization:'Bearer '+SB_KEY,
+        'Content-Type':'application/json', Prefer:'return=minimal' },
+      body: JSON.stringify({
+        query_text:           query,
+        components_retrieved: componentIds,
+        response_text:        response,
+        tokens_used:          tokens,
+        cost_usd:             cost,
+        project_id:           projectId || null
+      })
+    });
+  } catch(e) { /* non-critical */ }
+}
+
+// ── Clear conversation history ────────────────────────────────────────
+function ragClearHistory() {
+  _ragHistory = [];
+}
+
+
+
+// ══ RAG TAB UI CONTROLLER ═════════════════════════════════════════════
+
+function ragTabInit() {
+  // Populate project selector if needed — RAG tab is ready on load
+  var input = document.getElementById('rag-input');
+  if (input) input.focus();
+}
+
+function ragClearChat() {
+  var history = document.getElementById('rag-chat-history');
+  if (history) history.innerHTML = '<div style="text-align:center;padding:40px;color:#333;font-size:13px;"><div style="font-size:32px;margin-bottom:8px;">🏗️</div><div>שיחה נקתה — שאל שאלה חדשה</div></div>';
+  var status = document.getElementById('rag-status');
+  if (status) status.textContent = '';
+  document.getElementById('rag-retrieved-bar')?.style && (document.getElementById('rag-retrieved-bar').style.display = 'none');
+}
+
+function ragQuickAsk(question) {
+  var input = document.getElementById('rag-input');
+  if (input) input.value = question;
+  ragSubmit();
+}
+
+async function ragSubmit() {
+  var input  = document.getElementById('rag-input');
+  var query  = (input?.value || '').trim();
+  if (!query) return;
+
+  var btn      = document.getElementById('rag-send-btn');
+  var status   = document.getElementById('rag-status');
+  var history  = document.getElementById('rag-chat-history');
+  var retBar   = document.getElementById('rag-retrieved-bar');
+  var tokEl    = document.getElementById('rag-token-count');
+  var costEl   = document.getElementById('rag-cost-display');
+
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ שולף...'; }
+  if (status) status.textContent = '🔍 מחפש במאגר הידע...';
+
+  // Add user message to chat
+  var userBubble = document.createElement('div');
+  userBubble.style.cssText = 'display:flex;justify-content:flex-end;';
+  userBubble.innerHTML = '<div style="background:rgba(139,92,246,0.2);border:1px solid rgba(139,92,246,0.4);color:#fff;padding:12px 16px;border-radius:14px 14px 4px 14px;max-width:75%;font-size:14px;line-height:1.6;direction:rtl;text-align:right;">'
+    + query.replace(/</g,'&lt;') + '</div>';
+
+  // Remove empty state if present
+  var emptyState = history?.querySelector('[style*="text-align:center"]');
+  if (emptyState) emptyState.remove();
+  history?.appendChild(userBubble);
+  history?.scrollTo(0, history.scrollHeight);
+  input.value = '';
+
+  // Show typing indicator
+  var typingEl = document.createElement('div');
+  typingEl.id  = 'rag-typing';
+  typingEl.style.cssText = 'display:flex;align-items:center;gap:8px;';
+  typingEl.innerHTML = '<div style="background:#242438;border:1px solid rgba(255,255,255,0.08);border-radius:14px 14px 14px 4px;padding:12px 16px;font-size:13px;color:#888;">🧠 Claude מנתח ושולף רכיבים...</div>';
+  history?.appendChild(typingEl);
+  history?.scrollTo(0, history.scrollHeight);
+
+  // Get region
+  var region = document.getElementById('rag-region-sel')?.value || 'מרכז';
+
+  try {
+    if (status) status.textContent = '🧠 Claude מייצר תשובה...';
+
+    var result = await ragQuery(query, null);
+    typingEl.remove();
+
+    if (result.error) {
+      var errBubble = document.createElement('div');
+      errBubble.innerHTML = '<div style="background:rgba(239,68,68,0.12);border:1px solid rgba(239,68,68,0.3);color:#fca5a5;padding:12px 16px;border-radius:14px;font-size:13px;direction:rtl;">❌ שגיאה: ' + result.error + '</div>';
+      history?.appendChild(errBubble);
+    } else {
+      // Format and display answer
+      var answerBubble = document.createElement('div');
+      answerBubble.style.cssText = 'display:flex;flex-direction:column;gap:4px;';
+
+      // Format markdown-like response
+      var formattedAnswer = (result.answer || '')
+        .replace(/</g,'&lt;')
+        .replace(/\*\*([^*]+)\*\*/g,'<strong>$1</strong>')
+        .replace(/^## (.+)$/gm,'<div style="font-size:14px;font-weight:800;color:#c4b5fd;margin:10px 0 4px;">$1</div>')
+        .replace(/^⚠️(.+)$/gm,'<div style="font-size:11px;color:#888;border-top:1px solid rgba(255,255,255,0.06);margin-top:10px;padding-top:8px;">⚠️$1</div>')
+        .replace(/\\n/g,'<br>')
+        .split('\n').join('<br>');
+
+      answerBubble.innerHTML = '<div style="background:#1e1e35;border:1px solid rgba(139,92,246,0.25);color:#e2e8f0;padding:14px 18px;border-radius:14px 14px 14px 4px;max-width:90%;font-size:13px;line-height:1.7;direction:rtl;text-align:right;">'
+        + formattedAnswer + '</div>';
+
+      // Retrieved components bar
+      if (result.retrieved && result.retrieved.length > 0) {
+        retBar.style.display = 'block';
+        retBar.innerHTML = '📚 רכיבים שנשלפו: ' + result.retrieved.map(function(r) {
+          return '<span style="background:rgba(139,92,246,0.15);border:1px solid rgba(139,92,246,0.3);color:#c4b5fd;padding:2px 8px;border-radius:10px;margin-right:4px;font-size:10px;">'
+            + (r.component_id || r.component_name || '') + '</span>';
+        }).join('');
+      }
+
+      // Tokens + cost
+      if (result.tokens) {
+        if (tokEl) tokEl.textContent = result.tokens.toLocaleString() + ' טוקנים';
+        if (costEl) costEl.textContent = '$' + (result.cost || 0).toFixed(3);
+      }
+
+      history?.appendChild(answerBubble);
+    }
+
+    if (status) status.textContent = '';
+  } catch(e) {
+    typingEl?.remove();
+    if (status) status.textContent = '❌ ' + e.message;
+  }
+
+  if (btn) { btn.disabled = false; btn.textContent = '🏗️ שאל'; }
+  history?.scrollTo(0, history.scrollHeight);
+}
+
+
+
+// ══════════════════════════════════════════════════════════════════════
+// RAG → PO ENGINE
+// Flow: Photo → Vision analysis → RAG retrieval → Claude PO JSON → fill PO form
+// ══════════════════════════════════════════════════════════════════════
+
+var _ragPhotoB64       = null;   // current uploaded photo base64
+var _ragPhotoMediaType = 'image/jpeg';
+var _ragDamageContext  = null;   // structured damage assessment from vision
+var _ragPOPlan         = null;   // last generated PO plan
+
+// ── SYSTEM PROMPT for PO generation (structured JSON output) ──────────
+const RAG_PO_SYSTEM = `אתה מהנדס בנייה בכיר המתמחה בממ"ד ובנייה עמידת הדף בישראל.
+תפקידך: לנתח נזק מתמונה + מסמכים טכניים ולייצר תוכנית תיקון מלאה כ-JSON.
+
+חוקים:
+1. ענה ONLY ב-JSON תקני — אין markdown, אין טקסט לפני או אחרי
+2. כל שדות טקסט — בעברית בלבד
+3. מחירים — בשקלים, מ-Supabase cost records שצורפו
+4. זמנים — בימי עבודה
+5. תקנים — ציין מספר תקן מדויק`;
+
+// ── PO JSON schema that Claude must return ────────────────────────────
+const RAG_PO_SCHEMA = `{
+  "damage_assessment": {
+    "severity": "CRITICAL|MODERATE|MINOR",
+    "blast_tier": "T1|T2|T3",
+    "damage_types": ["רשימת סוגי נזק שזוהו"],
+    "affected_area_m2": <number>,
+    "immediate_danger": true|false,
+    "engineering_note": "הערה הנדסית קצרה"
+  },
+  "recommended_method": {
+    "method_id": "RECAST|JACKETING",
+    "method_name": "שם השיטה בעברית",
+    "rationale": "הסבר קצר מדוע שיטה זו",
+    "certifiable": true|false,
+    "hfc_approval_required": true|false
+  },
+  "po_data": {
+    "project_name": "שיקום ממ\"ד — תיאור קצר",
+    "project_location": "",
+    "start_date_days_from_now": 2,
+    "duration_days": <number>,
+    "notes": "הערות טכניות, תנאים, דרישות פיקוד העורף",
+    "sections": [
+      {
+        "section_title": "שם השלב",
+        "section_type": "LABOR|MATERIALS|OVERHEAD|QA",
+        "items": [
+          {
+            "description": "תיאור מדויק של הפריט/עבודה",
+            "unit": "מ\"ר|יחידה|ק\"ג|מ\"ק|ס\"ע|מ'",
+            "quantity": <number>,
+            "unit_price": <number>,
+            "labor_hours": <number or null>,
+            "trade": "תחום המקצוע",
+            "standard_ref": "ת\"י XXXX או null",
+            "notes": "הערת שורה"
+          }
+        ]
+      }
+    ]
+  }
+}`;
+
+// ── Handle photo upload ───────────────────────────────────────────────
+async function ragHandlePhoto(input) {
+  var file = input.files && input.files[0];
+  if (!file) return;
+  input.value = '';
+
+  _ragPhotoMediaType = file.type || 'image/jpeg';
+  if (!['image/jpeg','image/png','image/gif','image/webp'].includes(_ragPhotoMediaType))
+    _ragPhotoMediaType = 'image/jpeg';
+
+  // Show preview
+  var previewWrap = document.getElementById('rag-photo-preview');
+  var previewImg  = document.getElementById('rag-photo-img');
+  var analysisDiv = document.getElementById('rag-photo-analysis');
+  var actionsDiv  = document.getElementById('rag-photo-actions');
+
+  if (previewWrap) previewWrap.style.display = 'block';
+  if (actionsDiv)  actionsDiv.style.display  = 'none';
+  if (analysisDiv) analysisDiv.innerHTML = '🔍 מנתח תמונת נזק עם Claude Vision...';
+
+  _ragPhotoB64 = await readFileAsBase64(file);
+  if (previewImg) previewImg.src = 'data:' + _ragPhotoMediaType + ';base64,' + _ragPhotoB64;
+
+  // Run vision analysis
+  await ragAnalyzeDamagePhoto();
+}
+
+// ── Vision: analyze damage photo ──────────────────────────────────────
+async function ragAnalyzeDamagePhoto() {
+  var analysisDiv = document.getElementById('rag-photo-analysis');
+  var actionsDiv  = document.getElementById('rag-photo-actions');
+  var apiKey = (APP.config && APP.config.anthropic_key) || null;
+  if (!apiKey) { if(analysisDiv) analysisDiv.innerHTML = '❌ הגדר מפתח API'; return; }
+
+  var visionPrompt = 'אתה מהנדס בנייה ישראלי המתמחה בממ"ד. נתח תמונה זו של נזק לממ"ד.\n\n'
+    + 'זהה בעברית:\n'
+    + '1. סוג הנזק: סדקים/התקלפות/חשיפת זיון/מכתש פגיעה/נזק הדף/קורוזיה\n'
+    + '2. הערכת שטח פגוע (מ"ר)\n'
+    + '3. עצמת הנזק: T1 (קל) / T2 (בינוני) / T3 (כבד)\n'
+    + '4. האם הדלת/חלון הדף שלמים?\n'
+    + '5. שיטת תיקון מומלצת: יציקה מחדש / jacketing / טיח תיקון\n'
+    + '6. האם נדרשת תמיכה זמנית מיידית?\n\n'
+    + 'ענה בעברית, 3-4 משפטים תמציתיים. היה ספציפי.';
+
+  try {
+    var res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json','x-api-key':apiKey,
+        'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+      body: JSON.stringify({ model:'claude-sonnet-4-20250514', max_tokens:500,
+        messages:[{ role:'user', content:[
+          { type:'image', source:{ type:'base64', media_type:_ragPhotoMediaType, data:_ragPhotoB64 } },
+          { type:'text',  text: visionPrompt }
+        ]}]
+      })
+    });
+    var data = await res.json();
+    var analysis = data.content && data.content[0] && data.content[0].text;
+    _ragDamageContext = analysis;
+
+    if (analysisDiv) {
+      analysisDiv.innerHTML = '<div style="font-size:11px;color:#7c3aed;font-weight:700;margin-bottom:6px;">🔍 ניתוח Vision — זוהה:</div>'
+        + '<div style="color:#e2e8f0;direction:rtl;">' + (analysis||'').replace(/\n/g,'<br>').replace(/</g,'&lt;') + '</div>';
+    }
+    if (actionsDiv) actionsDiv.style.display = 'flex';
+
+    // Auto-inject into chat
+    var history = document.getElementById('rag-chat-history');
+    var emptyState = history?.querySelector('[style*="text-align:center"]');
+    if (emptyState) emptyState.remove();
+    var analysisBubble = document.createElement('div');
+    analysisBubble.style.cssText = 'background:rgba(139,92,246,0.1);border:1px solid rgba(139,92,246,0.25);border-radius:12px;padding:12px 16px;font-size:12px;color:#c4b5fd;direction:rtl;';
+    analysisBubble.innerHTML = '<div style="font-weight:800;margin-bottom:6px;">📸 ניתוח תמונת נזק:</div>'
+      + (analysis||'').replace(/\n/g,'<br>').replace(/</g,'&lt;');
+    history?.appendChild(analysisBubble);
+    history?.scrollTo(0, history.scrollHeight);
+
+  } catch(e) {
+    if (analysisDiv) analysisDiv.innerHTML = '❌ שגיאה: ' + e.message;
+  }
+}
+
+// ── Ask about photo in chat ───────────────────────────────────────────
+function ragAskAboutPhoto() {
+  var input = document.getElementById('rag-input');
+  if (input && _ragDamageContext) {
+    input.value = 'בהתבסס על הנזק שזוהה בתמונה — ' + _ragDamageContext.substring(0,100) + '... מה שיטת התיקון הטובה ביותר והעלות הצפויה?';
+    input.focus();
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════════
+// CORE: Generate complete PO from photo analysis + RAG
+// ══════════════════════════════════════════════════════════════════════
+async function ragGeneratePO() {
+  var apiKey = (APP.config && APP.config.anthropic_key) || null;
+  if (!apiKey) { showToast('הגדר מפתח API תחילה', 'error'); return; }
+  if (!_ragPhotoB64 && !_ragDamageContext) {
+    showToast('העלה תמונת נזק תחילה', 'error'); return;
+  }
+
+  var btn = document.getElementById('rag-gen-po-btn');
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ מייצר תוכנית...'; }
+
+  var region = document.getElementById('rag-region-sel')?.value || 'מרכז';
+
+  try {
+    // ── Step 1: Retrieve repair records + cost data from Supabase ────
+    showToast('🔍 שולף נתוני תיקון ממאגר...', 'info');
+    var wallT2 = await ragFetchComponent('WALL-BLAST-T2-001');
+    var costData = await ragFetchCosts('WALL-BLAST-T2-001', region);
+
+    // ── Step 2: Build rich context for Claude ────────────────────────
+    var ctx = ragBuildPOContext(wallT2, costData, region);
+
+    // ── Step 3: Build message content (image + context + instruction) ─
+    var msgContent = [];
+    if (_ragPhotoB64) {
+      msgContent.push({ type:'image', source:{ type:'base64', media_type:_ragPhotoMediaType, data:_ragPhotoB64 } });
+    }
+    if (_ragDamageContext) {
+      msgContent.push({ type:'text', text:'ניתוח Vision שכבר בוצע:\n' + _ragDamageContext + '\n\n' });
+    }
+    msgContent.push({ type:'text', text: ctx + '\n\n'
+      + '## משימה\n'
+      + 'צור תוכנית תיקון ממ"ד מלאה בפורמט JSON בלבד.\n'
+      + 'כלול שני חלקים נפרדים בטבלת הפריטים:\n'
+      + 'חלק א — עבודה (labor): תבניתן, ברזלן, בטונאי, מסגר לפי שיטת התיקון שנבחרה\n'
+      + 'חלק ב — חומרים: בטון, פלדת זיון, חומרי איטום, תיקון, עוגנים\n'
+      + 'חלק ג — בדיקות QA: בדיקות חוזק, UPV, אטימות, אישור פיקוד העורף\n'
+      + 'חלק ד — תקורה: פיקוח, ביטוח, רווח קבלני\n\n'
+      + 'שמות שלבים: השתמש בכותרות ספציפיות לממ"ד (לא גנריות)\n'
+      + 'מחירים: השתמש בנתוני העלות שסופקו מ-Supabase\n'
+      + 'כלול לפחות 12-18 שורות סה"כ לתוכנית מלאה\n\n'
+      + 'JSON Schema:\n' + RAG_PO_SCHEMA
+      + '\n\nענה ONLY ב-JSON. אין טקסט אחר.'
+    });
+
+    // ── Step 4: Call Claude ───────────────────────────────────────────
+    if (btn) btn.textContent = '🧠 Claude מייצר הזמנת עבודה...';
+    var res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json','x-api-key':apiKey,
+        'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 3000,
+        system: RAG_PO_SYSTEM,
+        messages:[{ role:'user', content: msgContent }]
+      })
+    });
+    var data = await res.json();
+    if (!res.ok) throw new Error(data.error?.message || 'API error');
+
+    var raw = (data.content&&data.content[0]&&data.content[0].text||'').replace(/```json|```/g,'').trim();
+    var plan;
+    try { plan = JSON.parse(raw); }
+    catch(e) { throw new Error('תגובת JSON לא תקינה — נסה שוב'); }
+
+    _ragPOPlan = plan;
+
+    // ── Step 5: Show preview in chat, then fill PO ───────────────────
+    ragShowPOPreview(plan, region);
+    showToast('✅ תוכנית מוכנה — בדוק ואשר', 'success');
+
+  } catch(e) {
+    showToast('שגיאה: ' + e.message, 'error');
+    console.error(e);
+  }
+
+  if (btn) { btn.disabled = false; btn.textContent = '📄 צור הזמנת עבודה מהניתוח'; }
+}
+
+// ── Fetch full component record ───────────────────────────────────────
+async function ragFetchComponent(compId) {
+  try {
+    var res = await fetch(
+      SB_URL + '/rest/v1/mamad_components?component_id=eq.' + encodeURIComponent(compId) + '&select=*',
+      { headers: { apikey: SB_KEY, Authorization: 'Bearer ' + SB_KEY } }
+    );
+    var rows = res.ok ? await res.json() : [];
+    return rows[0] || null;
+  } catch(e) { return null; }
+}
+
+// ── Fetch cost rows ───────────────────────────────────────────────────
+async function ragFetchCosts(compId, region) {
+  try {
+    var res = await fetch(
+      SB_URL + '/rest/v1/mamad_costs?component_id=eq.' + encodeURIComponent(compId)
+        + '&region=in.("' + region + '",ארצי)&order=cost_type.asc',
+      { headers: { apikey: SB_KEY, Authorization: 'Bearer ' + SB_KEY } }
+    );
+    return res.ok ? await res.json() : [];
+  } catch(e) { return []; }
+}
+
+// ── Build context string with costs ──────────────────────────────────
+function ragBuildPOContext(comp, costs, region) {
+  var ctx = '## נתוני מאגר הידע — רכיב WALL-BLAST-T2-001\n\n';
+
+  if (comp && comp.repair_methods) {
+    var rep = typeof comp.repair_methods === 'string' ? JSON.parse(comp.repair_methods) : comp.repair_methods;
+    ctx += '### שיטות תיקון מאושרות:\n';
+    (rep['סוגי_נזק']||[]).forEach(function(d) {
+      ctx += '**' + d['סוג_נזק'] + ':** ' + (d['חומר_תיקון']||'') + '\n';
+      if (d['חיפוי_jacketing']) ctx += 'Jacketing: ' + d['חיפוי_jacketing'] + '\n';
+    });
+    ctx += '\n';
+  }
+
+  if (costs && costs.length) {
+    ctx += '### נתוני עלות אזור ' + region + ' (₪, 2026):\n';
+    var byType = {};
+    costs.forEach(function(c) {
+      var t = c.cost_type || 'אחר';
+      if (!byType[t]) byType[t] = [];
+      byType[t].push(c);
+    });
+    Object.keys(byType).forEach(function(type) {
+      ctx += '\n**' + type + ':**\n';
+      byType[type].forEach(function(c) {
+        ctx += '- ' + c.line_item + ': ₪' + c.unit_price_ils + ' ל-' + c.unit
+          + (c.quantity ? ' (כמות: ' + c.quantity + ' ' + c.quantity_unit + ')' : '')
+          + (c.labor_hours ? ' · ' + c.labor_hours + ' שעות עבודה' : '') + '\n';
+      });
+    });
+  }
+
+  return ctx;
+}
+
+// ── Show PO preview in chat + "Fill PO" button ───────────────────────
+function ragShowPOPreview(plan, region) {
+  var history = document.getElementById('rag-chat-history');
+  if (!history) return;
+
+  var da = plan.damage_assessment || {};
+  var rm = plan.recommended_method || {};
+  var pd = plan.po_data || {};
+
+  // Calculate totals
+  var totalLabor = 0, totalMaterials = 0, totalQA = 0, totalOverhead = 0;
+  (pd.sections||[]).forEach(function(sec) {
+    var secTotal = (sec.items||[]).reduce(function(s,item){ return s + (item.quantity||0)*(item.unit_price||0); }, 0);
+    if (sec.section_type==='LABOR')    totalLabor     += secTotal;
+    if (sec.section_type==='MATERIALS')totalMaterials += secTotal;
+    if (sec.section_type==='QA')       totalQA        += secTotal;
+    if (sec.section_type==='OVERHEAD') totalOverhead  += secTotal;
+  });
+  var totalEx = totalLabor + totalMaterials + totalQA + totalOverhead;
+  var vatAmt  = totalEx * 0.18;
+  var totalInc= totalEx + vatAmt;
+  var fmt = function(n){ return '₪' + Math.round(n).toLocaleString('he-IL'); };
+
+  var sevColor = da.severity==='CRITICAL' ? '#ef4444' : da.severity==='MODERATE' ? '#f59e0b' : '#3b82f6';
+
+  var html = '<div style="background:#1e1e35;border:2px solid rgba(201,168,76,0.4);border-radius:14px;padding:18px;direction:rtl;font-family:Heebo,sans-serif;">';
+
+  // Header
+  html += '<div style="font-size:16px;font-weight:900;color:#c9a84c;margin-bottom:14px;border-bottom:1px solid rgba(255,255,255,0.08);padding-bottom:10px;">📄 תוכנית תיקון ממ"ד — ' + (pd.project_name||'שיקום ממ"ד') + '</div>';
+
+  // Damage + method badges
+  html += '<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px;">'
+    + '<div style="background:' + sevColor + '20;border:1px solid ' + sevColor + ';color:' + sevColor + ';padding:5px 12px;border-radius:20px;font-size:11px;font-weight:700;">'
+    + (da.severity==='CRITICAL'?'🔴':da.severity==='MODERATE'?'🟡':'🔵') + ' ' + (da.severity||'') + ' · ' + (da.blast_tier||'T2') + '</div>'
+    + '<div style="background:rgba(139,92,246,0.15);border:1px solid rgba(139,92,246,0.3);color:#c4b5fd;padding:5px 12px;border-radius:20px;font-size:11px;font-weight:700;">🔧 ' + (rm.method_name||'שיקום מבני') + '</div>'
+    + '<div style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);color:#888;padding:5px 12px;border-radius:20px;font-size:11px;">' + (da.affected_area_m2||'?') + ' מ"ר · ' + (pd.duration_days||'?') + ' ימים</div>'
+    + (rm.hfc_approval_required ? '<div style="background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);color:#fca5a5;padding:5px 12px;border-radius:20px;font-size:11px;">⚠️ נדרש אישור פיקוד העורף</div>' : '')
+    + '</div>';
+
+  // Rationale
+  if (rm.rationale) {
+    html += '<div style="background:rgba(201,168,76,0.08);border-right:3px solid #c9a84c;padding:8px 14px;margin-bottom:14px;font-size:12px;color:#ccc;">' + rm.rationale.replace(/</g,'&lt;') + '</div>';
+  }
+
+  // Cost breakdown table
+  html += '<table style="width:100%;border-collapse:collapse;margin-bottom:14px;font-size:12px;">'
+    + '<thead><tr style="background:#242438;">'
+    + '<th style="padding:8px;text-align:right;color:#c9a84c;border-bottom:1px solid rgba(255,255,255,0.1);">שלב</th>'
+    + '<th style="padding:8px;text-align:center;color:#c9a84c;border-bottom:1px solid rgba(255,255,255,0.1);">פריטים</th>'
+    + '<th style="padding:8px;text-align:left;color:#c9a84c;border-bottom:1px solid rgba(255,255,255,0.1);">סה"כ</th>'
+    + '</tr></thead><tbody>';
+
+  (pd.sections||[]).forEach(function(sec) {
+    var secTotal = (sec.items||[]).reduce(function(s,item){ return s + (item.quantity||0)*(item.unit_price||0); }, 0);
+    var typeColors = { LABOR:'rgba(59,130,246,0.2)', MATERIALS:'rgba(34,197,94,0.15)', QA:'rgba(245,158,11,0.15)', OVERHEAD:'rgba(156,163,175,0.15)' };
+    var bg = typeColors[sec.section_type] || 'transparent';
+    html += '<tr style="background:' + bg + ';border-bottom:1px solid rgba(255,255,255,0.05);">'
+      + '<td style="padding:7px 10px;font-weight:700;color:#fff;">' + (sec.section_title||'') + '</td>'
+      + '<td style="padding:7px 10px;text-align:center;color:#888;">' + (sec.items||[]).length + '</td>'
+      + '<td style="padding:7px 10px;text-align:left;font-weight:700;color:#22c55e;direction:ltr;">' + fmt(secTotal) + '</td>'
+      + '</tr>';
+  });
+
+  html += '</tbody></table>';
+
+  // Totals summary
+  html += '<div style="background:#242438;border-radius:10px;padding:12px 16px;margin-bottom:14px;">'
+    + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:10px;font-size:12px;">'
+    + '<div style="color:#888;">🔵 עבודה:</div><div style="text-align:left;direction:ltr;color:#93c5fd;font-weight:700;">' + fmt(totalLabor) + '</div>'
+    + '<div style="color:#888;">🟢 חומרים:</div><div style="text-align:left;direction:ltr;color:#86efac;font-weight:700;">' + fmt(totalMaterials) + '</div>'
+    + (totalQA ? '<div style="color:#888;">🟡 בדיקות QA:</div><div style="text-align:left;direction:ltr;color:#fde68a;font-weight:700;">' + fmt(totalQA) + '</div>' : '')
+    + (totalOverhead ? '<div style="color:#888;">⚪ תקורה:</div><div style="text-align:left;direction:ltr;color:#d1d5db;font-weight:700;">' + fmt(totalOverhead) + '</div>' : '')
+    + '</div>'
+    + '<div style="border-top:1px solid rgba(255,255,255,0.1);padding-top:8px;display:grid;grid-template-columns:1fr 1fr;gap:4px;font-size:13px;">'
+    + '<div style="color:#aaa;">סה"כ לפני מע"מ:</div><div style="text-align:left;direction:ltr;color:#fff;font-weight:700;">' + fmt(totalEx) + '</div>'
+    + '<div style="color:#aaa;">מע"מ 18%:</div><div style="text-align:left;direction:ltr;color:#fff;">' + fmt(vatAmt) + '</div>'
+    + '<div style="color:#c9a84c;font-size:15px;font-weight:900;">סה"כ לתשלום:</div><div style="text-align:left;direction:ltr;color:#c9a84c;font-size:15px;font-weight:900;">' + fmt(totalInc) + '</div>'
+    + '</div></div>';
+
+  // Engineering note + action button
+  if (da.engineering_note) {
+    html += '<div style="font-size:11px;color:#888;margin-bottom:12px;padding:6px 10px;background:rgba(239,68,68,0.08);border-radius:6px;">⚠️ ' + da.engineering_note.replace(/</g,'&lt;') + '</div>';
+  }
+
+  html += '<button onclick="ragFillPOForm()" style="width:100%;background:linear-gradient(135deg,#9a6f00,#c9a84c);border:none;color:#1a1a2e;padding:13px;border-radius:12px;cursor:pointer;font-family:Heebo,sans-serif;font-size:14px;font-weight:900;">'
+    + '📄 פתח הזמנת עבודה ומלא אוטומטית ←'
+    + '</button>';
+
+  html += '</div>';
+
+  var bubble = document.createElement('div');
+  bubble.innerHTML = html;
+  history.appendChild(bubble);
+  history.scrollTo(0, history.scrollHeight);
+}
+
+// ══════════════════════════════════════════════════════════════════════
+// FILL THE EXISTING PO FORM — the money shot
+// ══════════════════════════════════════════════════════════════════════
+function ragFillPOForm() {
+  var plan = _ragPOPlan;
+  if (!plan || !plan.po_data) { showToast('אין תוכנית — צור קודם', 'error'); return; }
+
+  var pd = plan.po_data;
+  var da = plan.damage_assessment || {};
+  var rm = plan.recommended_method || {};
+
+  // ── Navigate to PO form ──────────────────────────────────────────
+  switchTab('crm');
+  setTimeout(function() {
+    showPage('new-po');
+
+    // ── Fill project details ───────────────────────────────────────
+    var setVal = function(id, val) {
+      var el = document.getElementById(id);
+      if (el && val) el.value = val;
+    };
+
+    setVal('pof-project-name', pd.project_name || 'שיקום ממ"ד — נזק הדף');
+    setVal('pof-project-location', pd.project_location || '');
+
+    // Dates
+    var today    = new Date();
+    var startDay = new Date(today);
+    startDay.setDate(today.getDate() + (pd.start_date_days_from_now || 2));
+    var endDay   = new Date(startDay);
+    endDay.setDate(startDay.getDate() + (pd.duration_days || 14));
+
+    setVal('pof-start-date', startDay.toISOString().split('T')[0]);
+    setVal('pof-end-date',   endDay.toISOString().split('T')[0]);
+    setVal('pof-quote-ref',  'Q-MAMAD-' + new Date().getFullYear() + '-' + String(Math.floor(Math.random()*900)+100));
+    setVal('pof-tender-ref', 'שיקום ממ"ד · ' + (da.blast_tier||'T2') + ' · ' + (rm.method_id||'RECAST'));
+
+    // ── Build notes from damage assessment ────────────────────────
+    var notes = '📋 תוכנית שיקום ממ"ד — נוצרה אוטומטית מ-RAG\n\n';
+    notes += '🔍 אבחון נזק: ' + (da.damage_types||[]).join(', ') + '\n';
+    notes += '📐 שטח פגוע: ' + (da.affected_area_m2||'?') + ' מ"ר\n';
+    notes += '🔧 שיטת תיקון: ' + (rm.method_name||'שיקום מבני') + '\n';
+    notes += '⚡ מוסמך לממ"ד: ' + (rm.certifiable ? 'כן' : 'לא') + '\n';
+    if (da.engineering_note) notes += '⚠️ ' + da.engineering_note + '\n';
+    if (rm.hfc_approval_required) notes += '🔴 נדרש אישור פיקוד העורף לפני תחילת עבודה\n';
+    notes += '\n' + (pd.notes || 'הזמנה זו כפופה לחוזה הראשי ולנספחי הבטיחות');
+    setVal('pof-notes', notes);
+
+    // ── Clear existing rows + fill new ones ───────────────────────
+    var tbody = document.getElementById('pof-items-body');
+    if (tbody) tbody.innerHTML = '';
+    window.pofRowCount = 0;
+
+    var allItems = [];
+
+    // Add section header rows + items
+    (pd.sections||[]).forEach(function(sec) {
+      // Section divider row
+      var secTypeLabel = { LABOR:'🔵 עבודה', MATERIALS:'🟢 חומרים', QA:'🟡 בדיקות QA', OVERHEAD:'⚪ תקורה' };
+      var headerDesc = '━━━ ' + (secTypeLabel[sec.section_type]||sec.section_type) + ': ' + (sec.section_title||'') + ' ━━━';
+      pofAddRow(headerDesc, 'ס"ע', '', '', false);
+
+      // Lock the header row (make desc readonly, grey background)
+      if (tbody) {
+        var lastRow = tbody.rows[tbody.rows.length-1];
+        if (lastRow) {
+          lastRow.style.background = 'rgba(255,255,255,0.03)';
+          var descInput = lastRow.querySelector('input[type="text"]');
+          if (descInput) {
+            descInput.readOnly = true;
+            descInput.style.fontWeight = '700';
+            descInput.style.color = '#c9a84c';
+            descInput.style.background = 'transparent';
+            descInput.style.border = 'none';
+          }
+        }
+      }
+
+      // Item rows
+      (sec.items||[]).forEach(function(item) {
+        var unitMap = {
+          'מ"ר': 'מ"ר', 'מ"ק': 'מ"ק', 'ק"ג': 'ק"ג', 'ס"ע': 'ס"ע',
+          'יחידה': 'יח\'', 'מ\'': 'מ\'', 'ל': 'ל\'', 'ק"ג': 'ק"ג'
+        };
+        var unit = unitMap[item.unit] || item.unit || 'ס"ע';
+        var desc = item.description
+          + (item.standard_ref ? ' [' + item.standard_ref + ']' : '')
+          + (item.trade ? ' · ' + item.trade : '');
+        pofAddRow(desc, unit, item.quantity||1, item.unit_price||0, true);
+      });
+    });
+
+    pofRecalc();
+    showToast('✅ הזמנת עבודה מולאה — ' + (pd.sections||[]).reduce(function(s,sec){return s+(sec.items||[]).length;},0) + ' פריטים', 'success');
+
+    // Scroll to top of PO form
+    setTimeout(function(){
+      document.getElementById('page-new-po')?.scrollIntoView({ behavior:'smooth', block:'start' });
+    }, 300);
+
+  }, 400);
 }
 
 
