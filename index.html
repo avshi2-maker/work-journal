@@ -8811,23 +8811,36 @@ function ragAskAboutPhoto() {
 // ══════════════════════════════════════════════════════════════════════
 async function ragGeneratePO() {
   var apiKey = (APP.config && APP.config.anthropic_key) || null;
-  if (!apiKey) { showToast('הגדר מפתח API תחילה', 'error'); return; }
+  if (!apiKey) { ragShowError('מפתח Anthropic API חסר — הגדר ב-app_config בסופאבייס'); return; }
   if (!_ragPhotoB64 && !_ragDamageContext) {
-    showToast('העלה תמונת נזק תחילה', 'error'); return;
+    ragShowError('לא הועלתה תמונה — העלה תמונת נזק תחילה'); return;
   }
 
   var btn = document.getElementById('rag-gen-po-btn');
-  if (btn) { btn.disabled = true; btn.textContent = '⏳ מייצר תוכנית...'; }
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ מייצר...'; }
 
   var region = document.getElementById('rag-region-sel')?.value || 'מרכז';
 
+  // ── Show persistent live progress panel in chat ───────────────────
+  var progressEl = ragShowProgress();
+
+  // Timer + token counter
+  var _poStartTime = Date.now();
+  var _poTimerInterval = setInterval(function() {
+    var elapsed = Math.floor((Date.now() - _poStartTime) / 1000);
+    var mins = Math.floor(elapsed / 60), secs = elapsed % 60;
+    var timeStr = (mins > 0 ? mins + ':' : '') + (secs < 10 ? '0' : '') + secs + 'ש';
+    ragUpdateProgress(null, null, timeStr);
+  }, 500);
+
   try {
     // ── Step 1: Retrieve repair records + cost data from Supabase ────
-    showToast('🔍 שולף נתוני תיקון ממאגר...', 'info');
+    ragUpdateProgress('🔍 שולף נתוני תיקון ממאגר הידע...', 15);
     var wallT2 = await ragFetchComponent('WALL-BLAST-T2-001');
     var costData = await ragFetchCosts('WALL-BLAST-T2-001', region);
 
     // ── Step 2: Build rich context for Claude ────────────────────────
+    ragUpdateProgress('📋 בונה הקשר הנדסי מ-' + (costData.length||0) + ' שורות עלות...', 30);
     var ctx = ragBuildPOContext(wallT2, costData, region);
 
     // ── Step 3: Build message content (image + context + instruction) ─
@@ -8866,7 +8879,13 @@ async function ragGeneratePO() {
     });
 
     // ── Step 4: Call Claude ───────────────────────────────────────────
-    if (btn) btn.textContent = '🧠 Claude מייצר הזמנת עבודה...';
+    ragUpdateProgress('🧠 Claude מייצר תוכנית תיקון + הזמנת עבודה...', 55);
+    if (btn) btn.textContent = '🧠 מייצר...';
+    var _tokenCheckInterval = setInterval(function() {
+      var elapsed = Math.floor((Date.now() - _poStartTime) / 1000);
+      var estTokens = Math.min(elapsed * 80, 3800);
+      ragUpdateProgress(null, null, null, estTokens);
+    }, 1000);
     var res = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {'Content-Type':'application/json','x-api-key':apiKey,
@@ -8913,16 +8932,27 @@ async function ragGeneratePO() {
     }
 
     _ragPOPlan = plan;
+    clearInterval(_tokenCheckInterval);
+    ragUpdateProgress('✅ תוכנית מוכנה — מכין תצוגה מקדימה...', 90);
 
     // ── Step 5: Show preview in chat, then fill PO ───────────────────
+    await new Promise(function(r){ setTimeout(r, 400); });
+    ragUpdateProgress('✅ הזמנת עבודה מוכנה לאישור', 100);
+    setTimeout(function(){ ragRemoveProgress(); }, 800);
     ragShowPOPreview(plan, region);
-    showToast('✅ תוכנית מוכנה — בדוק ואשר', 'success');
+
+    // Persistent success notification with navigation instruction
+    ragShowSuccessNav('✅ תוכנית תיקון ממ"ד נוצרה', 'לחץ "פתח הזמנת עבודה" למטה → יועבר ל-לוח בקרה ← הזמנות עבודה');
 
   } catch(e) {
-    showToast('שגיאה: ' + e.message, 'error');
-    console.error(e);
+    clearInterval(_poTimerInterval);
+    clearInterval(_tokenCheckInterval || 0);
+    ragRemoveProgress();
+    ragShowError(e.message, e.toString());
+    console.error('ragGeneratePO error:', e);
   }
 
+  clearInterval(_poTimerInterval);
   if (btn) { btn.disabled = false; btn.textContent = '📄 צור הזמנת עבודה מהניתוח'; }
 }
 
@@ -9182,6 +9212,122 @@ function ragFillPOForm() {
     }, 300);
 
   }, 400);
+}
+
+
+// ── RAG Progress Panel Helpers ─────────────────────────────────────────
+
+function ragShowProgress() {
+  var history = document.getElementById('rag-chat-history');
+  if (!history) return null;
+  var emptyState = history.querySelector('[style*="text-align:center"]');
+  if (emptyState) emptyState.remove();
+
+  var el = document.createElement('div');
+  el.id = 'rag-po-progress';
+  el.style.cssText = 'background:#1e1e35;border:2px solid rgba(201,168,76,0.5);border-radius:14px;padding:18px 20px;margin-bottom:4px;font-family:Heebo,sans-serif;direction:rtl;';
+  el.innerHTML =
+    '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;gap:10px;flex-wrap:wrap;">'
+    + '<div style="font-size:14px;font-weight:800;color:#c9a84c;" id="rag-prog-msg">⏳ מתחיל יצירת הזמנת עבודה...</div>'
+    + '<div style="display:flex;gap:16px;align-items:center;">'
+    +   '<div style="text-align:center;">'
+    +     '<div id="rag-prog-time" style="font-size:20px;font-weight:900;color:#f59e0b;font-family:monospace;">0ש</div>'
+    +     '<div style="font-size:9px;color:#555;text-transform:uppercase;letter-spacing:.5px;">זמן</div>'
+    +   '</div>'
+    +   '<div style="text-align:center;">'
+    +     '<div id="rag-prog-tokens" style="font-size:20px;font-weight:900;color:#c4b5fd;font-family:monospace;">~0</div>'
+    +     '<div style="font-size:9px;color:#555;text-transform:uppercase;letter-spacing:.5px;">טוקנים</div>'
+    +   '</div>'
+    + '</div></div>'
+    + '<div style="background:rgba(255,255,255,0.06);border-radius:20px;height:10px;overflow:hidden;margin-bottom:12px;">'
+    +   '<div id="rag-prog-bar" style="height:100%;background:linear-gradient(90deg,#9a6f00,#c9a84c);border-radius:20px;width:5%;transition:width 0.5s ease;"></div>'
+    + '</div>'
+    + '<div style="font-size:11px;color:#555;direction:rtl;">'
+    +   '🔍 שולף נתונים מ-Supabase → 🧠 Claude מנתח תמונה + RAG → 📄 מייצר JSON → ממלא הזמנת עבודה'
+    + '</div>';
+
+  history.appendChild(el);
+  history.scrollTo(0, history.scrollHeight);
+  return el;
+}
+
+function ragUpdateProgress(msg, pct, timeStr, tokens) {
+  var msgEl    = document.getElementById('rag-prog-msg');
+  var barEl    = document.getElementById('rag-prog-bar');
+  var timeEl   = document.getElementById('rag-prog-time');
+  var tokensEl = document.getElementById('rag-prog-tokens');
+  if (msg    && msgEl)    msgEl.textContent    = msg;
+  if (pct    && barEl)    barEl.style.width    = pct + '%';
+  if (timeStr && timeEl)  timeEl.textContent   = timeStr;
+  if (tokens  && tokensEl) tokensEl.textContent = '~' + Math.round(tokens).toLocaleString();
+  var history = document.getElementById('rag-chat-history');
+  if (history) history.scrollTo(0, history.scrollHeight);
+}
+
+function ragRemoveProgress() {
+  var el = document.getElementById('rag-po-progress');
+  if (el) el.remove();
+}
+
+// ── Persistent error display in chat (not toast) ─────────────────────
+function ragShowError(shortMsg, fullDetail) {
+  var hist = document.getElementById('rag-chat-history');
+  if (!hist) return;
+  var wrap = document.createElement('div');
+  wrap.style.cssText = 'background:rgba(239,68,68,0.08);border:2px solid rgba(239,68,68,0.5);border-radius:14px;padding:16px 18px;font-family:Heebo,sans-serif;direction:rtl;';
+  var h = document.createElement('div');
+  h.style.cssText = 'font-size:14px;font-weight:900;color:#ef4444;margin-bottom:8px;';
+  h.textContent = '❌ שגיאה ביצירת הזמנת עבודה';
+  var m = document.createElement('div');
+  m.style.cssText = 'font-size:13px;color:#fca5a5;margin-bottom:10px;line-height:1.6;';
+  m.textContent = shortMsg || 'שגיאה לא ידועה';
+  wrap.appendChild(h); wrap.appendChild(m);
+  if (fullDetail && fullDetail !== shortMsg) {
+    var det = document.createElement('details');
+    det.style.cssText = 'font-size:11px;color:#888;cursor:pointer;margin-bottom:8px;';
+    var sum = document.createElement('summary'); sum.textContent = 'פרטים טכניים';
+    var pre = document.createElement('pre');
+    pre.style.cssText = 'overflow:auto;max-height:100px;background:rgba(0,0,0,0.3);padding:8px;border-radius:6px;direction:ltr;white-space:pre-wrap;font-size:10px;';
+    pre.textContent = String(fullDetail).substring(0, 500);
+    det.appendChild(sum); det.appendChild(pre); wrap.appendChild(det);
+  }
+  var acts = document.createElement('div');
+  acts.style.cssText = 'display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;';
+  var retry = document.createElement('button');
+  retry.style.cssText = 'background:rgba(201,168,76,0.2);border:1px solid rgba(201,168,76,0.4);color:#c9a84c;padding:8px 16px;border-radius:8px;cursor:pointer;font-family:Heebo,sans-serif;font-size:12px;font-weight:700;';
+  retry.textContent = '🔄 נסה שוב';
+  retry.onclick = function(){ wrap.remove(); ragGeneratePO(); };
+  var close = document.createElement('button');
+  close.style.cssText = 'background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);color:#888;padding:8px 14px;border-radius:8px;cursor:pointer;font-family:Heebo,sans-serif;font-size:12px;';
+  close.textContent = '✕ סגור';
+  close.onclick = function(){ wrap.remove(); };
+  acts.appendChild(retry); acts.appendChild(close); wrap.appendChild(acts);
+  hist.appendChild(wrap); hist.scrollTo(0, hist.scrollHeight);
+}
+
+// ── Persistent success + navigation instruction ──────────────────────
+function ragShowSuccessNav(title, instruction) {
+  var hist = document.getElementById('rag-chat-history');
+  if (!hist) return;
+  var wrap = document.createElement('div');
+  wrap.style.cssText = 'background:rgba(34,197,94,0.08);border:2px solid rgba(34,197,94,0.4);border-radius:14px;padding:14px 18px;font-family:Heebo,sans-serif;direction:rtl;display:flex;align-items:center;gap:12px;flex-wrap:wrap;';
+  var icon = document.createElement('div');
+  icon.style.cssText = 'font-size:22px;'; icon.textContent = '✅';
+  var body = document.createElement('div');
+  body.style.cssText = 'flex:1;min-width:160px;';
+  var t = document.createElement('div');
+  t.style.cssText = 'font-size:14px;font-weight:900;color:#22c55e;margin-bottom:4px;';
+  t.textContent = title;
+  var ins = document.createElement('div');
+  ins.style.cssText = 'font-size:12px;color:#86efac;line-height:1.5;';
+  ins.textContent = instruction;
+  body.appendChild(t); body.appendChild(ins);
+  var navBtn = document.createElement('button');
+  navBtn.style.cssText = 'background:linear-gradient(135deg,#9a6f00,#c9a84c);border:none;color:#1a1a2e;padding:10px 18px;border-radius:10px;cursor:pointer;font-family:Heebo,sans-serif;font-size:12px;font-weight:900;white-space:nowrap;';
+  navBtn.textContent = '→ לוח בקרה · הזמנות עבודה';
+  navBtn.onclick = function(){ switchTab('crm'); setTimeout(function(){ showPage('new-po'); }, 400); };
+  wrap.appendChild(icon); wrap.appendChild(body); wrap.appendChild(navBtn);
+  hist.appendChild(wrap); hist.scrollTo(0, hist.scrollHeight);
 }
 
 
