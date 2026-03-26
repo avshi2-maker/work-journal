@@ -8838,19 +8838,31 @@ async function ragGeneratePO() {
     if (_ragDamageContext) {
       msgContent.push({ type:'text', text:'ניתוח Vision שכבר בוצע:\n' + _ragDamageContext + '\n\n' });
     }
-    msgContent.push({ type:'text', text: ctx + '\n\n'
+
+    // ── FIX 1: Include conversation Q&A so Beni's 2 questions feed in ─
+    // Pull the last 6 turns from _ragHistory (user+assistant pairs)
+    var historyContext = '';
+    if (_ragHistory && _ragHistory.length > 0) {
+      var recentHistory = _ragHistory.slice(-6);
+      historyContext = '## שאלות ותשובות מהשיחה הנוכחית (כלול בניתוח):\n';
+      recentHistory.forEach(function(turn) {
+        historyContext += (turn.role === 'user' ? 'שאלה: ' : 'תשובה: ') + turn.content.substring(0, 400) + '\n\n';
+      });
+      historyContext += '---\n\n';
+    }
+
+    msgContent.push({ type:'text', text: historyContext + ctx + '\n\n'
       + '## משימה\n'
       + 'צור תוכנית תיקון ממ"ד מלאה בפורמט JSON בלבד.\n'
-      + 'כלול שני חלקים נפרדים בטבלת הפריטים:\n'
-      + 'חלק א — עבודה (labor): תבניתן, ברזלן, בטונאי, מסגר לפי שיטת התיקון שנבחרה\n'
-      + 'חלק ב — חומרים: בטון, פלדת זיון, חומרי איטום, תיקון, עוגנים\n'
-      + 'חלק ג — בדיקות QA: בדיקות חוזק, UPV, אטימות, אישור פיקוד העורף\n'
-      + 'חלק ד — תקורה: פיקוח, ביטוח, רווח קבלני\n\n'
-      + 'שמות שלבים: השתמש בכותרות ספציפיות לממ"ד (לא גנריות)\n'
-      + 'מחירים: השתמש בנתוני העלות שסופקו מ-Supabase\n'
-      + 'כלול לפחות 12-18 שורות סה"כ לתוכנית מלאה\n\n'
+      + 'כלול 4 חלקים נפרדים:\n'
+      + 'חלק א — עבודה: תבניתן, ברזלן, בטונאי, מסגר לפי שיטת התיקון שנבחרה\n'
+      + 'חלק ב — חומרים: בטון, פלדת זיון, חומרי איטום, עוגנים\n'
+      + 'חלק ג — בדיקות QA: UPV, core drilling, אטימות, אישור פיקוד העורף\n'
+      + 'חלק ד — תקורה: פיקוח, ביטוח, רווח קבלני 12%\n\n'
+      + 'מחירים: השתמש בנתוני העלות מ-Supabase שסופקו למעלה\n'
+      + 'כלול 12-16 שורות סה"כ\n\n'
       + 'JSON Schema:\n' + RAG_PO_SCHEMA
-      + '\n\nענה ONLY ב-JSON. אין טקסט אחר.'
+      + '\n\nחשוב מאוד: ענה ONLY ב-JSON תקני. אין טקסט לפני או אחרי. התחל ישירות עם { .'
     });
 
     // ── Step 4: Call Claude ───────────────────────────────────────────
@@ -8861,18 +8873,44 @@ async function ragGeneratePO() {
         'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
       body: JSON.stringify({
         model: 'claude-sonnet-4-20250514',
-        max_tokens: 3000,
+        max_tokens: 4096,                        // FIX 3: was 3000, not enough for full plan
         system: RAG_PO_SYSTEM,
         messages:[{ role:'user', content: msgContent }]
       })
     });
     var data = await res.json();
-    if (!res.ok) throw new Error(data.error?.message || 'API error');
+    if (!res.ok) throw new Error(data.error?.message || 'API error ' + res.status);
 
-    var raw = (data.content&&data.content[0]&&data.content[0].text||'').replace(/```json|```/g,'').trim();
+    // ── FIX 2: Robust JSON extraction — handles preamble + markdown ───
+    var raw = (data.content&&data.content[0]&&data.content[0].text)||'';
+    // Strip markdown fences
+    raw = raw.replace(/```json\s*/gi,'').replace(/```\s*/g,'').trim();
+    // Find first { and last } — extract only the JSON object
+    var jsonStart = raw.indexOf('{');
+    var jsonEnd   = raw.lastIndexOf('}');
+    if (jsonStart === -1 || jsonEnd === -1) {
+      console.error('Raw response:', raw.substring(0, 500));
+      throw new Error('Claude לא החזיר JSON תקני. בדוק console לפרטים.');
+    }
+    raw = raw.substring(jsonStart, jsonEnd + 1);
+
     var plan;
-    try { plan = JSON.parse(raw); }
-    catch(e) { throw new Error('תגובת JSON לא תקינה — נסה שוב'); }
+    try {
+      plan = JSON.parse(raw);
+    } catch(parseErr) {
+      // Last resort: try to fix common issues
+      var fixed = raw
+        .replace(/,\s*}/g, '}')          // trailing commas in objects
+        .replace(/,\s*\]/g, ']')          // trailing commas in arrays
+        .replace(/[\u0000-\u001F]/g, ' ') // control chars
+        .replace(/\n/g, '\\n');           // unescaped newlines in strings
+      try {
+        plan = JSON.parse(fixed);
+      } catch(e2) {
+        console.error('JSON parse failed. Raw:', raw.substring(0, 800));
+        throw new Error('שגיאת JSON — ' + parseErr.message.substring(0, 80));
+      }
+    }
 
     _ragPOPlan = plan;
 
