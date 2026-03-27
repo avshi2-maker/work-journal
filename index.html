@@ -8259,9 +8259,19 @@ async function snagRunAnalysisForFile(file, fileIdx) {
   fileHeader.appendChild(snagCb);
 
   if (_snagFrames.length > 0 && _snagMediaType !== 'application/pdf' && _snagMediaType !== 'text/html') {
-    var snagThumb = document.createElement('img');
-    snagThumb.src = 'data:image/jpeg;base64,' + _snagFrames[0];
-    snagThumb.style.cssText = 'width:40px;height:40px;object-fit:cover;border-radius:6px;border:1px solid rgba(255,255,255,0.1);flex-shrink:0;';
+    var snagThumb = document.createElement('canvas');
+    snagThumb.width = 40; snagThumb.height = 40;
+    snagThumb.className = 'report-thumb-canvas';
+    snagThumb.style.cssText = 'width:40px;height:40px;border-radius:6px;border:1px solid rgba(255,255,255,0.1);flex-shrink:0;vertical-align:middle;';
+    snagThumb.dataset.b64 = _snagFrames[0];
+    (function(cv, b64) {
+      var img2 = new Image();
+      img2.onload = function() {
+        var cx = cv.getContext('2d');
+        if (cx) cx.drawImage(img2, 0, 0, 40, 40);
+      };
+      img2.src = 'data:image/jpeg;base64,' + b64;
+    })(snagThumb, _snagFrames[0]);
     fileHeader.appendChild(snagThumb);
   } else {
     var snagIcon = document.createElement('span');
@@ -8472,22 +8482,33 @@ async function safetyRunAnalysisForFile(file, fileIdx) {
   var fh = document.createElement('div');
   fh.style.cssText = 'background:#242438;padding:12px 16px;display:flex;align-items:center;gap:10px;border-bottom:1px solid rgba(255,255,255,0.06);';
 
-  // Checkbox for selecting this card for print/send
+  // Checkbox — uses closure to lock wrapper reference
   var cb = document.createElement('input');
   cb.type = 'checkbox'; cb.checked = true;
+  cb.className = 'report-card-cb';
   cb.style.cssText = 'accent-color:#22c55e;width:16px;height:16px;cursor:pointer;flex-shrink:0;';
   cb.title = 'בחר כרטיס לדוח';
-  cb.onchange = function() {
-    wrapper.style.opacity = this.checked ? '1' : '0.45';
-    wrapper.style.borderColor = this.checked ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.03)';
-  };
+  cb.onchange = (function(w){ return function() {
+    w.style.opacity = this.checked ? '1' : '0.45';
+    w.style.borderColor = this.checked ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.03)';
+  }; })(wrapper);
   fh.appendChild(cb);
 
-  // Thumbnail — first frame if available
+  // Thumbnail via canvas — bypasses ad blocker
   if (_safetyFrames.length > 0 && _safetyMediaType !== 'application/pdf') {
-    var thumb = document.createElement('img');
-    thumb.src = 'data:image/jpeg;base64,' + _safetyFrames[0];
-    thumb.style.cssText = 'width:40px;height:40px;object-fit:cover;border-radius:6px;border:1px solid rgba(255,255,255,0.1);flex-shrink:0;';
+    var thumb = document.createElement('canvas');
+    thumb.width = 40; thumb.height = 40;
+    thumb.className = 'report-thumb-canvas';
+    thumb.style.cssText = 'width:40px;height:40px;border-radius:6px;border:1px solid rgba(255,255,255,0.1);flex-shrink:0;vertical-align:middle;';
+    thumb.dataset.b64 = _safetyFrames[0];
+    (function(cv, b64) {
+      var img2 = new Image();
+      img2.onload = function() {
+        var cx = cv.getContext('2d');
+        if (cx) cx.drawImage(img2, 0, 0, 40, 40);
+      };
+      img2.src = 'data:image/jpeg;base64,' + b64;
+    })(thumb, _safetyFrames[0]);
     fh.appendChild(thumb);
   } else {
     var icon = document.createElement('span');
@@ -8559,10 +8580,10 @@ function snagPrintReport() {
   // Collect thumbnails from checked cards only
   var snagPrintThumbs = [];
   document.querySelectorAll('#snag-multi-results > div, #snag-results > div').forEach(function(card) {
-    var cb = card.querySelector('input[type="checkbox"]');
-    var img = card.querySelector('img');
+    var cb = card.querySelector('.report-card-cb');
     if (cb && !cb.checked) return;
-    if (img) snagPrintThumbs.push(img.src);
+    var canvas = card.querySelector('.report-thumb-canvas');
+    if (canvas && canvas.dataset.b64) snagPrintThumbs.push('data:image/jpeg;base64,' + canvas.dataset.b64);
   });
   var snagManagerName = (APP.config && APP.config.manager_name) || 'בני פרסקי';
   var snagThumbsHtml = snagPrintThumbs.length
@@ -8645,10 +8666,10 @@ function safetyPrintReport() {
   // Collect thumbnails from checked cards
   var printThumbs = [];
   document.querySelectorAll('#safety-multi-results > div, #safety-results > div').forEach(function(card) {
-    var cb = card.querySelector('input[type="checkbox"]');
-    var img = card.querySelector('img');
+    var cb = card.querySelector('.report-card-cb');
     if (cb && !cb.checked) return; // skip unchecked
-    if (img) printThumbs.push(img.src);
+    var canvas = card.querySelector('.report-thumb-canvas');
+    if (canvas && canvas.dataset.b64) printThumbs.push('data:image/jpeg;base64,' + canvas.dataset.b64);
   });
 
   var managerName = (APP.config && APP.config.manager_name) || 'בני פרסקי';
