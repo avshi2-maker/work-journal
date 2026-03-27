@@ -4304,23 +4304,14 @@ async function journalOcrProcess(input) {
       reader.readAsDataURL(file);
     });
 
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': key,
-        'anthropic-version': '2023-06-01',
-        'anthropic-dangerous-direct-browser-access': 'true'
-      },
-      body: JSON.stringify({
+    const res = await claudeFetch(JSON.stringify({ _apiKey: key,
         model: 'claude-sonnet-4-20250514',
         max_tokens: 1000,
         messages: [{ role: 'user', content: [
           { type: 'image', source: { type: 'base64', media_type: _journalOcrImageType, data: _journalOcrImageBase64 } },
           { type: 'text',  text: 'קרא את כל הטקסט בתמונה הזו בדיוק כפי שהוא כתוב. כלול עברית, אנגלית, ספרות, מידות. אם זו רשימת מדידות — שמור על הפורמט שורה-שורה. החזר רק את הטקסט ללא הסברים.' }
         ]}]
-      })
-    });
+      }), null);
 
     const data = await res.json();
     if (!res.ok) throw new Error(data.error?.message || 'API error ' + res.status);
@@ -6776,11 +6767,7 @@ async function safetyRunAnalysis() {
   safetyStartMeter();
 
   try {
-    var res = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: { 'Content-Type':'application/json','x-api-key':apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true' },
-      body: JSON.stringify({ model:'claude-sonnet-4-20250514', max_tokens:2000, messages })
-    });
+    var res = await claudeFetch(JSON.stringify({ _apiKey: apiKey, model:'claude-sonnet-4-20250514', max_tokens:2000, messages }), 'safety-progress-text');
 
     var data = await res.json();
     if (!res.ok) throw new Error(data.error?.message || 'API error ' + res.status);
@@ -7390,12 +7377,8 @@ async function snagRunScan() {
   bar.style.width = '55%';
 
   try {
-    var res = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: { 'Content-Type':'application/json','x-api-key':apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true' },
-      body: JSON.stringify({ model:'claude-sonnet-4-20250514', max_tokens:3000,
-        messages:[{ role:'user', content:[...imageBlocks, { type:'text', text:snagPrompt }] }] })
-    });
+    var res = await claudeFetch(JSON.stringify({ _apiKey: apiKey, model:'claude-sonnet-4-20250514', max_tokens:3000,
+        messages:[{ role:'user', content:[...imageBlocks, { type:'text', text:snagPrompt }] }] }), 'snag-progress-text');
     var data = await res.json();
     if (!res.ok) throw new Error(data.error?.message || 'API error ' + res.status);
 
@@ -8018,11 +8001,7 @@ async function capGenerateOne(idx) {
     + 'כתוב 3-4 משפטים טכניים וברורים בעברית בלבד. ללא כותרות, ללא מספור.';
 
   try {
-    var res = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: { 'Content-Type':'application/json','x-api-key':apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true' },
-      body: JSON.stringify({ model:'claude-sonnet-4-20250514', max_tokens:300, messages:[{role:'user',content:prompt}] })
-    });
+    var res = await claudeFetch(JSON.stringify({ _apiKey: apiKey, model:'claude-sonnet-4-20250514', max_tokens:300, messages:[{role:'user',content:prompt}] }), null);
     var data = await res.json();
     var text = data.content && data.content[0] && data.content[0].text;
     if (text) {
@@ -8313,12 +8292,8 @@ async function snagRunAnalysisForFile(file, fileIdx) {
     + '\n\nCRITICAL=immediate danger, MODERATE=fix before next stage, MINOR=fix before handover, NONE=ok.\n'
     + 'ALL field values MUST be in Hebrew (עברית) only. Return ONLY JSON.';
 
-  var res = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: { 'Content-Type':'application/json','x-api-key':apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true' },
-    body: JSON.stringify({ model:'claude-sonnet-4-20250514', max_tokens:2000,
-      messages:[{ role:'user', content:[...imageBlocks, { type:'text', text:snagPrompt }] }] })
-  });
+  var res = await claudeFetch(JSON.stringify({ _apiKey: apiKey, model:'claude-sonnet-4-20250514', max_tokens:2000,
+      messages:[{ role:'user', content:[...imageBlocks, { type:'text', text:snagPrompt }] }] }), 'snag-progress-text');
   var data = await res.json();
   if (!res.ok) throw new Error(data.error?.message || 'API ' + res.status);
   var raw = (data.content&&data.content[0]&&data.content[0].text||'').replace(/```json|```/g,'').trim();
@@ -8545,12 +8520,8 @@ async function safetyRunAnalysisForFile(file, fileIdx) {
     + '}\n\nFor each: ' + SAFETY_CATEGORIES.map(function(c){return c.id+': '+c.prompt;}).join(' | ')
     + '\nALL field values (found, action) MUST be in Hebrew (עברית) only. Return ONLY JSON.';
 
-  var res = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: { 'Content-Type':'application/json','x-api-key':apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true' },
-    body: JSON.stringify({ model:'claude-sonnet-4-20250514', max_tokens:2000,
-      messages:[{ role:'user', content:[...imageBlocks, { type:'text', text:safetyPrompt }] }] })
-  });
+  var res = await claudeFetch(JSON.stringify({ _apiKey: apiKey, model:'claude-sonnet-4-20250514', max_tokens:2000,
+      messages:[{ role:'user', content:[...imageBlocks, { type:'text', text:safetyPrompt }] }] }), 'safety-progress-text');
   var data = await res.json();
   if (!res.ok) throw new Error(data.error?.message || 'API ' + res.status);
 
@@ -8889,17 +8860,12 @@ async function ragQuery(userQuery, projectId) {
       { role: 'user', content: context + '\n\n---\nשאלה: ' + userQuery }
     ];
 
-    var res = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: { 'Content-Type':'application/json','x-api-key':apiKey,
-        'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true' },
-      body: JSON.stringify({
+    var res = await claudeFetch(JSON.stringify({ _apiKey: apiKey,
         model: 'claude-sonnet-4-20250514',
         max_tokens: 1500,
         system: RAG_SYSTEM_PROMPT,
         messages: messages
-      })
-    });
+      }), 'rag-progress-text');
 
     var data = await res.json();
     if (!res.ok) throw new Error(data.error?.message || 'API error ' + res.status);
@@ -9370,17 +9336,12 @@ async function ragAnalyzeDamagePhoto() {
     + 'ענה בעברית, 3-4 משפטים תמציתיים. היה ספציפי.';
 
   try {
-    var res = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {'Content-Type':'application/json','x-api-key':apiKey,
-        'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
-      body: JSON.stringify({ model:'claude-sonnet-4-20250514', max_tokens:500,
+    var res = await claudeFetch(JSON.stringify({ _apiKey: apiKey, model:'claude-sonnet-4-20250514', max_tokens:500,
         messages:[{ role:'user', content:[
           { type:'image', source:{ type:'base64', media_type:_ragPhotoMediaType, data:_ragPhotoB64 } },
           { type:'text',  text: visionPrompt }
         ]}]
-      })
-    });
+      }), 'rag-progress-text');
     var data = await res.json();
     var analysis = data.content && data.content[0] && data.content[0].text;
     _ragDamageContext = analysis;
@@ -9490,17 +9451,12 @@ async function ragGeneratePO() {
       var estTokens = Math.min(elapsed * 80, 3800);
       ragUpdateProgress(null, null, null, estTokens);
     }, 1000);
-    var res = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {'Content-Type':'application/json','x-api-key':apiKey,
-        'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
-      body: JSON.stringify({
+    var res = await claudeFetch(JSON.stringify({ _apiKey: apiKey,
         model: 'claude-sonnet-4-20250514',
         max_tokens: 4096,                        // FIX 3: was 3000, not enough for full plan
         system: RAG_PO_SYSTEM,
         messages:[{ role:'user', content: msgContent }]
-      })
-    });
+      }), 'rag-progress-text');
     var data = await res.json();
     if (!res.ok) throw new Error(data.error?.message || 'API error ' + res.status);
 
@@ -10547,13 +10503,8 @@ async function mcAIMatch() {
     + '{"matches":[{"po_item":"תיאור","item_code":"XX.XXX.XXXX","match_type":"EXACT","unit_price":0,"unit":"","rationale":"הסבר קצר בעברית"}]}';
 
   try {
-    var res = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {'Content-Type':'application/json','x-api-key':apiKey,
-        'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
-      body: JSON.stringify({ model:'claude-sonnet-4-20250514', max_tokens:2500,
-        messages:[{role:'user', content:prompt}] })
-    });
+    var res = await claudeFetch(JSON.stringify({ _apiKey: apiKey, model:'claude-sonnet-4-20250514', max_tokens:2500,
+        messages:[{role:'user', content:prompt}] }), null);
     var data = await res.json();
     if (!res.ok) throw new Error((data.error?.message) || 'API error ' + res.status);
 
@@ -10946,20 +10897,11 @@ async function qRunSingle(num, question, apiKey) {
       + '**מחיר:** [סעיף מחירון + מחיר אם רלוונטי]\n'
       + 'אם המידע לא קיים בבסיס הנתונים — ציין זאת וענה מידע כללי.';
 
-    var res = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': apiKey,
-        'anthropic-version': '2023-06-01',
-        'anthropic-dangerous-direct-browser-access': 'true'
-      },
-      body: JSON.stringify({
+    var res = await claudeFetch(JSON.stringify({ _apiKey: apiKey,
         model: 'claude-sonnet-4-20250514',
         max_tokens: 1200,
         messages: [{ role: 'user', content: prompt }]
-      })
-    });
+      }), null);
 
     var data = await res.json();
     clearInterval(_timerInterval);
@@ -11185,6 +11127,110 @@ function qStatus(msg) {
 }
 
 
+// ══════════════════════════════════════════════════════════════════════
+// claudeFetch() — Smart Anthropic API wrapper
+// Auto-retries on 529 (overloaded) up to 3 times with live status meter
+// Replaces all direct fetch('https://api.anthropic.com/...') calls
+// ══════════════════════════════════════════════════════════════════════
+async function claudeFetch(body, statusElId) {
+  var MAX_RETRIES  = 3;
+  var RETRY_DELAYS = [15000, 30000, 60000]; // 15s, 30s, 60s
+  var HEADERS = {
+    'Content-Type':  'application/json',
+    'x-api-key':     body._apiKey || '',
+    'anthropic-version': '2023-06-01',
+    'anthropic-dangerous-direct-browser-access': 'true'
+  };
+
+  // Remove internal _apiKey from body before sending
+  var apiKey = body._apiKey || '';
+  var sendBody = Object.assign({}, body);
+  delete sendBody._apiKey;
+
+  // Find or create status element
+  var statusEl = statusElId ? document.getElementById(statusElId) : null;
+
+  function setStatus(msg, color) {
+    if (!statusEl) return;
+    statusEl.style.display = 'block';
+    statusEl.style.color   = color || '#94a3b8';
+    statusEl.textContent   = msg;
+  }
+
+  for (var attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+    try {
+      // Show live working meter
+      if (attempt === 0) {
+        setStatus('⚡ AI עובד...', '#38bdf8');
+      }
+
+      var res = await claudeFetch(JSON.stringify(sendBody), null);
+
+      // Handle 529 overload
+      if (res.status === 529) {
+        if (attempt >= MAX_RETRIES) {
+          setStatus('❌ שרתי Claude עמוסים — נסה שוב בעוד כמה דקות', '#ef4444');
+          showToast('שרתי Claude עמוסים — נסה בעוד כמה דקות', 'error');
+          return { ok: false, status: 529, json: async function(){ return {error:{message:'Overloaded'}}; } };
+        }
+
+        var waitSec = RETRY_DELAYS[attempt] / 1000;
+        // Live countdown meter
+        setStatus('⏳ שרתים עמוסים — ממתין ' + waitSec + ' שניות... (ניסיון ' + (attempt+1) + '/' + MAX_RETRIES + ')', '#f59e0b');
+
+        var countdown = waitSec;
+        var countdownTimer = setInterval(function() {
+          countdown--;
+          if (countdown > 0) {
+            setStatus('⏳ ממתין ' + countdown + ' שניות... (ניסיון ' + (attempt+1) + '/' + MAX_RETRIES + ')', '#f59e0b');
+          } else {
+            clearInterval(countdownTimer);
+            setStatus('🔄 מנסה שוב...', '#38bdf8');
+          }
+        }, 1000);
+
+        await new Promise(function(resolve){ setTimeout(resolve, RETRY_DELAYS[attempt]); });
+        clearInterval(countdownTimer);
+        continue; // retry
+      }
+
+      // Success or other error — return response
+      if (res.ok) {
+        setStatus('', '');
+        if (statusEl) statusEl.style.display = 'none';
+      }
+      return res;
+
+    } catch(err) {
+      if (attempt >= MAX_RETRIES) {
+        setStatus('❌ שגיאת רשת: ' + err.message, '#ef4444');
+        throw err;
+      }
+      setStatus('⚠️ שגיאת רשת — מנסה שוב...', '#f59e0b');
+      await new Promise(function(r){ setTimeout(r, RETRY_DELAYS[attempt]); });
+    }
+  }
+}
+
+// Global retry status bar — shown at top of current tab when 529 occurs
+function _ensureRetryBar() {
+  var existing = document.getElementById('claude-retry-bar');
+  if (existing) return existing;
+  var bar = document.createElement('div');
+  bar.id = 'claude-retry-bar';
+  bar.style.cssText = [
+    'position:fixed;top:56px;left:0;right:0;z-index:9999;',
+    'background:linear-gradient(135deg,#92400e,#b45309);',
+    'color:#fff;text-align:center;padding:10px 20px;',
+    'font-family:Heebo,sans-serif;font-size:13px;font-weight:700;',
+    'display:none;box-shadow:0 2px 12px rgba(0,0,0,0.4);',
+    'border-bottom:2px solid #f59e0b;'
+  ].join('');
+  document.body.appendChild(bar);
+  return bar;
+}
+
+
 // ══ SMART JOURNAL — 5 TABS ═════════════════════════════════════════
 var _sjActiveTab    = 'notes';
 var _sjProjectId    = '';
@@ -11350,11 +11396,7 @@ async function sjSafetyAnalysis(noteId, driveUrl) {
       + 'דרג חומרה: 🔴 קריטי / 🟡 בינוני / 🟢 תקין\n'
       + 'השב ב-3-4 משפטים קצרים בעברית בלבד.';
 
-    var res = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: { 'Content-Type':'application/json','x-api-key':apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true' },
-      body: JSON.stringify({ model:'claude-sonnet-4-20250514', max_tokens:300, messages:[{role:'user',content:prompt}] })
-    });
+    var res = await claudeFetch(JSON.stringify({ _apiKey: apiKey, model:'claude-sonnet-4-20250514', max_tokens:300, messages:[{role:'user',content:prompt}] }), 'safety-progress-text');
     var data = await res.json();
     var text = data.content && data.content[0] && data.content[0].text;
 
@@ -11903,20 +11945,11 @@ async function generateWeeklyReport() {
 פורמט: טקסט נקי, עברית, מקצועי. אין נקודות, אין כותרות מיוחדות.`;
 
   try {
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': _weeklyAnthropicKey,
-        'anthropic-version': '2023-06-01',
-        'anthropic-dangerous-direct-browser-access': 'true'
-      },
-      body: JSON.stringify({
+    const res = await claudeFetch(JSON.stringify({ _apiKey: _weeklyAnthropicKey,
         model: 'claude-sonnet-4-20250514',
         max_tokens: 800,
         messages: [{ role: 'user', content: prompt }]
-      })
-    });
+      }), null);
 
     const data = await res.json();
     if (!res.ok) throw new Error(data.error?.message || 'API error ' + res.status);
