@@ -1656,10 +1656,10 @@ window.addEventListener('unhandledrejection', function(e) {
       <div style="font-size:11px;color:#666;margin-bottom:16px;">📄 PDF — ניתוח ישיר של תוכן הדוח · 🌐 HTML — ניתוח תוכן הדף</div>
       <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;">
         <label style="display:inline-flex;align-items:center;gap:8px;background:rgba(59,130,246,0.2);border:1.5px solid rgba(59,130,246,0.5);color:#93c5fd;padding:10px 20px;border-radius:12px;cursor:pointer;font-size:13px;font-weight:700;font-family:Heebo,sans-serif;">
-          📁 בחר קובץ<input type="file" id="snag-file-input" accept="image/*,video/mp4,video/quicktime,video/webm,video/avi,video/x-m4v,.pdf,.html,.htm" multiple style="display:none;" onchange="snagHandleFile(this)">
+          📁 בחר קובץ<input type="file" id="snag-file-input" accept="image/*,video/mp4,video/quicktime,video/webm,video/avi,video/x-m4v,.pdf,.html,.htm" multiple style="display:none;" onchange="_loadSnagModule().then(function(){snagHandleFile(this);}.bind(null,this)).catch(function(e){console.error('snag module load error:',e);})"> 
         </label>
         <label style="display:inline-flex;align-items:center;gap:8px;background:rgba(139,92,246,0.15);border:1.5px solid rgba(139,92,246,0.4);color:#c4b5fd;padding:10px 20px;border-radius:12px;cursor:pointer;font-size:13px;font-weight:700;font-family:Heebo,sans-serif;">
-          📸 צלם עכשיו<input type="file" id="snag-camera-input" accept="image/*" capture="environment" style="display:none;" onchange="snagHandleFile(this)">
+          📸 צלם עכשיו<input type="file" id="snag-camera-input" accept="image/*" capture="environment" style="display:none;" onchange="_loadSnagModule().then(function(){snagHandleFile(this);}.bind(null,this)).catch(function(e){console.error('snag module load error:',e);})"> 
         </label>
         <button onclick="snagUseShared()" id="snag-use-shared-btn" style="display:none;background:rgba(34,197,94,0.15);border:1.5px solid rgba(34,197,94,0.4);color:#86efac;padding:10px 20px;border-radius:12px;cursor:pointer;font-size:13px;font-weight:700;font-family:Heebo,sans-serif;">
           ♻️ השתמש בקבצים טעונים
