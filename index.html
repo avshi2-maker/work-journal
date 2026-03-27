@@ -6937,7 +6937,52 @@ function safetyRenderReport(findings, metadata) {
     + '</div>'
     + '</div>';
 
-  results.innerHTML = html;
+  // ── Wrap with checkbox + thumbnail ──────────────────────────────────
+  results.innerHTML = '';
+  var safetyWrap = document.createElement('div');
+  safetyWrap.className = 'safety-single-result-wrap';
+  safetyWrap.style.cssText = 'border:1.5px solid rgba(255,255,255,0.08);border-radius:16px;overflow:hidden;';
+
+  var safetyHdr = document.createElement('div');
+  safetyHdr.style.cssText = 'background:#242438;padding:10px 14px;display:flex;align-items:center;gap:10px;border-bottom:1px solid rgba(255,255,255,0.06);';
+
+  var safetySelCb = document.createElement('input');
+  safetySelCb.type = 'checkbox'; safetySelCb.checked = true;
+  safetySelCb.className = 'report-card-cb';
+  safetySelCb.style.cssText = 'accent-color:#ef4444;width:16px;height:16px;cursor:pointer;flex-shrink:0;';
+  safetySelCb.title = 'בחר דוח להדפסה';
+  safetySelCb.onchange = (function(w){ return function(){
+    w.style.opacity = this.checked ? '1' : '0.45';
+    w.style.borderColor = this.checked ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.03)';
+  }; })(safetyWrap);
+  safetyHdr.appendChild(safetySelCb);
+
+  if (_safetyFrames && _safetyFrames.length > 0 && _safetyMediaType !== 'application/pdf') {
+    var safetyThumbC = document.createElement('canvas');
+    safetyThumbC.width = 40; safetyThumbC.height = 40;
+    safetyThumbC.className = 'report-thumb-canvas';
+    safetyThumbC.style.cssText = 'width:40px;height:40px;border-radius:6px;border:1px solid rgba(255,255,255,0.1);flex-shrink:0;vertical-align:middle;';
+    safetyThumbC.dataset.b64 = _safetyFrames[0];
+    (function(cv, b64){
+      var tImg = new Image();
+      tImg.onload = function(){ var cx = cv.getContext('2d'); if(cx) cx.drawImage(tImg,0,0,40,40); };
+      tImg.src = 'data:image/jpeg;base64,' + b64;
+    })(safetyThumbC, _safetyFrames[0]);
+    safetyHdr.appendChild(safetyThumbC);
+  }
+
+  var safetyHdrLabel = document.createElement('span');
+  safetyHdrLabel.style.cssText = 'font-size:12px;font-weight:700;color:#fca5a5;';
+  safetyHdrLabel.textContent = '🛡️ דוח בטיחות — בחר להדפסה';
+  safetyHdr.appendChild(safetyHdrLabel);
+  safetyWrap.appendChild(safetyHdr);
+
+  var safetyContent = document.createElement('div');
+  safetyContent.style.cssText = 'padding:16px;';
+  safetyContent.innerHTML = html;
+  safetyWrap.appendChild(safetyContent);
+  results.appendChild(safetyWrap);
+
   var sap = document.getElementById('safety-action-project');
   if (sap && sProjCurr) sap.value = sProjCurr;
 }
@@ -7545,7 +7590,55 @@ function snagRenderReport(findings, allCats, customCats, metadata) {
     + '</div>'
     + '</div>';
 
-  results.innerHTML = html;
+  // ── Wrap with checkbox + thumbnail for print selection ─────────────
+  results.innerHTML = '';
+  var snagWrap = document.createElement('div');
+  snagWrap.className = 'snag-single-result-wrap';
+  snagWrap.style.cssText = 'border:1.5px solid rgba(255,255,255,0.08);border-radius:16px;overflow:hidden;';
+
+  // Card header with checkbox + thumbnail
+  var snagHdr = document.createElement('div');
+  snagHdr.style.cssText = 'background:#242438;padding:10px 14px;display:flex;align-items:center;gap:10px;border-bottom:1px solid rgba(255,255,255,0.06);';
+
+  var snagSelCb = document.createElement('input');
+  snagSelCb.type = 'checkbox'; snagSelCb.checked = true;
+  snagSelCb.className = 'report-card-cb';
+  snagSelCb.style.cssText = 'accent-color:#3b82f6;width:16px;height:16px;cursor:pointer;flex-shrink:0;';
+  snagSelCb.title = 'בחר דוח להדפסה';
+  snagSelCb.onchange = (function(w){ return function(){
+    w.style.opacity = this.checked ? '1' : '0.45';
+    w.style.borderColor = this.checked ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.03)';
+  }; })(snagWrap);
+  snagHdr.appendChild(snagSelCb);
+
+  // Thumbnail canvas
+  if (_snagFrames && _snagFrames.length > 0 && _snagMediaType !== 'application/pdf' && _snagMediaType !== 'text/html') {
+    var snagThumbC = document.createElement('canvas');
+    snagThumbC.width = 40; snagThumbC.height = 40;
+    snagThumbC.className = 'report-thumb-canvas';
+    snagThumbC.style.cssText = 'width:40px;height:40px;border-radius:6px;border:1px solid rgba(255,255,255,0.1);flex-shrink:0;vertical-align:middle;';
+    snagThumbC.dataset.b64 = _snagFrames[0];
+    (function(cv, b64){
+      var tImg = new Image();
+      tImg.onload = function(){ var cx = cv.getContext('2d'); if(cx) cx.drawImage(tImg,0,0,40,40); };
+      tImg.src = 'data:image/jpeg;base64,' + b64;
+    })(snagThumbC, _snagFrames[0]);
+    snagHdr.appendChild(snagThumbC);
+  }
+
+  var snagHdrLabel = document.createElement('span');
+  snagHdrLabel.style.cssText = 'font-size:12px;font-weight:700;color:#93c5fd;';
+  snagHdrLabel.textContent = '🔍 דוח ליקויים — בחר להדפסה';
+  snagHdr.appendChild(snagHdrLabel);
+  snagWrap.appendChild(snagHdr);
+
+  // Content
+  var snagContent = document.createElement('div');
+  snagContent.style.cssText = 'padding:16px;';
+  snagContent.innerHTML = html;
+  snagWrap.appendChild(snagContent);
+  results.appendChild(snagWrap);
+
   // Set project selector to current value
   var ap = document.getElementById('snag-action-project');
   if (ap && projCurr) ap.value = projCurr;
@@ -8579,7 +8672,9 @@ function snagPrintReport() {
 
   // Collect thumbnails from checked cards only
   var snagPrintThumbs = [];
-  document.querySelectorAll('#snag-multi-results > div, #snag-results > div').forEach(function(card) {
+  // Search top-level cards in both multi and single result containers
+  var snagCardSelector = '#snag-multi-results > div, #snag-results > div, #snag-results .snag-single-result-wrap';
+  document.querySelectorAll(snagCardSelector).forEach(function(card) {
     var cb = card.querySelector('.report-card-cb');
     if (cb && !cb.checked) return;
     var canvas = card.querySelector('.report-thumb-canvas');
@@ -8665,9 +8760,10 @@ function safetyPrintReport() {
 
   // Collect thumbnails from checked cards
   var printThumbs = [];
-  document.querySelectorAll('#safety-multi-results > div, #safety-results > div').forEach(function(card) {
+  var safetyCardSel = '#safety-multi-results > div, #safety-results > div, #safety-results .safety-single-result-wrap';
+  document.querySelectorAll(safetyCardSel).forEach(function(card) {
     var cb = card.querySelector('.report-card-cb');
-    if (cb && !cb.checked) return; // skip unchecked
+    if (cb && !cb.checked) return;
     var canvas = card.querySelector('.report-thumb-canvas');
     if (canvas && canvas.dataset.b64) printThumbs.push('data:image/jpeg;base64,' + canvas.dataset.b64);
   });
