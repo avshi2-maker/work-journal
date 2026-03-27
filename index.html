@@ -1610,7 +1610,11 @@ window.addEventListener('unhandledrejection', function(e) {
         <label style="display:inline-flex;align-items:center;gap:8px;background:rgba(59,130,246,0.15);border:1.5px solid rgba(59,130,246,0.4);color:#93c5fd;padding:10px 20px;border-radius:12px;cursor:pointer;font-size:13px;font-weight:700;font-family:Heebo,sans-serif;">
           📸 צלם עכשיו<input type="file" id="safety-camera-input" accept="image/*" capture="environment" style="display:none;" onchange="safetyHandleFile(this)">
         </label>
+        <button onclick="safetyUseShared()" id="safety-use-shared-btn" style="display:none;background:rgba(34,197,94,0.15);border:1.5px solid rgba(34,197,94,0.4);color:#86efac;padding:10px 20px;border-radius:12px;cursor:pointer;font-size:13px;font-weight:700;font-family:Heebo,sans-serif;">
+          ♻️ השתמש בקבצים טעונים
+        </button>
       </div>
+      <div id="safety-shared-status" style="margin-top:10px;"></div>
     </div>
 
     <!-- Progress -->
@@ -1657,7 +1661,11 @@ window.addEventListener('unhandledrejection', function(e) {
         <label style="display:inline-flex;align-items:center;gap:8px;background:rgba(139,92,246,0.15);border:1.5px solid rgba(139,92,246,0.4);color:#c4b5fd;padding:10px 20px;border-radius:12px;cursor:pointer;font-size:13px;font-weight:700;font-family:Heebo,sans-serif;">
           📸 צלם עכשיו<input type="file" id="snag-camera-input" accept="image/*" capture="environment" style="display:none;" onchange="snagHandleFile(this)">
         </label>
+        <button onclick="snagUseShared()" id="snag-use-shared-btn" style="display:none;background:rgba(34,197,94,0.15);border:1.5px solid rgba(34,197,94,0.4);color:#86efac;padding:10px 20px;border-radius:12px;cursor:pointer;font-size:13px;font-weight:700;font-family:Heebo,sans-serif;">
+          ♻️ השתמש בקבצים טעונים
+        </button>
       </div>
+      <div id="snag-shared-status" style="margin-top:10px;"></div>
     </div>
 
     <!-- Category selector — loaded from Supabase snag_categories -->
@@ -6292,6 +6300,67 @@ var _safetyIsVideo       = false;
 var _safetyMediaType     = 'image/jpeg';  // actual uploaded file media type
 var _safetyHtmlText      = '';   // extracted text from HTML files
 
+// ── Shared media store — uploaded once, used by both Safety & Snag ────
+var SHARED_MEDIA = {
+  files:     [],   // original File objects
+  frames:    [],   // array of arrays of base64 frames per file
+  types:     [],   // media type per file
+  isVideo:   [],   // bool per file
+  htmlTexts: [],   // extracted HTML text per file
+  thumbs:    [],   // first frame/thumb per file for display
+  names:     [],   // filenames
+  loaded:    false
+};
+
+function sharedMediaLoad(files) {
+  SHARED_MEDIA.files     = Array.from(files);
+  SHARED_MEDIA.frames    = [];
+  SHARED_MEDIA.types     = [];
+  SHARED_MEDIA.isVideo   = [];
+  SHARED_MEDIA.htmlTexts = [];
+  SHARED_MEDIA.thumbs    = [];
+  SHARED_MEDIA.names     = SHARED_MEDIA.files.map(function(f){ return f.name; });
+  SHARED_MEDIA.loaded    = false;
+  return SHARED_MEDIA.files.length;
+}
+
+function sharedMediaStatus() {
+  if (!SHARED_MEDIA.files.length) return null;
+  return SHARED_MEDIA.files.length + ' קבצים טעונים: ' + SHARED_MEDIA.names.join(', ');
+}
+
+function sharedMediaRender(containerId) {
+  var el = document.getElementById(containerId);
+  if (!el || !SHARED_MEDIA.files.length) return;
+  el.innerHTML = '';
+  var d = document.createElement('div');
+  d.style.cssText = 'background:rgba(34,197,94,0.08);border:1px solid rgba(34,197,94,0.25);border-radius:10px;padding:10px 14px;margin-bottom:10px;direction:rtl;';
+  var title = document.createElement('div');
+  title.style.cssText = 'font-size:11px;font-weight:800;color:#22c55e;margin-bottom:6px;';
+  title.textContent = '✅ ' + SHARED_MEDIA.files.length + ' קבצים טעונים — משותף לשני הדוחות';
+  d.appendChild(title);
+  var thumbs = document.createElement('div');
+  thumbs.style.cssText = 'display:flex;gap:6px;flex-wrap:wrap;align-items:center;';
+  SHARED_MEDIA.files.forEach(function(f, i) {
+    var chip = document.createElement('div');
+    chip.style.cssText = 'display:flex;align-items:center;gap:5px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:6px;padding:4px 8px;font-size:11px;color:#ccc;';
+    chip.textContent = (fileIsVideo(f)?'🎬':'📸') + ' ' + f.name.substring(0,20);
+    thumbs.appendChild(chip);
+  });
+  d.appendChild(thumbs);
+  var clearBtn = document.createElement('button');
+  clearBtn.style.cssText = 'margin-top:8px;background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.2);color:#fca5a5;padding:4px 10px;border-radius:6px;cursor:pointer;font-family:Heebo,sans-serif;font-size:10px;font-weight:700;';
+  clearBtn.textContent = '🗑️ נקה קבצים';
+  clearBtn.onclick = function() {
+    SHARED_MEDIA.files = []; SHARED_MEDIA.loaded = false;
+    document.getElementById('safety-shared-status') && (document.getElementById('safety-shared-status').innerHTML = '');
+    document.getElementById('snag-shared-status')   && (document.getElementById('snag-shared-status').innerHTML   = '');
+    showToast('קבצים נמחקו');
+  };
+  d.appendChild(clearBtn);
+  el.appendChild(d);
+}
+
 // ── Safety categories with icons, keywords & severity weights ─────────
 // SAFETY_CATEGORIES loaded from Supabase safety_categories table
 // Fallback to minimal set if table not yet created
@@ -6465,6 +6534,12 @@ async function safetyHandleFile(input) {
   var files = Array.from(input.files || []);
   if (!files.length) return;
   input.value = '';
+  // Save to shared media — makes files available to snag tab
+  sharedMediaLoad(files);
+  var snagBtn = document.getElementById('snag-use-shared-btn');
+  if (snagBtn) snagBtn.style.display = 'inline-flex';
+  sharedMediaRender('safety-shared-status');
+  sharedMediaRender('snag-shared-status');
 
   if (files.length > 1) {
     await safetyHandleMultipleFiles(files);
@@ -6858,6 +6933,7 @@ function safetyRenderReport(findings, metadata) {
     + '<button onclick="safetyExportWhatsApp()" style="flex:1;min-width:120px;background:rgba(37,211,102,0.15);border:1.5px solid rgba(37,211,102,0.4);color:#25d366;padding:10px 14px;border-radius:10px;cursor:pointer;font-family:Heebo,sans-serif;font-size:12px;font-weight:700;">💬 WhatsApp</button>'
     + '<button onclick="safetyPrintReport()" style="flex:1;min-width:120px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.15);color:#ccc;padding:10px 14px;border-radius:10px;cursor:pointer;font-family:Heebo,sans-serif;font-size:12px;font-weight:700;">🖨️ הדפס</button>'
     + '<button onclick="safetyEmailReport()" style="flex:1;min-width:120px;background:rgba(59,130,246,0.12);border:1px solid rgba(59,130,246,0.3);color:#93c5fd;padding:10px 14px;border-radius:10px;cursor:pointer;font-family:Heebo,sans-serif;font-size:12px;font-weight:700;">📧 מייל</button>'
+    + '<button onclick="switchTab(\'crm\');showPage(\'dashboard\')" style="flex:1;min-width:120px;background:rgba(201,168,76,0.12);border:1px solid rgba(201,168,76,0.3);color:#c9a84c;padding:10px 14px;border-radius:10px;cursor:pointer;font-family:Heebo,sans-serif;font-size:12px;font-weight:700;">🏠 לוח בקרה</button>'
     + '</div>'
     + '</div>';
 
@@ -7054,6 +7130,12 @@ async function snagHandleFile(input) {
   var files = Array.from(input.files || []);
   if (!files.length) return;
   input.value = '';
+  // Save to shared media — available to safety tab
+  sharedMediaLoad(files);
+  var safetyBtn = document.getElementById('safety-use-shared-btn');
+  if (safetyBtn) safetyBtn.style.display = 'inline-flex';
+  sharedMediaRender('safety-shared-status');
+  sharedMediaRender('snag-shared-status');
 
   if (files.length > 1) {
     // Multi-file mode — queue all and process sequentially
@@ -7459,6 +7541,7 @@ function snagRenderReport(findings, allCats, customCats, metadata) {
     + '<button onclick="snagPrintReport()" style="flex:1;min-width:120px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.15);color:#ccc;padding:10px 14px;border-radius:10px;cursor:pointer;font-family:Heebo,sans-serif;font-size:12px;font-weight:700;">🖨️ הדפס</button>'
     + '<button onclick="snagEmailReport()" style="flex:1;min-width:120px;background:rgba(59,130,246,0.12);border:1px solid rgba(59,130,246,0.3);color:#93c5fd;padding:10px 14px;border-radius:10px;cursor:pointer;font-family:Heebo,sans-serif;font-size:12px;font-weight:700;">📧 מייל</button>'
     + '<button onclick="capOpenModal()" style="flex:2;min-width:160px;background:linear-gradient(135deg,#7c3aed,#2d6a9f);border:none;color:#fff;padding:10px 14px;border-radius:10px;cursor:pointer;font-family:Heebo,sans-serif;font-size:12px;font-weight:800;">🔧 צור תוכנית תיקון (CAP)</button>'
+    + '<button onclick="switchTab(\'crm\');showPage(\'dashboard\')" style="flex:1;min-width:120px;background:rgba(201,168,76,0.12);border:1px solid rgba(201,168,76,0.3);color:#c9a84c;padding:10px 14px;border-radius:10px;cursor:pointer;font-family:Heebo,sans-serif;font-size:12px;font-weight:700;">🏠 לוח בקרה</button>'
     + '</div>'
     + '</div>';
 
@@ -8161,13 +8244,42 @@ async function snagRunAnalysisForFile(file, fileIdx) {
   var wrapper = document.createElement('div');
   wrapper.style.cssText = 'border:1.5px solid rgba(255,255,255,0.1);border-radius:16px;overflow:hidden;';
 
-  // File header
+  // File header with checkbox + thumbnail
   var fileHeader = document.createElement('div');
   fileHeader.style.cssText = 'background:#242438;padding:12px 16px;display:flex;align-items:center;gap:10px;border-bottom:1px solid rgba(255,255,255,0.06);';
-  var fileIcon = _snagIsVideo ? '🎬' : fileIsPDF({type:_snagMediaType}) ? '📄' : fileIsHTML({type:_snagMediaType}) ? '🌐' : '📸';
-  fileHeader.innerHTML = '<span style="font-size:18px;">' + fileIcon + '</span>'
-    + '<span style="font-size:13px;font-weight:700;color:#fff;direction:rtl;">' + file.name.replace(/</g,'&lt;') + '</span>'
-    + '<span style="margin-right:auto;font-size:11px;color:#555;">' + (_snagIsVideo ? _snagFrames.length + ' פריימים' : 'קובץ יחיד') + '</span>';
+
+  var snagCb = document.createElement('input');
+  snagCb.type = 'checkbox'; snagCb.checked = true;
+  snagCb.style.cssText = 'accent-color:#3b82f6;width:16px;height:16px;cursor:pointer;flex-shrink:0;';
+  snagCb.title = 'בחר כרטיס לדוח';
+  snagCb.onchange = (function(w){ return function() {
+    w.style.opacity = this.checked ? '1' : '0.45';
+    w.style.borderColor = this.checked ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.03)';
+  }; })(wrapper);
+  fileHeader.appendChild(snagCb);
+
+  if (_snagFrames.length > 0 && _snagMediaType !== 'application/pdf' && _snagMediaType !== 'text/html') {
+    var snagThumb = document.createElement('img');
+    snagThumb.src = 'data:image/jpeg;base64,' + _snagFrames[0];
+    snagThumb.style.cssText = 'width:40px;height:40px;object-fit:cover;border-radius:6px;border:1px solid rgba(255,255,255,0.1);flex-shrink:0;';
+    fileHeader.appendChild(snagThumb);
+  } else {
+    var snagIcon = document.createElement('span');
+    snagIcon.style.fontSize = '22px';
+    snagIcon.textContent = _snagIsVideo ? '🎬' : fileIsPDF({type:_snagMediaType}) ? '📄' : '🌐';
+    fileHeader.appendChild(snagIcon);
+  }
+
+  var snagNameSpan = document.createElement('span');
+  snagNameSpan.style.cssText = 'font-size:13px;font-weight:700;color:#fff;direction:rtl;flex:1;';
+  snagNameSpan.textContent = file.name;
+  fileHeader.appendChild(snagNameSpan);
+
+  var snagFrameCount = document.createElement('span');
+  snagFrameCount.style.cssText = 'font-size:11px;color:#555;';
+  snagFrameCount.textContent = _snagIsVideo ? _snagFrames.length + ' פריימים' : 'קובץ יחיד';
+  fileHeader.appendChild(snagFrameCount);
+
   wrapper.appendChild(fileHeader);
 
   // Report content
@@ -8217,6 +8329,24 @@ async function snagRunAnalysisForFile(file, fileIdx) {
   _snagLastFindings = prevFindings; // restore
   return findings;
 }
+
+// ── Use shared media in safety tab ────────────────────────────────────
+function safetyUseShared() {
+  if (!SHARED_MEDIA.files.length) { showToast('אין קבצים משותפים — העלה קודם', 'error'); return; }
+  sharedMediaRender('safety-shared-status');
+  showToast('✅ ' + SHARED_MEDIA.files.length + ' קבצים טעונים לניתוח בטיחות');
+  // Trigger analysis with shared files
+  safetyHandleMultipleFiles(SHARED_MEDIA.files);
+}
+
+// ── Use shared media in snag tab ───────────────────────────────────────
+function snagUseShared() {
+  if (!SHARED_MEDIA.files.length) { showToast('אין קבצים משותפים — העלה קודם', 'error'); return; }
+  sharedMediaRender('snag-shared-status');
+  showToast('✅ ' + SHARED_MEDIA.files.length + ' קבצים טעונים לסריקת ליקויים');
+  snagHandleMultipleFiles(SHARED_MEDIA.files);
+}
+
 
 // Safety: process multiple files
 async function safetyHandleMultipleFiles(files) {
@@ -8335,10 +8465,42 @@ async function safetyRunAnalysisForFile(file, fileIdx) {
 
   var wrapper = document.createElement('div');
   wrapper.style.cssText = 'border:1.5px solid rgba(255,255,255,0.08);border-radius:16px;overflow:hidden;';
+  // Unique card ID for checkbox selection
+  var cardId = 'safety-card-' + fileIdx + '-' + Date.now();
+  wrapper.id = cardId;
+
   var fh = document.createElement('div');
   fh.style.cssText = 'background:#242438;padding:12px 16px;display:flex;align-items:center;gap:10px;border-bottom:1px solid rgba(255,255,255,0.06);';
-  fh.innerHTML = '<span style="font-size:18px;">' + (_safetyIsVideo?'🎬':fileIsPDF({name:file.name})?'📄':'📸') + '</span>'
-    + '<span style="font-size:13px;font-weight:700;color:#fff;direction:rtl;">' + file.name.replace(/</g,'&lt;') + '</span>';
+
+  // Checkbox for selecting this card for print/send
+  var cb = document.createElement('input');
+  cb.type = 'checkbox'; cb.checked = true;
+  cb.style.cssText = 'accent-color:#22c55e;width:16px;height:16px;cursor:pointer;flex-shrink:0;';
+  cb.title = 'בחר כרטיס לדוח';
+  cb.onchange = function() {
+    wrapper.style.opacity = this.checked ? '1' : '0.45';
+    wrapper.style.borderColor = this.checked ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.03)';
+  };
+  fh.appendChild(cb);
+
+  // Thumbnail — first frame if available
+  if (_safetyFrames.length > 0 && _safetyMediaType !== 'application/pdf') {
+    var thumb = document.createElement('img');
+    thumb.src = 'data:image/jpeg;base64,' + _safetyFrames[0];
+    thumb.style.cssText = 'width:40px;height:40px;object-fit:cover;border-radius:6px;border:1px solid rgba(255,255,255,0.1);flex-shrink:0;';
+    fh.appendChild(thumb);
+  } else {
+    var icon = document.createElement('span');
+    icon.style.fontSize = '22px';
+    icon.textContent = _safetyIsVideo ? '🎬' : fileIsPDF({name:file.name}) ? '📄' : '📸';
+    fh.appendChild(icon);
+  }
+
+  var nameSpan = document.createElement('span');
+  nameSpan.style.cssText = 'font-size:13px;font-weight:700;color:#fff;direction:rtl;flex:1;';
+  nameSpan.textContent = file.name;
+  fh.appendChild(nameSpan);
+
   wrapper.appendChild(fh);
 
   var rd = document.createElement('div');
@@ -8394,6 +8556,21 @@ function snagPrintReport() {
     return true;
   });
 
+  // Collect thumbnails from checked cards only
+  var snagPrintThumbs = [];
+  document.querySelectorAll('#snag-multi-results > div, #snag-results > div').forEach(function(card) {
+    var cb = card.querySelector('input[type="checkbox"]');
+    var img = card.querySelector('img');
+    if (cb && !cb.checked) return;
+    if (img) snagPrintThumbs.push(img.src);
+  });
+  var snagManagerName = (APP.config && APP.config.manager_name) || 'בני פרסקי';
+  var snagThumbsHtml = snagPrintThumbs.length
+    ? '<div style="display:flex;gap:8px;flex-wrap:wrap;margin:10px 0;">'
+      + snagPrintThumbs.map(function(src){ return '<img src="' + src + '" style="width:120px;height:90px;object-fit:cover;border-radius:6px;border:1px solid #ddd;">'; }).join('')
+      + '</div>'
+    : '';
+
   var html = '<!DOCTYPE html><html dir="rtl"><head><meta charset="UTF-8">'
     + '<title>דוח ליקויים</title>'
     + '<style>body{font-family:Arial,sans-serif;direction:rtl;padding:30px;color:#111;font-size:13px;}'
@@ -8408,7 +8585,8 @@ function snagPrintReport() {
     + '<div class="header">'
     + '<h1>🔍 דוח ליקויים — בדיקת איכות בנייה</h1>'
     + (projName && projName!=='📁 כל הפרויקטים' ? '<div class="meta">📁 פרויקט: ' + projName.replace('📁 ','') + '</div>' : '')
-    + '<div class="meta">📅 תאריך: ' + now + '</div>'
+    + '<div class="meta">📅 תאריך: ' + now + ' | ' + snagManagerName + '</div>'
+    + snagThumbsHtml
     + '<div class="meta">⚠️ קריטי: ' + issues.filter(function(c){return (findings[c.id]||{}).severity==='CRITICAL';}).length
     + ' | 🟡 בינוני: ' + issues.filter(function(c){return (findings[c.id]||{}).severity==='MODERATE';}).length
     + ' | 🔵 קל: ' + issues.filter(function(c){return (findings[c.id]||{}).severity==='MINOR';}).length + '</div>'
@@ -8460,6 +8638,26 @@ function safetyPrintReport() {
     return true;
   });
 
+  // Collect selected cards only
+  var selectedWrappers = document.querySelectorAll('[id^="safety-card-"]');
+  var selectedFindings = findings; // default to all
+
+  // Collect thumbnails from checked cards
+  var printThumbs = [];
+  document.querySelectorAll('#safety-multi-results > div, #safety-results > div').forEach(function(card) {
+    var cb = card.querySelector('input[type="checkbox"]');
+    var img = card.querySelector('img');
+    if (cb && !cb.checked) return; // skip unchecked
+    if (img) printThumbs.push(img.src);
+  });
+
+  var managerName = (APP.config && APP.config.manager_name) || 'בני פרסקי';
+  var thumbsHtml = printThumbs.length
+    ? '<div style="display:flex;gap:8px;flex-wrap:wrap;margin:12px 0;">'
+      + printThumbs.map(function(src){ return '<img src="' + src + '" style="width:120px;height:90px;object-fit:cover;border-radius:6px;border:1px solid #ddd;">'; }).join('')
+      + '</div>'
+    : '';
+
   var html = '<!DOCTYPE html><html dir="rtl"><head><meta charset="UTF-8"><title>דוח בטיחות</title>'
     + '<style>body{font-family:Arial,sans-serif;direction:rtl;padding:30px;color:#111;font-size:13px;}'
     + 'h1{font-size:20px;}h2{font-size:14px;margin:0 0 4px;}.meta{font-size:11px;color:#666;}'
@@ -8468,7 +8666,9 @@ function safetyPrintReport() {
     + '@media print{body{padding:10px}}</style></head><body>'
     + '<div class="header"><h1>🛡️ דוח בטיחות — בדיקת אתר בנייה</h1>'
     + (projName && projName!=='📁 כל הפרויקטים' ? '<div class="meta">📁 פרויקט: ' + projName.replace('📁 ','') + '</div>' : '')
-    + '<div class="meta">📅 ' + now + '</div></div>';
+    + '<div class="meta">📅 ' + now + ' | ' + managerName + '</div>'
+    + thumbsHtml
+    + '</div>';
 
   cats.forEach(function(cat) {
     var f = findings[cat.id] || { severity:'OK', found:[], action:null };
