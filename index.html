@@ -2639,7 +2639,8 @@ async function bootstrap() {
       try { if (typeof sjPopulateProjectFilter === 'function') sjPopulateProjectFilter(); } catch(e){}
     }, 500);
 
-    // Auto-refresh Field Intel + Beni Tasks every 60 seconds (only when CRM tab visible)
+    _createStopButton(); // floating stop button for AI operations
+  // Auto-refresh Field Intel + Beni Tasks every 60 seconds (only when CRM tab visible)
     setInterval(function() {
       const crmActive = document.getElementById('crm-panel')?.classList.contains('active');
       if (!crmActive) return;
@@ -11127,25 +11128,83 @@ function qStatus(msg) {
 }
 
 
+// ══ Global AI Stop / Running state ═══════════════════════════════════
+var _claudeRunning = false;
+
+function claudeSetRunning(running) {
+  _claudeRunning = running;
+  var btn = document.getElementById('claude-stop-btn');
+  if (btn) btn.style.display = running ? 'flex' : 'none';
+  if (!running) {
+    window._claudeAbortHandlers = [];
+  }
+}
+
+function claudeStop() {
+  if (!_claudeRunning) return;
+  // Signal all active claudeFetch calls to abort
+  (window._claudeAbortHandlers || []).forEach(function(h){ h(); });
+  window._claudeAbortHandlers = [];
+  claudeSetRunning(false);
+  showToast('🛑 AI הופסק', 'error');
+}
+
+function _createStopButton() {
+  if (document.getElementById('claude-stop-btn')) return;
+  var btn = document.createElement('button');
+  btn.id = 'claude-stop-btn';
+  btn.style.cssText = [
+    'display:none;position:fixed;bottom:24px;left:50%;transform:translateX(-50%);z-index:9999;',
+    'background:linear-gradient(135deg,#7f1d1d,#ef4444);',
+    'border:2px solid #fca5a5;color:#fff;',
+    'padding:12px 32px;border-radius:30px;cursor:pointer;',
+    'font-family:Heebo,sans-serif;font-size:14px;font-weight:900;',
+    'box-shadow:0 4px 20px rgba(239,68,68,0.5);',
+    'align-items:center;gap:10px;',
+    'animation:pulse-stop 1.5s infinite;'
+  ].join('');
+  btn.innerHTML = '<span style="font-size:18px;">⏹</span> עצור AI';
+  btn.onclick = claudeStop;
+  document.body.appendChild(btn);
+
+  // Pulse animation
+  if (!document.getElementById('stop-btn-style')) {
+    var style = document.createElement('style');
+    style.id = 'stop-btn-style';
+    style.textContent = '@keyframes pulse-stop { 0%,100%{box-shadow:0 4px 20px rgba(239,68,68,0.5)} 50%{box-shadow:0 4px 32px rgba(239,68,68,0.9)} }';
+    document.head.appendChild(style);
+  }
+}
+
+
 // ══════════════════════════════════════════════════════════════════════
 // claudeFetch() — Smart Anthropic API wrapper
 // Auto-retries on 529 (overloaded) up to 3 times with live status meter
 // Replaces all direct fetch('https://api.anthropic.com/...') calls
 // ══════════════════════════════════════════════════════════════════════
-async function claudeFetch(body, statusElId) {
+async function claudeFetch(bodyStrOrObj, statusElId) {
   var MAX_RETRIES  = 3;
   var RETRY_DELAYS = [15000, 30000, 60000]; // 15s, 30s, 60s
+
+  // Accept either a plain object or a pre-stringified JSON string
+  var bodyObj;
+  if (typeof bodyStrOrObj === 'string') {
+    try { bodyObj = JSON.parse(bodyStrOrObj); } catch(e) { bodyObj = {}; }
+  } else {
+    bodyObj = bodyStrOrObj || {};
+  }
+
+  // Extract and remove internal _apiKey
+  var apiKey  = bodyObj._apiKey || '';
+  var sendBody = Object.assign({}, bodyObj);
+  delete sendBody._apiKey;
+
   var HEADERS = {
     'Content-Type':  'application/json',
-    'x-api-key':     body._apiKey || '',
+    'x-api-key':     apiKey,
     'anthropic-version': '2023-06-01',
     'anthropic-dangerous-direct-browser-access': 'true'
   };
-
-  // Remove internal _apiKey from body before sending
-  var apiKey = body._apiKey || '';
-  var sendBody = Object.assign({}, body);
-  delete sendBody._apiKey;
 
   // Find or create status element
   var statusEl = statusElId ? document.getElementById(statusElId) : null;
@@ -11157,14 +11216,32 @@ async function claudeFetch(body, statusElId) {
     statusEl.textContent   = msg;
   }
 
+  // Register this call with the global abort system
+  var _aborted = false;
+  var _abortHandler = function() { _aborted = true; };
+  window._claudeAbortHandlers = window._claudeAbortHandlers || [];
+  window._claudeAbortHandlers.push(_abortHandler);
+  claudeSetRunning(true);
+
   for (var attempt = 0; attempt <= MAX_RETRIES; attempt++) {
     try {
+      // Check if aborted
+      if (_aborted) {
+        setStatus('🛑 בוטל על ידי המשתמש', '#f59e0b');
+        claudeSetRunning(false);
+        return { ok: false, status: 0, json: async function(){ return {error:{message:'Aborted'}}; } };
+      }
+
       // Show live working meter
       if (attempt === 0) {
         setStatus('⚡ AI עובד...', '#38bdf8');
       }
 
-      var res = await claudeFetch(JSON.stringify(sendBody), null);
+      var res = await fetch('https://api.anthropic.com/v1/messages', {
+        method:  'POST',
+        headers: HEADERS,
+        body:    JSON.stringify(sendBody)
+      });
 
       // Handle 529 overload
       if (res.status === 529) {
@@ -11198,6 +11275,7 @@ async function claudeFetch(body, statusElId) {
       if (res.ok) {
         setStatus('', '');
         if (statusEl) statusEl.style.display = 'none';
+        claudeSetRunning(false);
       }
       return res;
 
