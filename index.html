@@ -4565,10 +4565,9 @@ async function _fetchJournalModule() {
   try {
     var res = await fetch('journal_28032026.html');
     var html = await res.text();
-    var tmp = document.createElement('div');
-    tmp.innerHTML = html;
-    var scripts = tmp.querySelectorAll('script');
-    scripts.forEach(function(s) {
+    var parser = new DOMParser();
+    var doc = parser.parseFromString(html, 'text/html');
+    doc.querySelectorAll('script').forEach(function(s) {
       var ns = document.createElement('script');
       ns.textContent = s.textContent;
       document.head.appendChild(ns);
@@ -4592,9 +4591,9 @@ async function _fetchSafetyModule() {
   try {
     var res = await fetch('safety_28032026.html');
     var html = await res.text();
-    var tmp = document.createElement('div');
-    tmp.innerHTML = html;
-    tmp.querySelectorAll('script').forEach(function(s) {
+    var parser = new DOMParser();
+    var doc = parser.parseFromString(html, 'text/html');
+    doc.querySelectorAll('script').forEach(function(s) {
       var ns = document.createElement('script');
       ns.textContent = s.textContent;
       document.head.appendChild(ns);
@@ -4610,9 +4609,9 @@ async function _fetchRagModule() {
   try {
     var res = await fetch('rag_28032026.html');
     var html = await res.text();
-    var tmp = document.createElement('div');
-    tmp.innerHTML = html;
-    tmp.querySelectorAll('script').forEach(function(s) {
+    var parser = new DOMParser();
+    var doc = parser.parseFromString(html, 'text/html');
+    doc.querySelectorAll('script').forEach(function(s) {
       var ns = document.createElement('script');
       ns.textContent = s.textContent;
       document.head.appendChild(ns);
@@ -4810,9 +4809,9 @@ async function _fetchSmartJournal() {
   try {
     var res = await fetch('smartjournal_28032026.html');
     var html = await res.text();
-    var tmp = document.createElement('div');
-    tmp.innerHTML = html;
-    tmp.querySelectorAll('script').forEach(function(s) {
+    var parser = new DOMParser();
+    var doc = parser.parseFromString(html, 'text/html');
+    doc.querySelectorAll('script').forEach(function(s) {
       var ns = document.createElement('script');
       ns.textContent = s.textContent;
       document.head.appendChild(ns);
