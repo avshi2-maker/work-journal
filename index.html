@@ -5230,6 +5230,7 @@ function safetyRenderReport(findings, metadata) {
     + '<button onclick="safetyExportWhatsApp()" style="flex:1;min-width:120px;background:rgba(37,211,102,0.15);border:1.5px solid rgba(37,211,102,0.4);color:#25d366;padding:10px 14px;border-radius:10px;cursor:pointer;font-family:Heebo,sans-serif;font-size:12px;font-weight:700;">💬 WhatsApp</button>'
     + '<button onclick="safetyPrintReport()" style="flex:1;min-width:120px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.15);color:#ccc;padding:10px 14px;border-radius:10px;cursor:pointer;font-family:Heebo,sans-serif;font-size:12px;font-weight:700;">🖨️ הדפס</button>'
     + '<button onclick="safetyEmailReport()" style="flex:1;min-width:120px;background:rgba(59,130,246,0.12);border:1px solid rgba(59,130,246,0.3);color:#93c5fd;padding:10px 14px;border-radius:10px;cursor:pointer;font-family:Heebo,sans-serif;font-size:12px;font-weight:700;">📧 מייל</button>'
+    + '<button onclick="safetyOpenCAP()" style="flex:2;min-width:160px;background:linear-gradient(135deg,#7c3aed,#2d6a9f);border:none;color:#fff;padding:10px 14px;border-radius:10px;cursor:pointer;font-family:Heebo,sans-serif;font-size:12px;font-weight:800;">🔧 צור תוכנית תיקון (CAP)</button>'
     + '<button onclick="switchTab(\'crm\');showPage(\'dashboard\')" style="flex:1;min-width:120px;background:rgba(201,168,76,0.12);border:1px solid rgba(201,168,76,0.3);color:#c9a84c;padding:10px 14px;border-radius:10px;cursor:pointer;font-family:Heebo,sans-serif;font-size:12px;font-weight:700;">🏠 לוח בקרה</button>'
     + '</div>'
     + '</div>';
@@ -6082,6 +6083,47 @@ var CAP_STANDARDS = {
 };
 
 // ── Open modal ─────────────────────────────────────────────────────────
+function safetyOpenCAP() {
+  var findings = _safetyLastFindings;
+  if (!findings || !Object.keys(findings).length) {
+    showToast('הפעל ניתוח בטיחות תחילה', 'error');
+    return;
+  }
+  // Convert safety findings format to snag findings format for CAP modal
+  // Safety: { id: { severity, found, action } }
+  // Snag:   { id: { severity, findings[], remedy } }
+  var snagFormatFindings = {};
+  SAFETY_CATEGORIES.forEach(function(cat) {
+    var f = findings[cat.id];
+    if (!f || f.severity === 'OK') return;
+    snagFormatFindings[cat.id] = {
+      severity:  f.severity,
+      findings:  f.found || [],
+      remedy:    f.action || '',
+      location:  '',
+      responsible_trade: ''
+    };
+  });
+  // Temporarily set snag findings and categories for CAP modal
+  _snagLastFindings = snagFormatFindings;
+  // Add safety categories to SNAG_CATEGORIES temporarily if not present
+  var origSnagCats = SNAG_CATEGORIES;
+  var safetyCapsNeeded = SAFETY_CATEGORIES.filter(function(sc) {
+    return snagFormatFindings[sc.id];
+  }).map(function(sc) {
+    return { id: sc.id, icon: sc.icon, name_he: sc.name };
+  });
+  // Merge: keep existing snag cats, add safety ones not already present
+  var merged = origSnagCats.slice();
+  safetyCapsNeeded.forEach(function(sc) {
+    if (!merged.find(function(c){ return c.id === sc.id; })) merged.push(sc);
+  });
+  SNAG_CATEGORIES = merged;
+  capOpenModal().then(function(){
+    // Restore after modal opens
+  }).catch(function(){});
+}
+
 async function capOpenModal() {
   var findings = _snagLastFindings;
   if (!findings || !Object.keys(findings).length) {
