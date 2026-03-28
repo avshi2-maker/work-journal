@@ -5950,10 +5950,6 @@ function snagExportWhatsApp() {
   if (projName && projName !== '📁 כל הפרויקטים') msg += '📁 ' + projName.replace('📁 ','').trim() + '\n';
   msg += '━━━━━━━━━━━━━━━━━━━━\n\n';
   // Note about photo — WA text-only, remind user to attach manually
-  if (_snagFrames && _snagFrames.length && _snagFrames[0]) {
-    msg += '📸 תמונה מצורפת — שלח/י אותה ידנית עם ההודעה\n\n';
-  }
-
   var sevOrder = { CRITICAL:3, MODERATE:2, MINOR:1, NONE:0 };
   var allCatDefs = SNAG_CATEGORIES;
   var issues = allCatDefs.filter(function(c){ return findings[c.id] && (findings[c.id].severity||'NONE') !== 'NONE'; })
