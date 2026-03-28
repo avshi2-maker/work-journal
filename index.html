@@ -1661,27 +1661,6 @@ window.addEventListener('unhandledrejection', function(e) {
   <!-- ══ SNAG LIST SUB-TAB ════════════════════════════════════════ -->
   <div id="safety-sub-snag" style="display:none;">
 
-    <!-- Upload zone -->
-    <div style="background:#1e1e35;border:2px dashed rgba(59,130,246,0.4);border-radius:16px;padding:20px;margin-bottom:20px;text-align:center;">
-      <div style="font-size:36px;margin-bottom:8px;">🔍</div>
-      <div style="font-size:14px;font-weight:800;color:#fff;margin-bottom:4px;">העלה תמונה, סרטון, PDF או קובץ HTML לבדיקת ליקויים</div>
-      <div style="font-size:11px;color:#666;margin-bottom:4px;">🖼️ תמונות: JPG · PNG · GIF · WebP</div>
-      <div style="font-size:11px;color:#666;margin-bottom:4px;">🎬 סרטונים: MP4 · MOV · WebM · AVI · M4V — עד 8 פריימים לניתוח</div>
-      <div style="font-size:11px;color:#666;margin-bottom:16px;">📄 PDF — ניתוח ישיר של תוכן הדוח · 🌐 HTML — ניתוח תוכן הדף</div>
-      <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;">
-        <label style="display:inline-flex;align-items:center;gap:8px;background:rgba(59,130,246,0.2);border:1.5px solid rgba(59,130,246,0.5);color:#93c5fd;padding:10px 20px;border-radius:12px;cursor:pointer;font-size:13px;font-weight:700;font-family:Heebo,sans-serif;">
-          📁 בחר קובץ<input type="file" id="snag-file-input" accept="image/*,video/mp4,video/quicktime,video/webm,video/avi,video/x-m4v,.pdf,.html,.htm" multiple style="display:none;" onchange="snagHandleFile(this)"> 
-        </label>
-        <label style="display:inline-flex;align-items:center;gap:8px;background:rgba(139,92,246,0.15);border:1.5px solid rgba(139,92,246,0.4);color:#c4b5fd;padding:10px 20px;border-radius:12px;cursor:pointer;font-size:13px;font-weight:700;font-family:Heebo,sans-serif;">
-          📸 צלם עכשיו<input type="file" id="snag-camera-input" accept="image/*" capture="environment" style="display:none;" onchange="snagHandleFile(this)"> 
-        </label>
-        <button onclick="snagUseShared()" id="snag-use-shared-btn" style="display:none;background:rgba(34,197,94,0.15);border:1.5px solid rgba(34,197,94,0.4);color:#86efac;padding:10px 20px;border-radius:12px;cursor:pointer;font-size:13px;font-weight:700;font-family:Heebo,sans-serif;">
-          ♻️ השתמש בקבצים טעונים
-        </button>
-      </div>
-      <div id="snag-shared-status" style="margin-top:10px;"></div>
-    </div>
-
     <!-- Category selector — loaded from Supabase snag_categories -->
     <div style="background:#242438;border-radius:14px;padding:16px;margin-bottom:20px;border:1px solid rgba(255,255,255,0.06);">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px;">
@@ -1706,6 +1685,27 @@ window.addEventListener('unhandledrejection', function(e) {
           <input placeholder="קטגוריה נוספת 5..." class="snag-custom-cat" style="background:#1a1a2e;border:1px solid rgba(255,255,255,0.1);color:#fff;padding:8px 12px;border-radius:8px;font-family:Heebo,sans-serif;font-size:13px;direction:rtl;outline:none;">
         </div>
       </div>
+    </div>
+
+    <!-- Upload zone -->
+    <div style="background:#1e1e35;border:2px dashed rgba(59,130,246,0.4);border-radius:16px;padding:20px;margin-bottom:20px;text-align:center;">
+      <div style="font-size:36px;margin-bottom:8px;">🔍</div>
+      <div style="font-size:14px;font-weight:800;color:#fff;margin-bottom:4px;">העלה תמונה, סרטון, PDF או קובץ HTML לבדיקת ליקויים</div>
+      <div style="font-size:11px;color:#666;margin-bottom:4px;">🖼️ תמונות: JPG · PNG · GIF · WebP</div>
+      <div style="font-size:11px;color:#666;margin-bottom:4px;">🎬 סרטונים: MP4 · MOV · WebM · AVI · M4V — עד 8 פריימים לניתוח</div>
+      <div style="font-size:11px;color:#666;margin-bottom:16px;">📄 PDF — ניתוח ישיר של תוכן הדוח · 🌐 HTML — ניתוח תוכן הדף</div>
+      <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;">
+        <label style="display:inline-flex;align-items:center;gap:8px;background:rgba(59,130,246,0.2);border:1.5px solid rgba(59,130,246,0.5);color:#93c5fd;padding:10px 20px;border-radius:12px;cursor:pointer;font-size:13px;font-weight:700;font-family:Heebo,sans-serif;">
+          📁 בחר קובץ<input type="file" id="snag-file-input" accept="image/*,video/mp4,video/quicktime,video/webm,video/avi,video/x-m4v,.pdf,.html,.htm" multiple style="display:none;" onchange="snagHandleFile(this)"> 
+        </label>
+        <label style="display:inline-flex;align-items:center;gap:8px;background:rgba(139,92,246,0.15);border:1.5px solid rgba(139,92,246,0.4);color:#c4b5fd;padding:10px 20px;border-radius:12px;cursor:pointer;font-size:13px;font-weight:700;font-family:Heebo,sans-serif;">
+          📸 צלם עכשיו<input type="file" id="snag-camera-input" accept="image/*" capture="environment" style="display:none;" onchange="snagHandleFile(this)"> 
+        </label>
+        <button onclick="snagUseShared()" id="snag-use-shared-btn" style="display:none;background:rgba(34,197,94,0.15);border:1.5px solid rgba(34,197,94,0.4);color:#86efac;padding:10px 20px;border-radius:12px;cursor:pointer;font-size:13px;font-weight:700;font-family:Heebo,sans-serif;">
+          ♻️ השתמש בקבצים טעונים
+        </button>
+      </div>
+      <div id="snag-shared-status" style="margin-top:10px;"></div>
     </div>
 
     <!-- Snag scan button -->
@@ -5239,7 +5239,7 @@ function safetyRenderReport(findings, metadata) {
   results.innerHTML = '';
   var safetyWrap = document.createElement('div');
   safetyWrap.className = 'safety-single-result-wrap';
-  safetyWrap.style.cssText = 'border:1.5px solid rgba(255,255,255,0.08);border-radius:16px;overflow:hidden;';
+  safetyWrap.style.cssText = 'border:1.5px solid rgba(255,255,255,0.08);border-radius:16px;';
 
   var safetyHdr = document.createElement('div');
   safetyHdr.style.cssText = 'background:#242438;padding:10px 14px;display:flex;align-items:center;gap:10px;border-bottom:1px solid rgba(255,255,255,0.06);';
@@ -5311,7 +5311,8 @@ function safetyExportWhatsApp() {
   msg += '━━━━━━━━━━━━━━━━━━━━\n';
   msg += (crits ? '🔴 קריטי: ' + crits + '  ' : '') + (mods ? '🟡 בינוני: ' + mods : '');
 
-  window.open('https://wa.me/?text=' + encodeURIComponent(msg), '_blank');
+  var waUrl = 'https://wa.me/?text=' + encodeURIComponent(msg);
+  var a = document.createElement('a'); a.href = waUrl; a.target = '_blank'; a.rel = 'noopener'; document.body.appendChild(a); a.click(); document.body.removeChild(a);
 }
 
 // ── SAVE TO SUPABASE ──────────────────────────────────────────────────
@@ -5890,7 +5891,7 @@ function snagRenderReport(findings, allCats, customCats, metadata) {
   results.innerHTML = '';
   var snagWrap = document.createElement('div');
   snagWrap.className = 'snag-single-result-wrap';
-  snagWrap.style.cssText = 'border:1.5px solid rgba(255,255,255,0.08);border-radius:16px;overflow:hidden;';
+  snagWrap.style.cssText = 'border:1.5px solid rgba(255,255,255,0.08);border-radius:16px;';
 
   // Card header with checkbox + thumbnail
   var snagHdr = document.createElement('div');
@@ -5972,7 +5973,7 @@ function snagExportWhatsApp() {
     });
   }
 
-  window.open('https://wa.me/?text=' + encodeURIComponent(msg), '_blank');
+  var a=document.createElement('a');a.href='https://wa.me/?text='+encodeURIComponent(msg);a.target='_blank';a.rel='noopener';document.body.appendChild(a);a.click();document.body.removeChild(a);
 }
 
 // ── Save to Supabase ───────────────────────────────────────────────────
@@ -7012,10 +7013,20 @@ function snagPrintReport() {
   html += '<div class="meta" style="margin-top:20px;border-top:1px solid #ddd;padding-top:10px;">הופק ע"י מערכת Beni Work Journal</div>';
   html += '</body></html>';
 
-  var w = window.open('', '_blank');
-  w.document.write(html);
-  w.document.close();
-  setTimeout(function(){ w.print(); }, 500);
+  var printDiv = document.getElementById('_print_overlay_');
+  if (!printDiv) { printDiv = document.createElement('div'); printDiv.id = '_print_overlay_'; document.body.appendChild(printDiv); }
+  printDiv.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:#fff;z-index:99999;overflow:auto;';
+  printDiv.innerHTML = html;
+  var closeBtn = document.createElement('button');
+  closeBtn.textContent = '✕ סגור';
+  closeBtn.style.cssText = 'position:fixed;top:12px;right:12px;background:#1a3d5c;color:#fff;border:none;padding:8px 18px;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;z-index:100000;font-family:Heebo,sans-serif;';
+  closeBtn.onclick = function(){ printDiv.style.display='none'; };
+  printDiv.insertBefore(closeBtn, printDiv.firstChild);
+  var printBtn = document.createElement('button');
+  printBtn.textContent = '🖨️ הדפס';
+  printBtn.style.cssText = 'position:fixed;top:12px;left:12px;background:#2d6a9f;color:#fff;border:none;padding:8px 18px;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;z-index:100000;font-family:Heebo,sans-serif;';
+  printBtn.onclick = function(){ window.print(); };
+  printDiv.insertBefore(printBtn, printDiv.firstChild);
 }
 
 // ── Safety Print ────────────────────────────────────────────────────
@@ -7084,10 +7095,21 @@ function safetyPrintReport() {
   });
 
   html += '</body></html>';
-  var w = window.open('', '_blank');
-  w.document.write(html);
-  w.document.close();
-  setTimeout(function(){ w.print(); }, 500);
+  // Use overlay div for print (avoids popup blocker on mobile)
+  var printDiv = document.getElementById('_print_overlay_');
+  if (!printDiv) { printDiv = document.createElement('div'); printDiv.id = '_print_overlay_'; document.body.appendChild(printDiv); }
+  printDiv.innerHTML = html;
+  printDiv.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:#fff;z-index:99999;overflow:auto;';
+  var closeBtn = document.createElement('button');
+  closeBtn.textContent = '✕ סגור';
+  closeBtn.style.cssText = 'position:fixed;top:12px;right:12px;background:#1a3d5c;color:#fff;border:none;padding:8px 18px;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;z-index:100000;font-family:Heebo,sans-serif;';
+  closeBtn.onclick = function(){ printDiv.style.display='none'; };
+  printDiv.insertBefore(closeBtn, printDiv.firstChild);
+  var printBtn = document.createElement('button');
+  printBtn.textContent = '🖨️ הדפס';
+  printBtn.style.cssText = 'position:fixed;top:12px;left:12px;background:#2d6a9f;color:#fff;border:none;padding:8px 18px;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;z-index:100000;font-family:Heebo,sans-serif;';
+  printBtn.onclick = function(){ window.print(); };
+  printDiv.insertBefore(printBtn, printDiv.firstChild);
 }
 
 // ── Email helpers ────────────────────────────────────────────────────
@@ -10389,7 +10411,7 @@ function weeklyWhatsApp() {
   msg += '📞 שיחות: ' + calls.length + '  ✅ משימות: ' + tasks.length + '  📐 מדידות: ' + takeoffs.length + '\n';
   msg += '💸 שולם: ₪' + totalPaid.toLocaleString('he-IL',{maximumFractionDigits:0}) + '  🎙️ הקלטות: ' + memos.length + '  🔍 ביקורות: ' + inspections.length;
 
-  window.open('https://wa.me/?text=' + encodeURIComponent(msg), '_blank');
+  var a=document.createElement('a');a.href='https://wa.me/?text='+encodeURIComponent(msg);a.target='_blank';a.rel='noopener';document.body.appendChild(a);a.click();document.body.removeChild(a);
 }
 
 async function weeklySaveAsReport() {
