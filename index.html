@@ -2531,6 +2531,437 @@ async function loadAnnexList() {
 
 var _annexStorageBase = SB_URL + '/storage/v1/object/public/app-assets/annexes/';
 var ANNEX_CONFIRM_URL = 'https://avshi2-maker.github.io/site-pulse/annex-confirm.html';
+async function renderAnnexWidget() {
+  await loadAnnexList(); // ensure loaded from Supabase
+  var container = document.getElementById('annexes-widget-inner');
+  if (!container) return;
+
+  var html = [
+    // Send section
+    '<div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:14px;">',
+      '<div style="font-size:12px;font-weight:800;color:var(--text2);margin-bottom:12px;">📤 שלח נספחים לקבלן</div>',
+      // Contractor + Project selects
+      '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;">',
+        '<div style="flex:1;min-width:140px;">',
+          '<div style="font-size:11px;color:var(--text3);margin-bottom:4px;">קבלן *</div>',
+          '<select id="annex-contractor-sel" style="width:100%;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-family:Heebo,sans-serif;font-size:13px;background:var(--surface);color:var(--text);">',
+            '<option value="">בחר קבלן...</option>',
+          '</select>',
+        '</div>',
+        '<div style="flex:1;min-width:120px;">',
+          '<div style="font-size:11px;color:var(--text3);margin-bottom:4px;">פרויקט</div>',
+          '<select id="annex-project-sel" style="width:100%;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-family:Heebo,sans-serif;font-size:13px;background:var(--surface);color:var(--text);">',
+            '<option value="">בחר פרויקט...</option>',
+          '</select>',
+        '</div>',
+      '</div>',
+      // Annex checkboxes
+      '<div style="font-size:11px;font-weight:800;color:var(--text2);margin-bottom:8px;">בחר נספחים לשליחה:</div>',
+      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-bottom:12px;" id="annex-checkboxes">',
+  ].join('');
+
+  ANNEX_LIST.forEach(function(a) {
+    var pdfUrl = _annexStorageBase + 'annex_' + a.num + '.pdf';
+    html +=
+      '<div style="display:flex;align-items:center;gap:4px;padding:4px 6px;border-radius:6px;background:var(--surface);border:1px solid var(--border);">' +
+        '<label style="display:flex;align-items:center;gap:6px;cursor:pointer;flex:1;min-width:0;">' +
+          '<input type="checkbox" class="annex-cb" value="' + a.num + '" style="width:14px;height:14px;cursor:pointer;flex-shrink:0;">' +
+          '<span style="font-size:11px;font-weight:600;color:var(--text2);">' + a.num + '. ' + a.title + '</span>' +
+        '</label>' +
+        '<a href="' + pdfUrl + '" target="_blank" rel="noopener" ' +
+           'style="flex-shrink:0;padding:3px 7px;background:#1a3d5c;color:white;border-radius:5px;font-size:10px;font-weight:700;text-decoration:none;white-space:nowrap;" ' +
+           'title="צפה ב-PDF">👁️ צפה</a>' +
+      '</div>';
+  });
+
+  html += [
+      '</div>',
+      // Select all + Send button
+      '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">',
+        '<label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text3);cursor:pointer;">',
+          '<input type="checkbox" id="annex-select-all" onchange="toggleAllAnnexes(this.checked)" style="width:13px;height:13px;">',
+          'בחר הכל',
+        '</label>',
+        '<div style="flex:1;"></div>',
+        '<button onclick="sendAnnexes()" style="padding:9px 16px;background:linear-gradient(135deg,#15803d,#16a34a);color:white;border:none;border-radius:8px;font-family:Heebo,sans-serif;font-size:13px;font-weight:800;cursor:pointer;">',
+          '💬 שלח נספחים בוואטסאפ',
+        '</button>',
+      '</div>',
+    '</div>',
+    // Sent history
+    '<div id="annexes-history"><div style="text-align:center;padding:16px;color:var(--text3);font-size:13px;">טוען היסטוריה...</div></div>',
+  ].join('');
+
+  container.innerHTML = html;
+
+  // Fill selects
+  var cSel = document.getElementById('annex-contractor-sel');
+  var pSel = document.getElementById('annex-project-sel');
+  (allContractors || []).filter(function(c){ return c.is_active; }).forEach(function(c) {
+    var opt = document.createElement('option');
+    opt.value = c.id; opt.dataset.name = c.company_name;
+    opt.dataset.mobile = c.mobile || '';
+    opt.textContent = c.company_name;
+    cSel.appendChild(opt);
+  });
+  (allProjects || []).forEach(function(p) {
+    var opt = document.createElement('option');
+    opt.value = p.id; opt.dataset.name = p.project_name;
+    opt.textContent = p.project_name;
+    pSel.appendChild(opt);
+  });
+
+  loadAnnexHistory();
+}
+
+function _spFillSelects(){const cSel=document.getElementById('sp-contractor-sel');if(cSel&&allContractors.length){cSel.innerHTML='<option value="">בחר קבלן...</option>'+(allContractors||[]).filter(c=>c.is_active).map(c=>`<option value="${c.id}">${esc(c.company_name)}</option>`).join('');}const pSel=document.getElementById('sp-project-sel');if(pSel&&allProjects.length){pSel.innerHTML='<option value="">כל הפרויקטים</option>'+(allProjects||[]).map(p=>`<option value="${p.id}">${esc(p.project_name)}</option>`).join('');}}
+
+// ── BENI WIDGET HELPERS ────────────────────────────────────
+async function _spPlug(id,a,b){const card=document.getElementById('spr-'+id);if(card)card.style.opacity='0.4';try{await fetch(SB_URL+'/rest/v1/site_reports?id=eq.'+id,{method:'PATCH',headers:{apikey:SB_KEY,Authorization:'Bearer '+SB_KEY,'Content-Type':'application/json',Prefer:'return=minimal'},body:JSON.stringify({status:'approved',plugged_in:true,plugged_in_at:new Date().toISOString()})});setTimeout(loadSiteReports,800);}catch(e){console.error(e);if(card)card.style.opacity='1';}}
+async function _spDelete(id){if(!confirm('מחוק דוח זה?'))return;try{await fetch(SB_URL+'/rest/v1/site_reports?id=eq.'+id,{method:'PATCH',headers:{apikey:SB_KEY,Authorization:'Bearer '+SB_KEY,'Content-Type':'application/json',Prefer:'return=minimal'},body:JSON.stringify({status:'deleted'})});setTimeout(loadSiteReports,500);}catch(e){console.error(e);}}
+
+
+// ── ADDITIONAL HELPERS ─────────────────────────────────────
+
+function addContractorRow(data={}){const tbody=document.getElementById('contractorsBody');const emptyRow=tbody.querySelector('.contractors-empty');if(emptyRow)emptyRow.closest('tr').remove();const tr=document.createElement('tr');tr.innerHTML='<td><input type="text" placeholder="שם חברה / קבלן" class="contr-company" value="'+(data.company_name||'')+'"></td><td><input type="text" placeholder="שם איש קשר" class="contr-contact" value="'+(data.contact_name||'')+'"></td><td><input type="tel" placeholder="05X-XXXXXXX" class="contr-mobile" value="'+(data.mobile||'')+'" style="min-width:120px"></td><td><input type="tel" placeholder="0X-XXXXXXX" class="contr-office" value="'+(data.office_tel||'')+'" style="min-width:110px"></td><td><select class="contr-occupation">'+OCCUPATION_OPTIONS.map(o=>'<option value="'+o+'" '+(o===data.main_occupation?'selected':'')+'>'+( o||'— בחר עיסוק —')+'</option>').join('')+'</select></td><td><input type="text" placeholder="מה הוא עושה בפרוייקט זה?" class="contr-activity" value="'+(data.project_activity||'')+'" style="min-width:160px"></td><td class="td-actions"><button type="button" class="btn-remove-contractor" onclick="removeContractorRow(this)" title="הסר">×</button></td>';tbody.appendChild(tr);}
+function removeContractorRow(btn){const tbody=document.getElementById('contractorsBody');btn.closest('tr').remove();if(tbody.rows.length===0){const tr=document.createElement('tr');tr.innerHTML='<td colspan="7" class="contractors-empty">לחץ ״➕ הוסף קבלן״</td>';tbody.appendChild(tr);}}
+
+function addEquipmentFromList(){const sel=document.getElementById('equipmentQuickSelect');if(!sel)return;const val=sel.value;if(!val){showToast('בחר ציוד מהרשימה תחילה', 'error'); return;}if(val==='__other__'){addEquipmentRow('');sel.value='';return;}addEquipmentRow(val);sel.value='';}
+
+function addMaterialFromList(){const sel=document.getElementById('materialQuickSelect');if(!sel)return;const val=sel.value;if(!val){showToast('בחר חומר מהרשימה תחילה', 'error'); return;}if(val==='__other__'){addMaterialRow('');sel.value='';return;}addMaterialRow(val);sel.value='';}
+
+function addTomorrowRow(){
+  const container=document.getElementById('tomorrowExtraRows');
+  if(!container)return;
+  const row=document.createElement('div');
+  row.className='tomorrow-row';
+  const delBtn=document.createElement('button');
+  delBtn.type='button';delBtn.textContent='×';
+  delBtn.style.cssText='background:#e74c3c;color:#fff;border:none;border-radius:50%;width:28px;height:28px;cursor:pointer;font-size:14px;flex-shrink:0;';
+  delBtn.onclick=function(){this.closest('.tomorrow-row').remove();};
+  row.innerHTML='<input type="text" placeholder="כותרת פריט" class="tomorrow-label" style="min-width:140px;border:2px solid #667eea;border-radius:8px;padding:8px;font-size:13px;font-weight:700;color:#1a3d5c;background:#fff"><input type="text" class="tomorrow-detail" placeholder="פרטים...">';
+  row.appendChild(delBtn);
+  container.appendChild(row);
+  row.scrollIntoView({behavior:'smooth',block:'nearest'});
+}
+
+function closeLightbox() {
+  var lb = document.getElementById('photo-lightbox');
+  if (lb) lb.style.display = 'none';
+}
+
+async function galleryUpload(input) {
+  var files = Array.from(input.files || []);
+  if (!files.length || !_galleryProjectId) return;
+  var statusEl = document.getElementById('gallery-upload-status');
+  if (statusEl) statusEl.textContent = 'Uploading...';
+
+  var uploaded = 0;
+  for (var i = 0; i < files.length; i++) {
+    try {
+      var f    = files[i];
+      var ext  = f.name.split('.').pop() || 'jpg';
+      var path = 'projects/' + _galleryProjectId + '/' + Date.now() + '_' + i + '.' + ext;
+      var { error } = await sb.storage.from('photos').upload(path, f, { upsert: false });
+      if (!error) uploaded++;
+    } catch(e) { console.error('upload:', e); }
+  }
+
+  input.value = '';
+  if (statusEl) statusEl.textContent = uploaded + ' uploaded ✅';
+  setTimeout(function() { if (statusEl) statusEl.textContent = ''; }, 3000);
+  await galleryLoad(); // Refresh
+}
+
+async function openPhotoGallery(projectId, projectName) {
+  _galleryProjectId   = projectId;
+  _galleryProjectName = projectName;
+  _galleryPhotos      = [];
+
+  document.getElementById('gallery-modal-title').textContent = '📸 ' + projectName;
+  document.getElementById('gallery-grid').innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:30px;color:var(--text3);">Loading photos...</div>';
+  document.getElementById('modal-gallery').style.display = 'flex';
+
+  await galleryLoad();
+}
+
+async function galleryLoad() {
+  if (!_galleryProjectId) return;
+  _galleryPhotos = [];
+
+  try {
+    // ── 1. Photos from Supabase Storage (manually uploaded via gallery modal) ──
+    const { data: storageFiles } = await sb.storage.from('photos')
+      .list('projects/' + _galleryProjectId, { limit: 100 });
+    (storageFiles || []).forEach(function(f) {
+      if (!f.name || f.name === '.emptyFolderPlaceholder') return;
+      _galleryPhotos.push({
+        url:     SB_URL + '/storage/v1/object/public/photos/projects/' + _galleryProjectId + '/' + f.name,
+        source:  'manual',
+        caption: f.name,
+        date:    f.created_at ? f.created_at.split('T')[0] : '',
+        type:    'image'
+      });
+    });
+
+    // ── 2. Videos + photos from beni_notes (Beni Pocket field media) ──────────
+    const { data: notes } = await sbQ('beni_notes',
+      'select=id,note_text,photo_url,color,created_at&project_id=eq.' + _galleryProjectId
+      + '&photo_url=not.is.null&order=created_at.desc&limit=50');
+    (notes || []).forEach(function(n) {
+      if (!n.photo_url) return;
+      var url      = n.photo_url.startsWith('http') ? n.photo_url
+                   : SB_URL + '/storage/v1/object/public/photos/' + n.photo_url;
+      var isVideo  = url.includes('drive.google.com') || /\.(mp4|mov|webm|avi|m4v)/i.test(url);
+      var caption  = (n.note_text || '').replace(/\n.*$/,'').substring(0, 80);
+      _galleryPhotos.push({
+        url:     url,
+        source:  isVideo ? 'video' : 'manual',
+        caption: caption,
+        date:    n.created_at ? n.created_at.split('T')[0] : '',
+        type:    isVideo ? 'video' : 'image',
+        noteId:  n.id
+      });
+    });
+
+    // ── 3. Photos from approved site_pulse reports ───────────────────────────
+    const { data: reports } = await sbQ('site_reports',
+      'select=id,photos,submitted_at&project_id=eq.' + _galleryProjectId + '&status=eq.approved');
+    (reports || []).forEach(function(r) {
+      var photos = [];
+      try { photos = typeof r.photos === 'string' ? JSON.parse(r.photos) : (r.photos || []); } catch(e){}
+      photos.forEach(function(path) {
+        if (!path) return;
+        _galleryPhotos.push({
+          url:    SB_URL + '/storage/v1/object/public/photos/' + path,
+          source: 'site_pulse',
+          caption:'Site Pulse',
+          date:   r.submitted_at ? r.submitted_at.split('T')[0] : '',
+          type:   'image'
+        });
+      });
+    });
+
+  } catch(e) { console.error('galleryLoad:', e); }
+
+  renderGallery();
+}
+
+function renderGallery() {
+  var grid    = document.getElementById('gallery-grid');
+  var filter  = document.getElementById('gallery-filter-source')?.value || 'all';
+  var countEl = document.getElementById('gallery-count');
+
+  var filtered = filter === 'all' ? _galleryPhotos :
+    _galleryPhotos.filter(function(p){ return p.source === filter; });
+
+  if (countEl) {
+    var vids = filtered.filter(function(p){ return p.type==='video'; }).length;
+    var imgs = filtered.length - vids;
+    countEl.textContent = imgs + ' photo' + (imgs!==1?'s':'') + (vids?' · '+vids+' video'+(vids!==1?'s':''):'');
+  }
+
+  if (!filtered.length) {
+    grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--text3);">' +
+      '<div style="font-size:40px;margin-bottom:10px;">📷</div>' +
+      '<div>No photos yet for this project</div>' +
+      '<div style="font-size:12px;margin-top:6px;">Upload photos above or approve Site Pulse reports with photos</div>' +
+      '</div>';
+    return;
+  }
+
+  grid.innerHTML = '';
+  filtered.forEach(function(ph, i) {
+    var div = document.createElement('div');
+    div.style.cssText = 'position:relative;aspect-ratio:1;border-radius:8px;overflow:hidden;border:1px solid var(--border);cursor:pointer;background:#000;';
+
+    if (ph.type === 'video') {
+      // ── Video tile ──────────────────────────────────────────────
+      var overlay = document.createElement('div');
+      overlay.style.cssText = 'position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background:linear-gradient(135deg,#1a1a2e,#242438);';
+      overlay.innerHTML = '<div style="font-size:36px;">🎬</div>'
+        + '<div style="font-size:10px;color:#c4b5fd;font-weight:700;margin-top:4px;">סרטון</div>';
+      div.appendChild(overlay);
+      div.addEventListener('click', function(){ window.open(ph.url, '_blank'); });
+    } else {
+      // ── Image tile ──────────────────────────────────────────────
+      var img = document.createElement('img');
+      img.src = ph.url;
+      img.style.cssText = 'width:100%;height:100%;object-fit:cover;transition:transform 0.2s;';
+      img.onerror = function() { this.style.display='none'; this.parentElement.style.background='#f0f0f0'; this.parentElement.innerHTML='<div style="display:flex;align-items:center;justify-content:center;height:100%;font-size:32px;">📷</div>'; };
+      img.addEventListener('mouseenter', function(){ this.style.transform='scale(1.05)'; });
+      img.addEventListener('mouseleave', function(){ this.style.transform='scale(1)'; });
+      div.appendChild(img);
+      div.addEventListener('click', function(){ openLightbox(ph.url, ph.caption); });
+    }
+
+    // Source badge
+    var badge = document.createElement('div');
+    badge.style.cssText = 'position:absolute;top:4px;right:4px;background:rgba(0,0,0,0.65);color:white;font-size:9px;padding:2px 5px;border-radius:4px;';
+    badge.textContent = ph.type==='video' ? '🎬' : ph.source==='site_pulse' ? '🏗️' : '📤';
+    div.appendChild(badge);
+
+    // Date caption
+    if (ph.date) {
+      var cap = document.createElement('div');
+      cap.style.cssText = 'position:absolute;bottom:0;left:0;right:0;background:linear-gradient(transparent,rgba(0,0,0,0.7));color:white;font-size:10px;padding:12px 4px 4px;text-align:center;';
+      cap.textContent = new Date(ph.date+'T12:00:00').toLocaleDateString('he-IL',{day:'2-digit',month:'2-digit'});
+      div.appendChild(cap);
+    }
+
+    grid.appendChild(div);
+  });
+}
+
+async function sendAnnexes() {
+  var cSel = document.getElementById('annex-contractor-sel');
+  var pSel = document.getElementById('annex-project-sel');
+  var cId   = cSel ? cSel.value : '';
+  var cName = cSel && cSel.selectedOptions[0] ? cSel.selectedOptions[0].dataset.name : '';
+  var cMob  = cSel && cSel.selectedOptions[0] ? cSel.selectedOptions[0].dataset.mobile : '';
+  var pId   = pSel ? pSel.value : '';
+  var pName = pSel && pSel.selectedOptions[0] ? pSel.selectedOptions[0].dataset.name : '';
+
+  if (!cId) { showToast('בחר קבלן תחילה', 'error'); return; }
+
+  var selected = Array.from(document.querySelectorAll('.annex-cb:checked')).map(function(cb){ return cb.value; });
+  if (!selected.length) { showToast('בחר לפחות נספח אחד', 'error'); return; }
+
+  try {
+    // INSERT into contractor_annexes_sent → get confirm_token
+    var res = await fetch(SB_URL + '/rest/v1/contractor_annexes_sent', {
+      method: 'POST',
+      headers: { apikey: SB_KEY, Authorization: 'Bearer ' + SB_KEY,
+                 'Content-Type': 'application/json', Prefer: 'return=representation' },
+      body: JSON.stringify({
+        contractor_id:   cId || null,
+        contractor_name: cName,
+        project_id:      pId  || null,
+        project_name:    pName || null,
+        annexes_sent:    selected,
+        sent_by:         'Beni Persky',
+        status:          'pending'
+      })
+    });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    var rows = await res.json();
+    var token = rows[0] && rows[0].confirm_token;
+    if (!token) throw new Error('No token returned');
+
+    var confirmUrl = ANNEX_CONFIRM_URL + '?token=' + token;
+    var NL = '\n';
+    var phone = cMob ? '972' + cMob.replace(/[^0-9]/g,'').replace(/^0/,'') : '';
+
+    // Build WA message with links to each PDF + confirmation link
+    var annexLines = selected.map(function(num, i) {
+      var meta = ANNEX_LIST.find(function(a){ return a.num === num; });
+      var title = meta ? meta.title : 'נספח ' + num;
+      return (i+1) + '. נספח ' + num + ' — ' + title + NL +
+             '   📄 ' + _annexStorageBase + 'annex_' + num + '.pdf';
+    }).join(NL);
+
+    var msg = 'שלום ' + cName + ',' + NL + NL +
+              ((APP.config&&APP.config.orderer_short)||'בני פרסקי') + ' שולח לך את נספחי הבטיחות הבאים לחוזה:' + NL +
+              (pName ? 'פרויקט: ' + pName : '') + NL + NL +
+              annexLines + NL + NL +
+              '✅ לאישור קבלת הנספחים — לחץ כאן:' + NL +
+              confirmUrl + NL + NL +
+              'תודה — '+((APP.config&&APP.config.orderer_short)||'בני פרסקי')+' 🏗️';
+
+    var waUrl = (phone ? 'https://wa.me/' + phone : 'https://wa.me/') + '?text=' + encodeURIComponent(msg);
+    var _a = document.createElement('a');
+    _a.href = waUrl; _a.target = '_blank'; _a.rel = 'noopener';
+    document.body.appendChild(_a); _a.click(); document.body.removeChild(_a);
+
+    showToast('נספחים נשלחו בוואטסאפ', 'success');
+    loadAnnexHistory();
+
+  } catch(e) {
+    showToast('שגיאה: ' + e.message, 'error');
+    console.error('sendAnnexes:', e);
+  }
+}
+
+async function spApprove(reportId) {
+  var r = _spReportCache[reportId] || {};
+  var contractorName = r.contractor_name || '';
+  var projectName    = r.project_name   || '';
+  var reportDate     = r.report_date    || new Date().toISOString().slice(0,10);
+  var activities     = r.activities     || '';
+  var workers = [];
+  try { workers = typeof r.workers==='string' ? JSON.parse(r.workers) : (r.workers||[]); } catch(e2){}
+  var totalWorkers = workers.reduce(function(s,w){ return s+(parseInt(w.count)||1); }, 0);
+  var photos = [];
+  try { photos = typeof r.photos==='string' ? JSON.parse(r.photos) : (r.photos||[]); } catch(e3){}
+  var projectId    = r.project_id   || null;
+  var contractorId = r.contractor_id|| null;
+  var contractor   = (allContractors||[]).find(function(c){ return c.id===contractorId; });
+  var mobile       = contractor ? (contractor.mobile||'') : '';
+  try {
+    // 1. Mark approved in Supabase (only use columns that exist in site_reports)
+    await fetch(SB_URL + '/rest/v1/site_reports?id=eq.' + reportId, {
+      method: 'PATCH',
+      headers: { apikey: SB_KEY, Authorization: 'Bearer ' + SB_KEY,
+                 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+      body: JSON.stringify({ status: 'approved' })
+    });
+    // 2. Auto-create daily journal entry (use only base columns)
+    try {
+      await fetch(SB_URL + '/rest/v1/reports', {
+        method: 'POST',
+        headers: { apikey: SB_KEY, Authorization: 'Bearer ' + SB_KEY,
+                   'Content-Type': 'application/json', Prefer: 'return=minimal' },
+        body: JSON.stringify({
+          project_name: projectName || 'Site Pulse Report',
+          report_date:  reportDate,
+          manager_name: contractorName,
+          general_notes: activities,
+          status:       'approved'
+        })
+      });
+    } catch(e4) { console.error('Journal entry non-critical:', e4.message); }
+    // 3. Photos appear in gallery automatically (galleryLoad reads approved site_reports)
+    // 4. Send WhatsApp confirmation to contractor
+    if (mobile) {
+      var NL    = '\n';
+      var phone = '972' + mobile.replace(/[^0-9]/g,'').replace(/^0/,'');
+      var dHe   = new Date(reportDate+'T12:00:00').toLocaleDateString('he-IL',{day:'2-digit',month:'2-digit',year:'numeric'});
+      var waMsg = 'Beni Persky approved your report' + NL +
+                  (projectName ? 'Project: '+projectName+NL : '') +
+                  'Date: '+dHe+NL +
+                  (totalWorkers>0 ? 'Workers: '+totalWorkers+NL : '') +
+                  NL + 'Report received and approved. Thank you!';
+      var waUrl = 'https://wa.me/'+phone+'?text='+encodeURIComponent(waMsg);
+      var _a=document.createElement('a'); _a.href=waUrl; _a.target='_blank'; _a.rel='noopener';
+      document.body.appendChild(_a); _a.click(); document.body.removeChild(_a);
+    }
+    var card = document.getElementById('spr-'+reportId);
+    if (card) { card.style.transition='all 0.4s'; card.style.opacity='0'; card.style.maxHeight='0'; }
+    setTimeout(function(){ loadSiteReports(); }, 500);
+    showToast('Report approved — WA sent to contractor', 'success');
+  } catch(e) { showToast('Error: '+e.message, 'error'); console.error('spApprove:',e); }
+}
+
+function spReject(reportId) {
+  var r = _spReportCache[reportId] || {};
+  document.getElementById('sp-reject-id').value = reportId;
+  document.getElementById('sp-reject-contractor-label').textContent =
+    (r.contractor_name || 'Unknown') + (r.project_name ? ' | ' + r.project_name : '');
+  document.getElementById('sp-reject-report-label').textContent =
+    'Date: ' + (r.report_date || '') + (r.submitted_by ? ' | by: '+r.submitted_by : '');
+  document.getElementById('sp-reject-reason').value = '';
+  document.getElementById('modal-sp-reject').style.display = 'flex';
+}
+
+function switchGcalView(view){['agenda','week','month'].forEach(v=>{const div=document.getElementById('gcal-'+v);if(div)div.style.display=v===view?'block':'none';const btn=document.querySelector('.gcal-view-btn[data-view="'+v+'"]');if(btn){btn.style.background=v===view?'rgba(154,111,0,0.3)':'rgba(255,255,255,0.07)';btn.style.borderColor=v===view?'#9a6f00':'rgba(255,255,255,0.15)';btn.style.color=v===view?'#f59e0b':'#ccc';}});const iframe=document.getElementById('iframe-'+view);if(iframe&&iframe.dataset.src&&iframe.src==='about:blank'){iframe.src=iframe.dataset.src;}}
+
+function syncProjectNameToSelect(){}
+function getJournalProjectName(){const sel=document.getElementById('projectName');if(!sel)return'';if(sel.value==='__custom__'){return(document.getElementById('projectNameCustom')?.value||'').trim();}return sel.value||'';}
+
+function toggleAllAnnexes(checked) {
+  document.querySelectorAll('.annex-cb').forEach(function(cb){ cb.checked = checked; });
+}
+
 
 async function loadAnnexHistory() {
   var list = document.getElementById('annexes-history');
