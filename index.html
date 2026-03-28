@@ -323,8 +323,7 @@ tbody tr:last-child td{border-bottom:none;}
   .page{padding:14px;}
   .form-grid{grid-template-columns:1fr;}
 }
-
-
+@media print{body>*{display:none!important;}#_print_overlay_{display:block!important;position:static!important;overflow:visible!important;height:auto!important;}}
 </style><!-- loaded from Supabase Storage by bootstrap() -->
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📋</text></svg>">
 <script>
@@ -5951,8 +5950,8 @@ function snagExportWhatsApp() {
   if (projName && projName !== '📁 כל הפרויקטים') msg += '📁 ' + projName.replace('📁 ','').trim() + '\n';
   msg += '━━━━━━━━━━━━━━━━━━━━\n\n';
   // Note about photo — WA text-only, remind user to attach manually
-  if (_safetyFrames && _safetyFrames.length && _safetyFrames[0]) {
-    msg += '📸 ' + (_safetyIsVideo ? 'פריים מסרטון' : 'תמונת האתר') + ' — צרף ידנית להודעה\n\n';
+  if (_snagFrames && _snagFrames.length && _snagFrames[0]) {
+    msg += '📸 תמונה מצורפת — שלח/י אותה ידנית עם ההודעה\n\n';
   }
 
   var sevOrder = { CRITICAL:3, MODERATE:2, MINOR:1, NONE:0 };
@@ -6103,6 +6102,25 @@ async function capOpenModal() {
   _capProjectName = projSel?.selectedOptions[0]?.textContent?.replace('📁 ','').trim() || '';
   var projLabel = document.getElementById('cap-project-label');
   if (projLabel) projLabel.textContent = _capProjectName ? '📁 ' + _capProjectName : '';
+
+  // Show scanned photo in CAP header
+  var capPhotoDiv = document.getElementById('cap-photo-wrap');
+  if (!capPhotoDiv) {
+    capPhotoDiv = document.createElement('div');
+    capPhotoDiv.id = 'cap-photo-wrap';
+    capPhotoDiv.style.cssText = 'padding:12px 24px;background:#1a1a2e;border-bottom:1px solid rgba(255,255,255,0.06);';
+    var capItemsList = document.getElementById('cap-items-list');
+    if (capItemsList && capItemsList.parentNode) {
+      capItemsList.parentNode.insertBefore(capPhotoDiv, capItemsList);
+    }
+  }
+  if (_snagFrames && _snagFrames.length && _snagFrames[0]) {
+    capPhotoDiv.innerHTML = '<div style="font-size:11px;color:#666;margin-bottom:6px;">📸 תמונה שנסרקה:</div>'
+      + '<img src="data:image/jpeg;base64,' + _snagFrames[0] + '" style="max-width:100%;max-height:200px;object-fit:contain;border-radius:8px;border:1px solid rgba(255,255,255,0.1);">';
+    capPhotoDiv.style.display = 'block';
+  } else {
+    capPhotoDiv.style.display = 'none';
+  }
 
   // Build items from findings — only non-NONE
   var sevOrder = { CRITICAL:3, MODERATE:2, MINOR:1, NONE:0 };
@@ -6969,10 +6987,14 @@ function snagPrintReport() {
     var canvas = card.querySelector('.report-thumb-canvas');
     if (canvas && canvas.dataset.b64) snagPrintThumbs.push('data:image/jpeg;base64,' + canvas.dataset.b64);
   });
+  // Fallback: if no canvas thumbs found, use _snagFrames directly
+  if (!snagPrintThumbs.length && _snagFrames && _snagFrames.length && _snagFrames[0]) {
+    snagPrintThumbs.push('data:image/jpeg;base64,' + _snagFrames[0]);
+  }
   var snagManagerName = (APP.config && APP.config.manager_name) || 'בני פרסקי';
   var snagThumbsHtml = snagPrintThumbs.length
-    ? '<div style="display:flex;gap:8px;flex-wrap:wrap;margin:10px 0;">'
-      + snagPrintThumbs.map(function(src){ return '<img src="' + src + '" style="width:120px;height:90px;object-fit:cover;border-radius:6px;border:1px solid #ddd;">'; }).join('')
+    ? '<div style="margin:12px 0;"><div style="font-size:11px;color:#666;margin-bottom:6px;">📸 תמונה שנסרקה:</div>'
+      + snagPrintThumbs.map(function(src){ return '<img src="' + src + '" style="max-width:100%;width:480px;height:auto;object-fit:contain;border-radius:8px;border:1px solid #ddd;display:block;margin-bottom:6px;">'; }).join('')
       + '</div>'
     : '';
 
@@ -7118,20 +7140,42 @@ function snagEmailReport() {
   if (!findings) { showToast('אין דוח לשליחה', 'error'); return; }
   var projName = document.getElementById('snag-action-project')?.selectedOptions[0]?.textContent?.replace('📁 ','').trim() || 'אתר בנייה';
   var now      = new Date().toLocaleDateString('he-IL');
-  var body     = 'דוח ליקויים — ' + projName + ' — ' + now + '\n\n';
   var sevOrder = {CRITICAL:3,MODERATE:2,MINOR:1,NONE:0};
+  var lines    = ['דוח ליקויים — ' + projName + ' — ' + now, ''];
   SNAG_CATEGORIES.filter(function(c){ return findings[c.id] && (findings[c.id].severity||'NONE')!=='NONE'; })
     .sort(function(a,b){ return (sevOrder[(findings[b.id]||{}).severity]||0)-(sevOrder[(findings[a.id]||{}).severity]||0); })
     .forEach(function(cat) {
-      var f = findings[cat.id];
+      var f   = findings[cat.id];
       var sev = f.severity==='CRITICAL'?'קריטי':f.severity==='MODERATE'?'בינוני':'קל';
-      body += cat.name_he + ' [' + sev + ']\n';
-      (f.findings||[]).forEach(function(fi){ body += '  • ' + fi + '\n'; });
-      if (f.remedy) body += '  תיקון: ' + f.remedy + '\n';
-      body += '\n';
+      lines.push(cat.icon + ' ' + cat.name_he + ' [' + sev + ']');
+      (f.findings||[]).forEach(function(fi){ lines.push('  • ' + fi); });
+      if (f.remedy) lines.push('  תיקון: ' + f.remedy);
+      lines.push('');
     });
-  var subject = encodeURIComponent('דוח ליקויים — ' + projName + ' — ' + now);
-  window.location.href = 'mailto:?subject=' + subject + '&body=' + encodeURIComponent(body);
+  lines.push('הופק ע"י מערכת Beni Work Journal');
+  var bodyText = lines.join('\n');
+  // Show copy overlay — mailto breaks Hebrew in most clients
+  var ov = document.getElementById('_print_overlay_');
+  if (!ov) { ov = document.createElement('div'); ov.id = '_print_overlay_'; document.body.appendChild(ov); }
+  ov.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:#1a1a2e;z-index:99999;overflow:auto;padding:70px 20px 20px;box-sizing:border-box;direction:rtl;font-family:Heebo,sans-serif;';
+  ov.innerHTML = '<h2 style="color:#fff;font-size:18px;margin-bottom:12px;">📧 העתק לאימייל</h2>'
+    + '<p style="color:#888;font-size:12px;margin-bottom:12px;">לחץ "העתק" ← פתח אימייל ← הדבק</p>'
+    + '<textarea id="_email_ta_" dir="rtl" style="width:100%;height:60vh;background:#242438;color:#fff;border:1px solid rgba(255,255,255,0.15);border-radius:10px;padding:14px;font-family:Heebo,sans-serif;font-size:13px;direction:rtl;resize:none;">' + bodyText.replace(/</g,'&lt;') + '</textarea>';
+  var closeBtn = document.createElement('button');
+  closeBtn.textContent = '✕ סגור';
+  closeBtn.style.cssText = 'position:fixed;top:12px;right:12px;background:#1a3d5c;color:#fff;border:none;padding:8px 18px;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;z-index:100000;font-family:Heebo,sans-serif;';
+  closeBtn.onclick = function(){ ov.style.display='none'; };
+  var copyBtn = document.createElement('button');
+  copyBtn.textContent = '📋 העתק';
+  copyBtn.style.cssText = 'position:fixed;top:12px;left:12px;background:#22c55e;color:#fff;border:none;padding:8px 18px;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;z-index:100000;font-family:Heebo,sans-serif;';
+  copyBtn.onclick = function(){
+    var ta = document.getElementById('_email_ta_');
+    ta.select(); ta.setSelectionRange(0,99999);
+    try{ navigator.clipboard.writeText(ta.value).then(function(){ copyBtn.textContent='✅ הועתק!'; setTimeout(function(){ copyBtn.textContent='📋 העתק'; },2000); }); }
+    catch(e){ document.execCommand('copy'); copyBtn.textContent='✅ הועתק!'; setTimeout(function(){ copyBtn.textContent='📋 העתק'; },2000); }
+  };
+  ov.insertBefore(closeBtn, ov.firstChild);
+  ov.insertBefore(copyBtn, ov.firstChild);
 }
 
 function safetyEmailReport() {
