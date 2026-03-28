@@ -2178,7 +2178,66 @@ window.addEventListener('unhandledrejection', function(e) {
     <p class="legal-notice">⚖️ תיעוד משפטי מלא - תקנות התכנון והבניה 1992</p>
   </header>
   <main class="container">
-    <form id="reportForm">
+
+  <!-- ══ STEP 0: MORNING BRIEFING ══════════════════════════════════════ -->
+  <div id="morning-brief-panel" style="display:block;">
+
+    <!-- Project Hero -->
+    <div id="mb-hero" style="background:linear-gradient(135deg,#1a3d5c,#2d6a9f);border-radius:14px;padding:20px 22px 16px;margin-bottom:18px;">
+      <div style="font-size:11px;color:rgba(255,255,255,0.5);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">פרויקט פעיל</div>
+      <div id="mb-proj-name" style="font-size:22px;font-weight:900;color:#fff;margin-bottom:8px;">טוען...</div>
+      <div id="mb-proj-tags" style="display:flex;gap:8px;flex-wrap:wrap;"></div>
+    </div>
+
+    <!-- Today's Tasks -->
+    <div style="margin-bottom:18px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+        <div style="font-size:12px;font-weight:800;color:#1a3d5c;text-transform:uppercase;letter-spacing:.5px;">📋 משימות היום</div>
+        <div id="mb-tasks-count" style="font-size:11px;color:#888;"></div>
+      </div>
+      <div id="mb-tasks-list"><div style="text-align:center;padding:20px;color:#aaa;font-size:13px;">טוען...</div></div>
+    </div>
+
+    <!-- Drawings Browser -->
+    <div style="margin-bottom:18px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+        <div style="font-size:12px;font-weight:800;color:#1a3d5c;text-transform:uppercase;letter-spacing:.5px;">📐 תוכניות ומסמכים</div>
+        <label style="background:#1a3d5c;color:#fff;border:none;border-radius:8px;padding:5px 12px;font-size:11px;font-weight:700;cursor:pointer;">
+          ＋ העלה<input type="file" id="mb-file-upload" multiple accept=".pdf,.dwg,.jpg,.jpeg,.png" style="display:none;" onchange="mbUploadFiles(this)">
+        </label>
+      </div>
+      <div style="display:flex;gap:6px;margin-bottom:10px;" id="mb-draw-filters">
+        <button onclick="mbFilterDrawings('all')" class="mb-dflt active" style="padding:4px 12px;border-radius:20px;font-size:11px;font-weight:700;border:1px solid #1a3d5c;background:#1a3d5c;color:#fff;cursor:pointer;">הכל</button>
+        <button onclick="mbFilterDrawings('pdf')" class="mb-dflt" style="padding:4px 12px;border-radius:20px;font-size:11px;font-weight:700;border:1px solid #ddd;background:none;color:#888;cursor:pointer;">📄 PDF</button>
+        <button onclick="mbFilterDrawings('img')" class="mb-dflt" style="padding:4px 12px;border-radius:20px;font-size:11px;font-weight:700;border:1px solid #ddd;background:none;color:#888;cursor:pointer;">🖼️ תמונות</button>
+      </div>
+      <div id="mb-drawings-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(min(110px,100%),1fr));gap:8px;">
+        <div style="text-align:center;padding:20px;color:#aaa;font-size:12px;grid-column:1/-1;">טוען קבצים...</div>
+      </div>
+    </div>
+
+    <!-- Contractors Today -->
+    <div style="margin-bottom:22px;">
+      <div style="font-size:12px;font-weight:800;color:#1a3d5c;text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px;">👷 קבלנים באתר היום</div>
+      <div id="mb-contractors-list"></div>
+    </div>
+
+    <!-- CTA: Go to Field -->
+    <div style="background:#f5f0e8;border-radius:14px;padding:16px 20px;display:flex;align-items:center;gap:14px;border:1.5px solid #c9a84c;">
+      <div style="flex:1;">
+        <div style="font-size:14px;font-weight:800;color:#1a3d5c;margin-bottom:3px;">מוכן לצאת לשטח?</div>
+        <div style="font-size:11px;color:#888;">לחץ — סיכום היום ישלח לטלפון שלך אוטומטית</div>
+      </div>
+      <button onclick="mbSendToField()" style="background:linear-gradient(135deg,#c9a84c,#9a6f00);color:#fff;border:none;border-radius:12px;padding:12px 22px;font-size:14px;font-weight:900;cursor:pointer;white-space:nowrap;">🚀 צא לשטח</button>
+    </div>
+
+    <div style="margin-top:14px;text-align:center;">
+      <button onclick="mbSkipToForm()" style="background:none;border:none;color:#aaa;font-size:12px;cursor:pointer;text-decoration:underline;">→ דלג ועבור ישירות לטופס</button>
+    </div>
+  </div>
+  <!-- ══ END MORNING BRIEFING ═════════════════════════════════════════ -->
+
+    <form id="reportForm" style="display:none;" id="reportForm">
       <section class="section">
         <h2>📋 פרטי פרוייקט</h2>
         <div class="form-row">
