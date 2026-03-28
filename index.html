@@ -1670,10 +1670,10 @@ window.addEventListener('unhandledrejection', function(e) {
       <div style="font-size:11px;color:#666;margin-bottom:16px;">📄 PDF — ניתוח ישיר של תוכן הדוח · 🌐 HTML — ניתוח תוכן הדף</div>
       <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;">
         <label style="display:inline-flex;align-items:center;gap:8px;background:rgba(59,130,246,0.2);border:1.5px solid rgba(59,130,246,0.5);color:#93c5fd;padding:10px 20px;border-radius:12px;cursor:pointer;font-size:13px;font-weight:700;font-family:Heebo,sans-serif;">
-          📁 בחר קובץ<input type="file" id="snag-file-input" accept="image/*,video/mp4,video/quicktime,video/webm,video/avi,video/x-m4v,.pdf,.html,.htm" multiple style="display:none;" onchange="_loadSnagModule().then(function(){snagHandleFile(this);}.bind(null,this)).catch(function(e){console.error('snag module load error:',e);})"> 
+          📁 בחר קובץ<input type="file" id="snag-file-input" accept="image/*,video/mp4,video/quicktime,video/webm,video/avi,video/x-m4v,.pdf,.html,.htm" multiple style="display:none;" onchange="(function(inp){_loadSnagModule().then(function(){snagHandleFile(inp);}).catch(function(e){console.error('snag module load error:',e);});})(this)"> 
         </label>
         <label style="display:inline-flex;align-items:center;gap:8px;background:rgba(139,92,246,0.15);border:1.5px solid rgba(139,92,246,0.4);color:#c4b5fd;padding:10px 20px;border-radius:12px;cursor:pointer;font-size:13px;font-weight:700;font-family:Heebo,sans-serif;">
-          📸 צלם עכשיו<input type="file" id="snag-camera-input" accept="image/*" capture="environment" style="display:none;" onchange="_loadSnagModule().then(function(){snagHandleFile(this);}.bind(null,this)).catch(function(e){console.error('snag module load error:',e);})"> 
+          📸 צלם עכשיו<input type="file" id="snag-camera-input" accept="image/*" capture="environment" style="display:none;" onchange="(function(inp){_loadSnagModule().then(function(){snagHandleFile(inp);}).catch(function(e){console.error('snag module load error:',e);});})(this)"> 
         </label>
         <button onclick="snagUseShared()" id="snag-use-shared-btn" style="display:none;background:rgba(34,197,94,0.15);border:1.5px solid rgba(34,197,94,0.4);color:#86efac;padding:10px 20px;border-radius:12px;cursor:pointer;font-size:13px;font-weight:700;font-family:Heebo,sans-serif;">
           ♻️ השתמש בקבצים טעונים
@@ -4670,6 +4670,7 @@ async function safetyLoadCategories() {
         };
       });
       _safetyCatsLoaded = true;
+      safetyRenderCategoryGrid();
       return;
     }
   } catch(e) {
@@ -5083,8 +5084,10 @@ async function safetyRunAnalysis() {
     safetyStopMeter(data.usage && data.usage.input_tokens, data.usage && data.usage.output_tokens);
     raw = raw.replace(/```json|```/g,'').trim();
 
-    try { findings = JSON.parse(raw); }
-    catch(e) { throw new Error('תגובת AI לא תקינה — נסה שוב'); }
+    findings = ragSafeParseJSON(raw);
+    if (!findings || typeof findings !== 'object' || Array.isArray(findings)) {
+      throw new Error('תגובת AI לא תקינה — נסה שוב');
+    }
 
     progBar.style.width = '90%';
     progTxt.textContent = '✅ ניתוח הושלם — מכין דוח...';
@@ -5122,9 +5125,8 @@ function safetyRenderReport(findings, metadata) {
 
   // Score each category
   // Use only categories that were actually analysed (present in findings keys or all)
-  var renderedCats = SAFETY_CATEGORIES.filter(function(cat){ return findings.hasOwnProperty(cat.id); });
-  if (!renderedCats.length) renderedCats = SAFETY_CATEGORIES;
-  var scored = renderedCats.map(function(cat) {
+  // Always show all categories — findings default to OK if AI didn't return them
+  var scored = SAFETY_CATEGORIES.map(function(cat) {
     var f   = findings[cat.id] || { severity:'OK', found:[], action:null };
     var sev = SEVERITY[f.severity] || SEVERITY.OK;
     return { cat, f, sev };
@@ -5408,8 +5410,8 @@ function switchSafetySubTab(tab) {
 // Upload via Supabase Dashboard → Storage → app-assets → modules/
 // ══════════════════════════════════════════════════════════════════════
 var _snagModuleLoaded = false;
-async function _loadSnagModule() {
-  if (_snagModuleLoaded) return;
+function _loadSnagModule() {
+  if (_snagModuleLoaded) return Promise.resolve();
   return new Promise(function(resolve, reject) {
     var s = document.createElement('script');
     s.src = 'https://vmcipofovheztbjmhwsl.supabase.co/storage/v1/object/public/app-assets/modules/snag_list_27032026.js';
