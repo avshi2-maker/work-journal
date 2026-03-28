@@ -4563,15 +4563,11 @@ async function _fetchJournalModule() {
   if (_journalFetched) return;
   _journalFetched = true;
   try {
-    var res = await fetch('journal_28032026.html');
+    var res = await fetch('journal_28032026.js');
     var html = await res.text();
-    var parser = new DOMParser();
-    var doc = parser.parseFromString(html, 'text/html');
-    doc.querySelectorAll('script').forEach(function(s) {
-      var ns = document.createElement('script');
-      ns.textContent = s.textContent;
-      document.head.appendChild(ns);
-    });
+    var ns = document.createElement('script');
+    ns.textContent = html;
+    document.head.appendChild(ns);
   } catch(e) { console.error('journal fetch failed:', e); _journalFetched = false; }
 }
 
@@ -4589,15 +4585,11 @@ async function _fetchSafetyModule() {
   if (_safetyFetched) return;
   _safetyFetched = true;
   try {
-    var res = await fetch('safety_28032026.html');
+    var res = await fetch('safety_28032026.js');
     var html = await res.text();
-    var parser = new DOMParser();
-    var doc = parser.parseFromString(html, 'text/html');
-    doc.querySelectorAll('script').forEach(function(s) {
-      var ns = document.createElement('script');
-      ns.textContent = s.textContent;
-      document.head.appendChild(ns);
-    });
+    var ns = document.createElement('script');
+    ns.textContent = html;
+    document.head.appendChild(ns);
   } catch(e) { console.error('safety fetch failed:', e); _safetyFetched = false; }
 }
 
@@ -4607,15 +4599,11 @@ async function _fetchRagModule() {
   if (_ragFetched) return;
   _ragFetched = true;
   try {
-    var res = await fetch('rag_28032026.html');
+    var res = await fetch('rag_28032026.js');
     var html = await res.text();
-    var parser = new DOMParser();
-    var doc = parser.parseFromString(html, 'text/html');
-    doc.querySelectorAll('script').forEach(function(s) {
-      var ns = document.createElement('script');
-      ns.textContent = s.textContent;
-      document.head.appendChild(ns);
-    });
+    var ns = document.createElement('script');
+    ns.textContent = html;
+    document.head.appendChild(ns);
   } catch(e) { console.error('rag fetch failed:', e); _ragFetched = false; }
 }
 
@@ -4807,15 +4795,11 @@ async function _fetchSmartJournal() {
   if (_sjFetched) return;
   _sjFetched = true;
   try {
-    var res = await fetch('smartjournal_28032026.html');
+    var res = await fetch('smartjournal_28032026.js');
     var html = await res.text();
-    var parser = new DOMParser();
-    var doc = parser.parseFromString(html, 'text/html');
-    doc.querySelectorAll('script').forEach(function(s) {
-      var ns = document.createElement('script');
-      ns.textContent = s.textContent;
-      document.head.appendChild(ns);
-    });
+    var ns = document.createElement('script');
+    ns.textContent = html;
+    document.head.appendChild(ns);
   } catch(e) { console.error('smartjournal fetch failed:', e); _sjFetched = false; }
 }
 
