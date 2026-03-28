@@ -1515,8 +1515,8 @@ window.addEventListener('unhandledrejection', function(e) {
     <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
       <input type="date" id="eod-date-picker"
         style="background:#242438;border:1px solid rgba(255,255,255,0.15);color:#ccc;padding:8px 12px;border-radius:20px;font-family:Heebo,sans-serif;font-size:12px;direction:ltr;"
-        onchange="_loadJournalModule().then(function(){loadEODReport(this.value);}.bind(null,this)).catch(function(e){console.error(e);})">
-      <button onclick="_loadJournalModule().then(function(){loadEODReport();}).catch(function(e){console.error(e);})"
+        onchange="loadEODReport(this.value)">
+      <button onclick="loadEODReport()"
         style="background:rgba(154,111,0,0.2);border:1px solid rgba(154,111,0,0.4);color:#f59e0b;padding:8px 16px;border-radius:20px;cursor:pointer;font-family:Heebo,sans-serif;font-size:12px;font-weight:700;">🔄 רענן</button>
     </div>
   </div>
@@ -2698,13 +2698,13 @@ async function switchTab(tab) {
 
   // Panel-specific post-init
   if (tab === 'notes')   { setTimeout(function(){ sjPopulateProjectFilter(); loadNotesWall(); }, 100); }
-  if (tab === 'eod')     { _loadJournalModule().then(function(){ setTimeout(loadEODReport, 100); }).catch(function(e){ console.error('journal module load error:',e); }); }
+  if (tab === 'eod')     { _fetchJournalModule().then(function(){ setTimeout(loadEODReport, 100); }); }
   if (tab === 'safety')  { setTimeout(safetyTabInit, 100); }
   if (tab === 'rag')      { setTimeout(ragTabInit, 100); }
   if (tab === 'micharon') { setTimeout(micharonTabInit, 100); }
   if (tab === 'query')    { setTimeout(queryTabInit, 100); }
   if (tab === 'gcal')    { if (typeof initGcal    === 'function') initGcal();  }
-  if (tab === 'journal') { _loadJournalModule().then(function(){ if (typeof initJournalOnce === 'function') initJournalOnce(); }).catch(function(e){ console.error('journal module load error:',e); }); }
+  if (tab === 'journal') { _fetchJournalModule().then(function(){ if (typeof initializeManagerView === 'function') initializeManagerView(); }).catch(function(e){ console.error('journal load:', e); }); }
 }
 
 // ══════════════════════════════════════════════════════
@@ -4555,23 +4555,26 @@ function toggleNoteVoice(){if(!('webkitSpeechRecognition' in window||'SpeechReco
 
 
 // ══════════════════════════════════════════════════════════════════════
-// WORK JOURNAL MODULE — loaded from Supabase Storage
-// File: app-assets/modules/work_journal_27032026.js
-// ══════════════════════════════════════════════════════════════════════
-var _journalModuleLoaded = false;
-async function _loadJournalModule() {
-  if (_journalModuleLoaded) return;
-  return new Promise(function(resolve, reject) {
-    var s = document.createElement('script');
-    s.src = 'https://vmcipofovheztbjmhwsl.supabase.co/storage/v1/object/public/app-assets/modules/work_journal_27032026.js';
-    s.onload  = function() { _journalModuleLoaded = true; resolve(); };
-    s.onerror = function() { reject(new Error('work_journal module failed to load')); };
-    document.head.appendChild(s);
-  });
+// ══ WORK JOURNAL — loaded via fetch() on first tab click ══════════════
+var _journalModuleLoaded = true;
+function _loadJournalModule() { return Promise.resolve(); }
+var _journalFetched = false;
+async function _fetchJournalModule() {
+  if (_journalFetched) return;
+  _journalFetched = true;
+  try {
+    var res = await fetch('journal_28032026.html');
+    var html = await res.text();
+    var tmp = document.createElement('div');
+    tmp.innerHTML = html;
+    var scripts = tmp.querySelectorAll('script');
+    scripts.forEach(function(s) {
+      var ns = document.createElement('script');
+      ns.textContent = s.textContent;
+      document.head.appendChild(ns);
+    });
+  } catch(e) { console.error('journal fetch failed:', e); _journalFetched = false; }
 }
-
-
-// ══════════════════════════════════════════════════════════════════════
 
 // ══ SAFETY INTELLIGENCE ENGINE ══════════════════════════════════════
 var _safetyCurrentFile   = null;
