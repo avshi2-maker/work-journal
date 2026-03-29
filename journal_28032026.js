@@ -536,7 +536,22 @@ function initializeManagerView() {
     var mv = document.getElementById('managerView');
     // Launch wizard at step 1
     jwGoto(1);
-    populateJournalProjectDropdown && populateJournalProjectDropdown();
+    // Populate dropdown — retry after short delay if allProjects not ready yet
+    if (window.allProjects && window.allProjects.length) {
+      populateJournalProjectDropdown && populateJournalProjectDropdown();
+      setTimeout(mbInit, 50);
+    } else {
+      // Projects not loaded yet — wait for them
+      var _retries = 0;
+      var _waitForProjects = setInterval(function() {
+        _retries++;
+        if ((window.allProjects && window.allProjects.length) || _retries > 20) {
+          clearInterval(_waitForProjects);
+          populateJournalProjectDropdown && populateJournalProjectDropdown();
+          setTimeout(mbInit, 50);
+        }
+      }, 200);
+    }
     displayReportNumber();
     var rd = document.getElementById('reportDate'); if (rd) rd.valueAsDate = new Date();
     var tom = new Date(); tom.setDate(tom.getDate()+1);
