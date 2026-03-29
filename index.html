@@ -5137,9 +5137,10 @@ async function _fetchJournalModule() {
   _journalFetched = true;
   try {
     var res = await fetch('journal_28032026.js');
-    var html = await res.text();
-    var ns = document.createElement('script');
-    ns.textContent = html;
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    var code = await res.text();
+    if (code.trim().startsWith('<')) throw new Error('Got HTML not JS');
+    var ns = document.createElement('script'); ns.textContent = code;
     document.head.appendChild(ns);
   } catch(e) { console.error('journal fetch failed:', e); _journalFetched = false; }
 }
@@ -5159,9 +5160,10 @@ async function _fetchSafetyModule() {
   _safetyFetched = true;
   try {
     var res = await fetch('safety_28032026.js');
-    var html = await res.text();
-    var ns = document.createElement('script');
-    ns.textContent = html;
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    var code = await res.text();
+    if (code.trim().startsWith('<')) throw new Error('Got HTML not JS');
+    var ns = document.createElement('script'); ns.textContent = code;
     document.head.appendChild(ns);
   } catch(e) { console.error('safety fetch failed:', e); _safetyFetched = false; }
 }
@@ -5173,9 +5175,10 @@ async function _fetchRagModule() {
   _ragFetched = true;
   try {
     var res = await fetch('rag_28032026.js');
-    var html = await res.text();
-    var ns = document.createElement('script');
-    ns.textContent = html;
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    var code = await res.text();
+    if (code.trim().startsWith('<')) throw new Error('Got HTML not JS');
+    var ns = document.createElement('script'); ns.textContent = code;
     document.head.appendChild(ns);
   } catch(e) { console.error('rag fetch failed:', e); _ragFetched = false; }
 }
@@ -5369,9 +5372,10 @@ async function _fetchSmartJournal() {
   _sjFetched = true;
   try {
     var res = await fetch('smartjournal_28032026.js');
-    var html = await res.text();
-    var ns = document.createElement('script');
-    ns.textContent = html;
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    var code = await res.text();
+    if (code.trim().startsWith('<')) throw new Error('Got HTML not JS');
+    var ns = document.createElement('script'); ns.textContent = code;
     document.head.appendChild(ns);
   } catch(e) { console.error('smartjournal fetch failed:', e); _sjFetched = false; }
 }
