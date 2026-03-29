@@ -2665,9 +2665,11 @@ var _galleryPhotos      = [];
 var ANNEX_LIST = [];
 async function loadAnnexList() {
   if (ANNEX_LIST.length > 0) return;
-  // Try loading from safety_categories first
-  await safetyLoadCategories();
-  if (SAFETY_CATEGORIES.length > 0) {
+  // Try loading from safety_categories first (only if module loaded)
+  if (typeof safetyLoadCategories === 'function') {
+    await safetyLoadCategories();
+  }
+  if (typeof SAFETY_CATEGORIES !== 'undefined' && SAFETY_CATEGORIES.length > 0) {
     ANNEX_LIST = SAFETY_CATEGORIES.map(function(c, i) {
       return { num: String(i+1).padStart(2,'0'), title: c.name };
     });
