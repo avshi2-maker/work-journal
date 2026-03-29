@@ -315,7 +315,8 @@ tbody tr:last-child td{border-bottom:none;}
 
 /* ════ MOBILE ════════════════════════════════════════════ */
 @media(max-width:768px){
-  #crm-panel .main{margin-right:0;}
+  #crm-panel .main{margin-right:0;margin-top:52px;}
+  #top-tabs{right:0;}
   #crm-panel .sidebar{transform:translateX(100%);transition:transform .25s;}
   #crm-panel .sidebar.mobile-open{transform:translateX(0);}
   #btn-hamburger-fixed{display:flex!important;position:fixed;bottom:20px;right:16px;width:48px;height:48px;border-radius:50%;background:linear-gradient(135deg,#9a6f00,#c9a84c);color:#fff;border:none;font-size:20px;z-index:300;align-items:center;justify-content:center;box-shadow:0 4px 16px rgba(0,0,0,.2);cursor:pointer;}
@@ -357,23 +358,10 @@ window.addEventListener('unhandledrejection', function(e) {
 
 <!-- ══ TOP TAB BAR ══ -->
 <div id="top-tabs">
-  <div class="top-tab active" id="tab-crm"     onclick="switchTab('crm')">    <span>📊</span><span>לוח בקרה</span></div>
-  <div class="tab-sep"></div>
-  <div class="top-tab"        id="tab-notes"   onclick="switchTab('notes')">  <span>📝</span><span>מזכרים-בני</span></div>
-  <div class="tab-sep"></div>
-  <div class="top-tab"        id="tab-eod"     onclick="switchTab('eod')">    <span>🧠</span><span>יומן שטח</span></div>
-  <div class="tab-sep"></div>
-  <div class="top-tab"        id="tab-safety"  onclick="switchTab('safety')" style="color:#ef4444;"> <span>🛡️</span><span>ניתוח בטיחות</span></div>
-  <div class="tab-sep"></div>
-  <div class="top-tab"        id="tab-rag"     onclick="switchTab('rag')" style="color:#c4b5fd;"> <span>🏗️</span><span>יעוץ ממ"ד</span></div>
-  <div class="tab-sep"></div>
-  <div class="top-tab"        id="tab-micharon" onclick="switchTab('micharon')" style="color:#22c55e;"><span>📋</span><span>מחירון</span></div>
-  <div class="tab-sep"></div>
-  <div class="top-tab"        id="tab-query"    onclick="switchTab('query')"    style="color:#38bdf8;"><span>🔍</span><span>שאילתות</span></div>
-  <div class="tab-sep"></div>
-  <div class="top-tab"        id="tab-gcal"    onclick="switchTab('gcal')">   <span>📅</span><span>יומן Google</span></div>
-  <div class="tab-sep"></div>
-  <div class="top-tab"        id="tab-journal" onclick="switchTab('journal')"><span>📋</span><span>יומן עבודה יומי</span></div>
+  <div class="top-tab active" id="tab-crm"    onclick="switchTab('crm')"><span>📊</span><span>לוח בקרה</span></div>
+  <div class="top-tab"        id="tab-safety" onclick="switchTab('safety')"><span>🛡️</span><span>בטיחות / ליקויים</span></div>
+  <div class="top-tab"        id="tab-notes"  onclick="switchTab('notes')"><span>📝</span><span>מזכרים בני</span></div>
+  <div class="top-tab"        id="tab-rag"    onclick="switchTab('rag')"><span>🏗️</span><span>יעוץ AI</span></div>
 </div>
 
 <!-- ══ PANELS — loaded dynamically from Supabase Storage ══ -->
@@ -389,19 +377,39 @@ window.addEventListener('unhandledrejection', function(e) {
       <div class="clock-date" id="sidebar-clock-date"></div>
     </div>
   </div>
-  <div class="nav-item active" onclick="showPage('dashboard')" id="nav-dashboard"><span class="nav-icon">📊</span><span>לוח בקרה</span></div>
-  <div class="nav-item" onclick="showPage('contractors')" id="nav-contractors"><span class="nav-icon">👷</span><span>קבלנים</span><span class="nav-badge" id="badge-contractors">0</span></div>
-  <div class="nav-item" onclick="showPage('quotes')" id="nav-quotes"><span class="nav-icon">📋</span><span>הצעות מחיר מקבלנים</span></div>
+
+  <!-- GROUP: יומי -->
+  <div class="nav-group-label">יומי</div>
+  <div class="nav-item active" onclick="switchTab('crm');showPage('dashboard')" id="nav-dashboard"><span class="nav-icon">📊</span><span>לוח בקרה</span></div>
+  <div class="nav-item" onclick="switchTab('journal')" id="nav-journal-link"><span class="nav-icon">📋</span><span>יומן עבודה יומי</span></div>
+  <div class="nav-item" onclick="switchTab('eod')" id="tab-eod-nav"><span class="nav-icon">🧠</span><span>יומן שטח</span></div>
+  <div class="nav-item" onclick="switchTab('gcal')" id="tab-gcal-nav"><span class="nav-icon">📅</span><span>יומן Google</span></div>
+
+  <!-- GROUP: פרויקטים -->
+  <div class="nav-group-label">פרויקטים</div>
   <div class="nav-item" onclick="showPage('projects')" id="nav-projects"><span class="nav-icon">🏗️</span><span>פרויקטים</span><span class="nav-badge" id="badge-projects">0</span></div>
-  <div class="nav-item" onclick="showPage('gantt')" id="nav-gantt"><span class="nav-icon">📅</span><span>גאנט פרויקטים</span></div>
-  <div class="nav-item" onclick="showPage('finance')" id="nav-finance"><span class="nav-icon">💰</span><span>כספים</span></div>
-  <div class="nav-item" onclick="showPage('forecast')" id="nav-forecast"><span class="nav-icon">📈</span><span>תחזית הכנסות</span></div>
-  <div class="nav-item" onclick="showPage('reports')" id="nav-reports"><span class="nav-icon">📄</span><span>דוחות פרויקטים</span></div>
-  <div class="nav-item" onclick="showPage('new-po')" id="nav-new-po"><span class="nav-icon">📄</span><span>פתיחת הזמנות עבודה</span></div>
-  <div class="nav-item" onclick="showPage('purchase-orders')" id="nav-purchase-orders"><span class="nav-icon">🏷️</span><span>דוחות הזמנות עבודה</span><span class="nav-badge" id="badge-po">0</span></div>
-  <div class="nav-item" onclick="showPage('calc')" id="nav-calc" style="margin-top:8px;"><span class="nav-icon">🧮</span><span>מחשבון הנדסי</span></div>
+  <div class="nav-item" onclick="showPage('gantt')" id="nav-gantt"><span class="nav-icon">📅</span><span>גאנט</span></div>
   <div class="nav-item" onclick="showPage('takeoff')" id="nav-takeoff"><span class="nav-icon">📐</span><span>טייקאוף</span></div>
-  <div class="nav-item" onclick="showPage('weekly')" id="nav-weekly" style="margin-top:8px;"><span class="nav-icon">📊</span><span>דוח שבועי</span><span class="nav-badge" id="badge-weekly" style="display:none;background:#8b5cf6;">AI</span></div>
+  <div class="nav-item" onclick="showPage('reports')" id="nav-reports"><span class="nav-icon">📄</span><span>דוחות</span></div>
+
+  <!-- GROUP: כספים -->
+  <div class="nav-group-label">כספים</div>
+  <div class="nav-item" onclick="showPage('finance')" id="nav-finance"><span class="nav-icon">💰</span><span>כספים</span></div>
+  <div class="nav-item" onclick="showPage('new-po')" id="nav-new-po"><span class="nav-icon">📄</span><span>פתיחת הזמנת עבודה</span></div>
+  <div class="nav-item" onclick="showPage('purchase-orders')" id="nav-purchase-orders"><span class="nav-icon">🏷️</span><span>הזמנות עבודה</span><span class="nav-badge" id="badge-po">0</span></div>
+  <div class="nav-item" onclick="showPage('forecast')" id="nav-forecast"><span class="nav-icon">📈</span><span>תחזית הכנסות</span></div>
+
+  <!-- GROUP: קבלנים -->
+  <div class="nav-group-label">קבלנים</div>
+  <div class="nav-item" onclick="showPage('contractors')" id="nav-contractors"><span class="nav-icon">👷</span><span>קבלנים</span><span class="nav-badge" id="badge-contractors">0</span></div>
+  <div class="nav-item" onclick="showPage('quotes')" id="nav-quotes"><span class="nav-icon">📋</span><span>הצעות מחיר</span></div>
+
+  <!-- GROUP: כלים -->
+  <div class="nav-group-label">כלים</div>
+  <div class="nav-item" onclick="switchTab('micharon')" id="tab-micharon-nav"><span class="nav-icon">📋</span><span>מחירון</span></div>
+  <div class="nav-item" onclick="switchTab('query')" id="tab-query-nav"><span class="nav-icon">🔍</span><span>שאילתות</span></div>
+  <div class="nav-item" onclick="showPage('calc')" id="nav-calc"><span class="nav-icon">🧮</span><span>מחשבון הנדסי</span></div>
+  <div class="nav-item" onclick="showPage('weekly')" id="nav-weekly"><span class="nav-icon">📊</span><span>דוח שבועי</span><span class="nav-badge" id="badge-weekly" style="display:none;background:#8b5cf6;">AI</span></div>
 </nav>
 
 <main class="main">
@@ -411,20 +419,29 @@ window.addEventListener('unhandledrejection', function(e) {
       <div class="page-title">לוח <span>בקרה</span></div>
       <div class="topbar-actions">
         <div id="dashboard-date" style="font-size:13px;color:var(--text3);"></div>
-        <a href="#" onclick="switchTab('journal')" class="btn btn-primary" style="font-size:15px;padding:12px 24px;background:linear-gradient(135deg,#9a6f00,#c9a84c);">📝 פתח יומן עבודה</a>
       </div>
     </div>
-    <div onclick="switchTab('journal')" style="background:linear-gradient(135deg,#9a6f00,#c9a84c);border-radius:14px;padding:20px 28px;margin-bottom:24px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;box-shadow:0 6px 24px rgba(154,111,0,0.25);">
-      <div>
-        <div style="font-size:11px;font-weight:700;letter-spacing:2px;color:rgba(44,31,0,0.7);text-transform:uppercase;margin-bottom:6px;">עמוד שדרת המערכת</div>
-        <div style="font-size:22px;font-weight:900;color:#2c1f00;font-family:'Rubik',sans-serif;">📝 יומן עבודה יומי</div>
-        <div style="font-size:13px;color:rgba(44,31,0,0.65);margin-top:4px;">תיעוד · חתימות · שיתוף WhatsApp · דוחות PDF</div>
+
+    <!-- 3 BIG ACTION BUTTONS -->
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-bottom:24px;">
+      <div onclick="switchTab('journal')" style="background:linear-gradient(135deg,#1a3d5c,#2d6a9f);border-radius:14px;padding:22px 16px;text-align:center;cursor:pointer;box-shadow:0 4px 16px rgba(26,61,92,0.3);">
+        <div style="font-size:32px;margin-bottom:8px;">📋</div>
+        <div style="font-size:15px;font-weight:900;color:#fff;">יומן עבודה יומי</div>
+        <div style="font-size:11px;color:rgba(255,255,255,0.6);margin-top:4px;">תיעוד · חתימות · PDF</div>
       </div>
-      <div style="background:rgba(44,31,0,0.15);border-radius:12px;padding:14px 22px;text-align:center;">
-        <div style="font-size:36px;">📖</div>
-        <div style="font-size:11px;font-weight:800;color:#2c1f00;margin-top:6px;">לחץ לפתיחה</div>
+      <div onclick="switchTab('safety')" style="background:linear-gradient(135deg,#7f1d1d,#dc2626);border-radius:14px;padding:22px 16px;text-align:center;cursor:pointer;box-shadow:0 4px 16px rgba(220,38,38,0.3);">
+        <div style="font-size:32px;margin-bottom:8px;">🛡️</div>
+        <div style="font-size:15px;font-weight:900;color:#fff;">בטיחות וליקויים</div>
+        <div style="font-size:11px;color:rgba(255,255,255,0.6);margin-top:4px;">ניתוח · סקר · דוח</div>
+      </div>
+      <div onclick="switchTab('notes')" style="background:linear-gradient(135deg,#1a1a2e,#4c1d95);border-radius:14px;padding:22px 16px;text-align:center;cursor:pointer;box-shadow:0 4px 16px rgba(76,29,149,0.3);">
+        <div style="font-size:32px;margin-bottom:8px;">📝</div>
+        <div style="font-size:15px;font-weight:900;color:#fff;">מזכרים בני</div>
+        <div style="font-size:11px;color:rgba(255,255,255,0.6);margin-top:4px;">שיחות · מזכרים · משימות</div>
       </div>
     </div>
+
+    <!-- 4 STAT CARDS -->
     <div class="stats-grid">
       <div class="stat-card" style="--accent-color:var(--accent);cursor:pointer" onclick="showPage('projects')"><div class="stat-label">פרויקטים פעילים</div><div class="stat-value" id="stat-active-projects">—</div><div class="stat-sub">מתוך <span id="stat-total-projects">—</span> סה״כ</div><div class="stat-sub" id="stat-overdue-projects" style="font-weight:700;font-size:11px;"></div><div class="stat-icon">🏗️</div></div>
       <div class="stat-card" style="--accent-color:var(--green);cursor:pointer" onclick="showPage('contractors')"><div class="stat-label">קבלנים פעילים</div><div class="stat-value" id="stat-active-contractors">—</div><div class="stat-sub">בסיס נתונים</div><div class="stat-icon">👷</div></div>
