@@ -1,7 +1,5 @@
-// Global State — use window.sb directly to avoid redeclaration conflict with index.html
-function _ensureSbClient() { if (window.sb) supabaseClient = window.sb; }
-if (typeof supabaseClient === 'undefined') { var supabaseClient = window.sb || null; }
-else { supabaseClient = window.sb || supabaseClient; }
+// Global State — use window.sb directly (supabaseClient declared in index.html)
+function _ensureSbClient() { supabaseClient = window.sb || supabaseClient || null; }
 // ══ JOURNAL WIZARD NAVIGATION ════════════════════════════════════════
 var jwCurrentStep = 1;
 var jwTotalSteps  = 8;
