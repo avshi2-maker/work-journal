@@ -1,7 +1,7 @@
-// Global State — use var so they're globally accessible when injected
-var supabaseClient = window.sb || null;
-// Refresh supabaseClient in case window.sb was set after this module loaded
-function _ensureSbClient() { if (!supabaseClient && window.sb) supabaseClient = window.sb; }
+// Global State — use window.sb directly to avoid redeclaration conflict with index.html
+function _ensureSbClient() { if (window.sb) supabaseClient = window.sb; }
+if (typeof supabaseClient === 'undefined') { var supabaseClient = window.sb || null; }
+else { supabaseClient = window.sb || supabaseClient; }
 // ══ JOURNAL WIZARD NAVIGATION ════════════════════════════════════════
 var jwCurrentStep = 1;
 var jwTotalSteps  = 8;
