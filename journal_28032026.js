@@ -2,6 +2,91 @@
 var supabaseClient = window.sb || null;
 // Refresh supabaseClient in case window.sb was set after this module loaded
 function _ensureSbClient() { if (!supabaseClient && window.sb) supabaseClient = window.sb; }
+// ══ JOURNAL WIZARD NAVIGATION ════════════════════════════════════════
+var jwCurrentStep = 1;
+var jwTotalSteps  = 8;
+var jwStepLabels  = ['','בוקר טוב','שעות + קבלנים','כוח אדם','פעילויות','חומרים וציוד','בטיחות','ביקורות ועיכובים','סיכום וחתימות'];
+
+function jwGoto(step) {
+  if (step < 1 || step > jwTotalSteps) return;
+  // Hide current, show new
+  var cur = document.getElementById('jw-panel-' + jwCurrentStep);
+  if (cur) cur.classList.remove('active');
+  var nxt = document.getElementById('jw-panel-' + step);
+  if (nxt) nxt.classList.add('active');
+
+  // Update sidebar
+  for (var i = 1; i <= jwTotalSteps; i++) {
+    var s = document.getElementById('jw-sideitem-' + i);
+    if (!s) continue;
+    s.classList.remove('active', 'done');
+    if (i < step) s.classList.add('done');
+    else if (i === step) s.classList.add('active');
+    // Update checkmark for done steps
+    var num = s.querySelector('.jw-step-num');
+    if (num) num.textContent = i < step ? '✓' : i;
+  }
+
+  jwCurrentStep = step;
+
+  // Footer
+  var backBtn = document.getElementById('jw-btn-back');
+  var nextBtn = document.getElementById('jw-btn-next');
+  if (backBtn) backBtn.style.display = step > 1 ? 'block' : 'none';
+  if (nextBtn) nextBtn.textContent = step === jwTotalSteps ? '📤 שלח דוח' : 'הבא ←';
+
+  // Progress
+  var pct = Math.round(((step - 1) / (jwTotalSteps - 1)) * 100);
+  var fill = document.getElementById('jw-progress-fill');
+  if (fill) fill.style.width = pct + '%';
+  var lbl = document.getElementById('jw-progress-lbl');
+  if (lbl) lbl.textContent = 'שלב ' + step + ' מתוך ' + jwTotalSteps + ' — ' + (jwStepLabels[step] || '');
+
+  // Step indicator in topbar
+  var ind = document.getElementById('jw-step-indicator');
+  if (ind) ind.textContent = step;
+
+  // Scroll to top of main area
+  var main = document.getElementById('jw-main');
+  if (main) main.scrollTop = 0;
+
+  // Step 1: show CTA if project selected
+  if (step === 1) jwUpdateCTA();
+  // Step 3: add initial row if empty
+  if (step === 3) { var wc = document.getElementById('workersContainer'); if (wc && !wc.children.length) addWorkerRow(); }
+  // Step 4: add initial row if empty
+  if (step === 4) { var ac = document.getElementById('activitiesContainer'); if (ac && !ac.children.length) addActivityRow(); }
+}
+
+function jwNext() {
+  if (jwCurrentStep === jwTotalSteps) {
+    // Last step — trigger send
+    if (typeof sendReport === 'function') sendReport();
+  } else {
+    jwGoto(jwCurrentStep + 1);
+  }
+}
+
+function jwBack() {
+  jwGoto(jwCurrentStep - 1);
+}
+
+function jwUpdateCTA() {
+  var cta = document.getElementById('jw-cta');
+  var hero = document.getElementById('mb-hero');
+  var sel  = document.getElementById('projectName');
+  var hasProj = sel && sel.value && sel.value !== '';
+  if (cta)  cta.style.display  = hasProj ? 'flex' : 'none';
+  if (hero) hero.style.display = hasProj ? 'block' : 'none';
+  var ts = document.getElementById('mb-tasks-section');
+  var ds = document.getElementById('mb-drawings-section');
+  var cs = document.getElementById('mb-contractors-section');
+  if (ts) ts.style.display = hasProj ? 'block' : 'none';
+  if (ds) ds.style.display = hasProj ? 'block' : 'none';
+  if (cs) cs.style.display = hasProj ? 'block' : 'none';
+}
+
+
 var currentReport = null;
 var signaturePad = null;
 var ownerSignaturePad = null;
@@ -413,9 +498,20 @@ function initializeManagerView() {
     window._journalInited = true;
     _ensureSbClient();
     const mv = document.getElementById('managerView');
-    // Launch morning briefing
-    mbInit();
-    const ov = document.getElementById('ownerView');
+    // Launch wizard at step 1
+    jwGoto(1);
+    populateJournalProjectDropdown && populateJournalProjectDropdown();
+    displayReportNumber();
+    var rd = document.getElementById('reportDate'); if (rd) rd.valueAsDate = new Date();
+    var tom = new Date(); tom.setDate(tom.getDate()+1);
+    var td = document.getElementById('tomorrowDate'); if (td) td.valueAsDate = tom;
+    initSignaturePad('signatureCanvas');
+    var sb2 = document.getElementById('saveBtn'); if (sb2) sb2.addEventListener('click', saveDraft);
+    var snd = document.getElementById('sendBtn'); if (snd) snd.addEventListener('click', sendReport);
+    var vnb = document.getElementById('voiceNotesBtn'); if (vnb) vnb.addEventListener('click', function(){ startVoiceRecording('generalNotes'); });
+    var vtb = document.getElementById('voiceTomorrowBtn'); if (vtb) vtb.addEventListener('click', function(){ startVoiceRecording('tomorrowPlan'); });
+    var phi = document.getElementById('photoInput'); if (phi) phi.addEventListener('change', handlePhotoSelection);
+    var ov = document.getElementById('ownerView');
     if (!mv || !ov) return; // panel not loaded yet
     mv.style.display = 'block';
     ov.style.display = 'none';

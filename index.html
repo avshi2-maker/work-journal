@@ -14,19 +14,19 @@ body{font-family:'Heebo',-apple-system,BlinkMacSystemFont,Arial,sans-serif;direc
 .container{max-width:900px;margin:0 auto}
 .header{background:white;border-radius:16px;padding:25px;margin-bottom:20px;text-align:center;box-shadow:0 4px 20px rgba(0,0,0,0.1);position:relative}
 .report-number{background:linear-gradient(135deg,#667eea,#764ba2);color:white;padding:15px;border-radius:12px;margin-bottom:20px;text-align:center}
-.report-label{font-size:16px;font-weight:600;margin-bottom:5px}
+.report-label{font-size:16px;font-weight:800;margin-bottom:5px}
 .report-id{font-size:24px;font-weight:700;font-family:monospace;letter-spacing:2px}
 .report-timestamp{font-size:12px;opacity:0.9;margin-top:5px}
 .header h1{font-size:24px;font-weight:700;background:linear-gradient(135deg,#667eea,#764ba2);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
-.legal-notice{margin-top:10px;padding:8px 16px;background:#fff3cd;border:2px solid #ffc107;border-radius:8px;color:#856404;font-size:13px;font-weight:600;display:inline-block}
+.legal-notice{margin-top:10px;padding:8px 16px;background:#fff3cd;border:2px solid #ffc107;border-radius:8px;color:#5c4400;font-size:13px;font-weight:800;display:inline-block}
 .section{background:white;border-radius:16px;padding:20px;margin-bottom:15px;box-shadow:0 2px 10px rgba(0,0,0,0.08)}
 .legal-section{border-right:4px solid #ffc107;background:linear-gradient(to left,#fffbf0,white)}
 .legal-section.critical{border-right:4px solid #dc3545;background:linear-gradient(to left,#fff5f5,white)}
 .legal-badge{display:inline-block;padding:4px 12px;background:#ffc107;color:#000;border-radius:12px;font-size:11px;font-weight:700;margin-right:8px}
 .legal-badge.critical{background:#dc3545;color:white}
-.section h2{font-size:18px;font-weight:700;margin-bottom:15px;color:#1a3d5c}
-.helper-text{font-size:14px;color:#666;margin-bottom:10px;font-style:italic}
-.total-hours{margin-top:15px;padding:12px;background:#f0f7ff;border-radius:8px;border-right:4px solid #667eea;font-size:16px}
+.section h2{font-size:18px;font-weight:900;margin-bottom:15px;color:#1a3d5c}
+.helper-text{font-size:14px;color:#3a3a3a;margin-bottom:10px;font-style:italic;font-weight:600}
+.total-hours{margin-top:15px;padding:12px;background:#f0f7ff;border-radius:8px;border-right:4px solid #667eea;font-size:16px;font-weight:700;color:#1a3d5c}
 .form-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px}
 .form-row.three-col{grid-template-columns:1fr 1fr 1fr}
 .form-row.four-col{grid-template-columns:1fr 1fr 1fr 1fr}
@@ -56,7 +56,7 @@ body{font-family:'Heebo',-apple-system,BlinkMacSystemFont,Arial,sans-serif;direc
 .photo-item img{width:100%;height:150px;object-fit:cover}
 .remove-photo{position:absolute;top:5px;right:5px;background:#e74c3c;color:white;border:none;border-radius:50%;width:25px;height:25px;cursor:pointer;font-weight:bold}
 .security-badge{background:#27ae60;color:white;padding:8px 16px;border-radius:20px;display:inline-block;font-size:14px;font-weight:600;margin-bottom:10px}
-.dynamic-row{background:#f8f9fa;border:2px solid #e1e8ed;border-radius:8px;padding:15px;margin-bottom:10px;position:relative}
+.dynamic-row{background:#f5f0e8;border:1.5px solid #c9a84c;border-radius:8px;padding:15px;margin-bottom:10px;position:relative}
 .dynamic-row.critical-row{border-color:#dc3545;background:#fff5f5}
 .remove-row{position:absolute;top:10px;left:10px;background:#e74c3c;color:white;border:none;border-radius:50%;width:30px;height:30px;cursor:pointer;font-weight:bold;font-size:18px}
 .remove-row:hover{background:#c0392b}
@@ -87,7 +87,7 @@ body{font-family:'Heebo',-apple-system,BlinkMacSystemFont,Arial,sans-serif;direc
 /* ── Top tabs ─────────────────────────────────────────── */
 #top-tabs{display:flex;background:#f5e9c4;border-bottom:2px solid #c9a84c;position:sticky;top:0;z-index:200;font-family:Heebo,sans-serif;overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;scrollbar-width:none;}
 #top-tabs::-webkit-scrollbar{display:none;}
-.top-tab{flex-shrink:0;min-width:130px;display:flex;flex-direction:column;align-items:center;gap:3px;padding:10px 12px;font-size:12px;font-weight:700;color:var(--text3);cursor:pointer;border-bottom:3px solid transparent;transition:all .18s;white-space:nowrap;}
+.top-tab{flex-shrink:0;min-width:130px;display:flex;flex-direction:column;align-items:center;gap:3px;padding:10px 12px;font-size:12px;font-weight:800;color:#7a6030;cursor:pointer;border-bottom:3px solid transparent;transition:all .18s;white-space:nowrap;}
 .top-tab.active{color:#9a6f00;border-bottom-color:#9a6f00;background:rgba(154,111,0,0.07);}
 .tab-sep{flex-shrink:0;width:1px;background:var(--border);margin:8px 0;}
 
@@ -104,7 +104,7 @@ body{font-family:'Heebo',-apple-system,BlinkMacSystemFont,Arial,sans-serif;direc
 .sidebar-clock{margin-top:10px;}
 .clock-time{font-size:20px;font-weight:900;color:#9a6f00;font-variant-numeric:tabular-nums;}
 .clock-date{font-size:10px;color:var(--text3);margin-top:2px;}
-.nav-item{display:flex;align-items:center;gap:10px;padding:12px 16px;font-size:13px;font-weight:600;color:var(--text2);cursor:pointer;border-right:3px solid transparent;transition:all .15s;position:relative;}
+.nav-item{display:flex;align-items:center;gap:10px;padding:12px 16px;font-size:13px;font-weight:700;color:#4a3010;cursor:pointer;border-right:3px solid transparent;transition:all .15s;position:relative;}
 .nav-item:hover{background:var(--surface2);color:var(--text);}
 .nav-item.active{background:rgba(45,106,159,.08);color:var(--accent2);border-right-color:var(--accent2);font-weight:800;}
 .nav-icon{font-size:16px;width:20px;text-align:center;}
@@ -131,9 +131,9 @@ body{font-family:'Heebo',-apple-system,BlinkMacSystemFont,Arial,sans-serif;direc
 .stats-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(160px,100%),1fr));gap:14px;margin-bottom:20px;}
 .stat-card{background:var(--surface);border-radius:12px;padding:16px;border:1px solid var(--border);box-shadow:0 1px 4px rgba(0,0,0,.05);position:relative;overflow:hidden;}
 .stat-card::before{content:"";position:absolute;top:0;right:0;width:4px;height:100%;background:var(--accent-color,var(--accent));}
-.stat-label{font-size:11px;font-weight:700;color:var(--text3);margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px;}
+.stat-label{font-size:11px;font-weight:800;color:#5a4010;margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px;}
 .stat-value{font-size:26px;font-weight:900;color:var(--text);margin-bottom:4px;}
-.stat-sub{font-size:11px;color:var(--text3);}
+.stat-sub{font-size:11px;color:#5a4010;font-weight:600;}
 .stat-icon{position:absolute;top:14px;left:14px;font-size:22px;opacity:.3;}
 
 /* ── Buttons ──────────────────────────────────────────── */
@@ -182,10 +182,10 @@ tbody tr:last-child td{border-bottom:none;}
 .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
 .form-group{display:flex;flex-direction:column;gap:5px;}
 .form-group.span2{grid-column:1/-1;}
-.form-group label{font-size:12px;font-weight:700;color:var(--text2);}
+.form-group label{font-size:12px;font-weight:800;color:#3a2808;}
 .form-group input,.form-group select,.form-group textarea{padding:10px 12px;border:1.5px solid var(--border);border-radius:8px;font-family:Heebo,sans-serif;font-size:13px;color:var(--text);background:#fff;direction:rtl;}
 .form-group textarea{resize:vertical;min-height:80px;}
-.form-section-title{font-size:11px;font-weight:800;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;grid-column:1/-1;margin-top:4px;}
+.form-section-title{font-size:11px;font-weight:900;color:#1a3d5c;text-transform:uppercase;letter-spacing:.5px;grid-column:1/-1;margin-top:4px;}
 
 /* ── Toast ────────────────────────────────────────────── */
 .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#1a1a2e;color:#fff;padding:12px 22px;border-radius:30px;font-size:13px;font-weight:700;font-family:Heebo,sans-serif;z-index:9999;display:none;align-items:center;gap:8px;box-shadow:0 4px 20px rgba(0,0,0,.3);}
@@ -2166,278 +2166,360 @@ window.addEventListener('unhandledrejection', function(e) {
     </div>
   </div>
 </div></div></div>
-<div class="app-panel" id="journal-panel"><div id="journal-content"><div id="managerView">
-  <header class="header">
-    <div class="report-number" id="reportNumber">
-      <div class="report-label">אישור עבודה מספר</div>
-      <div class="report-id"></div>
-      <div class="report-timestamp"></div>
-    </div>
-    <h1>📝 יומן עבודה יומי</h1>
-    <p>ביצוע פרויקטים - אבשי ספיר</p>
-    <p class="legal-notice">⚖️ תיעוד משפטי מלא - תקנות התכנון והבניה 1992</p>
-  </header>
-  <main class="container">
+<div class="app-panel" id="journal-panel">
+<style>
+/* ── JOURNAL WIZARD LAYOUT ─────────────────────────── */
+#journal-wizard{display:flex;flex-direction:column;min-height:100vh;background:#fdf6e3;font-family:Heebo,sans-serif;direction:rtl;}
+#jw-topbar{background:#1a3d5c;color:#fff;padding:12px 20px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
+#jw-topbar-title{font-size:15px;font-weight:800;}
+#jw-topbar-sub{font-size:10px;opacity:.6;margin-top:2px;}
+#jw-topbar-num{font-size:11px;background:rgba(201,168,76,.3);border:1px solid rgba(201,168,76,.5);border-radius:12px;padding:3px 10px;color:#fde68a;font-weight:700;}
+#jw-body{display:flex;flex:1;min-height:0;}
+/* STEP SIDEBAR */
+#jw-steps{width:130px;flex-shrink:0;background:#f5e9c4;border-left:2px solid #e2d0a0;padding:10px 0;overflow-y:auto;}
+.jw-step{display:flex;align-items:flex-start;gap:7px;padding:9px 10px;cursor:pointer;border-right:3px solid transparent;transition:all .15s;}
+.jw-step.active{background:#fffbf0;border-right-color:#c9a84c;}
+.jw-step.done{opacity:.8;}
+.jw-step-num{width:20px;height:20px;border-radius:50%;border:2px solid #c9a84c;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:800;color:#9a6f00;flex-shrink:0;margin-top:2px;}
+.jw-step.active .jw-step-num{background:#1a3d5c;border-color:#1a3d5c;color:#fff;}
+.jw-step.done .jw-step-num{background:#c9a84c;border-color:#c9a84c;color:#fff;}
+.jw-step-label{font-size:10px;font-weight:700;color:#5a4010;line-height:1.4;}
+.jw-step.active .jw-step-label{color:#1a3d5c;font-weight:900;}
+.jw-conn{width:2px;height:6px;background:#e2d0a0;margin-right:19px;}
+/* MAIN STEP AREA */
+#jw-main{flex:1;overflow-y:auto;padding:20px 24px 16px;}
+.jw-step-panel{display:none;}
+.jw-step-panel.active{display:block;}
+/* STEP HEADER */
+.jw-step-hdr{display:flex;align-items:center;gap:10px;margin-bottom:18px;padding-bottom:12px;border-bottom:2px solid #e2d0a0;}
+.jw-step-ico{font-size:24px;}
+.jw-step-title{font-size:17px;font-weight:900;color:#1a3d5c;}
+.jw-badge{font-size:10px;font-weight:700;padding:3px 9px;border-radius:10px;}
+.jw-badge-law{background:#fef3c7;color:#92400e;}
+.jw-badge-crit{background:#fee2e2;color:#991b1b;}
+.jw-badge-opt{background:#dbeafe;color:#1e40af;}
+/* FOOTER NAV */
+#jw-footer{background:#f5e9c4;border-top:2px solid #e2d0a0;padding:12px 20px;display:flex;align-items:center;gap:12px;flex-shrink:0;}
+#jw-btn-back{background:none;border:1.5px solid #c9a84c;color:#9a6f00;border-radius:9px;padding:10px 18px;font-size:13px;font-weight:700;cursor:pointer;font-family:Heebo,sans-serif;}
+#jw-btn-next{background:#1a3d5c;color:#fff;border:none;border-radius:9px;padding:10px 24px;font-size:13px;font-weight:800;cursor:pointer;font-family:Heebo,sans-serif;}
+#jw-btn-save{background:rgba(22,163,74,.15);border:1.5px solid rgba(22,163,74,.4);color:#15803d;border-radius:9px;padding:10px 16px;font-size:12px;font-weight:700;cursor:pointer;font-family:Heebo,sans-serif;}
+#jw-progress-wrap{flex:1;}
+#jw-progress-lbl{font-size:10px;color:#9a6f00;font-weight:700;margin-bottom:3px;}
+#jw-progress-bar{height:6px;background:#e2d0a0;border-radius:3px;}
+#jw-progress-fill{height:100%;background:#c9a84c;border-radius:3px;transition:width .3s;}
+/* FIELDS */
+.jw-field{display:flex;flex-direction:column;gap:5px;margin-bottom:12px;}
+.jw-field label{font-size:11px;font-weight:800;color:#5a4010;text-transform:uppercase;letter-spacing:.4px;}
+.jw-field input,.jw-field select,.jw-field textarea{padding:10px 13px;border:1.5px solid #e2d0a0;border-radius:9px;font-family:Heebo,sans-serif;font-size:14px;color:#2c1f00;background:#fff;direction:rtl;outline:none;width:100%;}
+.jw-field input:focus,.jw-field select:focus,.jw-field textarea:focus{border-color:#c9a84c;}
+.jw-field textarea{resize:vertical;min-height:80px;}
+.jw-grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+.jw-grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;}
+@media(max-width:600px){.jw-grid2,.jw-grid3{grid-template-columns:1fr;}}
+/* HERO (step 1) */
+#jw-hero{background:linear-gradient(135deg,#1a3d5c,#2d6a9f);border-radius:14px;padding:18px 20px 14px;margin-bottom:16px;}
+#jw-hero-name{font-size:20px;font-weight:900;color:#fff;margin-bottom:8px;}
+#jw-hero-tags{display:flex;gap:8px;flex-wrap:wrap;}
+.jw-hero-tag{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2);border-radius:20px;padding:3px 10px;font-size:11px;color:rgba(255,255,255,.85);}
+.jw-hero-tag.gold{background:rgba(201,168,76,.25);border-color:rgba(201,168,76,.5);color:#fde68a;}
+/* TASKS (step 1) */
+.jw-task{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:9px;border:1px solid #e2d0a0;background:#fff;margin-bottom:7px;}
+.jw-task-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0;}
+.jw-task-name{font-size:13px;font-weight:700;color:#1a3d5c;flex:1;}
+.jw-task-meta{font-size:10px;color:#888;margin-top:2px;}
+.jw-task-badge{font-size:9px;font-weight:700;padding:2px 7px;border-radius:8px;}
+/* DRAWINGS */
+.jw-draw-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100px,100%),1fr));gap:8px;margin-top:8px;}
+.jw-draw-card{border:1px solid #e2d0a0;border-radius:9px;overflow:hidden;cursor:pointer;text-decoration:none;}
+.jw-draw-card:hover{border-color:#c9a84c;}
+.jw-draw-thumb{height:55px;display:flex;align-items:center;justify-content:center;font-size:22px;}
+.jw-draw-info{padding:5px 7px;background:#fff;}
+.jw-draw-name{font-size:9px;font-weight:700;color:#1a3d5c;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.jw-draw-date{font-size:8px;color:#aaa;}
+.jw-draw-upload{border:2px dashed #c9a84c;border-radius:9px;height:80px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;cursor:pointer;color:#9a6f00;font-size:10px;font-weight:700;}
+/* CONTRACTORS */
+.jw-contr{display:flex;align-items:center;gap:10px;padding:10px 12px;background:#f5f0e8;border-radius:9px;margin-bottom:7px;}
+.jw-contr-av{width:34px;height:34px;border-radius:50%;background:#1a3d5c;color:#fff;font-size:12px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.jw-contr-name{font-size:13px;font-weight:700;color:#1a3d5c;}
+.jw-contr-scope{font-size:10px;color:#888;}
+/* DYNAMIC ROWS */
+.jw-row{background:#fff;border:1.5px solid #e2d0a0;border-radius:9px;padding:12px;margin-bottom:8px;position:relative;}
+.jw-row.critical{border-color:#fca5a5;background:#fff5f5;}
+.jw-remove{position:absolute;top:8px;left:8px;background:#fee2e2;color:#dc2626;border:none;border-radius:6px;width:24px;height:24px;cursor:pointer;font-size:14px;font-weight:700;display:flex;align-items:center;justify-content:center;}
+.jw-add-btn{background:none;border:2px dashed #c9a84c;color:#9a6f00;border-radius:9px;padding:9px;width:100%;cursor:pointer;font-size:13px;font-weight:700;font-family:Heebo,sans-serif;margin-top:4px;}
+.jw-total-box{background:#f0f7ff;border-right:4px solid #2d6a9f;border-radius:8px;padding:10px 14px;font-size:14px;font-weight:700;color:#1a3d5c;margin-top:10px;}
+/* HOURS */
+.jw-time-display{font-size:32px;font-weight:900;color:#c9a84c;text-align:center;margin:10px 0;}
+/* CTA go-to-field */
+#jw-cta{background:#f5f0e8;border:2px solid #c9a84c;border-radius:14px;padding:16px 20px;display:flex;align-items:center;gap:14px;margin-top:16px;}
+#jw-cta-btn{background:linear-gradient(135deg,#c9a84c,#9a6f00);color:#fff;border:none;border-radius:12px;padding:12px 22px;font-size:14px;font-weight:900;cursor:pointer;white-space:nowrap;font-family:Heebo,sans-serif;}
+/* SIGNATURE */
+.jw-sig-pad{border:2px solid #c9a84c;border-radius:10px;width:100%;height:100px;background:#fafafa;cursor:crosshair;display:block;margin-bottom:8px;}
+/* SEND BUTTONS */
+.jw-send-row{display:flex;gap:10px;margin-top:14px;flex-wrap:wrap;}
+.jw-send-btn{flex:1;padding:13px;border:none;border-radius:10px;font-size:14px;font-weight:800;cursor:pointer;font-family:Heebo,sans-serif;}
+.jw-send-primary{background:#1a3d5c;color:#fff;}
+.jw-send-success{background:#16a34a;color:#fff;}
+.jw-send-wa{background:#25d366;color:#fff;}
+</style>
 
-  <!-- ══ STEP 0: MORNING BRIEFING ══════════════════════════════════════ -->
-  <div id="morning-brief-panel" style="display:block;">
-
-    <!-- Project Hero -->
-    <div id="mb-hero" style="background:linear-gradient(135deg,#1a3d5c,#2d6a9f);border-radius:14px;padding:20px 22px 16px;margin-bottom:18px;">
-      <div style="font-size:11px;color:rgba(255,255,255,0.5);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">פרויקט פעיל</div>
-      <div id="mb-proj-name" style="font-size:22px;font-weight:900;color:#fff;margin-bottom:8px;">טוען...</div>
-      <div id="mb-proj-tags" style="display:flex;gap:8px;flex-wrap:wrap;"></div>
+<div id="journal-wizard">
+  <!-- TOPBAR -->
+  <div id="jw-topbar">
+    <div>
+      <div id="jw-topbar-title">📝 יומן עבודה יומי</div>
+      <div id="jw-topbar-sub">אישור עבודה — <span id="jw-report-num">טוען...</span></div>
     </div>
-
-    <!-- Today's Tasks -->
-    <div style="margin-bottom:18px;">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
-        <div style="font-size:12px;font-weight:800;color:#1a3d5c;text-transform:uppercase;letter-spacing:.5px;">📋 משימות היום</div>
-        <div id="mb-tasks-count" style="font-size:11px;color:#888;"></div>
-      </div>
-      <div id="mb-tasks-list"><div style="text-align:center;padding:20px;color:#aaa;font-size:13px;">טוען...</div></div>
-    </div>
-
-    <!-- Drawings Browser -->
-    <div style="margin-bottom:18px;">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
-        <div style="font-size:12px;font-weight:800;color:#1a3d5c;text-transform:uppercase;letter-spacing:.5px;">📐 תוכניות ומסמכים</div>
-        <label style="background:#1a3d5c;color:#fff;border:none;border-radius:8px;padding:5px 12px;font-size:11px;font-weight:700;cursor:pointer;">
-          ＋ העלה<input type="file" id="mb-file-upload" multiple accept=".pdf,.dwg,.jpg,.jpeg,.png" style="display:none;" onchange="mbUploadFiles(this)">
-        </label>
-      </div>
-      <div style="display:flex;gap:6px;margin-bottom:10px;" id="mb-draw-filters">
-        <button onclick="mbFilterDrawings('all')" class="mb-dflt active" style="padding:4px 12px;border-radius:20px;font-size:11px;font-weight:700;border:1px solid #1a3d5c;background:#1a3d5c;color:#fff;cursor:pointer;">הכל</button>
-        <button onclick="mbFilterDrawings('pdf')" class="mb-dflt" style="padding:4px 12px;border-radius:20px;font-size:11px;font-weight:700;border:1px solid #ddd;background:none;color:#888;cursor:pointer;">📄 PDF</button>
-        <button onclick="mbFilterDrawings('img')" class="mb-dflt" style="padding:4px 12px;border-radius:20px;font-size:11px;font-weight:700;border:1px solid #ddd;background:none;color:#888;cursor:pointer;">🖼️ תמונות</button>
-      </div>
-      <div id="mb-drawings-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(min(110px,100%),1fr));gap:8px;">
-        <div style="text-align:center;padding:20px;color:#aaa;font-size:12px;grid-column:1/-1;">טוען קבצים...</div>
-      </div>
-    </div>
-
-    <!-- Contractors Today -->
-    <div style="margin-bottom:22px;">
-      <div style="font-size:12px;font-weight:800;color:#1a3d5c;text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px;">👷 קבלנים באתר היום</div>
-      <div id="mb-contractors-list"></div>
-    </div>
-
-    <!-- CTA: Go to Field -->
-    <div style="background:#f5f0e8;border-radius:14px;padding:16px 20px;display:flex;align-items:center;gap:14px;border:1.5px solid #c9a84c;">
-      <div style="flex:1;">
-        <div style="font-size:14px;font-weight:800;color:#1a3d5c;margin-bottom:3px;">מוכן לצאת לשטח?</div>
-        <div style="font-size:11px;color:#888;">לחץ — סיכום היום ישלח לטלפון שלך אוטומטית</div>
-      </div>
-      <button onclick="mbSendToField()" style="background:linear-gradient(135deg,#c9a84c,#9a6f00);color:#fff;border:none;border-radius:12px;padding:12px 22px;font-size:14px;font-weight:900;cursor:pointer;white-space:nowrap;">🚀 צא לשטח</button>
-    </div>
-
-    <div style="margin-top:14px;text-align:center;">
-      <button onclick="mbSkipToForm()" style="background:none;border:none;color:#aaa;font-size:12px;cursor:pointer;text-decoration:underline;">→ דלג ועבור ישירות לטופס</button>
-    </div>
+    <div id="jw-topbar-num">שלב <span id="jw-step-indicator">1</span> / 8</div>
   </div>
-  <!-- ══ END MORNING BRIEFING ═════════════════════════════════════════ -->
 
-    <form id="reportForm" style="display:none;" id="reportForm">
-      <section class="section">
-        <h2>📋 פרטי פרוייקט</h2>
-        <div class="form-row">
-          <div style="position:relative;">
-            <select id="projectName" required
-              style="width:100%;padding:12px;border:2px solid #e1e8ed;border-radius:8px;font-size:16px;font-family:inherit;background:white;-webkit-appearance:none;appearance:none;"
-              onchange="onJournalProjectChange(this)">
-              <option value="">— בחר פרוייקט —</option>
+  <div id="jw-body">
+    <!-- STEP SIDEBAR -->
+    <div id="jw-steps">
+      <div class="jw-step active" onclick="jwGoto(1)" id="jw-sideitem-1"><div class="jw-step-num">1</div><div class="jw-step-label">בוקר טוב — הכן את היום</div></div>
+      <div class="jw-conn"></div>
+      <div class="jw-step" onclick="jwGoto(2)" id="jw-sideitem-2"><div class="jw-step-num">2</div><div class="jw-step-label">שעות + קבלנים</div></div>
+      <div class="jw-conn"></div>
+      <div class="jw-step" onclick="jwGoto(3)" id="jw-sideitem-3"><div class="jw-step-num">3</div><div class="jw-step-label">כוח אדם</div></div>
+      <div class="jw-conn"></div>
+      <div class="jw-step" onclick="jwGoto(4)" id="jw-sideitem-4"><div class="jw-step-num">4</div><div class="jw-step-label">פעילויות</div></div>
+      <div class="jw-conn"></div>
+      <div class="jw-step" onclick="jwGoto(5)" id="jw-sideitem-5"><div class="jw-step-num">5</div><div class="jw-step-label">חומרים וציוד</div></div>
+      <div class="jw-conn"></div>
+      <div class="jw-step" onclick="jwGoto(6)" id="jw-sideitem-6"><div class="jw-step-num">6</div><div class="jw-step-label">בטיחות</div></div>
+      <div class="jw-conn"></div>
+      <div class="jw-step" onclick="jwGoto(7)" id="jw-sideitem-7"><div class="jw-step-num">7</div><div class="jw-step-label">ביקורות ועיכובים</div></div>
+      <div class="jw-conn"></div>
+      <div class="jw-step" onclick="jwGoto(8)" id="jw-sideitem-8"><div class="jw-step-num">8</div><div class="jw-step-label">סיכום וחתימות</div></div>
+    </div>
+
+    <!-- MAIN STEP PANELS -->
+    <div id="jw-main">
+
+      <!-- ═══ STEP 1: MORNING BRIEFING ═══════════════════════════ -->
+      <div class="jw-step-panel active" id="jw-panel-1">
+        <div class="jw-step-hdr"><span class="jw-step-ico">🌅</span><span class="jw-step-title">בוקר טוב — הכן את היום</span></div>
+
+        <div class="jw-field">
+          <label>בחר פרויקט</label>
+          <select id="projectName" onchange="onJournalProjectChange(this);mbInit();">
+            <option value="">בחר פרויקט...</option>
+          </select>
+        </div>
+        <div id="project-custom-name-row" style="display:none;" class="jw-field">
+          <label>שם פרויקט ידני</label>
+          <input type="text" id="projectNameCustom" placeholder="הזן שם פרויקט...">
+        </div>
+        <div class="jw-grid2">
+          <div class="jw-field"><label>תאריך</label><input type="date" id="reportDate" required></div>
+          <div class="jw-field"><label>מזג אוויר</label>
+            <select id="weather">
+              <option value="בהיר">☀️ בהיר</option>
+              <option value="מעונן חלקית">⛅ מעונן חלקית</option>
+              <option value="מעונן">☁️ מעונן</option>
+              <option value="גשום">🌧️ גשום</option>
+              <option value="סוער">⛈️ סוער</option>
+              <option value="חם מאוד">🌡️ חם מאוד</option>
             </select>
-            <span style="position:absolute;left:12px;top:50%;transform:translateY(-50%);pointer-events:none;font-size:14px;">▼</span>
           </div>
-          <input type="date" id="reportDate" required>
         </div>
-        <div id="project-custom-name-row" style="display:none;margin-top:8px;">
-          <input type="text" id="projectNameCustom" placeholder="הזן שם פרוייקט ידנית..."
-            style="width:100%;padding:12px;border:2px solid #667eea;border-radius:8px;font-size:16px;font-family:inherit;"
-            oninput="syncProjectNameToSelect()">
-        </div>
-        <div class="form-row">
-          <select id="weather">
-            <option value="">מזג אוויר</option>
-            <option value="sunny">☀️ שמש</option>
-            <option value="cloudy">⛅ מעונן</option>
-            <option value="rainy">🌧️ גשום</option>
-            <option value="hot">🌡️ חם מאוד</option>
-            <option value="cold">❄️ קר</option>
-            <option value="windy">💨 רוח חזקה</option>
-          </select>
-        </div>
-      </section>
 
-      <section class="section">
-        <h2>🏗️ קבלני הפרוייקט</h2>
-        <p class="helper-text">בחר / הוסף קבלן — לחץ על שדה לעריכה.</p>
-        <div class="contractors-table-wrap">
-          <table class="contractors-table" id="contractorsTable">
-            <thead>
-              <tr>
-                <th>שם חברה / קבלן</th><th>איש קשר</th><th>נייד</th>
-                <th>טל׳ משרד</th><th>עיסוק ראשי</th><th>פעילות בפרוייקט זה</th>
-                <th class="td-actions"></th>
-              </tr>
-            </thead>
-            <tbody id="contractorsBody">
-              <tr><td colspan="7" class="contractors-empty">לחץ ״➕ הוסף קבלן״ להוספת שורה</td></tr>
-            </tbody>
+        <!-- Project hero — loads after project selection -->
+        <div id="mb-hero" style="display:none;background:linear-gradient(135deg,#1a3d5c,#2d6a9f);border-radius:14px;padding:18px 20px 14px;margin:12px 0;">
+          <div id="mb-proj-name" style="font-size:20px;font-weight:900;color:#fff;margin-bottom:8px;"></div>
+          <div id="mb-proj-tags" style="display:flex;gap:8px;flex-wrap:wrap;"></div>
+        </div>
+
+        <!-- Today's tasks -->
+        <div id="mb-tasks-section" style="display:none;margin:14px 0;">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+            <div style="font-size:12px;font-weight:900;color:#1a3d5c;text-transform:uppercase;letter-spacing:.5px;">📋 משימות היום</div>
+            <div id="mb-tasks-count" style="font-size:11px;color:#888;font-weight:600;"></div>
+          </div>
+          <div id="mb-tasks-list"></div>
+        </div>
+
+        <!-- Drawings browser -->
+        <div id="mb-drawings-section" style="display:none;margin:14px 0;">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+            <div style="font-size:12px;font-weight:900;color:#1a3d5c;text-transform:uppercase;letter-spacing:.5px;">📐 תוכניות ומסמכים</div>
+            <label style="background:#1a3d5c;color:#fff;border-radius:8px;padding:4px 12px;font-size:11px;font-weight:700;cursor:pointer;">＋ העלה<input type="file" multiple accept=".pdf,.dwg,.jpg,.jpeg,.png" style="display:none;" onchange="mbUploadFiles(this)"></label>
+          </div>
+          <div style="display:flex;gap:6px;margin-bottom:8px;" id="mb-draw-filters">
+            <button onclick="mbFilterDrawings('all')" class="mb-dflt" data-f="all" style="padding:4px 12px;border-radius:20px;font-size:11px;font-weight:700;border:1px solid #1a3d5c;background:#1a3d5c;color:#fff;cursor:pointer;">הכל</button>
+            <button onclick="mbFilterDrawings('pdf')" class="mb-dflt" data-f="pdf" style="padding:4px 12px;border-radius:20px;font-size:11px;font-weight:700;border:1px solid #ddd;background:none;color:#888;cursor:pointer;">📄 PDF</button>
+            <button onclick="mbFilterDrawings('img')" class="mb-dflt" data-f="img" style="padding:4px 12px;border-radius:20px;font-size:11px;font-weight:700;border:1px solid #ddd;background:none;color:#888;cursor:pointer;">🖼️ תמונות</button>
+          </div>
+          <div id="mb-drawings-grid" class="jw-draw-grid"></div>
+        </div>
+
+        <!-- Contractors today -->
+        <div id="mb-contractors-section" style="display:none;margin:14px 0;">
+          <div style="font-size:12px;font-weight:900;color:#1a3d5c;text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px;">👷 קבלנים באתר היום</div>
+          <div id="mb-contractors-list"></div>
+        </div>
+
+        <!-- CTA -->
+        <div id="jw-cta" style="display:none;">
+          <div style="flex:1;">
+            <div style="font-size:14px;font-weight:800;color:#1a3d5c;margin-bottom:3px;">מוכן לצאת לשטח?</div>
+            <div style="font-size:11px;color:#888;">לחץ — סיכום היום ישלח לטלפון אוטומטית</div>
+          </div>
+          <button id="jw-cta-btn" onclick="mbSendToField()">🚀 צא לשטח</button>
+        </div>
+      </div>
+
+      <!-- ═══ STEP 2: HOURS + CONTRACTORS ═══════════════════════ -->
+      <div class="jw-step-panel" id="jw-panel-2">
+        <div class="jw-step-hdr"><span class="jw-step-ico">⏰</span><span class="jw-step-title">שעות עבודה וקבלנים</span></div>
+        <div class="jw-grid3">
+          <div class="jw-field"><label>שעת התחלה</label><input type="time" id="startTime" onchange="calculateWorkHours()"></div>
+          <div class="jw-field"><label>שעת סיום</label><input type="time" id="endTime" onchange="calculateWorkHours()"></div>
+          <div class="jw-field"><label>הפסקות (שעות)</label><input type="number" id="breakHours" value="0" step="0.5" oninput="calculateWorkHours()"></div>
+        </div>
+        <div class="jw-total-box">⏱️ סה"כ שעות עבודה: <span id="totalWorkHours" style="font-size:20px;color:#c9a84c;">0</span> שעות</div>
+
+        <div style="margin-top:18px;margin-bottom:10px;">
+          <div style="font-size:12px;font-weight:900;color:#1a3d5c;text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px;">🏗️ קבלני הפרויקט</div>
+          <table style="width:100%;border-collapse:collapse;font-size:13px;" id="contractorsTable">
+            <thead><tr style="background:#f5e9c4;">
+              <th style="padding:9px 10px;text-align:right;font-weight:800;color:#1a3d5c;border-bottom:2px solid #e2d0a0;">שם קבלן</th>
+              <th style="padding:9px 10px;text-align:right;font-weight:800;color:#1a3d5c;border-bottom:2px solid #e2d0a0;">מקצוע</th>
+              <th style="padding:9px 10px;text-align:right;font-weight:800;color:#1a3d5c;border-bottom:2px solid #e2d0a0;">מס' עובדים</th>
+              <th style="padding:9px 10px;border-bottom:2px solid #e2d0a0;"></th>
+            </tr></thead>
+            <tbody id="contractorsBody"></tbody>
           </table>
+          <button class="jw-add-btn" onclick="addContractorRow()">➕ הוסף קבלן</button>
         </div>
-        <button type="button" class="btn-add-contractor" onclick="addContractorRow()">➕ הוסף קבלן</button>
-      </section>
+      </div>
 
-      <section class="section">
-        <h2>⏰ שעות עבודה</h2>
-        <div class="form-row">
-          <input type="time" id="startTime" placeholder="שעת התחלה">
-          <input type="time" id="endTime" placeholder="שעת סיום">
-          <input type="number" id="breakHours" value="0" step="0.5" placeholder="הפסקות (שעות)">
-        </div>
-        <div class="total-hours"><strong>סה"כ שעות עבודה:</strong> <span id="totalWorkHours">0</span> שעות</div>
-      </section>
-
-      <section class="section">
-        <h2>👷 כוח אדם</h2>
+      <!-- ═══ STEP 3: WORKERS ════════════════════════════════════ -->
+      <div class="jw-step-panel" id="jw-panel-3">
+        <div class="jw-step-hdr"><span class="jw-step-ico">👷</span><span class="jw-step-title">כוח אדם באתר</span><span class="jw-badge jw-badge-law">חובה לפי חוק</span></div>
         <div id="workersContainer"></div>
-        <button type="button" class="btn-add" onclick="addWorkerRow()">➕ הוסף עובד</button>
-        <div class="total-hours"><strong>סה"כ שעות כוח אדם:</strong> <span id="totalWorkerHours">0</span> שעות</div>
-      </section>
+        <button class="jw-add-btn" onclick="addWorkerRow()">➕ הוסף עובד</button>
+        <div class="jw-total-box">👷 סה"כ שעות כוח אדם: <span id="totalWorkerHours" style="font-size:20px;color:#c9a84c;">0</span> שעות</div>
+      </div>
 
-      <section class="section">
-        <h2>🔨 פעילויות</h2>
+      <!-- ═══ STEP 4: ACTIVITIES ═════════════════════════════════ -->
+      <div class="jw-step-panel" id="jw-panel-4">
+        <div class="jw-step-hdr"><span class="jw-step-ico">🔨</span><span class="jw-step-title">פעילויות שבוצעו</span></div>
         <div id="activitiesContainer"></div>
-        <button type="button" class="btn-add" onclick="addActivityRow()">➕ הוסף פעילות</button>
-      </section>
+        <button class="jw-add-btn" onclick="addActivityRow()">➕ הוסף פעילות</button>
+      </div>
 
-      <section class="section legal-section">
-        <h2>📦 אספקות חומרים <span class="legal-badge">חובה לפי חוק</span></h2>
-        <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap;align-items:center">
-          <select id="materialQuickSelect" style="flex:2;padding:10px;border:2px solid #e1e8ed;border-radius:8px;font-size:14px;font-family:inherit;direction:rtl">
-            <option value="">-- בחר חומר מהרשימה --</option>
-          </select>
-          <button type="button" onclick="addMaterialFromList()" style="background:#667eea;color:#fff;border:none;border-radius:8px;padding:10px 18px;font-size:14px;font-weight:700;cursor:pointer;white-space:nowrap">➕ הוסף</button>
+      <!-- ═══ STEP 5: MATERIALS + EQUIPMENT ═════════════════════ -->
+      <div class="jw-step-panel" id="jw-panel-5">
+        <div class="jw-step-hdr"><span class="jw-step-ico">📦</span><span class="jw-step-title">חומרים וציוד</span><span class="jw-badge jw-badge-law">חובה לפי חוק</span></div>
+
+        <div style="font-size:13px;font-weight:800;color:#1a3d5c;margin-bottom:8px;">📦 אספקות חומרים</div>
+        <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap;">
+          <select id="materialQuickSelect" style="flex:2;min-width:160px;padding:10px;border:1.5px solid #e2d0a0;border-radius:9px;font-size:14px;font-family:Heebo,sans-serif;direction:rtl;background:#fff;"></select>
+          <button onclick="addMaterialFromList()" style="background:#1a3d5c;color:#fff;border:none;border-radius:9px;padding:10px 18px;font-size:13px;font-weight:700;cursor:pointer;">➕ הוסף</button>
         </div>
         <div id="materialsContainer"></div>
-        <button type="button" class="btn-add" onclick="addMaterialRow('')">➕ הוסף שורה ריקה</button>
-      </section>
+        <button class="jw-add-btn" onclick="addMaterialRow('')">➕ הוסף שורה ריקה</button>
 
-      <section class="section legal-section">
-        <h2>🚜 ציוד ומכונות <span class="legal-badge">חובה לפי חוק</span></h2>
-        <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap;align-items:center">
-          <select id="equipmentQuickSelect" style="flex:2;padding:10px;border:2px solid #e1e8ed;border-radius:8px;font-size:14px;font-family:inherit;direction:rtl">
-            <option value="">-- בחר ציוד/מכונה --</option>
-          </select>
-          <button type="button" onclick="addEquipmentFromList()" style="background:#667eea;color:#fff;border:none;border-radius:8px;padding:10px 18px;font-size:14px;font-weight:700;cursor:pointer;white-space:nowrap">➕ הוסף</button>
+        <div style="font-size:13px;font-weight:800;color:#1a3d5c;margin:16px 0 8px;">🚜 ציוד ומכונות</div>
+        <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap;">
+          <select id="equipmentQuickSelect" style="flex:2;min-width:160px;padding:10px;border:1.5px solid #e2d0a0;border-radius:9px;font-size:14px;font-family:Heebo,sans-serif;direction:rtl;background:#fff;"></select>
+          <button onclick="addEquipmentFromList()" style="background:#1a3d5c;color:#fff;border:none;border-radius:9px;padding:10px 18px;font-size:13px;font-weight:700;cursor:pointer;">➕ הוסף</button>
         </div>
         <div id="equipmentContainer"></div>
-        <button type="button" class="btn-add" onclick="addEquipmentRow('')">➕ הוסף שורה ריקה</button>
-      </section>
+        <button class="jw-add-btn" onclick="addEquipmentRow('')">➕ הוסף שורה ריקה</button>
+      </div>
 
-      <section class="section legal-section critical">
-        <h2>⚠️ בטיחות ואירועים <span class="legal-badge critical">קריטי</span></h2>
+      <!-- ═══ STEP 6: SAFETY ════════════════════════════════════ -->
+      <div class="jw-step-panel" id="jw-panel-6">
+        <div class="jw-step-hdr"><span class="jw-step-ico">⚠️</span><span class="jw-step-title">בטיחות ואירועים</span><span class="jw-badge jw-badge-crit">קריטי</span></div>
         <div id="safetyContainer"></div>
-        <button type="button" class="btn-add" onclick="addSafetyRow()">➕ הוסף אירוע</button>
-      </section>
+        <button class="jw-add-btn" onclick="addSafetyRow()">➕ הוסף אירוע בטיחות</button>
+      </div>
 
-      <section class="section legal-section critical">
-        <h2>👮 ביקורות ופיקוח <span class="legal-badge critical">קריטי</span></h2>
+      <!-- ═══ STEP 7: INSPECTIONS + DELAYS ═════════════════════ -->
+      <div class="jw-step-panel" id="jw-panel-7">
+        <div class="jw-step-hdr"><span class="jw-step-ico">👮</span><span class="jw-step-title">ביקורות ועיכובים</span><span class="jw-badge jw-badge-law">חובה לפי חוק</span></div>
+
+        <div style="font-size:13px;font-weight:800;color:#1a3d5c;margin-bottom:8px;">👮 ביקורות ופיקוח</div>
         <div id="inspectionsContainer"></div>
-        <button type="button" class="btn-add" onclick="addInspectionRow()">➕ הוסף ביקורת</button>
-      </section>
+        <button class="jw-add-btn" onclick="addInspectionRow()">➕ הוסף ביקורת</button>
 
-      <section class="section legal-section">
-        <h2>⏰ עיכובים והפסקות <span class="legal-badge">חובה לפי חוק</span></h2>
+        <div style="font-size:13px;font-weight:800;color:#1a3d5c;margin:16px 0 8px;">⏰ עיכובים והפסקות</div>
         <div id="delaysContainer"></div>
-        <button type="button" class="btn-add" onclick="addDelayRow()">➕ הוסף עיכוב</button>
-      </section>
+        <button class="jw-add-btn" onclick="addDelayRow()">➕ הוסף עיכוב</button>
+      </div>
 
-      <section class="section">
-        <h2>📝 הערות ותמונות</h2>
-        <div class="voice-textarea-container">
-          <textarea id="generalNotes" placeholder="הערות כלליות... (לחץ 🎤 להקלטה)"></textarea>
-          <button type="button" class="btn-voice" id="voiceNotesBtn">🎤</button>
-        </div>
-        <div class="photo-upload" onclick="document.getElementById('photoInput').click()"><span>📷 לחץ להוספת תמונות</span></div>
-        <input type="file" id="photoInput" accept="image/*" capture="environment" multiple style="display:none">
-        <div id="photoPreview" class="photo-preview"></div>
-      </section>
+      <!-- ═══ STEP 8: NOTES + SIGNATURES ═══════════════════════ -->
+      <div class="jw-step-panel" id="jw-panel-8">
+        <div class="jw-step-hdr"><span class="jw-step-ico">✍️</span><span class="jw-step-title">הערות, תמונות וחתימות</span></div>
 
-      <section class="section">
-        <h2>📅 תוכנית עבודה למחר</h2>
-        <div class="form-row"><input type="date" id="tomorrowDate"></div>
-        <div id="tomorrowContainer">
-          <div class="tomorrow-row" data-type="continue">
-            <div class="tomorrow-label">🔄 המשך מאתמול</div>
-            <input type="text" class="tomorrow-detail" placeholder="פרט את ההמשך...">
+        <div class="jw-field">
+          <label>📝 הערות כלליות</label>
+          <div style="position:relative;">
+            <textarea id="generalNotes" placeholder="הערות כלליות לאתר... (לחץ 🎤 להקלטה)" style="padding-left:50px;"></textarea>
+            <button type="button" class="btn-voice" id="voiceNotesBtn" style="position:absolute;left:8px;top:8px;">🎤</button>
           </div>
-          <div class="tomorrow-row" data-type="new">
-            <div class="tomorrow-label">🆕 עבודה חדשה</div>
-            <input type="text" class="tomorrow-detail" placeholder="תאר את העבודה החדשה...">
-          </div>
-          <div class="tomorrow-row" data-type="delivery">
-            <div class="tomorrow-label">🚚 אספקה צפויה</div>
-            <input type="text" class="tomorrow-detail" placeholder="ציין חומרים / ציוד שיגיע...">
-          </div>
-          <div class="tomorrow-row" data-type="crew">
-            <div class="tomorrow-label">👷 כוח אדם נדרש</div>
-            <input type="text" class="tomorrow-detail" placeholder="כמה פועלים / אילו בעלי מקצוע...">
-          </div>
-          <div class="tomorrow-row" data-type="safety">
-            <div class="tomorrow-label">⛑️ בטיחות / היתרים</div>
-            <input type="text" class="tomorrow-detail" placeholder="בדיקות בטיחות, היתרי כניסה...">
-          </div>
-          <div id="tomorrowExtraRows"></div>
         </div>
-        <button type="button" class="btn-add" onclick="addTomorrowRow()">➕ הוסף פריט נוסף</button>
-        <div class="voice-textarea-container" style="margin-top:10px">
-          <textarea id="tomorrowPlan" placeholder="הערות כלליות לתוכנית מחר..." rows="2"></textarea>
-          <button type="button" class="btn-voice" id="voiceTomorrowBtn">🎤</button>
+
+        <div class="jw-field">
+          <label>📅 תוכנית עבודה למחר</label>
+          <div style="position:relative;">
+            <textarea id="tomorrowPlan" placeholder="מה מתוכנן למחר?" rows="3" style="padding-left:50px;"></textarea>
+            <button type="button" class="btn-voice" id="voiceTomorrowBtn" style="position:absolute;left:8px;top:8px;">🎤</button>
+          </div>
+          <input type="date" id="tomorrowDate" style="margin-top:6px;">
         </div>
-      </section>
 
-      <section class="section">
-        <h2>✍️ חתימת מנהל העבודה</h2>
-        <canvas id="signatureCanvas" class="signature-pad"></canvas>
-        <div class="btn-group">
-          <button type="button" class="btn-secondary" onclick="clearSignature()">🗑️ נקה חתימה</button>
+        <div class="jw-field">
+          <label>📸 תמונות מהאתר</label>
+          <div onclick="document.getElementById('photoInput').click()" style="border:2px dashed #c9a84c;border-radius:10px;padding:24px;text-align:center;cursor:pointer;background:#fffbf0;color:#9a6f00;font-size:13px;font-weight:700;">📷 לחץ להוספת תמונות</div>
+          <input type="file" id="photoInput" accept="image/*" capture="environment" multiple style="display:none">
+          <div id="photoPreview" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(min(120px,100%),1fr));gap:8px;margin-top:8px;"></div>
         </div>
-      </section>
 
-      <section class="section">
-        <button type="button" id="saveBtn" class="btn-primary">💾 שמור טיוטה</button>
-        <button type="button" id="sendBtn" class="btn-success">📤 שלח לאישור</button>
-      </section>
-
-      <section class="section action-buttons">
-        <div class="btn-group">
-          <button type="button" class="btn-warning" onclick="clearAllData()">🗑️ נקה את כל הנתונים</button>
-          <button type="button" class="btn-info" onclick="startNewReport()">🆕 התחל דוח חדש</button>
+        <div class="jw-field">
+          <label>✍️ חתימת מנהל</label>
+          <canvas id="signatureCanvas" class="jw-sig-pad"></canvas>
+          <button onclick="clearSignature()" style="background:none;border:1px solid #ddd;border-radius:7px;padding:5px 12px;font-size:11px;color:#888;cursor:pointer;">🗑️ נקה חתימה</button>
         </div>
-      </section>
-    </form>
-  </main>
-</div>
 
-<div id="ownerView" style="display:none">
-  <header class="header no-print">
-    <button onclick="switchTab('crm')" style="background:linear-gradient(135deg,#1a3d5c,#2d6a9f);color:white;border:none;border-radius:10px;padding:9px 18px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;">
-      ◀ חזרה ללוח בקרה
-    </button>
-    <div class="security-badge">🔒 דוח מאובטח</div>
-    <h1>אישור דוח עבודה</h1>
-    <button class="btn-print" onclick="printReport()">🖨️ הדפס</button>
-  </header>
-  <div class="print-header">
-    <div class="print-logo">
-      <h1>ביצוע פרויקטים</h1>
-      <p>אבשי ספיר - קבלן רצפות תעשייתיות</p>
-      <p>📱 050-5231042</p>
+        <div id="jw-report-number-display" style="background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;border-radius:10px;padding:14px;text-align:center;margin:12px 0;">
+          <div id="reportNumber" style="font-size:11px;opacity:.8;margin-bottom:4px;">אישור עבודה</div>
+          <div id="jw-report-num-display" style="font-size:22px;font-weight:900;letter-spacing:2px;font-family:monospace;">טוען...</div>
+        </div>
+
+        <div class="jw-send-row">
+          <button class="jw-send-btn jw-send-primary" id="saveBtn">💾 שמור טיוטה</button>
+          <button class="jw-send-btn jw-send-success" id="sendBtn">📤 שלח לאישור</button>
+          <button class="jw-send-btn jw-send-wa" onclick="sendReportWhatsApp()">💬 WhatsApp</button>
+        </div>
+        <div style="display:flex;gap:8px;margin-top:8px;">
+          <button onclick="clearAllData()" style="flex:1;background:none;border:1px solid #ddd;border-radius:9px;padding:9px;font-size:12px;color:#888;cursor:pointer;font-family:Heebo,sans-serif;">🗑️ נקה הכל</button>
+          <button onclick="startNewReport()" style="flex:1;background:none;border:1px solid #ddd;border-radius:9px;padding:9px;font-size:12px;color:#888;cursor:pointer;font-family:Heebo,sans-serif;">🆕 דוח חדש</button>
+        </div>
+      </div>
+
+    </div><!-- /jw-main -->
+  </div><!-- /jw-body -->
+
+  <!-- FOOTER NAV -->
+  <div id="jw-footer">
+    <button id="jw-btn-back" onclick="jwBack()" style="display:none;">→ קודם</button>
+    <div id="jw-progress-wrap">
+      <div id="jw-progress-lbl">שלב 1 מתוך 8</div>
+      <div id="jw-progress-bar"><div id="jw-progress-fill" style="width:12%;"></div></div>
     </div>
-    <div class="print-report-number" id="printReportNumber"></div>
+    <button id="jw-btn-save" onclick="saveDraft()">💾 שמור</button>
+    <button id="jw-btn-next" onclick="jwNext()">הבא ←</button>
   </div>
+</div><!-- /journal-wizard -->
+
+<!-- OWNER VIEW (approval page - unchanged) -->
+<div id="ownerView" style="display:none;padding:20px;font-family:Heebo,sans-serif;direction:rtl;">
+  <button onclick="switchTab('crm')" style="background:linear-gradient(135deg,#1a3d5c,#2d6a9f);color:white;border:none;border-radius:10px;padding:9px 18px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;margin-bottom:16px;">← חזור ללוח בקרה</button>
+  <button class="btn-print" onclick="printReport()">🖨️ הדפס</button>
+  <div class="print-report-number" id="printReportNumber"></div>
   <main class="container" id="printableArea">
     <div id="reportDetails"></div>
     <section class="section no-print">
@@ -2448,22 +2530,23 @@ window.addEventListener('unhandledrejection', function(e) {
     </section>
     <section class="section no-print">
       <h2>✍️ אישור</h2>
-      <input type="text" id="ownerName" placeholder="שם מלא">
-      <div class="voice-textarea-container">
-        <textarea id="ownerRemarks" placeholder="הערות (אופציונלי)"></textarea>
+      <input type="text" id="ownerName" placeholder="שם מלא" style="width:100%;padding:10px;border:1.5px solid #e2d0a0;border-radius:9px;font-size:14px;font-family:Heebo,sans-serif;margin-bottom:10px;">
+      <div style="position:relative;margin-bottom:10px;">
+        <textarea id="ownerRemarks" placeholder="הערות (אופציונלי)" style="width:100%;padding:10px 50px 10px 10px;border:1.5px solid #e2d0a0;border-radius:9px;font-size:14px;font-family:Heebo,sans-serif;resize:vertical;min-height:70px;direction:rtl;"></textarea>
         <button type="button" class="btn-voice" id="voiceRemarksBtn">🎤</button>
       </div>
       <canvas id="ownerSignature" class="signature-pad"></canvas>
-      <div class="btn-group">
-        <button onclick="clearOwnerSignature()" class="btn-secondary">🗑️ נקה</button>
-        <button onclick="approveReport()" class="btn-success">✅ אשר ושלח</button>
+      <div style="display:flex;gap:8px;">
+        <button onclick="clearOwnerSignature()" class="btn-secondary" style="flex:1;">🗑️ נקה</button>
+        <button onclick="approveReport()" class="btn-success" style="flex:2;">✅ אשר ושלח</button>
       </div>
     </section>
   </main>
-  <div class="print-footer">
-    <p>דוח זה נוצר באופן דיגיטלי ועומד בתקנות התכנון והבניה תשנ"ב-1992</p>
-    <p>ביצוע פרויקטים | אבשי ספיר | 050-5231042</p>
-  </div>
+</div>
+
+</div><!-- /journal-panel -->
+
+
 </div>
 
 <div id="voiceIndicator" class="voice-indicator" style="display:none">
@@ -5530,7 +5613,7 @@ td{padding:8px 10px;border-bottom:1px solid #ddd;font-size:12px}
 .deduct td{background:#fff5f5;color:#dc2626}
 .total-row{background:#eff6ff;font-weight:800;font-size:14px}
 .net-row{background:#dbeafe;font-weight:900;font-size:15px;color:#1d4ed8}
-.section-title{font-size:13px;font-weight:800;color:#374151;margin:16px 0 6px;text-transform:uppercase;letter-spacing:.5px}
+.section-title{font-size:13px;font-weight:900;color:#1a3d5c;margin:16px 0 6px;text-transform:uppercase;letter-spacing:.5px}
 @media print{button{display:none}}</style></head><body>
 <button onclick="window.print()" style="background:#1a3d5c;color:white;border:none;padding:9px 22px;border-radius:6px;cursor:pointer;font-size:13px;margin-bottom:16px;">🖨️ הדפס / PDF</button>
 <button onclick="window.close()" style="background:#6b7280;color:white;border:none;padding:9px 18px;border-radius:6px;cursor:pointer;font-size:13px;margin-bottom:16px;margin-right:8px;">← חזרה</button>
