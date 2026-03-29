@@ -151,7 +151,7 @@ function safetySelectAll(checked) {
 }
 
 // ── Severity scoring ───────────────────────────────────────────────
-const SEVERITY = {
+var SEVERITY = {
   CRITICAL: { level: 3, color: '#ef4444', bg: 'rgba(239,68,68,0.15)', label: '🔴 קריטי — פעולה מיידית', border: '#ef4444' },
   MODERATE: { level: 2, color: '#f59e0b', bg: 'rgba(245,158,11,0.12)', label: '🟡 בינוני — טיפול נדרש',  border: '#f59e0b' },
   MINOR:    { level: 1, color: '#3b82f6', bg: 'rgba(59,130,246,0.1)',  label: '🔵 קל — לתשומת לב',     border: '#3b82f6' },

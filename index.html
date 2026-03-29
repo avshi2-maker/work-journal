@@ -5136,7 +5136,7 @@ async function _fetchJournalModule() {
   if (_journalFetched) return;
   _journalFetched = true;
   try {
-    var res = await fetch('journal_28032026.js');
+    var res = await fetch('journal_28032026.js?v=' + Date.now());
     if (!res.ok) throw new Error('HTTP ' + res.status);
     var code = await res.text();
     if (code.trim().startsWith('<')) throw new Error('Got HTML not JS');
@@ -5159,7 +5159,7 @@ async function _fetchSafetyModule() {
   if (_safetyFetched) return;
   _safetyFetched = true;
   try {
-    var res = await fetch('safety_28032026.js');
+    var res = await fetch('safety_28032026.js?v=' + Date.now());
     if (!res.ok) throw new Error('HTTP ' + res.status);
     var code = await res.text();
     if (code.trim().startsWith('<')) throw new Error('Got HTML not JS');
@@ -5174,7 +5174,7 @@ async function _fetchRagModule() {
   if (_ragFetched) return;
   _ragFetched = true;
   try {
-    var res = await fetch('rag_28032026.js');
+    var res = await fetch('rag_28032026.js?v=' + Date.now());
     if (!res.ok) throw new Error('HTTP ' + res.status);
     var code = await res.text();
     if (code.trim().startsWith('<')) throw new Error('Got HTML not JS');
@@ -5368,10 +5368,11 @@ function _ensureRetryBar() {
 // ══ SMART JOURNAL + EOD + WEEKLY — loaded via fetch() ════════════════════
 var _sjFetched = false;
 async function _fetchSmartJournal() {
-  if (_sjFetched) return;
+  if (_sjFetched && typeof sjPopulateProjectFilter === 'function') return;
+  _sjFetched = false;
   _sjFetched = true;
   try {
-    var res = await fetch('smartjournal_28032026.js');
+    var res = await fetch('smartjournal_28032026.js?v=' + Date.now());
     if (!res.ok) throw new Error('HTTP ' + res.status);
     var code = await res.text();
     if (code.trim().startsWith('<')) throw new Error('Got HTML not JS');

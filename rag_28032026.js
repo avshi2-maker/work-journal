@@ -1,7 +1,7 @@
 var _ragHistory = [];  // conversation history for multi-turn
 
 // System prompt from topic4_example_prompts.md
-const RAG_SYSTEM_PROMPT = `אתה מסייע הנדסי מתמחה בבניית ממ"ד (מרחב מוגן דירתי) ובנייה עמידת הדף בישראל.
+var RAG_SYSTEM_PROMPT = `אתה מסייע הנדסי מתמחה בבניית ממ"ד (מרחב מוגן דירתי) ובנייה עמידת הדף בישראל.
 אתה עונה לקבלנים, מהנדסים ומפקחים בשטח על בסיס מסמכים טכניים שנשלפים ממאגר הידע.
 
 ## כללי ציטוט (חובה)

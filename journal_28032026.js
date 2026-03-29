@@ -101,26 +101,26 @@ var currentReportNumber = null;
 // ============================================
 
 function generateReportNumber() {
-    const now = new Date();
-    const year = now.getFullYear();
-    const month = String(now.getMonth() + 1).padStart(2, '0');
-    const day = String(now.getDate()).padStart(2, '0');
-    const hours = String(now.getHours()).padStart(2, '0');
-    const minutes = String(now.getMinutes()).padStart(2, '0');
-    const seconds = String(now.getSeconds()).padStart(2, '0');
+    var now = new Date();
+    var year = now.getFullYear();
+    var month = String(now.getMonth() + 1).padStart(2, '0');
+    var day = String(now.getDate()).padStart(2, '0');
+    var hours = String(now.getHours()).padStart(2, '0');
+    var minutes = String(now.getMinutes()).padStart(2, '0');
+    var seconds = String(now.getSeconds()).padStart(2, '0');
     
     // Format: STH-YYYYMMDD-HHMMSS
-    const reportNum = `STH-${year}${month}${day}-${hours}${minutes}${seconds}`;
-    const timestamp = `${day}/${month}/${year} ${hours}:${minutes}:${seconds}`;
+    var reportNum = `STH-${year}${month}${day}-${hours}${minutes}${seconds}`;
+    var timestamp = `${day}/${month}/${year} ${hours}:${minutes}:${seconds}`;
     
     return { reportNum, timestamp };
 }
 
 function displayReportNumber() {
-    const { reportNum, timestamp } = generateReportNumber();
+    var { reportNum, timestamp } = generateReportNumber();
     currentReportNumber = reportNum;
     
-    const reportNumberDiv = document.querySelector('.report-number');
+    var reportNumberDiv = document.querySelector('.report-number');
     if (reportNumberDiv) {
         reportNumberDiv.querySelector('.report-id').textContent = reportNum;
         reportNumberDiv.querySelector('.report-timestamp').textContent = timestamp;
@@ -160,7 +160,7 @@ function clearAllData() {
     
     // Clear signature
     if (signaturePad) {
-        const ctx = signaturePad.getContext('2d');
+        var ctx = signaturePad.getContext('2d');
         ctx.clearRect(0, 0, signaturePad.width, signaturePad.height);
     }
     
@@ -175,10 +175,10 @@ function startNewReport() {
     clearAllData();
     
     // Set dates to today/tomorrow
-    const today = new Date();
+    var today = new Date();
     document.getElementById('reportDate').valueAsDate = today;
     
-    const tomorrow = new Date(today);
+    var tomorrow = new Date(today);
     tomorrow.setDate(tomorrow.getDate() + 1);
     document.getElementById('tomorrowDate').valueAsDate = tomorrow;
     
@@ -201,8 +201,8 @@ function startNewReport() {
 
 document.addEventListener('DOMContentLoaded', () => {
     
-    const urlParams = new URLSearchParams(window.location.search);
-    const token = urlParams.get('token');
+    var urlParams = new URLSearchParams(window.location.search);
+    var token = urlParams.get('token');
     
     if (token) {
         loadReportForOwner(token);
@@ -425,60 +425,41 @@ async function mbSendToField() {
     var ANTHROPIC_KEY = (window.APP && window.APP.config && window.APP.config.anthropic_key) || null;
     var today = new Date().toISOString().split('T')[0];
     var tasksText = _mbAllTasks.map(function(t){
-      return '• ' + t.task_name + (t.contractors_master ? ' (' + t.contractors_master.company_name + ')' : '') + ' — ' + (t.status||'');
-    }).join('
-') || 'אין משימות';
-
+      return '• ' + (t.task_name||'') + (t.contractors_master ? ' (' + t.contractors_master.company_name + ')' : '') + ' — ' + (t.status||'');
+    }).join('\n') || 'אין משימות';
     var briefText = '';
     if (ANTHROPIC_KEY) {
+      var prompt = 'צור ברייפינג יומי קצר בעברית לקבלן בנייה ששוהה באתר. 3-4 משפטים בלבד.' +
+        '\nפרויקט: ' + _mbProjectName + '\nתאריך: ' + today +
+        '\nמשימות היום:\n' + tasksText +
+        '\nכתוב: מה הדבר הכי חשוב שצריך להתרחש היום, מה לשים לב אליו, ומה בסיכון אם לא מטפלים. ישיר ותכליתי. עברית בלבד.';
       var res = await fetch('https://api.anthropic.com/v1/messages', {
         method: 'POST',
         headers: { 'Content-Type':'application/json','x-api-key':ANTHROPIC_KEY,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true' },
-        body: JSON.stringify({ model:'claude-sonnet-4-20250514', max_tokens:400, messages:[{ role:'user', content:
-          'צור ברייפינג יומי קצר בעברית לקבלן בנייה ששוהה באתר. 3-4 משפטים בלבד.
-
-פרויקט: '+_mbProjectName+'
-תאריך: '+today+'
-משימות היום:
-'+tasksText+'
-
-כתוב: מה הדבר הכי חשוב שצריך להתרחש היום, מה לשים לב אליו, ומה בסיכון אם לא מטפלים. ישיר ותכליתי. עברית בלבד.'
-        }] })
+        body: JSON.stringify({ model:'claude-sonnet-4-20250514', max_tokens:400, messages:[{ role:'user', content: prompt }] })
       });
       var data = await res.json();
       briefText = data.content[0].text;
     } else {
-      briefText = 'פרויקט: ' + _mbProjectName + '
-תאריך: ' + today + '
-
-משימות היום:
-' + tasksText;
+      briefText = 'פרויקט: ' + _mbProjectName + '\nתאריך: ' + today + '\nמשימות היום:\n' + tasksText;
     }
-
-    // Push to project_briefs — Beni Pocket reads from this table
     await fetch('https://vmcipofovheztbjmhwsl.supabase.co/rest/v1/project_briefs?project_id=eq.' + _mbProjectId, {
       method: 'DELETE', headers: { apikey: SB_KEY_MB, Authorization: 'Bearer ' + SB_KEY_MB }
     });
     await fetch('https://vmcipofovheztbjmhwsl.supabase.co/rest/v1/project_briefs', {
       method: 'POST',
       headers: { apikey: SB_KEY_MB, Authorization: 'Bearer ' + SB_KEY_MB, 'Content-Type':'application/json', Prefer:'return=minimal' },
-      body: JSON.stringify({
-        project_id:   _mbProjectId,
-        project_name: _mbProjectName,
-        sent_at:      new Date().toISOString(),
-        sent_by:      'יומן בוקר',
-        data: { brief_text: briefText, tasks: _mbAllTasks, date: today }
-      })
+      body: JSON.stringify({ project_id: _mbProjectId, project_name: _mbProjectName, sent_at: new Date().toISOString(), sent_by: 'יומן בוקר', data: { brief_text: briefText, tasks: _mbAllTasks, date: today } })
     });
-
     if (typeof showToast === 'function') showToast('✅ בריפינג נשלח לטלפון!', 'success');
-    mbSkipToForm(); // proceed to form
+    jwGoto(2);
   } catch(e) {
     if (typeof showToast === 'function') showToast('שגיאה: ' + e.message, 'error');
   } finally {
     if (btn) { btn.textContent = '🚀 צא לשטח'; btn.disabled = false; }
   }
 }
+
 
 function mbSkipToForm() {
   var brief = document.getElementById('morning-brief-panel');
@@ -497,7 +478,7 @@ function initializeManagerView() {
     }
     window._journalInited = true;
     _ensureSbClient();
-    const mv = document.getElementById('managerView');
+    var mv = document.getElementById('managerView');
     // Launch wizard at step 1
     jwGoto(1);
     populateJournalProjectDropdown && populateJournalProjectDropdown();
@@ -520,10 +501,10 @@ function initializeManagerView() {
     displayReportNumber();
     
     // Set default dates
-    const today = new Date();
+    var today = new Date();
     document.getElementById('reportDate').valueAsDate = today;
     
-    const tomorrow = new Date(today);
+    var tomorrow = new Date(today);
     tomorrow.setDate(tomorrow.getDate() + 1);
     document.getElementById('tomorrowDate').valueAsDate = tomorrow;
     
@@ -561,35 +542,35 @@ function initializeManagerView() {
 // ============================================
 
 function calculateWorkHours() {
-    const startTime = document.getElementById('startTime').value;
-    const endTime = document.getElementById('endTime').value;
-    const breakHours = parseFloat(document.getElementById('breakHours').value) || 0;
+    var startTime = document.getElementById('startTime').value;
+    var endTime = document.getElementById('endTime').value;
+    var breakHours = parseFloat(document.getElementById('breakHours').value) || 0;
     
     if (!startTime || !endTime) {
         document.getElementById('totalWorkHours').textContent = '0';
         return;
     }
     
-    const [startHour, startMin] = startTime.split(':').map(Number);
-    const [endHour, endMin] = endTime.split(':').map(Number);
+    var [startHour, startMin] = startTime.split(':').map(Number);
+    var [endHour, endMin] = endTime.split(':').map(Number);
     
-    let totalMinutes = (endHour * 60 + endMin) - (startHour * 60 + startMin);
+    var totalMinutes = (endHour * 60 + endMin) - (startHour * 60 + startMin);
     
     if (totalMinutes < 0) {
         totalMinutes += 24 * 60;
     }
     
-    const totalHours = (totalMinutes / 60) - breakHours;
+    var totalHours = (totalMinutes / 60) - breakHours;
     
     document.getElementById('totalWorkHours').textContent = totalHours.toFixed(1);
 }
 
 function calculateTotalWorkerHours() {
-    let total = 0;
+    var total = 0;
     
     document.querySelectorAll('#workersContainer .form-row').forEach(row => {
-        const count = parseInt(row.querySelector('.worker-count').value) || 0;
-        const hours = parseFloat(row.querySelector('.worker-hours').value) || 0;
+        var count = parseInt(row.querySelector('.worker-count').value) || 0;
+        var hours = parseFloat(row.querySelector('.worker-hours').value) || 0;
         total += count * hours;
     });
     
@@ -602,7 +583,7 @@ function calculateTotalWorkerHours() {
 
 function initializeVoiceRecognition() {
     if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
-        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        var SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
         voiceRecognition = new SpeechRecognition();
         
         voiceRecognition.lang = 'he-IL';
@@ -614,10 +595,10 @@ function initializeVoiceRecognition() {
         };
         
         voiceRecognition.onresult = (event) => {
-            let finalTranscript = '';
+            var finalTranscript = '';
             
             for (let i = event.resultIndex; i < event.results.length; i++) {
-                const transcript = event.results[i][0].transcript;
+                var transcript = event.results[i][0].transcript;
                 
                 if (event.results[i].isFinal) {
                     finalTranscript += transcript + ' ';
@@ -625,7 +606,7 @@ function initializeVoiceRecognition() {
             }
             
             if (currentVoiceTarget && finalTranscript) {
-                const textarea = document.getElementById(currentVoiceTarget);
+                var textarea = document.getElementById(currentVoiceTarget);
                 if (textarea) {
                     textarea.value += finalTranscript;
                 }
@@ -702,20 +683,20 @@ function stopVoiceRecording() {
 // ============================================
 
 function initSignaturePad(canvasId) {
-    const canvas = document.getElementById(canvasId);
+    var canvas = document.getElementById(canvasId);
     if (!canvas) return;
     
-    const ctx = canvas.getContext('2d');
+    var ctx = canvas.getContext('2d');
     canvas.width = 400;
     canvas.height = 100;
     
-    let drawing = false;
-    let lastX = 0;
-    let lastY = 0;
+    var drawing = false;
+    var lastX = 0;
+    var lastY = 0;
     
     function getPos(e) {
-        const rect = canvas.getBoundingClientRect();
-        const touch = e.touches ? e.touches[0] : e;
+        var rect = canvas.getBoundingClientRect();
+        var touch = e.touches ? e.touches[0] : e;
         return {
             x: (touch.clientX - rect.left) * (canvas.width / rect.width),
             y: (touch.clientY - rect.top) * (canvas.height / rect.height)
@@ -725,7 +706,7 @@ function initSignaturePad(canvasId) {
     function startDrawing(e) {
         e.preventDefault();
         drawing = true;
-        const pos = getPos(e);
+        var pos = getPos(e);
         lastX = pos.x;
         lastY = pos.y;
     }
@@ -734,7 +715,7 @@ function initSignaturePad(canvasId) {
         if (!drawing) return;
         e.preventDefault();
         
-        const pos = getPos(e);
+        var pos = getPos(e);
         ctx.beginPath();
         ctx.moveTo(lastX, lastY);
         ctx.lineTo(pos.x, pos.y);
@@ -767,13 +748,13 @@ function initSignaturePad(canvasId) {
 
 function clearSignature() {
     if (!signaturePad) return;
-    const ctx = signaturePad.getContext('2d');
+    var ctx = signaturePad.getContext('2d');
     ctx.clearRect(0, 0, signaturePad.width, signaturePad.height);
 }
 
 function clearOwnerSignature() {
     if (!ownerSignaturePad) return;
-    const ctx = ownerSignaturePad.getContext('2d');
+    var ctx = ownerSignaturePad.getContext('2d');
     ctx.clearRect(0, 0, ownerSignaturePad.width, ownerSignaturePad.height);
 }
 
@@ -782,10 +763,10 @@ function clearOwnerSignature() {
 // ============================================
 
 function addWorkerRow() {
-    const container = document.getElementById('workersContainer');
+    var container = document.getElementById('workersContainer');
     if (!container) return;
     
-    const row = document.createElement('div');
+    var row = document.createElement('div');
     row.className = 'form-row';
     row.innerHTML = `
         <input type="text" placeholder="תפקיד" class="worker-role">
@@ -801,10 +782,10 @@ function addWorkerRow() {
 }
 
 function addActivityRow() {
-    const container = document.getElementById('activitiesContainer');
+    var container = document.getElementById('activitiesContainer');
     if (!container) return;
     
-    const row = document.createElement('div');
+    var row = document.createElement('div');
     row.className = 'form-row';
     row.innerHTML = `
         <input type="text" placeholder="תיאור" class="activity-desc">
@@ -819,10 +800,10 @@ function addActivityRow() {
 // ============================================
 
 function addMaterialRow() {
-    const container = document.getElementById('materialsContainer');
+    var container = document.getElementById('materialsContainer');
     if (!container) return;
     
-    const row = document.createElement('div');
+    var row = document.createElement('div');
     row.className = 'dynamic-row';
     row.innerHTML = `
         <button type="button" class="remove-row" onclick="this.parentElement.remove()">×</button>
@@ -838,10 +819,10 @@ function addMaterialRow() {
 }
 
 function addEquipmentRow() {
-    const container = document.getElementById('equipmentContainer');
+    var container = document.getElementById('equipmentContainer');
     if (!container) return;
     
-    const row = document.createElement('div');
+    var row = document.createElement('div');
     row.className = 'dynamic-row';
     row.innerHTML = `
         <button type="button" class="remove-row" onclick="this.parentElement.remove()">×</button>
@@ -859,10 +840,10 @@ function addEquipmentRow() {
 }
 
 function addSafetyRow() {
-    const container = document.getElementById('safetyContainer');
+    var container = document.getElementById('safetyContainer');
     if (!container) return;
     
-    const row = document.createElement('div');
+    var row = document.createElement('div');
     row.className = 'dynamic-row critical-row';
     row.innerHTML = `
         <button type="button" class="remove-row" onclick="this.parentElement.remove()">×</button>
@@ -888,10 +869,10 @@ function addSafetyRow() {
 }
 
 function addInspectionRow() {
-    const container = document.getElementById('inspectionsContainer');
+    var container = document.getElementById('inspectionsContainer');
     if (!container) return;
     
-    const row = document.createElement('div');
+    var row = document.createElement('div');
     row.className = 'dynamic-row critical-row';
     row.innerHTML = `
         <button type="button" class="remove-row" onclick="this.parentElement.remove()">×</button>
@@ -914,10 +895,10 @@ function addInspectionRow() {
 }
 
 function addDelayRow() {
-    const container = document.getElementById('delaysContainer');
+    var container = document.getElementById('delaysContainer');
     if (!container) return;
     
-    const row = document.createElement('div');
+    var row = document.createElement('div');
     row.className = 'dynamic-row';
     row.innerHTML = `
         <button type="button" class="remove-row" onclick="this.parentElement.remove()">×</button>
@@ -952,21 +933,21 @@ function addDelayRow() {
 // ============================================
 
 function handlePhotoSelection(e) {
-    const files = Array.from(e.target.files);
+    var files = Array.from(e.target.files);
     selectedPhotos = [...selectedPhotos, ...files];
     displayPhotoPreview();
 }
 
 function displayPhotoPreview() {
-    const preview = document.getElementById('photoPreview');
+    var preview = document.getElementById('photoPreview');
     if (!preview) return;
     
     preview.innerHTML = '';
     
     selectedPhotos.forEach((file, index) => {
-        const reader = new FileReader();
+        var reader = new FileReader();
         reader.onload = (e) => {
-            const div = document.createElement('div');
+            var div = document.createElement('div');
             div.className = 'photo-item';
             div.innerHTML = `
                 <img src="${e.target.result}" alt="Photo">
@@ -984,21 +965,21 @@ function removePhoto(index) {
 }
 
 function handleOwnerPhotoSelection(e) {
-    const files = Array.from(e.target.files);
+    var files = Array.from(e.target.files);
     selectedOwnerPhotos = [...selectedOwnerPhotos, ...files];
     displayOwnerPhotoPreview();
 }
 
 function displayOwnerPhotoPreview() {
-    const preview = document.getElementById('ownerPhotoPreview');
+    var preview = document.getElementById('ownerPhotoPreview');
     if (!preview) return;
     
     preview.innerHTML = '';
     
     selectedOwnerPhotos.forEach((file, index) => {
-        const reader = new FileReader();
+        var reader = new FileReader();
         reader.onload = (e) => {
-            const div = document.createElement('div');
+            var div = document.createElement('div');
             div.className = 'photo-item';
             div.innerHTML = `
                 <img src="${e.target.result}" alt="Owner Photo">
@@ -1021,11 +1002,11 @@ function removeOwnerPhoto(index) {
 
 function collectFormData() {
     // Basic data
-    const workers = [];
+    var workers = [];
     document.querySelectorAll('#workersContainer .form-row').forEach(row => {
-        const role = row.querySelector('.worker-role').value;
-        const count = row.querySelector('.worker-count').value;
-        const hours = row.querySelector('.worker-hours').value;
+        var role = row.querySelector('.worker-role').value;
+        var count = row.querySelector('.worker-count').value;
+        var hours = row.querySelector('.worker-hours').value;
         if (role) {
             workers.push({ 
                 role, 
@@ -1035,24 +1016,24 @@ function collectFormData() {
         }
     });
     
-    const activities = [];
+    var activities = [];
     document.querySelectorAll('#activitiesContainer .form-row').forEach(row => {
-        const desc = row.querySelector('.activity-desc').value;
-        const location = row.querySelector('.activity-location').value;
-        const quantity = row.querySelector('.activity-quantity').value;
+        var desc = row.querySelector('.activity-desc').value;
+        var location = row.querySelector('.activity-location').value;
+        var quantity = row.querySelector('.activity-quantity').value;
         if (desc) {
             activities.push({ description: desc, location, quantity });
         }
     });
     
     // LEGAL SECTION 1: Materials
-    const materials = [];
+    var materials = [];
     document.querySelectorAll('#materialsContainer .dynamic-row').forEach(row => {
-        const type = row.querySelector('.material-type').value;
-        const quantity = row.querySelector('.material-quantity').value;
-        const unit = row.querySelector('.material-unit').value;
-        const supplier = row.querySelector('.material-supplier').value;
-        const deliveryTime = row.querySelector('.material-delivery-time').value;
+        var type = row.querySelector('.material-type').value;
+        var quantity = row.querySelector('.material-quantity').value;
+        var unit = row.querySelector('.material-unit').value;
+        var supplier = row.querySelector('.material-supplier').value;
+        var deliveryTime = row.querySelector('.material-delivery-time').value;
         if (type && quantity) {
             materials.push({ 
                 material_type: type,
@@ -1065,12 +1046,12 @@ function collectFormData() {
     });
     
     // LEGAL SECTION 2: Equipment
-    const equipment = [];
+    var equipment = [];
     document.querySelectorAll('#equipmentContainer .dynamic-row').forEach(row => {
-        const type = row.querySelector('.equipment-type').value;
-        const hours = row.querySelector('.equipment-hours').value;
-        const rental = row.querySelector('.equipment-rental').value === 'true';
-        const issues = row.querySelector('.equipment-issues').value;
+        var type = row.querySelector('.equipment-type').value;
+        var hours = row.querySelector('.equipment-hours').value;
+        var rental = row.querySelector('.equipment-rental').value === 'true';
+        var issues = row.querySelector('.equipment-issues').value;
         if (type) {
             equipment.push({
                 equipment_type: type,
@@ -1082,12 +1063,12 @@ function collectFormData() {
     });
     
     // LEGAL SECTION 3: Safety Incidents
-    const safety = [];
+    var safety = [];
     document.querySelectorAll('#safetyContainer .dynamic-row').forEach(row => {
-        const type = row.querySelector('.safety-type').value;
-        const severity = row.querySelector('.safety-severity').value;
-        const description = row.querySelector('.safety-description').value;
-        const corrective = row.querySelector('.safety-corrective').value;
+        var type = row.querySelector('.safety-type').value;
+        var severity = row.querySelector('.safety-severity').value;
+        var description = row.querySelector('.safety-description').value;
+        var corrective = row.querySelector('.safety-corrective').value;
         if (type && description) {
             safety.push({
                 incident_type: type,
@@ -1099,13 +1080,13 @@ function collectFormData() {
     });
     
     // LEGAL SECTION 4: Inspections
-    const inspections = [];
+    var inspections = [];
     document.querySelectorAll('#inspectionsContainer .dynamic-row').forEach(row => {
-        const name = row.querySelector('.inspector-name').value;
-        const role = row.querySelector('.inspector-role').value;
-        const time = row.querySelector('.inspection-time').value;
-        const findings = row.querySelector('.inspection-findings').value;
-        const corrections = row.querySelector('.inspection-corrections').value;
+        var name = row.querySelector('.inspector-name').value;
+        var role = row.querySelector('.inspector-role').value;
+        var time = row.querySelector('.inspection-time').value;
+        var findings = row.querySelector('.inspection-findings').value;
+        var corrections = row.querySelector('.inspection-corrections').value;
         if (name && role) {
             inspections.push({
                 inspector_name: name,
@@ -1118,12 +1099,12 @@ function collectFormData() {
     });
     
     // LEGAL SECTION 5: Delays
-    const delays = [];
+    var delays = [];
     document.querySelectorAll('#delaysContainer .dynamic-row').forEach(row => {
-        const reason = row.querySelector('.delay-reason').value;
-        const responsible = row.querySelector('.delay-responsible').value;
-        const hours = row.querySelector('.delay-hours').value;
-        const description = row.querySelector('.delay-description').value;
+        var reason = row.querySelector('.delay-reason').value;
+        var responsible = row.querySelector('.delay-responsible').value;
+        var hours = row.querySelector('.delay-hours').value;
+        var description = row.querySelector('.delay-description').value;
         if (reason && responsible && description) {
             delays.push({
                 delay_reason: reason,
@@ -1135,15 +1116,15 @@ function collectFormData() {
     });
     
     // Calculate total work hours
-    const startTime = document.getElementById('startTime').value;
-    const endTime = document.getElementById('endTime').value;
-    const breakHours = parseFloat(document.getElementById('breakHours').value) || 0;
-    let totalWorkHours = 0;
+    var startTime = document.getElementById('startTime').value;
+    var endTime = document.getElementById('endTime').value;
+    var breakHours = parseFloat(document.getElementById('breakHours').value) || 0;
+    var totalWorkHours = 0;
     
     if (startTime && endTime) {
-        const [startHour, startMin] = startTime.split(':').map(Number);
-        const [endHour, endMin] = endTime.split(':').map(Number);
-        let totalMinutes = (endHour * 60 + endMin) - (startHour * 60 + startMin);
+        var [startHour, startMin] = startTime.split(':').map(Number);
+        var [endHour, endMin] = endTime.split(':').map(Number);
+        var totalMinutes = (endHour * 60 + endMin) - (startHour * 60 + startMin);
         if (totalMinutes < 0) totalMinutes += 24 * 60;
         totalWorkHours = (totalMinutes / 60) - breakHours;
     }
@@ -1179,7 +1160,7 @@ async function saveDraft() {
     showLoading(true);
     
     try {
-        const data = collectFormData();
+        var data = collectFormData();
         
         if (!data.project_name) {
             showToast('❌ נא למלא שם פרוייקט');
@@ -1187,9 +1168,9 @@ async function saveDraft() {
             return;
         }
         
-        const signaturePath = await uploadSignature(signaturePad, 'manager');
+        var signaturePath = await uploadSignature(signaturePad, 'manager');
         
-        const { data: report, error} = await supabaseClient
+        var { data: report, error} = await supabaseClient
             .from('reports')
             .insert({
                 report_number: data.report_number,
@@ -1231,7 +1212,7 @@ async function sendReport() {
     showLoading(true);
     
     try {
-        const data = collectFormData();
+        var data = collectFormData();
         
         if (!data.project_name) {
             showToast('❌ נא למלא שם פרוייקט');
@@ -1239,9 +1220,9 @@ async function sendReport() {
             return;
         }
         
-        const signaturePath = await uploadSignature(signaturePad, 'manager');
+        var signaturePath = await uploadSignature(signaturePad, 'manager');
         
-        const { data: report, error } = await supabaseClient
+        var { data: report, error } = await supabaseClient
             .from('reports')
             .insert({
                 report_number: data.report_number,
@@ -1268,9 +1249,9 @@ async function sendReport() {
         await saveRelatedData(report.id, data);
         await uploadPhotos(report.id, selectedPhotos, 'manager');
         
-        const shareURL = `${window.location.origin}${window.location.pathname}?token=${report.share_token}`;
+        var shareURL = `${window.location.origin}${window.location.pathname}?token=${report.share_token}`;
         
-        const message = `🔒 *דוח עבודה יומי מאובטח*\n\n` +
+        var message = `🔒 *דוח עבודה יומי מאובטח*\n\n` +
             `📋 *מספר דוח:* ${data.report_number}\n` +
             `👷 *מנהל:* אבשי ספיר\n` +
             `🏗️ *פרוייקט:* ${data.project_name}\n` +
@@ -1349,10 +1330,10 @@ async function saveRelatedData(reportId, data) {
 async function uploadSignature(canvas, type) {
     if (!canvas) return null;
     
-    const blob = await new Promise(resolve => canvas.toBlob(resolve));
-    const fileName = `${type}_${Date.now()}.png`;
+    var blob = await new Promise(resolve => canvas.toBlob(resolve));
+    var fileName = `${type}_${Date.now()}.png`;
     
-    const { data, error } = await supabaseClient.storage
+    var { data, error } = await supabaseClient.storage
         .from('signatures')
         .upload(fileName, blob);
     
@@ -1362,10 +1343,10 @@ async function uploadSignature(canvas, type) {
 
 async function uploadPhotos(reportId, photos, uploadedBy) {
     for (let i = 0; i < photos.length; i++) {
-        const file = photos[i];
-        const fileName = `${reportId}_${uploadedBy}_${Date.now()}_${i}.jpg`;
+        var file = photos[i];
+        var fileName = `${reportId}_${uploadedBy}_${Date.now()}_${i}.jpg`;
         
-        const { data, error } = await supabaseClient.storage
+        var { data, error } = await supabaseClient.storage
             .from('photos')
             .upload(fileName, file);
         
@@ -1387,7 +1368,7 @@ async function loadReportForOwner(token) {
     showLoading(true);
     
     try {
-        const { data, error } = await supabaseClient.rpc('get_full_report', {
+        var { data, error } = await supabaseClient.rpc('get_full_report', {
             report_token: token
         });
         
@@ -1399,8 +1380,8 @@ async function loadReportForOwner(token) {
         
         currentReport = data;
         displayReportForOwner(data);
-        const _mv=document.getElementById('managerView');
-        const _ov=document.getElementById('ownerView');
+        var _mv=document.getElementById('managerView');
+        var _ov=document.getElementById('ownerView');
         if(_mv) _mv.style.display = 'none';
         if(_ov) _ov.style.display = 'block';
         
@@ -1421,11 +1402,11 @@ async function loadReportForOwner(token) {
 }
 
 function displayReportForOwner(data) {
-    const report = data.report;
-    const container = document.getElementById('reportDetails');
+    var report = data.report;
+    var container = document.getElementById('reportDetails');
     
     // Display report number in print header
-    const printReportNumber = document.getElementById('printReportNumber');
+    var printReportNumber = document.getElementById('printReportNumber');
     if (printReportNumber && report.report_number) {
         printReportNumber.innerHTML = `
             <div style="text-align: center; font-size: 18px; font-weight: bold; color: #667eea;">
@@ -1437,7 +1418,7 @@ function displayReportForOwner(data) {
         `;
     }
     
-    let html = '<div class="section">';
+    var html = '<div class="section">';
     
     // Add report number at the top
     if (report.report_number) {
@@ -1471,7 +1452,7 @@ function displayReportForOwner(data) {
     if (data.workers && data.workers.length > 0) {
         html += '<hr style="margin: 15px 0; border: 1px solid #e1e8ed;">';
         html += '<h3>👷 כוח אדם</h3>';
-        let totalWorkerHours = 0;
+        var totalWorkerHours = 0;
         data.workers.forEach(worker => {
             html += `<p>• ${worker.role}: ${worker.worker_count} עובדים × ${worker.hours_worked} שעות</p>`;
             totalWorkerHours += worker.worker_count * worker.hours_worked;
@@ -1548,7 +1529,7 @@ function displayReportForOwner(data) {
         html += '<h3>📸 תמונות מהאתר</h3>';
         html += '<div class="photo-preview">';
         data.photos.forEach(photo => {
-            const photoUrl = `${SUPABASE_URL}/storage/v1/object/public/photos/${photo.storage_path}`;
+            var photoUrl = `${SUPABASE_URL}/storage/v1/object/public/photos/${photo.storage_path}`;
             html += `<div class="photo-item"><img src="${photoUrl}" alt="Site photo"></div>`;
         });
         html += '</div>';
@@ -1558,7 +1539,7 @@ function displayReportForOwner(data) {
     if (report.manager_signature_path) {
         html += '<hr style="margin: 15px 0; border: 1px solid #e1e8ed;">';
         html += '<h3>✍️ חתימת מנהל העבודה</h3>';
-        const signatureUrl = `${SUPABASE_URL}/storage/v1/object/public/signatures/${report.manager_signature_path}`;
+        var signatureUrl = `${SUPABASE_URL}/storage/v1/object/public/signatures/${report.manager_signature_path}`;
         html += `<div style="text-align: center; padding: 10px;">`;
         html += `<img src="${signatureUrl}" alt="Manager signature" style="max-width: 300px; border: 2px solid #667eea; border-radius: 8px; padding: 10px; background: white;">`;
         html += `<p style="margin-top: 10px; color: #666;">חתימה דיגיטלית: ${report.manager_name}</p>`;
@@ -1570,8 +1551,8 @@ function displayReportForOwner(data) {
 }
 
 async function approveReport() {
-    const ownerName = document.getElementById('ownerName').value;
-    const remarks = document.getElementById('ownerRemarks').value;
+    var ownerName = document.getElementById('ownerName').value;
+    var remarks = document.getElementById('ownerRemarks').value;
     
     if (!ownerName) {
         showToast('❌ נא למלא שם', 'error'); return;
@@ -1580,7 +1561,7 @@ async function approveReport() {
     showLoading(true);
     
     try {
-        const signaturePath = await uploadSignature(ownerSignaturePad, 'owner');
+        var signaturePath = await uploadSignature(ownerSignaturePad, 'owner');
         
         if (selectedOwnerPhotos.length > 0) {
             await uploadPhotos(currentReport.report.id, selectedOwnerPhotos, 'owner');
@@ -1604,7 +1585,7 @@ async function approveReport() {
         
         showToast('✅ דוח אושר!');
         
-        const message = `✅ *דוח אושר*\n\n` +
+        var message = `✅ *דוח אושר*\n\n` +
             `🏗️ ${currentReport.report.project_name}\n` +
             `👤 ${ownerName}\n` +
             `📅 ${currentReport.report.report_date}` +
@@ -1633,7 +1614,7 @@ function printReport() {
 // ============================================
 
 function showLoading(show) {
-    const loading = document.getElementById('loading');
+    var loading = document.getElementById('loading');
     if (loading) {
         loading.style.display = show ? 'flex' : 'none';
     }
@@ -1650,7 +1631,7 @@ async function loadDailyCalls(dateStr){const list=document.getElementById('dc-ca
 // ── JOURNAL INTEGRATION ───────────────────────────────────
 function openJournalForProject(projectId,projectName){
   window.switchTab&&window.switchTab('journal');
-  const fill=()=>{const sel=document.getElementById('projectName');if(!sel){setTimeout(fill,100);return;}populateJournalProjectDropdown(projectName);const dateEl=document.getElementById('reportDate');if(dateEl&&!dateEl.value)dateEl.valueAsDate=new Date();sel.style.border='2px solid #667eea';sel.style.boxShadow='0 0 0 3px rgba(102,126,234,0.25)';setTimeout(()=>{sel.style.border='';sel.style.boxShadow='';},1800);showToast('📝 יומן חדש עבור: '+(projectName||'פרוייקט'),'success');};
+  var fill=()=>{const sel=document.getElementById('projectName');if(!sel){setTimeout(fill,100);return;}populateJournalProjectDropdown(projectName);const dateEl=document.getElementById('reportDate');if(dateEl&&!dateEl.value)dateEl.valueAsDate=new Date();sel.style.border='2px solid #667eea';sel.style.boxShadow='0 0 0 3px rgba(102,126,234,0.25)';setTimeout(()=>{sel.style.border='';sel.style.boxShadow='';},1800);showToast('📝 יומן חדש עבור: '+(projectName||'פרוייקט'),'success');};
   setTimeout(fill,80);
 }
 
@@ -1851,22 +1832,22 @@ async function loadSiteReports() {
 }
 
 async function loadFieldIntel() {
-  const list  = document.getElementById('fi-list');
-  const badge = document.getElementById('fi-badge');
+  var list  = document.getElementById('fi-list');
+  var badge = document.getElementById('fi-badge');
   if (!list) return;
   list.innerHTML = '<div style="text-align:center;padding:18px;color:var(--text3);font-size:13px;">טוען הקלטות...</div>';
   try {
-    const yesterday = new Date();
+    var yesterday = new Date();
     yesterday.setDate(yesterday.getDate() - 1);
-    const from = yesterday.toISOString().split('T')[0] + 'T00:00:00.000Z';
-    const res = await fetch(
+    var from = yesterday.toISOString().split('T')[0] + 'T00:00:00.000Z';
+    var res = await fetch(
       SB_URL + '/rest/v1/voice_memos?created_at=gte.' + from + '&order=created_at.desc&limit=30',
       { headers: { apikey: SB_KEY, Authorization: 'Bearer ' + SB_KEY } }
     );
     if (!res.ok) throw new Error('HTTP ' + res.status);
-    const memos = await res.json();
+    var memos = await res.json();
 
-    const unprocessed = memos.filter(function(m){ return !m.is_processed; });
+    var unprocessed = memos.filter(function(m){ return !m.is_processed; });
     if (badge) { badge.textContent = unprocessed.length; badge.style.display = unprocessed.length ? 'inline' : 'none'; }
 
     if (!memos.length) {
@@ -1875,8 +1856,8 @@ async function loadFieldIntel() {
     }
 
     list.innerHTML = '';
-    const PRIORITY_COLOR = { 'גבוה':'#ef4444', 'רגיל':'#f59e0b', 'נמוך':'#22c55e' };
-    const CATEGORY_ICON  = { 'משימה':'📋', 'בעיית_אתר':'⚠️', 'חומרים':'📦', 'לקוח':'👤', 'כספים':'💰', 'כללי':'📝' };
+    var PRIORITY_COLOR = { 'גבוה':'#ef4444', 'רגיל':'#f59e0b', 'נמוך':'#22c55e' };
+    var CATEGORY_ICON  = { 'משימה':'📋', 'בעיית_אתר':'⚠️', 'חומרים':'📦', 'לקוח':'👤', 'כספים':'💰', 'כללי':'📝' };
 
     memos.forEach(function(m) {
       var ai = null;
@@ -2002,10 +1983,10 @@ async function loadFieldIntel() {
 // Color tag picker — shown inline below button row
 function fiShowColorPicker(memoId, summary, transcript, priority, btnRow) {
   // Remove any existing picker
-  const existingPicker = document.getElementById('fi-color-picker-' + memoId);
+  var existingPicker = document.getElementById('fi-color-picker-' + memoId);
   if (existingPicker) { existingPicker.remove(); return; }
 
-  const NC = NOTE_COLORS || {
+  var NC = NOTE_COLORS || {
     yellow:{ bg:'#f59e0b', label:'🟡 כללי' },
     red:   { bg:'#ef4444', label:'🔴 דחוף' },
     green: { bg:'#22c55e', label:'🟢 בוצע' },
