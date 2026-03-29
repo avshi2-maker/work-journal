@@ -71,6 +71,15 @@ function jwBack() {
   jwGoto(jwCurrentStep - 1);
 }
 
+function onJournalProjectChange(sel) {
+  var opt = sel && sel.options[sel.selectedIndex];
+  _mbProjectId   = opt ? (opt.dataset.id || null) : null;
+  _mbProjectName = (sel && sel.value && sel.value !== '__custom__') ? sel.value : '';
+  var customRow = document.getElementById('project-custom-name-row');
+  if (customRow) customRow.style.display = (sel && sel.value === '__custom__') ? 'block' : 'none';
+  jwUpdateCTA();
+}
+
 function jwUpdateCTA() {
   var cta = document.getElementById('jw-cta');
   var hero = document.getElementById('mb-hero');
@@ -225,36 +234,66 @@ var _mbAllFiles    = [];
 var _mbAllTasks    = [];
 
 async function mbInit() {
-  // Populate project selector and load briefing data
   var sel = document.getElementById('projectName');
   if (!sel) return;
-  // Get selected project
-  _mbProjectId   = sel.options[sel.selectedIndex]?.dataset?.id || null;
-  _mbProjectName = sel.value !== '__custom__' ? sel.value : (document.getElementById('projectNameCustom')?.value || '');
+
+  // Populate dropdown if empty
+  if (sel.options.length <= 1 && window.allProjects && window.allProjects.length) {
+    if (typeof populateJournalProjectDropdown === 'function') populateJournalProjectDropdown();
+  }
+
+  // Read selected option's data-id
+  var opt = sel.options[sel.selectedIndex];
+  _mbProjectId   = opt ? (opt.dataset.id || null) : null;
+  _mbProjectName = (sel.value && sel.value !== '__custom__') ? sel.value : '';
+
+  // Auto-select first active project if nothing chosen
   if (!_mbProjectId && window.allProjects && window.allProjects.length) {
-    // Auto-select first active project
     var first = (window.allProjects||[]).find(function(p){ return p.status === 'active'; }) || window.allProjects[0];
-    if (first) { _mbProjectId = first.id; _mbProjectName = first.project_name; }
+    if (first) {
+      _mbProjectId   = first.id;
+      _mbProjectName = first.project_name;
+      for (var i = 0; i < sel.options.length; i++) {
+        if (sel.options[i].dataset.id === first.id) { sel.selectedIndex = i; break; }
+      }
+    }
   }
-  if (!_mbProjectId) {
-    document.getElementById('mb-proj-name').textContent = 'בחר פרויקט למטה';
-    return;
-  }
+
+  jwUpdateCTA();
+  if (!_mbProjectId) return;
+
   document.getElementById('mb-proj-name').textContent = '🏗️ ' + _mbProjectName;
   await Promise.all([ mbLoadTasks(), mbLoadFiles(), mbLoadContractors(), mbLoadProjMeta() ]);
 }
 
 async function mbLoadProjMeta() {
-  if (!_ensureSbClient || !supabaseClient) return;
   _ensureSbClient();
+  if (!supabaseClient) return;
   try {
-    var res = await supabaseClient.from('projects').select('*').eq('id', _mbProjectId).single();
-    var p = res.data;
-    if (!p) return;
+    // Load project + active POs in parallel
+    var [projRes, poRes] = await Promise.all([
+      supabaseClient.from('projects').select('project_name,address,city,status,planned_end_date,total_budget').eq('id', _mbProjectId).single(),
+      supabaseClient.from('purchase_orders').select('id,po_number,contractor_name,grand_total,status').eq('project_id', _mbProjectId).eq('status','active')
+    ]);
+    var p = projRes.data; if (!p) return;
+    var pos = poRes.data || [];
+
+    // Hero name
+    document.getElementById('mb-proj-name').textContent = '🏗️ ' + (p.project_name || _mbProjectName);
+
+    // Build tag pills
     var tags = '';
-    if (p.address||p.city)  tags += '<span style="background:rgba(255,255,255,0.12);border:1px solid rgba(255,255,255,0.2);border-radius:20px;padding:3px 10px;font-size:11px;color:rgba(255,255,255,0.85);">📍 ' + (p.address||p.city||'') + '</span>';
-    if (p.status)            tags += '<span style="background:rgba(201,168,76,0.25);border:1px solid rgba(201,168,76,0.5);border-radius:20px;padding:3px 10px;font-size:11px;color:#fde68a;">📊 ' + (p.status==='active'?'פעיל':p.status) + '</span>';
-    if (p.planned_end_date)  tags += '<span style="background:rgba(255,255,255,0.12);border:1px solid rgba(255,255,255,0.2);border-radius:20px;padding:3px 10px;font-size:11px;color:rgba(255,255,255,0.85);">🗓️ יעד: ' + p.planned_end_date + '</span>';
+    if (p.address||p.city) tags += '<span style="background:rgba(255,255,255,0.12);border:1px solid rgba(255,255,255,0.2);border-radius:20px;padding:4px 12px;font-size:12px;color:rgba(255,255,255,0.9);">📍 ' + (p.address||p.city) + '</span>';
+    var statusHe = {active:'פעיל',paused:'מושהה',done:'הושלם'};
+    if (p.status) tags += '<span style="background:rgba(201,168,76,0.3);border:1px solid rgba(201,168,76,0.6);border-radius:20px;padding:4px 12px;font-size:12px;color:#fde68a;font-weight:800;">📊 ' + (statusHe[p.status]||p.status) + '</span>';
+    if (p.planned_end_date) {
+      var daysLeft = Math.ceil((new Date(p.planned_end_date) - new Date()) / 86400000);
+      var dColor = daysLeft < 14 ? '#fca5a5' : 'rgba(255,255,255,0.85)';
+      tags += '<span style="background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);border-radius:20px;padding:4px 12px;font-size:12px;color:' + dColor + ';">🗓️ ' + daysLeft + ' ימים לסיום</span>';
+    }
+    if (pos.length) tags += '<span style="background:rgba(34,197,94,0.2);border:1px solid rgba(34,197,94,0.4);border-radius:20px;padding:4px 12px;font-size:12px;color:#86efac;">📋 ' + pos.length + ' הזמנות פעילות</span>';
+    if (p.total_budget) tags += '<span style="background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.15);border-radius:20px;padding:4px 12px;font-size:12px;color:rgba(255,255,255,0.7);">💰 ₪' + Math.round(p.total_budget/1000) + 'K תקציב</span>';
+
     document.getElementById('mb-proj-tags').innerHTML = tags;
   } catch(e) {}
 }
@@ -388,32 +427,48 @@ async function mbUploadFiles(input) {
 
 async function mbLoadContractors() {
   _ensureSbClient();
+  if (!supabaseClient) return;
   var today = new Date().toISOString().split('T')[0];
+  var list = document.getElementById('mb-contractors-list');
   try {
-    var { data } = await supabaseClient.from('gantt_tasks')
-      .select('contractors_master(id,company_name,contact_name,mobile),task_name')
-      .eq('project_id', _mbProjectId)
-      .lte('start_date', today).gte('end_date', today).not('contractor_id','is',null);
-    var seen = {}; var contractors = [];
-    (data||[]).forEach(function(t) {
+    var [ganttRes, poRes] = await Promise.all([
+      supabaseClient.from('gantt_tasks')
+        .select('contractors_master(id,company_name,contact_name,mobile),task_name')
+        .eq('project_id', _mbProjectId)
+        .lte('start_date', today).gte('end_date', today).not('contractor_id','is',null),
+      supabaseClient.from('purchase_orders')
+        .select('contractor_name,contractors_master(id,company_name,contact_name,mobile),po_number')
+        .eq('project_id', _mbProjectId).eq('status','active')
+    ]);
+    var seen = {}, contractors = [];
+    (ganttRes.data||[]).forEach(function(t) {
       var c = t.contractors_master;
-      if (c && !seen[c.id]) { seen[c.id] = true; contractors.push({ c: c, task: t.task_name }); }
+      if (c && !seen[c.id]) { seen[c.id]=true; contractors.push({c:c, label:'📋 '+t.task_name, today:true}); }
     });
-    var list = document.getElementById('mb-contractors-list');
-    if (!contractors.length) { list.innerHTML = '<div style="color:#aaa;font-size:12px;padding:8px;">אין קבלנים משויכים להיום</div>'; return; }
+    (poRes.data||[]).forEach(function(po) {
+      var c = po.contractors_master;
+      if (c && !seen[c.id]) { seen[c.id]=true; contractors.push({c:c, label:'HZ '+po.po_number, today:false}); }
+    });
+    if (!contractors.length) {
+      list.innerHTML = '<div style="padding:12px;text-align:center;color:#aaa;font-size:12px;border:1px dashed #ddd;border-radius:9px;">הוסף קבלנים בגאנט או בהזמנות עבודה</div>';
+      return;
+    }
     list.innerHTML = contractors.map(function(item) {
       var c = item.c;
-      var initials = (c.company_name||'?').substring(0,2);
-      return '<div style="display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:9px;background:#f8f4ec;margin-bottom:6px;">'
-        + '<div style="width:34px;height:34px;border-radius:50%;background:#1a3d5c;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#fff;flex-shrink:0;">'+initials+'</div>'
-        + '<div style="flex:1;">'
-          + '<div style="font-size:13px;font-weight:700;color:#1a3d5c;">' + (c.company_name||'') + '</div>'
-          + '<div style="font-size:10px;color:#888;">' + (item.task||'') + '</div>'
+      var initials = (c.company_name||'Q').replace(/[^\u05d0-\u05ea]/g,'').substring(0,2) || (c.company_name||'Q').substring(0,2);
+      var border = item.today ? '#c9a84c' : '#e2d0a0';
+      var wa = c.mobile ? '<a href="https://wa.me/972'+c.mobile.replace(/^0/,'')+'" target="_blank" style="background:#25d366;color:#fff;border-radius:8px;padding:7px 10px;text-decoration:none;font-size:14px;margin-right:4px;">\u{1F4AC}</a>' : '';
+      var ph = c.mobile ? '<a href="tel:'+c.mobile+'" style="background:#1a3d5c;color:#fff;border-radius:8px;padding:7px 10px;text-decoration:none;font-size:14px;">\u{1F4DE}</a>' : '';
+      return '<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:10px;background:#fff;border:1.5px solid '+border+';margin-bottom:7px;">'
+        + '<div style="width:38px;height:38px;border-radius:50%;background:#1a3d5c;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:900;color:#c9a84c;flex-shrink:0;">'+initials+'</div>'
+        + '<div style="flex:1;min-width:0;">'
+          + '<div style="font-size:14px;font-weight:800;color:#1a3d5c;">'+(c.company_name||'')+'</div>'
+          + '<div style="font-size:10px;color:#888;margin-top:1px;">'+(c.contact_name||'')+' · '+item.label+'</div>'
         + '</div>'
-        + (c.mobile ? '<a href="tel:'+c.mobile+'" style="font-size:22px;text-decoration:none;">📞</a>' : '')
+        + wa + ph
         + '</div>';
     }).join('');
-  } catch(e) {}
+  } catch(e) { list.innerHTML = '<div style="color:#c00;font-size:12px;padding:8px;">שגיאה בטעינת קבלנים</div>'; }
 }
 
 // "צא לשטח" — generate AI brief and push to project_briefs table

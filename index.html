@@ -3277,7 +3277,7 @@ async function switchTab(tab) {
   if (tab === 'micharon') { _fetchRagModule().then(function(){ setTimeout(micharonTabInit, 100); }); }
   if (tab === 'query')    { _fetchRagModule().then(function(){ setTimeout(queryTabInit, 100); }); }
   if (tab === 'gcal')    { _fetchSmartJournal().then(function(){ if (typeof initGcal === 'function') initGcal(); }); }
-  if (tab === 'journal') { _fetchJournalModule().then(function(){ if (typeof initializeManagerView === 'function') initializeManagerView(); }).catch(function(e){ console.error('journal load:', e); }); }
+  if (tab === 'journal') { _fetchJournalModule().then(async function(){ if (!allProjects || !allProjects.length) { try { await loadProjects(); } catch(e){} } if (typeof initializeManagerView === 'function') initializeManagerView(); }).catch(function(e){ console.error('journal load:', e); }); }
 }
 
 // ══════════════════════════════════════════════════════
