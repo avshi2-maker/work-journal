@@ -2873,7 +2873,7 @@ async function galleryLoad() {
       if (!n.photo_url) return;
       var url      = n.photo_url.startsWith('http') ? n.photo_url
                    : SB_URL + '/storage/v1/object/public/photos/' + n.photo_url;
-      var isVideo  = url.includes('drive.google.com') || /\.(mp4|mov|webm|avi|m4v)/i.test(url);
+      var isVideo  = url.includes('drive.google.com') || url.includes('/video/upload/') || /\.(mp4|mov|webm|avi|m4v)/i.test(url);
       var caption  = (n.note_text || '').replace(/\n.*$/,'').substring(0, 80);
       _galleryPhotos.push({
         url:     url,
@@ -5078,9 +5078,15 @@ function renderNotes(notes){
     var photoHtml='';
     if(n.photo_url){
       var isFullUrl = n.photo_url.startsWith('http');
-      var isVideo   = n.photo_url.includes('/videos/') || /\.(mp4|mov|webm|avi|m4v)(\?|$)/i.test(n.photo_url);
+      var isAudio   = n.photo_url.includes('/beni_voice/') || /\.(webm|mp3|m4a|ogg|wav)(\?|$)/i.test(n.photo_url);
+      var isVideo   = !isAudio && (n.photo_url.includes('/videos/') || n.photo_url.includes('/video/upload/') || /\.(mp4|mov|avi|m4v)(\?|$)/i.test(n.photo_url));
       var mediaSrc  = isFullUrl ? n.photo_url : SB_URL+'/storage/v1/object/public/photos/'+n.photo_url;
-      if (isVideo) {
+      if (isAudio) {
+        photoHtml = '<div style="margin-top:10px;">'
+          + '<audio controls style="width:100%;border-radius:8px;" src="' + mediaSrc + '"></audio>'
+          + '<div style="margin-top:6px;font-size:10px;color:#888;">🎙️ הקלטה קולית</div>'
+          + '</div>';
+      } else if (isVideo) {
         var isDrive = mediaSrc.includes('drive.google.com');
         if (isDrive) {
           // Google Drive video — show link button only (can't embed)
