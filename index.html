@@ -1431,11 +1431,12 @@ window.addEventListener('unhandledrejection', function(e) {
       </div>
       <div style="display:flex;gap:8px;margin-bottom:10px;">
         <label style="flex:1;display:flex;align-items:center;justify-content:center;gap:6px;background:rgba(201,168,76,0.15);border:1px solid rgba(201,168,76,0.3);border-radius:10px;padding:10px;cursor:pointer;font-size:13px;font-weight:700;color:#c9a84c;font-family:Heebo,sans-serif;">
-          📁 בחר תמונה<input type="file" id="journal-ocr-file" accept="image/*" style="display:none;" onchange="journalOcrProcess(this)">
+          📁 העלה קובץ/תמונה מהמחשב<input type="file" id="journal-ocr-file" accept="image/*,application/pdf" style="display:none;" onchange="journalOcrLoad(this)">
         </label>
-        <label style="flex:1;display:flex;align-items:center;justify-content:center;gap:6px;background:rgba(59,130,246,0.12);border:1px solid rgba(59,130,246,0.3);border-radius:10px;padding:10px;cursor:pointer;font-size:13px;font-weight:700;color:#93c5fd;font-family:Heebo,sans-serif;">
-          📸 צלם עכשיו<input type="file" id="journal-ocr-camera" accept="image/*" capture="environment" style="display:none;" onchange="journalOcrProcess(this)">
-        </label>
+      </div>
+      <div id="journal-ocr-preview" style="display:none;margin-bottom:10px;">
+        <img id="journal-ocr-preview-img" src="" style="max-width:100%;max-height:180px;border-radius:8px;object-fit:contain;border:1px solid rgba(255,255,255,0.1);">
+        <button onclick="journalOcrRunAI()" style="width:100%;margin-top:8px;background:linear-gradient(135deg,#c9a84c,#9a6f00);color:#fff;border:none;border-radius:10px;padding:11px;font-size:14px;font-weight:900;cursor:pointer;font-family:Heebo,sans-serif;">🧠 קרא כתב יד עם AI</button>
       </div>
       <div id="journal-ocr-loading" style="display:none;text-align:center;padding:14px;color:#666;font-size:13px;">🧠 Claude קורא את הכתב יד...</div>
       <div id="journal-ocr-result" style="display:none;">
@@ -1450,7 +1451,7 @@ window.addEventListener('unhandledrejection', function(e) {
       </div>
     </div>
     <!-- Notes wall -->
-    <div id="notes-wall" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(min(300px,100%),1fr));gap:16px">
+    <div id="notes-wall" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(min(220px,100%),1fr));gap:10px">
       <div style="grid-column:1/-1;text-align:center;padding:60px 20px;color:#444">
         <div style="font-size:48px;margin-bottom:12px">📝</div>
         <div style="font-size:14px">אין הערות עדיין</div>
@@ -4882,15 +4883,34 @@ function selectNoteColor(color){currentNoteColor=color;document.querySelectorAll
 var _journalOcrImageBase64 = null;
 var _journalOcrImageType   = 'image/jpeg';
 
-async function journalOcrProcess(input) {
+// Load file → show preview only, no AI yet
+async function journalOcrLoad(input) {
   const file = input?.files?.[0];
   if (!file) return;
-
-  const key = (APP.config && APP.config.anthropic_key) || null;
-  if (!key) {
-    showToast('הגדר מפתח Anthropic API בדוח השבועי תחילה', 'error');
-    return;
+  _journalOcrImageType = file.type || 'image/jpeg';
+  _journalOcrImageBase64 = await new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload  = e => resolve(e.target.result.split(',')[1]);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+  // Show preview
+  const preview = document.getElementById('journal-ocr-preview');
+  const previewImg = document.getElementById('journal-ocr-preview-img');
+  if (preview && previewImg) {
+    previewImg.src = 'data:' + _journalOcrImageType + ';base64,' + _journalOcrImageBase64;
+    preview.style.display = 'block';
   }
+  // Hide old results
+  const result = document.getElementById('journal-ocr-result');
+  if (result) result.style.display = 'none';
+}
+
+// Run AI only when button clicked
+async function journalOcrRunAI() {
+  if (!_journalOcrImageBase64) return;
+  const key = (APP.config && APP.config.anthropic_key) || null;
+  if (!key) { showToast('הגדר מפתח Anthropic API', 'error'); return; }
 
   const loading = document.getElementById('journal-ocr-loading');
   const result  = document.getElementById('journal-ocr-result');
@@ -4902,13 +4922,6 @@ async function journalOcrProcess(input) {
   if (status)  status.textContent    = '';
 
   try {
-    _journalOcrImageType = file.type || 'image/jpeg';
-    _journalOcrImageBase64 = await new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload  = e => resolve(e.target.result.split(',')[1]);
-      reader.onerror = reject;
-      reader.readAsDataURL(file);
-    });
 
     const res = await claudeFetch(JSON.stringify({ _apiKey: key,
         model: 'claude-sonnet-4-20250514',
@@ -5089,8 +5102,9 @@ function renderNotes(notes){
       }
       if (isAudio) {
         photoHtml = '<div style="margin-top:10px;">'
-          + '<audio controls style="width:100%;border-radius:8px;" src="' + mediaSrc + '"></audio>'
-          + '<div style="margin-top:6px;font-size:10px;color:#888;">🎙️ הקלטה קולית</div>'
+          + '<audio controls style="width:100%;border-radius:8px;margin-bottom:6px;" src="' + mediaSrc + '"></audio>'
+          + '<button onclick="sjTranscribeAudio(&quot;' + n.id + '&quot;,&quot;' + mediaSrc + '&quot;)" id="trans-btn-' + n.id + '" style="width:100%;background:rgba(201,168,76,0.2);border:1px solid rgba(201,168,76,0.4);color:#fde68a;padding:6px;border-radius:8px;font-size:11px;font-weight:700;cursor:pointer;font-family:Heebo,sans-serif;">🧠 תמלל עם AI</button>'
+          + '<div id="trans-result-' + n.id + '" style="display:none;margin-top:6px;background:rgba(0,0,0,0.2);border-radius:6px;padding:8px;font-size:11px;color:#e8e6f0;line-height:1.6;white-space:pre-wrap;"></div>'
           + '</div>';
       } else if (isImage) {
         // Force JPG delivery from Cloudinary for HEIC files
@@ -5098,7 +5112,7 @@ function renderNotes(notes){
         if (imgSrc.includes('res.cloudinary.com') && /\.heic/i.test(imgSrc)) {
           imgSrc = imgSrc.replace('/upload/', '/upload/f_jpg,q_auto/');
         }
-        photoHtml = '<div style="margin-top:10px;"><img src="' + imgSrc + '" style="max-width:100%;border-radius:8px;cursor:pointer;" onclick="openInNewTab(this.src)"></div>';
+        photoHtml = '<div style="margin-top:10px;"><img src="' + imgSrc + '" style="max-width:100%;border-radius:8px;cursor:pointer;" onclick="openLightbox(this.src,\'\')"></div>';
       } else if (isVideo) {
         var isDrive = mediaSrc.includes('drive.google.com');
         if (isDrive) {
@@ -5114,13 +5128,13 @@ function renderNotes(notes){
             + '</div>';
         }
       } else {
-        photoHtml='<div style="margin-top:10px;"><img src="'+mediaSrc+'" style="max-width:100%;border-radius:8px;border:1px solid '+c.border+';cursor:pointer;" onclick="openInNewTab(this.src)"></div>';
+        photoHtml='<div style="margin-top:10px;"><img src="'+mediaSrc+'" style="max-width:100%;border-radius:8px;border:1px solid '+c.border+';cursor:pointer;" onclick="openLightbox(this.src,\'\')"></div>';
       }
     }
 
     var id=n.id;
     return [
-      '<div style="background:'+c.light+';border:1px solid '+c.border+';border-right:4px solid '+c.bg+';border-radius:12px;padding:16px;position:relative">',
+      '<div style="background:'+c.light+';border:1px solid '+c.border+';border-right:4px solid '+c.bg+';border-radius:10px;padding:10px 12px;position:relative">',
         '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:10px">',
           '<span style="background:'+c.bg+';color:#fff;border-radius:8px;padding:3px 10px;font-size:10px;font-weight:900;">'+c.label+'</span>',
           '<div style="display:flex;gap:6px">',
@@ -5129,7 +5143,7 @@ function renderNotes(notes){
             '<button onclick="printNote(this.dataset.id)" data-id="'+id+'" style="background:rgba(255,255,255,0.08);border:none;color:#aaa;width:28px;height:28px;border-radius:6px;cursor:pointer;font-size:13px">🖨️</button>',
           '</div>',
         '</div>',
-        '<p style="color:#fff;font-size:14px;line-height:1.8;white-space:pre-wrap;margin-bottom:10px">'+noteTextWithLinks(n.note_text)+'</p>',
+        '<p style="color:#fff;font-size:12px;line-height:1.5;white-space:pre-wrap;margin-bottom:6px;max-height:60px;overflow:hidden;">'+noteTextWithLinks(n.note_text)+'</p>',
         proj,
         photoHtml,
         '<div style="font-size:10px;color:#555;margin-top:8px;border-top:1px solid rgba(255,255,255,0.06);padding-top:8px">'+date+'</div>',
