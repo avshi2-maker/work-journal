@@ -5078,8 +5078,10 @@ function renderNotes(notes){
     var photoHtml='';
     if(n.photo_url){
       var isFullUrl = n.photo_url.startsWith('http');
-      var isAudio   = n.photo_url.includes('/beni_voice/') || /\.(mp3|m4a|ogg|wav)(\?|$)/i.test(n.photo_url);
-      var isVideo   = !isAudio && (n.photo_url.includes('/beni_field/') || n.photo_url.includes('/videos/') || /\.(mp4|mov|avi|m4v|webm)(\?|$)/i.test(n.photo_url));
+      var isAudio   = n.photo_url.includes('/beni_voice/') || /\.(mp3|m4a|ogg|wav|webm)(\?|$)/i.test(n.photo_url);
+      var isVideo   = !isAudio && (n.photo_url.includes('/videos/') || /\.(mp4|mov|avi|m4v)(\?|$)/i.test(n.photo_url));
+      // Images: jpg, jpeg, png, heic, gif, webp, or cloudinary image/upload path
+      var isImage   = !isAudio && !isVideo && (n.photo_url.includes('/image/upload/') || /\.(jpg|jpeg|png|heic|heif|gif|webp)(\?|$)/i.test(n.photo_url) || n.photo_url.includes('res.cloudinary.com'));
       var mediaSrc  = isFullUrl ? n.photo_url : SB_URL+'/storage/v1/object/public/photos/'+n.photo_url;
       // Convert Cloudinary HEIC to JPG for browser display
       if (mediaSrc.includes('res.cloudinary.com') && /\.heic$/i.test(mediaSrc)) {
@@ -5090,6 +5092,13 @@ function renderNotes(notes){
           + '<audio controls style="width:100%;border-radius:8px;" src="' + mediaSrc + '"></audio>'
           + '<div style="margin-top:6px;font-size:10px;color:#888;">🎙️ הקלטה קולית</div>'
           + '</div>';
+      } else if (isImage) {
+        // Force JPG delivery from Cloudinary for HEIC files
+        var imgSrc = mediaSrc;
+        if (imgSrc.includes('res.cloudinary.com') && /\.heic/i.test(imgSrc)) {
+          imgSrc = imgSrc.replace('/upload/', '/upload/f_jpg,q_auto/');
+        }
+        photoHtml = '<div style="margin-top:10px;"><img src="' + imgSrc + '" style="max-width:100%;border-radius:8px;cursor:pointer;" onclick="openInNewTab(this.src)" onerror="this.style.display='none'"></div>';
       } else if (isVideo) {
         var isDrive = mediaSrc.includes('drive.google.com');
         if (isDrive) {
