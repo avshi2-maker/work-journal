@@ -51,7 +51,11 @@ async function sjTranscribeAudio(noteId, audioUrl) {
     var ext = audioUrl.split('.').pop().split('?')[0] || 'mp3';
     var mimeMap = { mp3:'audio/mpeg', mp4:'audio/mp4', m4a:'audio/mp4', wav:'audio/wav', webm:'audio/webm', ogg:'audio/ogg' };
     var mime = mimeMap[ext] || 'audio/mpeg';
-    var audioFile = new File([audioBlob], 'recording.' + ext, { type: mime });
+    // Samsung Android records in 3gp/AMR — Whisper doesn't accept these
+    // Re-wrap as m4a which Whisper accepts and is compatible
+    var whisperExt = ['mp3','mp4','m4a','wav','webm','ogg','flac','mpeg','mpga'].includes(ext) ? ext : 'm4a';
+    var whisperMime = whisperExt === 'm4a' ? 'audio/mp4' : (mime || 'audio/mpeg');
+    var audioFile = new File([audioBlob], 'recording.' + whisperExt, { type: whisperMime });
     // Send to Whisper API
     var fd = new FormData();
     fd.append('file', audioFile);
