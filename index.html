@@ -1445,7 +1445,14 @@ window.addEventListener('unhandledrejection', function(e) {
         <div id="journal-ocr-pdf-notice" style="display:none;background:rgba(59,130,246,0.1);border:1px solid rgba(59,130,246,0.3);border-radius:8px;padding:10px;text-align:center;color:#93c5fd;font-size:13px;font-weight:700;">📄 PDF טעון — מוכן לניתוח AI</div>
         <button onclick="journalOcrRunAI()" style="width:100%;margin-top:8px;background:linear-gradient(135deg,#c9a84c,#9a6f00);color:#fff;border:none;border-radius:10px;padding:12px;font-size:14px;font-weight:900;cursor:pointer;font-family:Heebo,sans-serif;">🧠 קרא כתב יד עם AI</button>
       </div>
-      <div id="journal-ocr-loading" style="display:none;text-align:center;padding:14px;color:#666;font-size:13px;">🧠 Claude קורא את הכתב יד...</div>
+      <div id="journal-ocr-loading" style="display:none;text-align:center;padding:14px;">
+        <div style="font-size:13px;color:#c9a84c;font-weight:700;margin-bottom:8px;">🧠 Claude קורא את הכתב יד...</div>
+        <div style="display:flex;justify-content:center;gap:20px;">
+          <div style="text-align:center;"><div id="ocr-tokens-display" style="font-size:18px;font-weight:900;color:#c4b5fd;font-family:monospace;">~0</div><div style="font-size:9px;color:#555;text-transform:uppercase;letter-spacing:.5px;">טוקנים</div></div>
+          <div style="text-align:center;"><div id="ocr-cost-display" style="font-size:18px;font-weight:900;color:#22c55e;font-family:monospace;">$0.000</div><div style="font-size:9px;color:#555;text-transform:uppercase;letter-spacing:.5px;">עלות</div></div>
+          <div style="text-align:center;"><div id="ocr-time-display" style="font-size:18px;font-weight:900;color:#fde68a;font-family:monospace;">0s</div><div style="font-size:9px;color:#555;text-transform:uppercase;letter-spacing:.5px;">זמן</div></div>
+        </div>
+      </div>
       <div id="journal-ocr-result" style="display:none;">
         <textarea id="journal-ocr-text" rows="4" style="width:100%;background:#1a1a2e;border:1px solid rgba(255,255,255,0.1);color:#fff;padding:12px;border-radius:10px;font-family:Heebo,sans-serif;font-size:14px;resize:vertical;direction:rtl;outline:none;line-height:1.7;box-sizing:border-box;"></textarea>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px;">
@@ -4954,6 +4961,13 @@ async function journalOcrRunAI() {
   if (result)  result.style.display  = 'none';
   if (status)  status.textContent    = '';
 
+  // Start timer
+  var _ocrStartTime = Date.now();
+  var _ocrTimerInterval = setInterval(function() {
+    var el = document.getElementById('ocr-time-display');
+    if (el) el.textContent = Math.round((Date.now()-_ocrStartTime)/1000) + 's';
+  }, 500);
+
   try {
 
     // If PDF — render first page as JPEG via PDF.js
@@ -4990,7 +5004,15 @@ async function journalOcrRunAI() {
     if (!res.ok) throw new Error(data.error?.message || 'API error ' + res.status);
     const text = data.content?.[0]?.text || '';
 
+    clearInterval(_ocrTimerInterval);
     if (loading) loading.style.display = 'none';
+    // Show token/cost summary
+    var inTok  = data.usage ? data.usage.input_tokens  : 0;
+    var outTok = data.usage ? data.usage.output_tokens : 0;
+    var total  = inTok + outTok;
+    var cost   = (inTok * 0.000003 + outTok * 0.000015).toFixed(4);
+    var elapsed = ((Date.now()-_ocrStartTime)/1000).toFixed(1);
+    if (status) status.textContent = '✅ ' + total + ' טוקנים · $' + cost + ' · ' + elapsed + 'שנ';
     if (text.trim()) {
       if (textEl)  textEl.value = text.trim();
       if (result)  result.style.display = 'block';
