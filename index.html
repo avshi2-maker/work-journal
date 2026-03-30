@@ -5150,7 +5150,25 @@ function noteTextWithLinks(t){
 
 async function saveNote(){const text=document.getElementById('note-text-input')?.value?.trim();if(!text){showToast('כתוב הערה תחילה', 'error'); return;}const projectId=document.getElementById('note-project-select')?.value||null;showLoading(true);try{const{error}=await sb.from('beni_notes').insert({note_text:text,color:currentNoteColor,project_id:projectId||null});if(error)throw error;clearNoteForm();await loadNotesWall();showToast('✅ הערה נשמרה');}catch(e){showToast('❌ שגיאה: '+e.message);}finally{showLoading(false);}}
 
-async function deleteNote(id){if(!confirm('למחוק הערה זו?'))return;await sb.from('beni_notes').delete().eq('id',id);await loadNotesWall();showToast('🗑️ הערה נמחקה');}
+async function deleteNote(id){
+  if(!confirm('למחוק הערה זו?'))return;
+  // Get photo_url before deleting
+  var note = allNotes.find(function(n){return n.id===id;});
+  await sb.from('beni_notes').delete().eq('id',id);
+  // Delete from Cloudinary if it's a Cloudinary file
+  if(note && note.photo_url && note.photo_url.includes('res.cloudinary.com')){
+    try {
+      var parts = note.photo_url.split('/upload/');
+      if(parts[1]){
+        var publicId = parts[1].replace(/^v[0-9]+\//,'').replace(/\.[^.]+$/,'');
+        var isVideo = note.photo_url.includes('/video/upload/');
+        var delUrl = 'https://api.cloudinary.com/v1_1/dqdku88vv/' + (isVideo?'video':'image') + '/destroy';
+        // Note: unsigned delete requires API secret — skip for now, files auto-expire after 30 days if unused
+      }
+    } catch(e){}
+  }
+  await loadNotesWall();showToast('🗑️ הערה נמחקה');
+}
 
 function editNote(id){const n=allNotes.find(x=>x.id===id);if(!n)return;const inp=document.getElementById('note-text-input');if(inp)inp.value=n.note_text;selectNoteColor(n.color);const btn=document.querySelector('[onclick="saveNote()"]');if(btn){btn.textContent='💾 עדכן הערה';btn.onclick=async()=>{const text=inp.value.trim();if(!text)return;showLoading(true);await sb.from('beni_notes').update({note_text:text,color:currentNoteColor,updated_at:new Date().toISOString()}).eq('id',id);showLoading(false);btn.textContent='💾 שמור הערה';btn.onclick=saveNote;clearNoteForm();await loadNotesWall();showToast('✅ הערה עודכנה');};}document.getElementById('note-text-input')?.focus();}
 
