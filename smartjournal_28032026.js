@@ -33,6 +33,62 @@ function smartJournalFilter() {
   else if (_sjActiveTab === 'recordings') sjLoadRecordings();
 }
 
+// ── AUDIO TRANSCRIBE ────────────────────────────────────────────────
+async function sjTranscribeAudio(noteId, audioUrl) {
+  var btn = document.getElementById('trans-btn-' + noteId);
+  var result = document.getElementById('trans-result-' + noteId);
+  if (!btn || !result) return;
+  var apiKey = (APP.config && APP.config.anthropic_key) || null;
+  if (!apiKey) { alert('מפתח Anthropic חסר ב-app_config'); return; }
+  btn.textContent = '⏳ מתמלל...';
+  btn.disabled = true;
+  try {
+    // Fetch audio as base64
+    var audioRes = await fetch(audioUrl);
+    var audioBlob = await audioRes.blob();
+    var base64 = await new Promise(function(resolve) {
+      var reader = new FileReader();
+      reader.onload = function(e) { resolve(e.target.result.split(',')[1]); };
+      reader.readAsDataURL(audioBlob);
+    });
+    var mimeType = audioBlob.type || 'audio/mpeg';
+    var res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true'
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 1000,
+        messages: [{
+          role: 'user',
+          content: [
+            { type: 'text', text: 'תמלל את ההקלטה הזו לעברית. רשום רק את הטקסט המדויק ללא הוספות.' },
+            { type: 'document', source: { type: 'base64', media_type: mimeType, data: base64 } }
+          ]
+        }]
+      })
+    });
+    var data = await res.json();
+    if (!res.ok) throw new Error(data.error ? data.error.message : 'API error');
+    var text = data.content && data.content[0] ? data.content[0].text : 'לא ניתן לתמלל';
+    result.textContent = text;
+    result.style.display = 'block';
+    btn.textContent = '✅ תומלל';
+    // Save transcript back to beni_notes
+    await window.sb.from('beni_notes').update({ note_text: '🎙️ ' + text }).eq('id', noteId);
+  } catch(e) {
+    btn.textContent = '❌ שגיאה';
+    btn.disabled = false;
+    result.textContent = 'שגיאה: ' + e.message;
+    result.style.display = 'block';
+    console.error('transcribe:', e);
+  }
+}
+
 // ── DELETE HELPER ───────────────────────────────────────────────────
 async function sjDeleteNote(id, type) {
   if (!confirm('מחוק?')) return;
@@ -280,8 +336,12 @@ async function sjLoadRecordings() {
         + '<div style="font-size:13px;font-weight:700;color:#fde68a;">' + (n.note_text||'🎙️ הקלטה').replace(/</g,'&lt;') + '</div>'
         + '<button onclick="sjDeleteNote(&quot;' + nid + '&quot;,&quot;audio&quot;)" style="background:rgba(239,68,68,0.15);border:1px solid rgba(239,68,68,0.3);color:#fca5a5;padding:4px 8px;border-radius:6px;font-size:11px;cursor:pointer;">🗑️</button>'
         + '</div>'
-        + '<audio controls style="width:100%;border-radius:8px;" src="' + n.photo_url + '"></audio>'
-        + '<div style="font-size:10px;color:#555;margin-top:6px;">' + time + '</div>'
+        + '<audio controls style="width:100%;border-radius:8px;margin-bottom:8px;" src="' + n.photo_url + '"></audio>'
+        + '<div style="display:flex;gap:6px;margin-bottom:6px;">'
+        + '<button onclick="sjTranscribeAudio(&quot;' + nid + '&quot;,&quot;' + n.photo_url + '&quot;)" id="trans-btn-' + nid + '" style="flex:1;background:rgba(201,168,76,0.2);border:1px solid rgba(201,168,76,0.4);color:#fde68a;padding:7px;border-radius:8px;font-size:11px;font-weight:700;cursor:pointer;">🧠 תמלל עם AI</button>'
+        + '</div>'
+        + '<div id="trans-result-' + nid + '" style="display:none;background:rgba(0,0,0,0.3);border-radius:8px;padding:10px;font-size:12px;color:#e8e6f0;line-height:1.7;white-space:pre-wrap;margin-bottom:6px;"></div>'
+        + '<div style="font-size:10px;color:#555;">' + time + '</div>'
         + '</div>';
     }).join('');
     var oldCards = memos.map(function(m) {
