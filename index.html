@@ -349,6 +349,7 @@ window.addEventListener('unhandledrejection', function(e) {
 }, true);
 </script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 </head>
 <body>
 <div id="global-loading">
@@ -4955,11 +4956,32 @@ async function journalOcrRunAI() {
 
   try {
 
+    // If PDF — render first page as JPEG via PDF.js
+    var imageBase64 = _journalOcrImageBase64;
+    var imageMime   = _journalOcrImageType;
+    if (_journalOcrImageType === 'application/pdf') {
+      if (status) status.textContent = 'ממיר PDF לתמונה...';
+      var pdfjsLib = window.pdfjsLib;
+      if (!pdfjsLib) throw new Error('PDF.js לא נטען — רענן דף');
+      pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+      var pdfData = atob(imageBase64);
+      var pdfArr = new Uint8Array(pdfData.length);
+      for (var pi=0;pi<pdfData.length;pi++) pdfArr[pi]=pdfData.charCodeAt(pi);
+      var pdf = await pdfjsLib.getDocument({data:pdfArr}).promise;
+      var page = await pdf.getPage(1);
+      var vp = page.getViewport({scale:2.0});
+      var cv = document.createElement('canvas');
+      cv.width=vp.width; cv.height=vp.height;
+      await page.render({canvasContext:cv.getContext('2d'),viewport:vp}).promise;
+      imageBase64 = cv.toDataURL('image/jpeg',0.92).split(',')[1];
+      imageMime = 'image/jpeg';
+      if (status) status.textContent = 'שולח לקריאה...';
+    }
     const res = await claudeFetch(JSON.stringify({ _apiKey: key,
         model: 'claude-sonnet-4-20250514',
         max_tokens: 1000,
         messages: [{ role: 'user', content: [
-          { type: 'image', source: { type: 'base64', media_type: _journalOcrImageType, data: _journalOcrImageBase64 } },
+          { type: 'image', source: { type: 'base64', media_type: imageMime, data: imageBase64 } },
           { type: 'text',  text: 'קרא את כל הטקסט בתמונה הזו בדיוק כפי שהוא כתוב. כלול עברית, אנגלית, ספרות, מידות. אם זו רשימת מדידות — שמור על הפורמט שורה-שורה. החזר רק את הטקסט ללא הסברים.' }
         ]}]
       }), null);
