@@ -5098,7 +5098,7 @@ function renderNotes(notes){
         if (imgSrc.includes('res.cloudinary.com') && /\.heic/i.test(imgSrc)) {
           imgSrc = imgSrc.replace('/upload/', '/upload/f_jpg,q_auto/');
         }
-        photoHtml = '<div style="margin-top:10px;"><img src="' + imgSrc + '" style="max-width:100%;border-radius:8px;cursor:pointer;" onclick="openInNewTab(this.src)" onerror="this.style.display='none'"></div>';
+        photoHtml = '<div style="margin-top:10px;"><img src="' + imgSrc + '" style="max-width:100%;border-radius:8px;cursor:pointer;" onclick="openInNewTab(this.src)"></div>';
       } else if (isVideo) {
         var isDrive = mediaSrc.includes('drive.google.com');
         if (isDrive) {
