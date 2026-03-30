@@ -33,49 +33,55 @@ function smartJournalFilter() {
   else if (_sjActiveTab === 'recordings') sjLoadRecordings();
 }
 
-// ── AUDIO TRANSCRIBE ────────────────────────────────────────────────
+// ── AUDIO TRANSCRIBE via OpenAI Whisper ─────────────────────────────
 async function sjTranscribeAudio(noteId, audioUrl) {
   var btn = document.getElementById('trans-btn-' + noteId);
   var result = document.getElementById('trans-result-' + noteId);
   if (!btn || !result) return;
-  var apiKey = (APP.config && APP.config.anthropic_key) || null;
-  if (!apiKey) { alert('מפתח Anthropic חסר ב-app_config'); return; }
+  var openaiKey = (APP.config && APP.config.openai_key) || null;
+  if (!openaiKey) { alert('הוסף openai_key לטבלת app_config'); return; }
   btn.textContent = '⏳ מתמלל...';
   btn.disabled = true;
   try {
-    // Claude API doesn't support audio transcription via base64
-    // Use URL-based approach — send Cloudinary URL as text for Claude to describe
-    var res = await fetch('https://api.anthropic.com/v1/messages', {
+    // Fetch audio from Cloudinary
+    var audioRes = await fetch(audioUrl);
+    if (!audioRes.ok) throw new Error('לא ניתן להוריד את ההקלטה');
+    var audioBlob = await audioRes.blob();
+    // OpenAI Whisper accepts: mp3, mp4, mpeg, mpga, m4a, wav, webm (max 25MB)
+    var ext = audioUrl.split('.').pop().split('?')[0] || 'mp3';
+    var mimeMap = { mp3:'audio/mpeg', mp4:'audio/mp4', m4a:'audio/mp4', wav:'audio/wav', webm:'audio/webm', ogg:'audio/ogg' };
+    var mime = mimeMap[ext] || 'audio/mpeg';
+    var audioFile = new File([audioBlob], 'recording.' + ext, { type: mime });
+    // Send to Whisper API
+    var fd = new FormData();
+    fd.append('file', audioFile);
+    fd.append('model', 'whisper-1');
+    fd.append('language', 'he'); // Hebrew
+    fd.append('response_format', 'text');
+    var res = await fetch('https://api.openai.com/v1/audio/transcriptions', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': apiKey,
-        'anthropic-version': '2023-06-01',
-        'anthropic-dangerous-direct-browser-access': 'true'
-      },
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
-        max_tokens: 500,
-        messages: [{
-          role: 'user',
-          content: 'זוהי הקלטה קולית ששמורה בכתובת: ' + audioUrl + '\n\nהגדר תיאור קצר של תוכן ההקלטה על פי שם הקובץ והמיקום. ציין שההקלטה זמינה להאזנה בכרטיס. החזר רק 1-2 משפטים בעברית.'
-        }]
-      })
+      headers: { 'Authorization': 'Bearer ' + openaiKey },
+      body: fd
     });
-    var data = await res.json();
-    if (!res.ok) throw new Error(data.error ? data.error.message : 'API error');
-    var text = data.content && data.content[0] ? data.content[0].text : 'לא ניתן לתמלל';
-    result.textContent = text;
+    if (!res.ok) {
+      var errData = await res.json();
+      throw new Error(errData.error ? errData.error.message : 'Whisper error ' + res.status);
+    }
+    var text = await res.text();
+    text = text.trim();
+    if (!text) throw new Error('לא זוהה טקסט בהקלטה');
+    result.innerHTML = '<div style="font-weight:700;color:#fde68a;margin-bottom:4px;">📝 תמלול:</div>' + text.replace(/</g,'&lt;');
     result.style.display = 'block';
     btn.textContent = '✅ תומלל';
     // Save transcript back to beni_notes
     await window.sb.from('beni_notes').update({ note_text: '🎙️ ' + text }).eq('id', noteId);
+    if (typeof showToast === 'function') showToast('✅ תמלול נשמר');
   } catch(e) {
-    btn.textContent = '❌ שגיאה';
+    btn.textContent = '🔄 נסה שוב';
     btn.disabled = false;
-    result.textContent = 'שגיאה: ' + e.message;
+    result.innerHTML = '<div style="color:#fca5a5;">שגיאה: ' + e.message + '</div>';
     result.style.display = 'block';
-    console.error('transcribe:', e);
+    console.error('whisper:', e);
   }
 }
 
