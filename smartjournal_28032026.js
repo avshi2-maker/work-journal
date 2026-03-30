@@ -256,45 +256,53 @@ async function sjLoadRecordings() {
     from.setDate(from.getDate() - 30);
     var fromISO = from.toISOString();
 
-    var url = SB_URL + '/rest/v1/voice_memos?created_at=gte.' + fromISO + '&order=created_at.desc&limit=50';
-    if (_sjProjectId) {
-      var proj = (window.allProjects||[]).find(function(p){ return p.id===_sjProjectId; });
-      if (proj) url += '&project_hint=ilike.*' + encodeURIComponent(proj.project_name.substring(0,10)) + '*';
-    }
-
-    var res   = await fetch(url, { headers:{ apikey:SB_KEY, Authorization:'Bearer '+SB_KEY } });
-    var memos = res.ok ? await res.json() : [];
-
-    if (countEl) countEl.textContent = memos.length + ' הקלטות (30 ימים אחרונים)';
-
-    if (!memos.length) {
-      list.innerHTML = '<div style="text-align:center;padding:40px;color:#444;"><div style="font-size:40px;margin-bottom:10px;">🎙️</div><div style="font-size:13px;">אין הקלטות' + (_sjProjectId ? ' לפרויקט זה' : ' מ-30 הימים האחרונים') + '</div></div>';
+    // Load from voice_memos (old) AND beni_notes with audio URLs (new sync)
+    var vmUrl = SB_URL + '/rest/v1/voice_memos?created_at=gte.' + fromISO + '&order=created_at.desc&limit=50';
+    var bnUrl = SB_URL + '/rest/v1/beni_notes?photo_url=ilike.*beni_voice*&created_at=gte.' + fromISO + '&order=created_at.desc&limit=50';
+    var [vmRes, bnRes] = await Promise.all([
+      fetch(vmUrl, { headers:{ apikey:SB_KEY, Authorization:'Bearer '+SB_KEY } }),
+      fetch(bnUrl, { headers:{ apikey:SB_KEY, Authorization:'Bearer '+SB_KEY } })
+    ]);
+    var memos = vmRes.ok ? await vmRes.json() : [];
+    var bnNotes = bnRes.ok ? await bnRes.json() : [];
+    if (countEl) countEl.textContent = (memos.length + bnNotes.length) + ' הקלטות (30 ימים אחרונים)';
+    if (!memos.length && !bnNotes.length) {
+      list.innerHTML = '<div style="text-align:center;padding:40px;color:#444;"><div style="font-size:40px;margin-bottom:10px;">🎙️</div><div style="font-size:13px;">אין הקלטות מ-30 הימים האחרונים</div></div>';
       return;
     }
-
     var PCOLOR = { 'גבוה':'#ef4444','רגיל':'#f59e0b','נמוך':'#22c55e' };
     var CICON  = { 'משימה':'📋','בעיית_אתר':'⚠️','חומרים':'📦','לקוח':'👤','כספים':'💰','כללי':'📝' };
-
-    list.innerHTML = memos.map(function(m) {
-      var ai  = null;
+    var newCards = bnNotes.map(function(n) {
+      var time = new Date(n.created_at).toLocaleString('he-IL',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
+      var nid = n.id;
+      return '<div style="background:#1e1e35;border:1px solid rgba(201,168,76,0.2);border-right:4px solid #c9a84c;border-radius:12px;padding:12px 14px;margin-bottom:8px;">'
+        + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">'
+        + '<div style="font-size:13px;font-weight:700;color:#fde68a;">' + (n.note_text||'🎙️ הקלטה').replace(/</g,'&lt;') + '</div>'
+        + '<button onclick="sjDeleteNote(&quot;' + nid + '&quot;,&quot;audio&quot;)" style="background:rgba(239,68,68,0.15);border:1px solid rgba(239,68,68,0.3);color:#fca5a5;padding:4px 8px;border-radius:6px;font-size:11px;cursor:pointer;">🗑️</button>'
+        + '</div>'
+        + '<audio controls style="width:100%;border-radius:8px;" src="' + n.photo_url + '"></audio>'
+        + '<div style="font-size:10px;color:#555;margin-top:6px;">' + time + '</div>'
+        + '</div>';
+    }).join('');
+    var oldCards = memos.map(function(m) {
+      var ai = null;
       try { ai = m.ai_result ? (typeof m.ai_result==='string' ? JSON.parse(m.ai_result) : m.ai_result) : null; } catch(e){}
-      var time    = new Date(m.created_at).toLocaleString('he-IL',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
-      var summary = (ai&&ai.summary) || (m.transcript||'').substring(0,80) || 'ללא תיאור';
-      var pri     = (ai&&ai.priority)||'רגיל';
-      var cat     = (ai&&ai.category)||'כללי';
-      var pColor  = PCOLOR[pri]||'#f59e0b';
-      var cIcon   = CICON[cat]||'📝';
-      var actions = (ai&&ai.action_items)||[];
-      return '<div style="background:#242438;border:1px solid rgba(255,255,255,0.06);border-right:4px solid '+ pColor +';border-radius:12px;padding:12px 14px;margin-bottom:8px;">'
+      var time = new Date(m.created_at).toLocaleString('he-IL',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
+      var summary = (ai&&ai.summary)||(m.transcript||'').substring(0,80)||'ללא תיאור';
+      var pri = (ai&&ai.priority)||'רגיל';
+      var cat = (ai&&ai.category)||'כללי';
+      var pColor = PCOLOR[pri]||'#f59e0b';
+      var cIcon = CICON[cat]||'📝';
+      return '<div style="background:#242438;border:1px solid rgba(255,255,255,0.06);border-right:4px solid '+pColor+';border-radius:12px;padding:12px 14px;margin-bottom:8px;">'
         + '<div style="display:flex;align-items:flex-start;gap:8px;">'
         + '<span style="font-size:18px;">' + cIcon + '</span>'
         + '<div style="flex:1;"><div style="font-size:13px;font-weight:700;color:#fff;">' + summary.replace(/</g,'&lt;') + '</div>'
-        + '<div style="font-size:10px;color:#555;margin-top:3px;">' + time + (m.project_hint?' · 📁 '+m.project_hint:'') + '</div>'
-        + (actions.length ? '<div style="margin-top:6px;">' + actions.slice(0,2).map(function(a){return'<div style="font-size:11px;color:#888;">▸ '+a.replace(/</g,'&lt;')+'</div>';}).join('') + '</div>' : '')
+        + '<div style="font-size:10px;color:#555;margin-top:3px;">' + time + '</div>'
         + '</div>'
         + '<span style="background:'+pColor+'20;color:'+pColor+';border-radius:20px;padding:2px 8px;font-size:10px;font-weight:800;">'+pri+'</span>'
         + '</div></div>';
     }).join('');
+    list.innerHTML = newCards + oldCards;
   } catch(e) {
     list.innerHTML = '<div style="color:#ef4444;padding:16px;font-size:13px;">שגיאה: ' + e.message + '</div>';
   }
