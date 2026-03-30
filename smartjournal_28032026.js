@@ -51,11 +51,52 @@ async function sjTranscribeAudio(noteId, audioUrl) {
     var ext = audioUrl.split('.').pop().split('?')[0] || 'mp3';
     var mimeMap = { mp3:'audio/mpeg', mp4:'audio/mp4', m4a:'audio/mp4', wav:'audio/wav', webm:'audio/webm', ogg:'audio/ogg' };
     var mime = mimeMap[ext] || 'audio/mpeg';
-    // Samsung Android records in 3gp/AMR — Whisper doesn't accept these
-    // Re-wrap as m4a which Whisper accepts and is compatible
-    var whisperExt = ['mp3','mp4','m4a','wav','webm','ogg','flac','mpeg','mpga'].includes(ext) ? ext : 'm4a';
-    var whisperMime = whisperExt === 'm4a' ? 'audio/mp4' : (mime || 'audio/mpeg');
-    var audioFile = new File([audioBlob], 'recording.' + whisperExt, { type: whisperMime });
+    // Convert audio to WAV via Web Audio API — works for any format Android produces
+    var arrayBuffer = await audioBlob.arrayBuffer();
+    var audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    var audioBuffer;
+    try {
+      audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
+    } catch(decodeErr) {
+      // Can't decode — try sending as-is with mp4 mime
+      console.warn('Audio decode failed, sending raw:', decodeErr);
+      var audioFile = new File([audioBlob], 'recording.mp4', { type: 'audio/mp4' });
+      var fd = new FormData();
+      fd.append('file', audioFile);
+      fd.append('model', 'whisper-1');
+      fd.append('language', 'he');
+      fd.append('response_format', 'text');
+      var res2 = await fetch('https://api.openai.com/v1/audio/transcriptions', {
+        method: 'POST', headers: { 'Authorization': 'Bearer ' + openaiKey }, body: fd
+      });
+      if (!res2.ok) throw new Error('פורמט לא נתמך — נסה לשמור ההקלטה כ-MP3');
+      var text2 = (await res2.text()).trim();
+      result.innerHTML = '<div style="font-weight:700;color:#fde68a;margin-bottom:4px;">📝 תמלול:</div>' + text2.replace(/</g,'&lt;');
+      result.style.display = 'block';
+      btn.textContent = '✅ תומלל';
+      await window.sb.from('beni_notes').update({ note_text: '🎙️ ' + text2 }).eq('id', noteId);
+      return;
+    }
+    audioCtx.close();
+    // Encode to WAV
+    var numChannels = audioBuffer.numberOfChannels;
+    var sampleRate = audioBuffer.sampleRate;
+    var pcmData = audioBuffer.getChannelData(0); // mono
+    var wavBuffer = new ArrayBuffer(44 + pcmData.length * 2);
+    var view = new DataView(wavBuffer);
+    var writeStr = function(offset, str) { for (var i=0;i<str.length;i++) view.setUint8(offset+i, str.charCodeAt(i)); };
+    writeStr(0,'RIFF'); view.setUint32(4,36+pcmData.length*2,true);
+    writeStr(8,'WAVE'); writeStr(12,'fmt '); view.setUint32(16,16,true);
+    view.setUint16(20,1,true); view.setUint16(22,1,true);
+    view.setUint32(24,sampleRate,true); view.setUint32(28,sampleRate*2,true);
+    view.setUint16(32,2,true); view.setUint16(34,16,true);
+    writeStr(36,'data'); view.setUint32(40,pcmData.length*2,true);
+    var offset = 44;
+    for (var i=0;i<pcmData.length;i++,offset+=2) {
+      var s = Math.max(-1,Math.min(1,pcmData[i]));
+      view.setInt16(offset,s<0?s*0x8000:s*0x7FFF,true);
+    }
+    var audioFile = new File([wavBuffer], 'recording.wav', { type: 'audio/wav' });
     // Send to Whisper API
     var fd = new FormData();
     fd.append('file', audioFile);
