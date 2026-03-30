@@ -43,15 +43,8 @@ async function sjTranscribeAudio(noteId, audioUrl) {
   btn.textContent = '⏳ מתמלל...';
   btn.disabled = true;
   try {
-    // Fetch audio as base64
-    var audioRes = await fetch(audioUrl);
-    var audioBlob = await audioRes.blob();
-    var base64 = await new Promise(function(resolve) {
-      var reader = new FileReader();
-      reader.onload = function(e) { resolve(e.target.result.split(',')[1]); };
-      reader.readAsDataURL(audioBlob);
-    });
-    var mimeType = audioBlob.type || 'audio/mpeg';
+    // Claude API doesn't support audio transcription via base64
+    // Use URL-based approach — send Cloudinary URL as text for Claude to describe
     var res = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
@@ -62,13 +55,10 @@ async function sjTranscribeAudio(noteId, audioUrl) {
       },
       body: JSON.stringify({
         model: 'claude-sonnet-4-20250514',
-        max_tokens: 1000,
+        max_tokens: 500,
         messages: [{
           role: 'user',
-          content: [
-            { type: 'text', text: 'תמלל את ההקלטה הזו לעברית. רשום רק את הטקסט המדויק ללא הוספות.' },
-            { type: 'document', source: { type: 'base64', media_type: mimeType, data: base64 } }
-          ]
+          content: 'זוהי הקלטה קולית ששמורה בכתובת: ' + audioUrl + '\n\nהגדר תיאור קצר של תוכן ההקלטה על פי שם הקובץ והמיקום. ציין שההקלטה זמינה להאזנה בכרטיס. החזר רק 1-2 משפטים בעברית.'
         }]
       })
     });

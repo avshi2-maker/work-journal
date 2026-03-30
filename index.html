@@ -1434,9 +1434,15 @@ window.addEventListener('unhandledrejection', function(e) {
           📁 העלה קובץ/תמונה מהמחשב<input type="file" id="journal-ocr-file" accept="image/*,application/pdf" style="display:none;" onchange="journalOcrLoad(this)">
         </label>
       </div>
+      <div style="font-size:10px;color:#666;margin-bottom:8px;">⚠️ גודל מקסימלי: 5MB לתמונה</div>
       <div id="journal-ocr-preview" style="display:none;margin-bottom:10px;">
-        <img id="journal-ocr-preview-img" src="" style="max-width:100%;max-height:180px;border-radius:8px;object-fit:contain;border:1px solid rgba(255,255,255,0.1);">
-        <button onclick="journalOcrRunAI()" style="width:100%;margin-top:8px;background:linear-gradient(135deg,#c9a84c,#9a6f00);color:#fff;border:none;border-radius:10px;padding:11px;font-size:14px;font-weight:900;cursor:pointer;font-family:Heebo,sans-serif;">🧠 קרא כתב יד עם AI</button>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+          <div id="journal-ocr-filename" style="font-size:11px;color:#888;"></div>
+          <button onclick="journalOcrClear()" style="background:rgba(239,68,68,0.15);border:1px solid rgba(239,68,68,0.3);color:#fca5a5;border-radius:6px;padding:3px 8px;font-size:11px;cursor:pointer;">🗑️ הסר</button>
+        </div>
+        <img id="journal-ocr-preview-img" src="" style="width:100%;max-height:200px;border-radius:8px;object-fit:contain;border:1px solid rgba(255,255,255,0.1);display:block;">
+        <div id="journal-ocr-pdf-notice" style="display:none;background:rgba(59,130,246,0.1);border:1px solid rgba(59,130,246,0.3);border-radius:8px;padding:10px;text-align:center;color:#93c5fd;font-size:13px;font-weight:700;">📄 PDF טעון — מוכן לניתוח AI</div>
+        <button onclick="journalOcrRunAI()" style="width:100%;margin-top:8px;background:linear-gradient(135deg,#c9a84c,#9a6f00);color:#fff;border:none;border-radius:10px;padding:12px;font-size:14px;font-weight:900;cursor:pointer;font-family:Heebo,sans-serif;">🧠 קרא כתב יד עם AI</button>
       </div>
       <div id="journal-ocr-loading" style="display:none;text-align:center;padding:14px;color:#666;font-size:13px;">🧠 Claude קורא את הכתב יד...</div>
       <div id="journal-ocr-result" style="display:none;">
@@ -4887,6 +4893,12 @@ var _journalOcrImageType   = 'image/jpeg';
 async function journalOcrLoad(input) {
   const file = input?.files?.[0];
   if (!file) return;
+  // 5MB limit check
+  if (file.size > 5 * 1024 * 1024) {
+    showToast('הקובץ גדול מ-5MB — כווץ לפני העלאה', 'error');
+    input.value = '';
+    return;
+  }
   _journalOcrImageType = file.type || 'image/jpeg';
   _journalOcrImageBase64 = await new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -4894,16 +4906,36 @@ async function journalOcrLoad(input) {
     reader.onerror = reject;
     reader.readAsDataURL(file);
   });
-  // Show preview
   const preview = document.getElementById('journal-ocr-preview');
   const previewImg = document.getElementById('journal-ocr-preview-img');
-  if (preview && previewImg) {
-    previewImg.src = 'data:' + _journalOcrImageType + ';base64,' + _journalOcrImageBase64;
-    preview.style.display = 'block';
+  const pdfNotice = document.getElementById('journal-ocr-pdf-notice');
+  const filename = document.getElementById('journal-ocr-filename');
+  if (filename) filename.textContent = file.name + ' (' + (file.size/1024).toFixed(0) + 'KB)';
+  const isPDF = file.type === 'application/pdf';
+  if (previewImg) {
+    if (isPDF) {
+      previewImg.style.display = 'none';
+      if (pdfNotice) pdfNotice.style.display = 'block';
+    } else {
+      previewImg.src = 'data:' + _journalOcrImageType + ';base64,' + _journalOcrImageBase64;
+      previewImg.style.display = 'block';
+      if (pdfNotice) pdfNotice.style.display = 'none';
+    }
   }
-  // Hide old results
+  if (preview) preview.style.display = 'block';
   const result = document.getElementById('journal-ocr-result');
   if (result) result.style.display = 'none';
+}
+
+function journalOcrClear() {
+  _journalOcrImageBase64 = null;
+  _journalOcrImageType = 'image/jpeg';
+  const preview = document.getElementById('journal-ocr-preview');
+  if (preview) preview.style.display = 'none';
+  const result = document.getElementById('journal-ocr-result');
+  if (result) result.style.display = 'none';
+  const fileInput = document.getElementById('journal-ocr-file');
+  if (fileInput) fileInput.value = '';
 }
 
 // Run AI only when button clicked
