@@ -213,10 +213,12 @@ async function sjLoadVideos() {
     var res   = await sbQ('beni_notes', query);
     var notes = (res.data || []).filter(function(n) {
       var url = n.photo_url || '';
-      return url.includes('drive.google.com') || url.includes('/beni_field/') || /\.(mp4|mov|avi)/i.test(url);
-    }).filter(function(n) {
-      // exclude audio
-      return !n.photo_url.includes('/beni_voice/') && !/\.(mp3|m4a|ogg|wav|webm)/i.test(n.photo_url);
+      var isAudio = url.includes('/beni_voice/') || /\.(mp3|m4a|ogg|wav)/i.test(url);
+      var isDriveVideo = url.includes('drive.google.com');
+      // Cloudinary videos: must be in video/upload path AND have video extension
+      var isCldVideo = url.includes('/video/upload/') && /\.(mp4|mov|avi|webm)/i.test(url);
+      var isDirectVideo = /\.(mp4|mov|avi)/i.test(url);
+      return !isAudio && (isDriveVideo || isCldVideo || isDirectVideo);
     });
 
     if (countEl) countEl.textContent = notes.length + ' סרטונים';
