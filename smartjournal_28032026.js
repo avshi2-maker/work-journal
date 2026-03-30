@@ -33,6 +33,17 @@ function smartJournalFilter() {
   else if (_sjActiveTab === 'recordings') sjLoadRecordings();
 }
 
+// ── DELETE HELPER ───────────────────────────────────────────────────
+async function sjDeleteNote(id, type) {
+  if (!confirm('מחוק?')) return;
+  if (typeof deleteNote === 'function') await deleteNote(id);
+  else await window.sb.from('beni_notes').delete().eq('id', id);
+  if (type === 'photo') sjLoadPhotos();
+  else if (type === 'video') sjLoadVideos();
+  else if (type === 'audio') sjLoadVoiceMemos();
+  if (typeof showToast === 'function') showToast('🗑️ נמחק');
+}
+
 // ── PHOTOS TAB ──────────────────────────────────────────────────────
 async function sjLoadPhotos() {
   var grid     = document.getElementById('sj-photos-grid');
@@ -47,8 +58,9 @@ async function sjLoadPhotos() {
     var res  = await sbQ('beni_notes', query);
     var notes = (res.data || []).filter(function(n) {
       var url = n.photo_url || '';
-      var isVideo = url.includes('drive.google.com') || /\.(mp4|mov|webm|avi)/i.test(url);
-      return !isVideo; // photos only
+      var isVideo = url.includes('drive.google.com') || url.includes('/beni_field/') && url.includes('/video/') || /\.(mp4|mov|avi)/i.test(url);
+      var isAudio = url.includes('/beni_voice/') || /\.(mp3|m4a|ogg|wav|webm)/i.test(url);
+      return !isVideo && !isAudio; // photos only
     });
 
     if (countEl) countEl.textContent = notes.length + ' תמונות';
@@ -64,18 +76,23 @@ async function sjLoadPhotos() {
       var date = new Date(n.created_at).toLocaleDateString('he-IL', {day:'2-digit',month:'2-digit'});
       var proj = (window.allProjects||[]).find(function(p){ return p.id===n.project_id; });
 
+      var imgSrc = url;
+      if (imgSrc.includes('res.cloudinary.com') && /\.heic/i.test(imgSrc)) {
+        imgSrc = imgSrc.replace('/upload/', '/upload/f_jpg,q_auto/');
+      }
       var div = document.createElement('div');
-      div.style.cssText = 'position:relative;border-radius:10px;overflow:hidden;border:1px solid rgba(255,255,255,0.1);cursor:pointer;aspect-ratio:1;background:#0a0a1a;';
+      div.style.cssText = 'position:relative;border-radius:10px;overflow:hidden;border:1px solid rgba(255,255,255,0.1);aspect-ratio:1;background:#0a0a1a;';
 
       var img = document.createElement('img');
-      img.src = url;
-      img.style.cssText = 'width:100%;height:100%;object-fit:cover;';
+      img.src = imgSrc;
+      img.style.cssText = 'width:100%;height:100%;object-fit:cover;cursor:pointer;';
       img.onerror = function(){ this.style.display='none'; };
-      img.addEventListener('click', function(){ openLightbox(url, n.note_text||''); });
+      img.addEventListener('click', function(){ openLightbox(imgSrc, n.note_text||''); });
 
       var cap = document.createElement('div');
-      cap.style.cssText = 'position:absolute;bottom:0;left:0;right:0;background:linear-gradient(transparent,rgba(0,0,0,0.8));padding:16px 8px 6px;';
-      cap.innerHTML = '<div style="font-size:10px;color:#fff;">' + date + (proj ? ' · ' + proj.project_name.substring(0,12) : '') + '</div>';
+      cap.style.cssText = 'position:absolute;bottom:0;left:0;right:0;background:linear-gradient(transparent,rgba(0,0,0,0.8));padding:16px 8px 6px;display:flex;align-items:flex-end;justify-content:space-between;';
+      cap.innerHTML = '<div style="font-size:10px;color:#fff;">' + date + (proj ? ' · ' + proj.project_name.substring(0,12) : '') + '</div>'
+        + '<button onclick="sjDeleteNote(\'' + n.id + '\',\'' + 'photo' + '\')" style="background:rgba(239,68,68,0.8);border:none;color:#fff;border-radius:6px;padding:3px 7px;font-size:10px;cursor:pointer;">🗑️</button>';
 
       div.appendChild(img); div.appendChild(cap);
       grid.appendChild(div);
@@ -93,11 +110,17 @@ async function sjLoadVideos() {
   grid.innerHTML = '<div style="text-align:center;padding:20px;color:#555;font-size:13px;">טוען סרטונים...</div>';
 
   try {
-    var query = 'select=id,note_text,photo_url,color,created_at,project_id&photo_url=ilike.*drive.google*&order=created_at.desc&limit=40';
+    // Query both Google Drive videos AND Cloudinary videos
+    var query = 'select=id,note_text,photo_url,color,created_at,project_id&photo_url=not.is.null&order=created_at.desc&limit=60';
     if (_sjProjectId) query += '&project_id=eq.' + _sjProjectId;
-
     var res   = await sbQ('beni_notes', query);
-    var notes = res.data || [];
+    var notes = (res.data || []).filter(function(n) {
+      var url = n.photo_url || '';
+      return url.includes('drive.google.com') || url.includes('/beni_field/') || /\.(mp4|mov|avi)/i.test(url);
+    }).filter(function(n) {
+      // exclude audio
+      return !n.photo_url.includes('/beni_voice/') && !/\.(mp3|m4a|ogg|wav|webm)/i.test(n.photo_url);
+    });
 
     if (countEl) countEl.textContent = notes.length + ' סרטונים';
 
@@ -124,7 +147,9 @@ async function sjLoadVideos() {
         + '<a href="' + url + '" target="_blank" style="flex:1;display:flex;align-items:center;justify-content:center;gap:4px;background:rgba(66,133,244,0.2);border:1px solid rgba(66,133,244,0.4);color:#4285f4;padding:7px;border-radius:8px;font-size:11px;font-weight:700;text-decoration:none;font-family:Heebo,sans-serif;">▶️ צפה</a>'
         + '<button onclick="sjSafetyAnalysis(\'' + n.id + '\',\'' + url + '\')" style="flex:1;background:rgba(239,68,68,0.15);border:1px solid rgba(239,68,68,0.3);color:#fca5a5;padding:7px;border-radius:8px;font-size:11px;font-weight:700;cursor:pointer;font-family:Heebo,sans-serif;">🦺 בטיחות AI</button>'
         + '</div>'
+        + '<button onclick="sjDeleteNote(\'' + n.id + '\',\'video\')" style="background:rgba(239,68,68,0.15);border:1px solid rgba(239,68,68,0.3);color:#fca5a5;padding:7px 10px;border-radius:8px;font-size:11px;cursor:pointer;">🗑️</button>'
         + '<div id="safety-result-' + n.id + '" style="display:none;margin-top:8px;font-size:11px;line-height:1.6;"></div>';
+        + (url.includes('res.cloudinary.com') ? '<video src="' + url + '" controls playsinline style="width:100%;border-radius:8px;margin-top:8px;max-height:180px;"></video>' : '')
 
       grid.appendChild(card);
     });
