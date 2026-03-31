@@ -359,7 +359,8 @@ window.addEventListener('unhandledrejection', function(e) {
 
 <!-- ══ TOP TAB BAR ══ -->
 <div id="top-tabs">
-  <div class="top-tab active" id="tab-safety" onclick="switchTab('safety')"><span>🛡️</span><span>בטיחות / ליקויים</span></div>
+  <div class="top-tab active" id="tab-crm"    onclick="switchTab('crm')"><span>📊</span><span>לוח בקרה</span></div>
+  <div class="top-tab"        id="tab-safety" onclick="switchTab('safety')"><span>🛡️</span><span>בטיחות / ליקויים</span></div>
   <div class="top-tab"        id="tab-notes"  onclick="switchTab('notes')"><span>📝</span><span>מזכרים בני</span></div>
   <div class="top-tab"        id="tab-rag"    onclick="switchTab('rag')"><span>🏗️</span><span>יעוץ AI</span></div>
 </div>
@@ -3999,7 +4000,7 @@ function showPage(page) {
   });
   document.querySelectorAll('.nav-item').forEach(function(n){ n.classList.remove('active'); });
   document.getElementById('crm-panel').classList.add('active');
-  // tab-crm removed from top bar — CRM accessible via sidebar לוח בקרה
+  document.getElementById('tab-crm') && document.getElementById('tab-crm').classList.add('active');
   const special = {gantt:loadGantt, quotes:loadQuotes, forecast:renderForecast, 'purchase-orders':loadPurchaseOrders, weekly: function(){ loadWeeklyData(); }, takeoff: async function(){
     // Ensure projects are loaded before takeoff page renders
     if (!allProjects || !allProjects.length) {
