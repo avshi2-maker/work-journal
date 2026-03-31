@@ -130,6 +130,55 @@ async function sjTranscribeAudio(noteId, audioUrl) {
   }
 }
 
+// ── PHOTO AI ANALYSIS ───────────────────────────────────────────────
+async function sjPhotoSafetyAnalysis(noteId, imgUrl) {
+  var resultDiv = document.getElementById('photo-ai-result-' + noteId);
+  if (!resultDiv) return;
+  var apiKey = (APP.config && APP.config.anthropic_key) || null;
+  if (!apiKey) { alert('מפתח Anthropic חסר'); return; }
+  resultDiv.style.display = 'block';
+  resultDiv.textContent = '⏳ מנתח בטיחות...';
+  try {
+    var imgRes = await fetch(imgUrl);
+    var imgBlob = await imgRes.blob();
+    var base64 = await new Promise(function(r){ var reader=new FileReader(); reader.onload=function(e){r(e.target.result.split(',')[1]);}; reader.readAsDataURL(imgBlob); });
+    var res = await fetch('https://api.anthropic.com/v1/messages', {
+      method:'POST',
+      headers:{'Content-Type':'application/json','x-api-key':apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+      body: JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:600,messages:[{role:'user',content:[
+        {type:'image',source:{type:'base64',media_type:'image/jpeg',data:base64}},
+        {type:'text',text:'נתח את התמונה מבחינת בטיחות באתר בנייה. זהה סכנות בטיחות, הפרות של תקני בטיחות, ציוד מגן אישי חסר. ענה בעברית בצורה קצרה ותכליתית. פורמט: ✅/⚠️/🚨 לכל ממצא.'}
+      ]}]})
+    });
+    var data = await res.json();
+    resultDiv.textContent = data.content && data.content[0] ? data.content[0].text : 'אין ממצאים';
+  } catch(e) { resultDiv.textContent = 'שגיאה: ' + e.message; }
+}
+
+async function sjPhotoSnagAnalysis(noteId, imgUrl) {
+  var resultDiv = document.getElementById('photo-ai-result-' + noteId);
+  if (!resultDiv) return;
+  var apiKey = (APP.config && APP.config.anthropic_key) || null;
+  if (!apiKey) { alert('מפתח Anthropic חסר'); return; }
+  resultDiv.style.display = 'block';
+  resultDiv.textContent = '⏳ מזהה ליקויים...';
+  try {
+    var imgRes = await fetch(imgUrl);
+    var imgBlob = await imgRes.blob();
+    var base64 = await new Promise(function(r){ var reader=new FileReader(); reader.onload=function(e){r(e.target.result.split(',')[1]);}; reader.readAsDataURL(imgBlob); });
+    var res = await fetch('https://api.anthropic.com/v1/messages', {
+      method:'POST',
+      headers:{'Content-Type':'application/json','x-api-key':apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+      body: JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:600,messages:[{role:'user',content:[
+        {type:'image',source:{type:'base64',media_type:'image/jpeg',data:base64}},
+        {type:'text',text:'זהה ליקויים ופגמים בתמונה זו מאתר בנייה/שיפוץ. קטגוריות: בטון, מתכת, טיח, צבע, אינסטלציה, חשמל, ריצוף, דלתות, עבודת נגרות. ענה בעברית: קטגוריה + תיאור הליקוי + חומרת: קל/בינוני/חמור.'}
+      ]}]})
+    });
+    var data = await res.json();
+    resultDiv.textContent = data.content && data.content[0] ? data.content[0].text : 'לא נמצאו ליקויים';
+  } catch(e) { resultDiv.textContent = 'שגיאה: ' + e.message; }
+}
+
 // ── DELETE + LINK HELPERS ───────────────────────────────────────────
 async function sjDeleteTakeoff(id) {
   if (!confirm('מחוק מדידה זו?')) return;
@@ -212,15 +261,27 @@ async function sjLoadPhotos() {
       // Wrap div+project-select in container
       var wrap = document.createElement('div');
       var projSel = document.createElement('select');
-      projSel.style.cssText = 'width:100%;margin-top:4px;padding:4px 6px;background:#1a1a2e;border:1px solid rgba(255,255,255,0.1);border-radius:6px;color:#888;font-size:10px;font-family:Heebo,sans-serif;';
+      projSel.style.cssText = 'width:100%;margin-top:4px;padding:7px 10px;background:#1a3d5c;border:1px solid rgba(201,168,76,0.4);border-radius:8px;color:#fde68a;font-size:12px;font-weight:700;font-family:Heebo,sans-serif;cursor:pointer;';
       projSel.innerHTML = '<option value="">📁 קשר לפרויקט...</option>'
         + (window.allProjects||[]).filter(function(p){return p.status==='active';}).map(function(p){
           return '<option value="'+p.id+'">'+p.project_name.replace(/</g,'&lt;')+'</option>';
         }).join('');
       var nid = n.id;
       projSel.addEventListener('change', function() { sjLinkProject('beni_notes', nid, this.value); });
+      // Add safety + snag buttons
+      var actionRow = document.createElement('div');
+      actionRow.style.cssText = 'display:flex;gap:4px;margin-top:4px;';
+      var nid2 = n.id;
+      var imgUrl2 = imgSrc;
+      actionRow.innerHTML = '<button onclick="sjPhotoSafetyAnalysis(&quot;' + nid2 + '&quot;,&quot;' + imgUrl2 + '&quot;)" style="flex:1;background:rgba(239,68,68,0.15);border:1px solid rgba(239,68,68,0.3);color:#fca5a5;padding:5px;border-radius:6px;font-size:10px;font-weight:700;cursor:pointer;font-family:Heebo,sans-serif;">🦺 בטיחות AI</button>'
+        + '<button onclick="sjPhotoSnagAnalysis(&quot;' + nid2 + '&quot;,&quot;' + imgUrl2 + '&quot;)" style="flex:1;background:rgba(245,158,11,0.15);border:1px solid rgba(245,158,11,0.3);color:#f59e0b;padding:5px;border-radius:6px;font-size:10px;font-weight:700;cursor:pointer;font-family:Heebo,sans-serif;">🔍 ליקויים</button>';
+      var resultDiv = document.createElement('div');
+      resultDiv.id = 'photo-ai-result-' + nid2;
+      resultDiv.style.cssText = 'display:none;margin-top:4px;background:rgba(0,0,0,0.4);border-radius:6px;padding:8px;font-size:11px;color:#e8e6f0;line-height:1.6;';
       wrap.appendChild(div);
       wrap.appendChild(projSel);
+      wrap.appendChild(actionRow);
+      wrap.appendChild(resultDiv);
       grid.appendChild(wrap);
     });
   } catch(e) {
@@ -367,11 +428,11 @@ async function sjLoadTakeoffs() {
         + '<span style="font-size:22px;">' + icon + '</span>'
         + '<div style="flex:1;">'
         + '<div style="font-size:13px;font-weight:700;color:#fff;">' + (t.project_name||'ללא פרויקט').replace(/</g,'&lt;') + '</div>'
-        + '<div style="font-size:10px;color:#555;margin-top:2px;">📅 ' + date + ' · ' + area + '</div>'
+        + '<div style="font-size:10px;color:#aaa;margin-top:2px;font-weight:700;">📅 ' + date + ' · ' + area + '</div>'
         + '</div>'
         + '<button onclick="sjDeleteTakeoff(&quot;' + tid + '&quot;)" style="background:rgba(239,68,68,0.15);border:1px solid rgba(239,68,68,0.3);color:#fca5a5;padding:4px 8px;border-radius:6px;font-size:11px;cursor:pointer;">🗑️</button>'
         + '</div>'
-        + '<select onchange="sjLinkProject(&quot;site_takeoffs&quot;,&quot;' + tid + '&quot;,this.value)" style="width:100%;margin-top:8px;padding:5px 8px;background:#1a1a2e;border:1px solid rgba(255,255,255,0.1);border-radius:6px;color:#888;font-size:11px;font-family:Heebo,sans-serif;">'
+        + '<select onchange="sjLinkProject(&quot;site_takeoffs&quot;,&quot;' + tid + '&quot;,this.value)" style="width:100%;margin-top:8px;padding:7px 10px;background:#1a3d5c;border:1px solid rgba(201,168,76,0.4);border-radius:8px;color:#fde68a;font-size:12px;font-weight:700;font-family:Heebo,sans-serif;cursor:pointer;">'
         + '<option value="">📁 קשר לפרויקט...</option>' + projOpts
         + '</select>'
         + '</div>';
@@ -422,11 +483,11 @@ async function sjLoadRecordings() {
         + '<button onclick="sjTranscribeAudio(&quot;' + nid + '&quot;,&quot;' + n.photo_url + '&quot;)" id="trans-btn-' + nid + '" style="flex:1;background:rgba(201,168,76,0.2);border:1px solid rgba(201,168,76,0.4);color:#fde68a;padding:7px;border-radius:8px;font-size:11px;font-weight:700;cursor:pointer;">🧠 תמלל עם AI</button>'
         + '</div>'
         + '<div id="trans-result-' + nid + '" style="display:none;background:rgba(0,0,0,0.3);border-radius:8px;padding:10px;font-size:12px;color:#e8e6f0;line-height:1.7;white-space:pre-wrap;margin-bottom:6px;"></div>'
-        + '<select onchange="sjLinkProject(&quot;beni_notes&quot;,&quot;' + nid + '&quot;,this.value)" style="width:100%;margin-top:6px;padding:5px 8px;background:#1a1a2e;border:1px solid rgba(255,255,255,0.1);border-radius:6px;color:#888;font-size:11px;font-family:Heebo,sans-serif;">'
+        + '<select onchange="sjLinkProject(&quot;beni_notes&quot;,&quot;' + nid + '&quot;,this.value)" style="width:100%;margin-top:6px;padding:7px 10px;background:#1a3d5c;border:1px solid rgba(201,168,76,0.4);border-radius:8px;color:#fde68a;font-size:12px;font-weight:700;font-family:Heebo,sans-serif;cursor:pointer;">'
         + '<option value="">📁 קשר לפרויקט...</option>'
         + (window.allProjects||[]).filter(function(p){return p.status==='active';}).map(function(p){return '<option value="'+p.id+'">'+p.project_name.replace(/</g,'&lt;')+'</option>';}).join('')
         + '</select>'
-        + '<div style="font-size:10px;color:#555;margin-top:4px;">📅 ' + time + '</div>'
+        + '<div style="font-size:10px;color:#aaa;margin-top:4px;font-weight:700;">📅 ' + time + '</div>'
         + '</div>';
     }).join('');
     var oldCards = memos.map(function(m) {

@@ -1367,14 +1367,14 @@ window.addEventListener('unhandledrejection', function(e) {
       <div style="font-size:10px;letter-spacing:3px;color:#9a6f00;text-transform:uppercase;margin-bottom:4px">בני פרסקי</div>
       <h1 style="font-size:26px;font-weight:900;color:#fff">📝 יומן חכם</h1>
     </div>
-    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-      <!-- Project filter — applies to ALL tabs -->
-      <select id="smart-project-filter" onchange="smartJournalFilter()" style="background:#1a1a2e;border:1px solid rgba(255,255,255,0.18);color:#ccc;padding:7px 12px;border-radius:20px;font-family:Heebo,sans-serif;font-size:12px;direction:rtl">
-        <option value="">📁 כל הפרויקטים</option>
-      </select>
-      <button onclick="printNotes()" style="background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.15);color:#ccc;padding:8px 14px;border-radius:20px;cursor:pointer;font-family:Heebo,sans-serif;font-size:12px;font-weight:700">🖨️ הדפס</button>
+    <div style="display:flex;gap:8px;align-items:center;">
+      <button onclick="printNotes()" style="background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.15);color:#ccc;padding:8px 14px;border-radius:20px;cursor:pointer;font-family:Heebo,sans-serif;font-size:12px;font-weight:700">🖨️ הדפס הערות</button>
     </div>
   </div>
+  <!-- Hidden project filter — still needed by sjPopulateProjectFilter() -->
+  <select id="smart-project-filter" onchange="smartJournalFilter()" style="display:none;">
+    <option value="">כל הפרויקטים</option>
+  </select>
 
   <!-- 5 TABS NAV -->
   <div style="display:flex;gap:4px;margin-bottom:20px;background:#242438;border-radius:14px;padding:5px;overflow-x:auto;scrollbar-width:none;">
