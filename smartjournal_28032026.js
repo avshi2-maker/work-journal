@@ -130,7 +130,23 @@ async function sjTranscribeAudio(noteId, audioUrl) {
   }
 }
 
-// ── DELETE HELPER ───────────────────────────────────────────────────
+// ── DELETE + LINK HELPERS ───────────────────────────────────────────
+async function sjDeleteTakeoff(id) {
+  if (!confirm('מחוק מדידה זו?')) return;
+  await window.sb.from('site_takeoffs').delete().eq('id', id);
+  sjLoadTakeoffs();
+  if (typeof showToast === 'function') showToast('🗑️ מדידה נמחקה');
+}
+
+async function sjLinkProject(table, id, projectId) {
+  if (!projectId) return;
+  var proj = (window.allProjects||[]).find(function(p){ return p.id === projectId; });
+  var updateData = { project_id: projectId };
+  if (proj) updateData.project_name = proj.project_name;
+  await window.sb.from(table).update(updateData).eq('id', id);
+  if (typeof showToast === 'function') showToast('✅ קושר לפרויקט: ' + (proj ? proj.project_name : ''));
+}
+
 async function sjDeleteNote(id, type) {
   if (!confirm('מחוק?')) return;
   if (typeof deleteNote === 'function') await deleteNote(id);
@@ -192,7 +208,20 @@ async function sjLoadPhotos() {
         + '<button onclick="sjDeleteNote(\'' + n.id + '\',\'' + 'photo' + '\')" style="background:rgba(239,68,68,0.8);border:none;color:#fff;border-radius:6px;padding:3px 7px;font-size:10px;cursor:pointer;">🗑️</button>';
 
       div.appendChild(img); div.appendChild(cap);
-      grid.appendChild(div);
+
+      // Wrap div+project-select in container
+      var wrap = document.createElement('div');
+      var projSel = document.createElement('select');
+      projSel.style.cssText = 'width:100%;margin-top:4px;padding:4px 6px;background:#1a1a2e;border:1px solid rgba(255,255,255,0.1);border-radius:6px;color:#888;font-size:10px;font-family:Heebo,sans-serif;';
+      projSel.innerHTML = '<option value="">📁 קשר לפרויקט...</option>'
+        + (window.allProjects||[]).filter(function(p){return p.status==='active';}).map(function(p){
+          return '<option value="'+p.id+'">'+p.project_name.replace(/</g,'&lt;')+'</option>';
+        }).join('');
+      var nid = n.id;
+      projSel.addEventListener('change', function() { sjLinkProject('beni_notes', nid, this.value); });
+      wrap.appendChild(div);
+      wrap.appendChild(projSel);
+      grid.appendChild(wrap);
     });
   } catch(e) {
     grid.innerHTML = '<div style="color:#ef4444;padding:16px;font-size:13px;">שגיאה: ' + e.message + '</div>';
@@ -326,16 +355,25 @@ async function sjLoadTakeoffs() {
 
     var typeIcon = { standard:'📐', detailed:'📋', laser:'🔴' };
     list.innerHTML = takeoffs.map(function(t) {
-      var date = new Date(t.created_at).toLocaleDateString('he-IL',{day:'2-digit',month:'2-digit',year:'2-digit'});
+      var date = new Date(t.created_at).toLocaleDateString('he-IL',{day:'2-digit',month:'2-digit',year:'2-digit',hour:'2-digit',minute:'2-digit'});
       var icon = typeIcon[t.takeoff_type||'standard'] || '📐';
       var area = t.total_area ? Number(t.total_area).toFixed(1) + ' מ"ר' : '—';
-      return '<div style="background:#242438;border:1px solid rgba(255,255,255,0.06);border-radius:12px;padding:12px 16px;margin-bottom:8px;display:flex;align-items:center;gap:12px;">'
+      var tid = t.id;
+      var projOpts = (window.allProjects||[]).filter(function(p){return p.status==='active';}).map(function(p){
+        return '<option value="'+p.id+'">'+(p.project_name||'').replace(/</g,'&lt;')+'</option>';
+      }).join('');
+      return '<div style="background:#242438;border:1px solid rgba(255,255,255,0.06);border-radius:12px;padding:12px 16px;margin-bottom:8px;">'
+        + '<div style="display:flex;align-items:center;gap:12px;">'
         + '<span style="font-size:22px;">' + icon + '</span>'
         + '<div style="flex:1;">'
         + '<div style="font-size:13px;font-weight:700;color:#fff;">' + (t.project_name||'ללא פרויקט').replace(/</g,'&lt;') + '</div>'
-        + '<div style="font-size:11px;color:#555;">' + date + '</div>'
+        + '<div style="font-size:10px;color:#555;margin-top:2px;">📅 ' + date + ' · ' + area + '</div>'
         + '</div>'
-        + '<div style="font-size:14px;font-weight:800;color:#c9a84c;">' + area + '</div>'
+        + '<button onclick="sjDeleteTakeoff(&quot;' + tid + '&quot;)" style="background:rgba(239,68,68,0.15);border:1px solid rgba(239,68,68,0.3);color:#fca5a5;padding:4px 8px;border-radius:6px;font-size:11px;cursor:pointer;">🗑️</button>'
+        + '</div>'
+        + '<select onchange="sjLinkProject(&quot;site_takeoffs&quot;,&quot;' + tid + '&quot;,this.value)" style="width:100%;margin-top:8px;padding:5px 8px;background:#1a1a2e;border:1px solid rgba(255,255,255,0.1);border-radius:6px;color:#888;font-size:11px;font-family:Heebo,sans-serif;">'
+        + '<option value="">📁 קשר לפרויקט...</option>' + projOpts
+        + '</select>'
         + '</div>';
     }).join('');
   } catch(e) {
@@ -384,7 +422,11 @@ async function sjLoadRecordings() {
         + '<button onclick="sjTranscribeAudio(&quot;' + nid + '&quot;,&quot;' + n.photo_url + '&quot;)" id="trans-btn-' + nid + '" style="flex:1;background:rgba(201,168,76,0.2);border:1px solid rgba(201,168,76,0.4);color:#fde68a;padding:7px;border-radius:8px;font-size:11px;font-weight:700;cursor:pointer;">🧠 תמלל עם AI</button>'
         + '</div>'
         + '<div id="trans-result-' + nid + '" style="display:none;background:rgba(0,0,0,0.3);border-radius:8px;padding:10px;font-size:12px;color:#e8e6f0;line-height:1.7;white-space:pre-wrap;margin-bottom:6px;"></div>'
-        + '<div style="font-size:10px;color:#555;">' + time + '</div>'
+        + '<select onchange="sjLinkProject(&quot;beni_notes&quot;,&quot;' + nid + '&quot;,this.value)" style="width:100%;margin-top:6px;padding:5px 8px;background:#1a1a2e;border:1px solid rgba(255,255,255,0.1);border-radius:6px;color:#888;font-size:11px;font-family:Heebo,sans-serif;">'
+        + '<option value="">📁 קשר לפרויקט...</option>'
+        + (window.allProjects||[]).filter(function(p){return p.status==='active';}).map(function(p){return '<option value="'+p.id+'">'+p.project_name.replace(/</g,'&lt;')+'</option>';}).join('')
+        + '</select>'
+        + '<div style="font-size:10px;color:#555;margin-top:4px;">📅 ' + time + '</div>'
         + '</div>';
     }).join('');
     var oldCards = memos.map(function(m) {
