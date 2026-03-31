@@ -2784,15 +2784,20 @@ async function renderAnnexWidget() {
 
   ANNEX_LIST.forEach(function(a) {
     var pdfUrl = _annexStorageBase + 'annex_' + a.num + '.pdf';
+    var title  = a.num + '. ' + a.title;
     html +=
-      '<div style="display:flex;align-items:center;gap:4px;padding:4px 6px;border-radius:6px;background:var(--surface);border:1px solid var(--border);">' +
-        '<label style="display:flex;align-items:center;gap:6px;cursor:pointer;flex:1;min-width:0;">' +
+      '<div style="display:flex;flex-direction:column;gap:4px;padding:6px 8px;border-radius:8px;background:var(--surface);border:1px solid var(--border);">' +
+        '<label style="display:flex;align-items:center;gap:6px;cursor:pointer;">' +
           '<input type="checkbox" class="annex-cb" value="' + a.num + '" style="width:14px;height:14px;cursor:pointer;flex-shrink:0;">' +
-          '<span style="font-size:11px;font-weight:600;color:var(--text2);">' + a.num + '. ' + a.title + '</span>' +
+          '<span style="font-size:11px;font-weight:700;color:var(--text2);">' + title + '</span>' +
         '</label>' +
-        '<a href="' + pdfUrl + '" target="_blank" rel="noopener" ' +
-           'style="flex-shrink:0;padding:3px 7px;background:#1a3d5c;color:white;border-radius:5px;font-size:10px;font-weight:700;text-decoration:none;white-space:nowrap;" ' +
-           'title="צפה ב-PDF">👁️ צפה</a>' +
+        '<div style="display:flex;gap:4px;flex-wrap:wrap;">' +
+          '<a href="' + pdfUrl + '" target="_blank" rel="noopener" style="padding:3px 8px;background:#1a3d5c;color:white;border-radius:5px;font-size:10px;font-weight:700;text-decoration:none;white-space:nowrap;">👁️ צפה</a>' +
+          '<a href="' + pdfUrl + '" target="_blank" rel="noopener" onclick="setTimeout(function(){window.frames[0]&&window.frames[0].print&&window.frames[0].print();},800);" style="padding:3px 8px;background:#374151;color:white;border-radius:5px;font-size:10px;font-weight:700;text-decoration:none;white-space:nowrap;">🖨️ הדפס</a>' +
+          '<a href="mailto:?subject=' + encodeURIComponent('נספח בטיחות ' + title) + '&body=' + encodeURIComponent('נספח בטיחות: ' + title + '\n\nקישור לצפייה:\n' + pdfUrl) + '" style="padding:3px 8px;background:#1e3a5f;color:#93c5fd;border-radius:5px;font-size:10px;font-weight:700;text-decoration:none;white-space:nowrap;">📧 מייל</a>' +
+          '<a href="https://wa.me/?text=' + encodeURIComponent('נספח בטיחות: ' + title + '\n' + pdfUrl) + '" target="_blank" rel="noopener" style="padding:3px 8px;background:#15803d;color:white;border-radius:5px;font-size:10px;font-weight:700;text-decoration:none;white-space:nowrap;">💬 וואטסאפ</a>' +
+          '<button onclick="annexLinkProject(this,\'' + a.num + '\',\'' + encodeURIComponent(title) + '\')" style="padding:3px 8px;background:#78350f;color:#fcd34d;border-radius:5px;font-size:10px;font-weight:700;cursor:pointer;border:none;font-family:Heebo,sans-serif;white-space:nowrap;">📁 פרויקט</button>' +
+        '</div>' +
       '</div>';
   });
 
@@ -4460,6 +4465,100 @@ function toggleSidebarDropdown(id) {
     if (id === 'snag-sidebar')    sidebarSnagInit();
   }
 }
+
+// ── Action bar helpers ────────────────────────────────────────────────────────
+
+function annexLinkProject(btn, annexNum, encodedTitle) {
+  var title = decodeURIComponent(encodedTitle);
+  // If popup already open, close it
+  var existing = btn.parentNode.querySelector('.annex-proj-popup');
+  if (existing) { existing.remove(); return; }
+
+  var popup = document.createElement('div');
+  popup.className = 'annex-proj-popup';
+  popup.style.cssText = 'position:absolute;z-index:999;background:#1a1a2e;border:1.5px solid rgba(255,255,255,0.15);border-radius:10px;padding:10px;min-width:220px;box-shadow:0 8px 32px rgba(0,0,0,0.6);';
+
+  var label = document.createElement('div');
+  label.style.cssText = 'font-size:11px;color:#aaa;margin-bottom:6px;font-family:Heebo,sans-serif;';
+  label.textContent = 'קשר לפרויקט: ' + title;
+  popup.appendChild(label);
+
+  var sel = document.createElement('select');
+  sel.style.cssText = 'width:100%;padding:7px;background:#0f0f1a;border:1px solid rgba(255,255,255,0.15);color:#fff;border-radius:6px;font-family:Heebo,sans-serif;font-size:12px;direction:rtl;margin-bottom:8px;';
+  var defOpt = document.createElement('option');
+  defOpt.value = ''; defOpt.textContent = '-- בחר פרויקט --';
+  sel.appendChild(defOpt);
+  (window.allProjects || []).forEach(function(p) {
+    var o = document.createElement('option');
+    o.value = p.id; o.textContent = p.project_name;
+    sel.appendChild(o);
+  });
+  popup.appendChild(sel);
+
+  var goBtn = document.createElement('button');
+  goBtn.textContent = '✅ שמור ועבור לפרויקט';
+  goBtn.style.cssText = 'width:100%;padding:7px;background:linear-gradient(135deg,#15803d,#16a34a);color:white;border:none;border-radius:7px;font-family:Heebo,sans-serif;font-size:12px;font-weight:700;cursor:pointer;';
+  goBtn.onclick = async function() {
+    var projId = sel.value;
+    if (!projId) { alert('יש לבחור פרויקט'); return; }
+    // Save to Supabase annex_project_links
+    try {
+      await sbQ('annex_project_links', null, 'POST', { annex_num: annexNum, project_id: projId, annex_title: title });
+    } catch(e) { /* table may not exist yet — proceed to navigate anyway */ }
+    popup.remove();
+    switchTab('crm');
+    showPage('projects');
+    setTimeout(function() { openProjectModal(projId); }, 400);
+  };
+  popup.appendChild(goBtn);
+
+  // Position relative to button
+  btn.style.position = 'relative';
+  btn.parentNode.style.position = 'relative';
+  btn.parentNode.appendChild(popup);
+}
+
+// Inject action bar into safety & snag history cards after module renders them
+function _injectHistoryActionBars(listEl, type) {
+  if (!listEl) return;
+  listEl.querySelectorAll('[data-history-id]').forEach(function(card) {
+    if (card.querySelector('.history-action-bar')) return; // already injected
+    var fileUrl = card.dataset.fileUrl || '';
+    var cardTitle = (card.querySelector('[data-card-title]') || {}).textContent || (type === 'safety' ? 'ניתוח בטיחות' : 'סריקת ליקויים');
+    var projId = card.dataset.projectId || '';
+    var bar = document.createElement('div');
+    bar.className = 'history-action-bar';
+    bar.style.cssText = 'display:flex;gap:4px;flex-wrap:wrap;margin-top:8px;padding-top:8px;border-top:1px solid rgba(255,255,255,0.07);';
+    bar.innerHTML =
+      (fileUrl ? '<a href="' + fileUrl + '" target="_blank" rel="noopener" style="padding:3px 8px;background:#1a3d5c;color:white;border-radius:5px;font-size:10px;font-weight:700;text-decoration:none;">👁️ צפה</a>' : '') +
+      (fileUrl ? '<a href="' + fileUrl + '" target="_blank" style="padding:3px 8px;background:#374151;color:white;border-radius:5px;font-size:10px;font-weight:700;text-decoration:none;">🖨️ הדפס</a>' : '') +
+      (fileUrl ? '<a href="mailto:?subject=' + encodeURIComponent(cardTitle) + '&body=' + encodeURIComponent(cardTitle + '\n\n' + fileUrl) + '" style="padding:3px 8px;background:#1e3a5f;color:#93c5fd;border-radius:5px;font-size:10px;font-weight:700;text-decoration:none;">📧 מייל</a>' : '') +
+      (fileUrl ? '<a href="https://wa.me/?text=' + encodeURIComponent(cardTitle + '\n' + fileUrl) + '" target="_blank" style="padding:3px 8px;background:#15803d;color:white;border-radius:5px;font-size:10px;font-weight:700;text-decoration:none;">💬 וואטסאפ</a>' : '') +
+      '<button onclick="annexLinkProject(this,\'\',\'' + encodeURIComponent(cardTitle) + '\')" style="padding:3px 8px;background:#78350f;color:#fcd34d;border-radius:5px;font-size:10px;font-weight:700;cursor:pointer;border:none;font-family:Heebo,sans-serif;">📁 פרויקט</button>';
+    card.appendChild(bar);
+  });
+}
+
+function _watchHistoryList(divId, type) {
+  var el = document.getElementById(divId);
+  if (!el) return;
+  _injectHistoryActionBars(el, type);
+  var obs = new MutationObserver(function() { _injectHistoryActionBars(el, type); });
+  obs.observe(el, { childList: true, subtree: true });
+}
+
+// Start observers once DOM ready
+(function() {
+  function _startObservers() {
+    _watchHistoryList('safety-history-list', 'safety');
+    _watchHistoryList('snag-history-list', 'snag');
+  }
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', _startObservers);
+  } else {
+    setTimeout(_startObservers, 1200);
+  }
+})();
 
 function sidebarAnnexInit() {
   var sel = document.getElementById('annex-sidebar-contractor');
