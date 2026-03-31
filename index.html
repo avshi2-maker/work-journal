@@ -1685,17 +1685,8 @@ window.addEventListener('unhandledrejection', function(e) {
   <!-- ══ SAFETY SUB-TAB ══════════════════════════════════════════ -->
   <div id="safety-sub-safety">
 
-    <!-- History first -->
-    <div id="safety-history-wrap" style="margin-bottom:24px;">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
-        <div style="font-size:12px;font-weight:800;color:#666;text-transform:uppercase;letter-spacing:.5px;">ניתוחים קודמים</div>
-        <button onclick="safetyLoadHistory()" style="background:none;border:1px solid rgba(255,255,255,0.1);color:#555;padding:5px 12px;border-radius:8px;cursor:pointer;font-family:Heebo,sans-serif;font-size:11px;">🔄 רענן</button>
-      </div>
-      <div id="safety-history-list"><div style="text-align:center;padding:20px;color:#444;font-size:13px;">טוען...</div></div>
-    </div>
-
     <!-- Divider -->
-    <div style="border-top:1px solid rgba(255,255,255,0.07);margin-bottom:20px;padding-top:16px;">
+    <div style="margin-bottom:20px;">
       <div style="font-size:12px;font-weight:800;color:#666;text-transform:uppercase;letter-spacing:.5px;margin-bottom:16px;">➕ ניתוח חדש</div>
     </div>
 
@@ -1756,17 +1747,8 @@ window.addEventListener('unhandledrejection', function(e) {
   <!-- ══ SNAG LIST SUB-TAB ════════════════════════════════════════ -->
   <div id="safety-sub-snag" style="display:none;">
 
-    <!-- History first -->
-    <div style="margin-bottom:24px;">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
-        <div style="font-size:12px;font-weight:800;color:#666;text-transform:uppercase;letter-spacing:.5px;">ליקויים קודמים</div>
-        <button onclick="snagLoadHistory()" style="background:none;border:1px solid rgba(255,255,255,0.1);color:#555;padding:5px 12px;border-radius:8px;cursor:pointer;font-family:Heebo,sans-serif;font-size:11px;">🔄 רענן</button>
-      </div>
-      <div id="snag-history-list"><div style="text-align:center;padding:20px;color:#444;font-size:13px;">טוען...</div></div>
-    </div>
-
     <!-- Divider -->
-    <div style="border-top:1px solid rgba(255,255,255,0.07);margin-bottom:20px;padding-top:16px;">
+    <div style="margin-bottom:20px;">
       <div style="font-size:12px;font-weight:800;color:#666;text-transform:uppercase;letter-spacing:.5px;margin-bottom:16px;">➕ סריקה חדשה</div>
     </div>
 
@@ -5650,14 +5632,38 @@ async function _fetchJournalModule() {
 
 // Stub — real switchSafetySubTab is in safety_28032026.js
 function switchSafetySubTab(tab) {
-  // Always delegate to safety module (handles all 5 tabs)
-  // For annexes + snaglist we also handle locally as fallback before module loads
+  // Step 1: Show/hide divs immediately (don't wait for module)
+  var allSubs = ['safety','snag','snaglist','annexes','history'];
+  allSubs.forEach(function(s) {
+    var el = document.getElementById('safety-sub-' + s);
+    if (el) el.style.display = (s === tab) ? '' : 'none';
+  });
+  // Step 2: Update active button style immediately
+  allSubs.forEach(function(s) {
+    var btn = document.getElementById('subtab-' + s);
+    if (!btn) return;
+    if (s === tab) {
+      btn.style.background = s === 'safety' ? '#ef4444' : s === 'snag' ? '#2d6a9f' : s === 'snaglist' ? '#78350f' : s === 'annexes' ? '#5b21b6' : '#374151';
+      btn.style.color = '#fff';
+    } else {
+      btn.style.background = 'transparent';
+      btn.style.color = '#888';
+    }
+  });
+  // Step 3: Load data for the tab
+  if (tab === 'snaglist') { snagListLoad(); }
+  if (tab === 'annexes')  { renderAnnexWidget(); }
+  if (tab === 'history')  {
+    _fetchSafetyModule().then(function() {
+      if (typeof safetyLoadHistory === 'function') safetyLoadHistory();
+      if (typeof snagLoadHistory   === 'function') snagLoadHistory();
+    });
+  }
+  // Step 4: Also delegate to module (for its own logic) once loaded
   _fetchSafetyModule().then(function(){
     if (typeof _switchSafetySubTabReal === 'function') {
       _switchSafetySubTabReal(tab);
     }
-    if (tab === 'annexes') renderAnnexWidget();
-    if (tab === 'snaglist') snagListLoad();
   });
 }
 
