@@ -419,7 +419,7 @@ window.addEventListener('unhandledrejection', function(e) {
       <option value="">-- בחר קבלן --</option>
     </select>
     <div id="annex-sidebar-content" style="margin-top:8px;"></div>
-    <button onclick="switchTab('crm');showPage('dashboard');setTimeout(function(){document.getElementById('annexes-widget').scrollIntoView();},300)" style="width:100%;margin-top:8px;background:rgba(124,58,237,0.2);border:1px solid rgba(124,58,237,0.4);color:#c4b5fd;border-radius:6px;padding:6px;font-size:11px;cursor:pointer;font-family:Heebo,sans-serif;">📋 פתח רשימה מלאה</button>
+    <button onclick="switchTab('safety')" style="width:100%;margin-top:8px;background:rgba(124,58,237,0.2);border:1px solid rgba(124,58,237,0.4);color:#c4b5fd;border-radius:6px;padding:6px;font-size:11px;cursor:pointer;font-family:Heebo,sans-serif;">📋 פתח רשימה מלאה</button>
   </div>
   <!-- רשימת ליקויים -->
   <div class="nav-item" onclick="toggleSidebarDropdown('snag-sidebar')" id="nav-snag-sidebar"><span class="nav-icon">🔍</span><span>רשימת ליקויים</span><span style="margin-right:auto;font-size:10px;color:#888;">▼</span></div>
@@ -473,20 +473,6 @@ window.addEventListener('unhandledrejection', function(e) {
     </div>
 
 
-    <!-- ANNEXES WIDGET -->
-    <div class="card" id="annexes-widget" style="margin-bottom:20px;">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
-        <div style="display:flex;align-items:center;gap:10px;">
-          <div style="width:34px;height:34px;border-radius:9px;background:linear-gradient(135deg,#7c3aed,#6d28d9);display:flex;align-items:center;justify-content:center;font-size:17px;">📋</div>
-          <div>
-            <div style="font-size:15px;font-weight:800;">נספחי בטיחות לקבלן משנה</div>
-            <div style="font-size:10px;font-weight:400;color:var(--text3);">שלח + עקוב אחר אישורי קבלה</div>
-          </div>
-        </div>
-        <button onclick="renderAnnexWidget()" style="background:none;border:1px solid var(--border);color:var(--text3);padding:5px 10px;border-radius:7px;font-size:11px;cursor:pointer;font-family:'Heebo',sans-serif;">🔄</button>
-      </div>
-      <div id="annexes-widget-inner"><div style="text-align:center;padding:18px;color:var(--text3);font-size:13px;">טוען...</div></div>
-    </div>
 
     <!-- SITE PULSE WIDGET -->
     <div class="card" id="site-pulse-widget">
