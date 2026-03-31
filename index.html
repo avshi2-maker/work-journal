@@ -1522,24 +1522,54 @@ window.addEventListener('unhandledrejection', function(e) {
       <div id="journal-ocr-loading" style="display:none;background:#242438;border-radius:12px;padding:14px;margin-bottom:12px;">
         <div style="font-size:12px;color:#c9a84c;font-weight:700;margin-bottom:10px;text-align:center;">⏳ Claude קורא...</div>
         <div style="display:flex;justify-content:space-around;margin-bottom:10px;">
-          <div style="text-align:center;"><div id="ocr-tokens-display" style="font-size:20px;font-weight:900;color:#c4b5fd;font-family:monospace;">~0</div><div style="font-size:9px;color:#666;text-transform:uppercase;">טוקנים</div></div>
-          <div style="text-align:center;"><div id="ocr-cost-display" style="font-size:20px;font-weight:900;color:#22c55e;font-family:monospace;">$0.000</div><div style="font-size:9px;color:#666;text-transform:uppercase;">עלות</div></div>
-          <div style="text-align:center;"><div id="ocr-time-display" style="font-size:20px;font-weight:900;color:#fde68a;font-family:monospace;">0s</div><div style="font-size:9px;color:#666;text-transform:uppercase;">זמן</div></div>
+          <div style="text-align:center;"><div id="ocr-tokens-display" style="font-size:28px;font-weight:900;color:#c4b5fd;font-family:monospace;text-shadow:0 0 10px rgba(196,181,253,0.5);">~0</div><div style="font-size:11px;color:#aaa;font-weight:700;text-transform:uppercase;letter-spacing:1px;">טוקנים</div></div>
+          <div style="text-align:center;"><div id="ocr-cost-display" style="font-size:28px;font-weight:900;color:#22c55e;font-family:monospace;text-shadow:0 0 10px rgba(34,197,94,0.5);">$0.000</div><div style="font-size:11px;color:#aaa;font-weight:700;text-transform:uppercase;letter-spacing:1px;">עלות</div></div>
+          <div style="text-align:center;"><div id="ocr-time-display" style="font-size:28px;font-weight:900;color:#fde68a;font-family:monospace;text-shadow:0 0 10px rgba(253,230,138,0.5);">0s</div><div style="font-size:11px;color:#aaa;font-weight:700;text-transform:uppercase;letter-spacing:1px;">זמן</div></div>
         </div>
         <button onclick="journalOcrStop()" style="width:100%;background:rgba(239,68,68,0.2);border:1px solid rgba(239,68,68,0.4);color:#fca5a5;border-radius:8px;padding:8px;font-size:12px;font-weight:700;cursor:pointer;font-family:Heebo,sans-serif;">⏹️ עצור</button>
       </div>
 
       <!-- Result -->
       <div id="journal-ocr-result" style="display:none;">
-        <textarea id="journal-ocr-text" rows="5" style="width:100%;background:#1a1a2e;border:1px solid rgba(255,255,255,0.1);color:#fff;padding:12px;border-radius:10px;font-family:Heebo,sans-serif;font-size:14px;resize:vertical;direction:rtl;outline:none;line-height:1.7;box-sizing:border-box;margin-bottom:10px;"></textarea>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;">
-          <button onclick="journalOcrSend('note')"    style="background:rgba(245,158,11,0.15);border:1px solid rgba(245,158,11,0.4);color:#f59e0b;border-radius:10px;padding:10px;font-family:Heebo,sans-serif;font-size:12px;font-weight:800;cursor:pointer;">📝 מזכר</button>
-          <button onclick="journalOcrSend('task')"    style="background:rgba(34,197,94,0.12);border:1px solid rgba(34,197,94,0.3);color:#4ade80;border-radius:10px;padding:10px;font-family:Heebo,sans-serif;font-size:12px;font-weight:800;cursor:pointer;">✅ משימה</button>
-          <button onclick="journalOcrSend('takeoff')" style="background:rgba(59,130,246,0.12);border:1px solid rgba(59,130,246,0.3);color:#93c5fd;border-radius:10px;padding:10px;font-family:Heebo,sans-serif;font-size:12px;font-weight:800;cursor:pointer;">📐 טייקאוף</button>
-          <button onclick="journalOcrSend('report')"  style="background:rgba(139,92,246,0.12);border:1px solid rgba(139,92,246,0.3);color:#c4b5fd;border-radius:10px;padding:10px;font-family:Heebo,sans-serif;font-size:12px;font-weight:800;cursor:pointer;">📄 דוח</button>
+        <!-- Explanation labels -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:10px;">
+          <div style="background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.2);border-radius:8px;padding:8px;font-size:10px;color:#f59e0b;line-height:1.5;">
+            <div style="font-weight:900;font-size:12px;margin-bottom:2px;">📝 מזכר</div>
+            שומר בהערות · נראה בטאב הערות ובמזכרים-בני
+          </div>
+          <div style="background:rgba(34,197,94,0.08);border:1px solid rgba(34,197,94,0.2);border-radius:8px;padding:8px;font-size:10px;color:#4ade80;line-height:1.5;">
+            <div style="font-weight:900;font-size:12px;margin-bottom:2px;">✅ משימה</div>
+            שומר במשימות · נראה בלוח בקרה ובבני פוקט
+          </div>
+          <div style="background:rgba(59,130,246,0.08);border:1px solid rgba(59,130,246,0.2);border-radius:8px;padding:8px;font-size:10px;color:#93c5fd;line-height:1.5;">
+            <div style="font-weight:900;font-size:12px;margin-bottom:2px;">📐 טייקאוף</div>
+            שומר מדידות · נראה בטאב מדידות
+          </div>
+          <div style="background:rgba(139,92,246,0.08);border:1px solid rgba(139,92,246,0.2);border-radius:8px;padding:8px;font-size:10px;color:#c4b5fd;line-height:1.5;">
+            <div style="font-weight:900;font-size:12px;margin-bottom:2px;">📄 דוח</div>
+            שומר דוח שטח · נראה בסקשן דוחות
+          </div>
         </div>
-        <button onclick="journalOcrRunAI()" style="width:100%;background:rgba(201,168,76,0.15);border:1px solid rgba(201,168,76,0.3);color:#c9a84c;border-radius:8px;padding:8px;font-size:12px;font-weight:700;cursor:pointer;font-family:Heebo,sans-serif;margin-bottom:6px;">🔄 הרץ שוב</button>
-        <div id="journal-ocr-status" style="font-size:11px;color:#4ade80;text-align:center;min-height:16px;"></div>
+        <!-- Editable text -->
+        <textarea id="journal-ocr-text" rows="5" style="width:100%;background:#1a1a2e;border:1px solid rgba(255,255,255,0.1);color:#fff;padding:12px;border-radius:10px;font-family:Heebo,sans-serif;font-size:14px;font-weight:600;resize:vertical;direction:rtl;outline:none;line-height:1.7;box-sizing:border-box;margin-bottom:10px;"></textarea>
+        <!-- Project link -->
+        <select id="ocr-project-select" style="width:100%;padding:9px 12px;background:#1a3d5c;border:1px solid rgba(201,168,76,0.4);border-radius:8px;color:#fde68a;font-size:13px;font-weight:700;font-family:Heebo,sans-serif;margin-bottom:10px;cursor:pointer;">
+          <option value="">📁 קשר לפרויקט (אופציונלי)...</option>
+        </select>
+        <!-- Save buttons -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;">
+          <button onclick="journalOcrSend('note')"    style="background:rgba(245,158,11,0.15);border:1px solid rgba(245,158,11,0.4);color:#f59e0b;border-radius:10px;padding:12px;font-family:Heebo,sans-serif;font-size:13px;font-weight:900;cursor:pointer;">📝 מזכר</button>
+          <button onclick="journalOcrSend('task')"    style="background:rgba(34,197,94,0.12);border:1px solid rgba(34,197,94,0.3);color:#4ade80;border-radius:10px;padding:12px;font-family:Heebo,sans-serif;font-size:13px;font-weight:900;cursor:pointer;">✅ משימה</button>
+          <button onclick="journalOcrSend('takeoff')" style="background:rgba(59,130,246,0.12);border:1px solid rgba(59,130,246,0.3);color:#93c5fd;border-radius:10px;padding:12px;font-family:Heebo,sans-serif;font-size:13px;font-weight:900;cursor:pointer;">📐 טייקאוף</button>
+          <button onclick="journalOcrSend('report')"  style="background:rgba(139,92,246,0.12);border:1px solid rgba(139,92,246,0.3);color:#c4b5fd;border-radius:10px;padding:12px;font-family:Heebo,sans-serif;font-size:13px;font-weight:900;cursor:pointer;">📄 דוח</button>
+        </div>
+        <!-- Utility buttons -->
+        <div style="display:flex;gap:8px;margin-bottom:8px;">
+          <button onclick="journalOcrPrint()" style="flex:1;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.15);color:#ccc;border-radius:8px;padding:9px;font-family:Heebo,sans-serif;font-size:12px;font-weight:700;cursor:pointer;">🖨️ הדפס</button>
+          <button onclick="journalOcrShare()" style="flex:1;background:rgba(37,211,102,0.12);border:1px solid rgba(37,211,102,0.3);color:#4ade80;border-radius:8px;padding:9px;font-family:Heebo,sans-serif;font-size:12px;font-weight:700;cursor:pointer;">📤 שתף</button>
+          <button onclick="journalOcrRunAI()" style="flex:1;background:rgba(201,168,76,0.15);border:1px solid rgba(201,168,76,0.3);color:#c9a84c;border-radius:8px;padding:9px;font-family:Heebo,sans-serif;font-size:12px;font-weight:700;cursor:pointer;">🔄 הרץ שוב</button>
+        </div>
+        <div id="journal-ocr-status" style="font-size:12px;color:#4ade80;text-align:center;font-weight:700;min-height:18px;"></div>
       </div>
     </div>
   </div>
@@ -5020,6 +5050,7 @@ async function journalOcrRunAI() {
     clearInterval(_ocrTimerInterval);
     if (loading) loading.style.display = 'none';
     if (runBtn) { runBtn.textContent = '🔄 הרץ שוב'; runBtn.disabled = false; }
+    journalOcrPopulateProjects();
     var inTok  = data.usage ? data.usage.input_tokens  : 0;
     var outTok = data.usage ? data.usage.output_tokens : 0;
     var total  = inTok + outTok;
@@ -5040,35 +5071,81 @@ async function journalOcrRunAI() {
   input.value = '';
 }
 
+function journalOcrPrint() {
+  const text = document.getElementById('journal-ocr-text')?.value?.trim() || '';
+  const w = window.open('','_blank');
+  w.document.write('<html dir="rtl"><head><title>OCR</title><style>body{font-family:Arial;padding:30px;direction:rtl;line-height:1.8;font-size:14px;}@media print{button{display:none}}</style></head><body>'
+    + '<button onclick="window.close()" style="position:fixed;top:12px;right:12px;background:#1a3d5c;color:#fff;border:none;padding:8px 18px;border-radius:8px;font-size:13px;cursor:pointer;">✕ סגור</button>'
+    + '<button onclick="window.print()" style="position:fixed;top:12px;left:12px;background:#c9a84c;color:#fff;border:none;padding:8px 18px;border-radius:8px;font-size:13px;cursor:pointer;">🖨️ הדפס</button>'
+    + '<h2>📷 OCR — ' + new Date().toLocaleDateString('he-IL') + '</h2>'
+    + '<pre style="white-space:pre-wrap;font-family:Arial;">' + text.replace(/</g,'&lt;') + '</pre>'
+    + '</body></html>');
+  w.document.close();
+}
+
+function journalOcrShare() {
+  const text = document.getElementById('journal-ocr-text')?.value?.trim() || '';
+  const wa = 'https://wa.me/?text=' + encodeURIComponent('📷 OCR תוצאה:
+
+' + text);
+  window.open(wa, '_blank');
+}
+
+async function journalOcrPopulateProjects() {
+  const sel = document.getElementById('ocr-project-select');
+  if (!sel) return;
+  // Always refresh
+  sel.innerHTML = '<option value="">📁 קשר לפרויקט (אופציונלי)...</option>';
+  var projects = window.allProjects || [];
+  if (!projects.length) {
+    try {
+      var r = await sbQ('projects','select=id,project_name&order=project_name.asc');
+      projects = r.data || [];
+    } catch(e) {}
+  }
+  projects.forEach(function(p) {
+    const opt = document.createElement('option');
+    opt.value = p.id;
+    opt.textContent = p.project_name || '';
+    sel.appendChild(opt);
+  });
+}
+
 async function journalOcrSend(dest) {
   const text   = document.getElementById('journal-ocr-text')?.value?.trim();
   const status = document.getElementById('journal-ocr-status');
   if (!text) { showToast('אין טקסט לשליחה', 'error'); return; }
+  const projId   = document.getElementById('ocr-project-select')?.value || null;
+  const projName = projId ? (document.getElementById('ocr-project-select')?.selectedOptions[0]?.textContent || '') : null;
 
   try {
     if (dest === 'note') {
-      const projId = document.getElementById('note-project-select')?.value || null;
       const { error } = await sb.from('beni_notes').insert({
-        note_text:  '📷 ' + text,
-        color:      'yellow',
-        project_id: projId || null
+        note_text:    '📷 ' + text,
+        color:        'yellow',
+        project_id:   projId || null,
+        project_name: projName || null
       });
       if (error) throw error;
-      if (status) status.textContent = '✅ נשמר ביומן חכם';
+      if (status) status.textContent = '✅ נשמר בהערות' + (projName ? ' · ' + projName : '');
       await loadNotesWall();
       showToast('✅ מזכר OCR נשמר', 'success');
 
     } else if (dest === 'task') {
-      const { error } = await sb.from('reminders').insert({
-        text:       '📷 ' + text,
-        source:     'ocr',
-        priority:   'normal',
-        is_done:    false,
-        created_at: new Date().toISOString()
+      var today = new Date().toISOString().split('T')[0];
+      var nextWeek = new Date(Date.now() + 7*24*60*60*1000).toISOString().split('T')[0];
+      const { error } = await sb.from('gantt_tasks').insert({
+        task_name:  '📷 ' + text.substring(0,80),
+        project_id: projId || null,
+        start_date: today,
+        end_date:   nextWeek,
+        status:     'todo',
+        progress:   0,
+        notes:      'נוצר מ-OCR: ' + text.substring(0,200)
       });
       if (error) throw error;
-      if (status) status.textContent = '✅ נשמר כמשימה';
-      showToast('✅ משימה OCR נשמרה', 'success');
+      if (status) status.textContent = '✅ נשמר במשימות' + (projName ? ' · ' + projName : '');
+      showToast('✅ משימה OCR נשמרה במשימות בני פרסקי', 'success');
 
     } else if (dest === 'takeoff') {
       // Parse measurement lines: "room_name length width"
@@ -5235,10 +5312,13 @@ function renderNotes(notes){
             '<button onclick="printNote(this.dataset.id)" data-id="'+id+'" style="background:rgba(255,255,255,0.08);border:none;color:#aaa;width:28px;height:28px;border-radius:6px;cursor:pointer;font-size:13px">🖨️</button>',
           '</div>',
         '</div>',
-        '<p style="color:#fff;font-size:12px;line-height:1.5;white-space:pre-wrap;margin-bottom:6px;max-height:60px;overflow:hidden;">'+noteTextWithLinks(n.note_text)+'</p>',
+        (n.note_text && n.note_text.startsWith('📷 ')
+          ? '<div style="font-size:11px;font-weight:900;color:#c9a84c;margin-bottom:4px;">🤖 מסמך מפוענח ע״י AI</div>'
+          + '<p style="color:#ddd;font-size:11px;line-height:1.5;white-space:pre-wrap;margin-bottom:6px;max-height:80px;overflow:hidden;">'+noteTextWithLinks(n.note_text.replace(/^📷 /,''))+'</p>'
+          : '<p style="color:#fff;font-size:12px;line-height:1.5;white-space:pre-wrap;margin-bottom:6px;max-height:60px;overflow:hidden;">'+noteTextWithLinks(n.note_text)+'</p>'),
         proj,
         photoHtml,
-        '<div style="font-size:10px;color:#555;margin-top:8px;border-top:1px solid rgba(255,255,255,0.06);padding-top:8px">'+date+'</div>',
+        '<div style="font-size:11px;color:#aaa;font-weight:700;margin-top:8px;border-top:1px solid rgba(255,255,255,0.08);padding-top:8px">📅 '+date+'</div>',
       '</div>'
     ].join('');
   }).join('');
