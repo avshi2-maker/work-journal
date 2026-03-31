@@ -4477,7 +4477,8 @@ function toggleSidebarDropdown(id) {
 
 function sidebarAnnexInit() {
   var sel = document.getElementById('annex-sidebar-contractor');
-  if (!sel || sel.options.length > 1) return;
+  if (!sel) return;
+  sel.innerHTML = '<option value="">-- בחר קבלן --</option>';
   (window.allContractors||[]).forEach(function(c) {
     var opt = document.createElement('option');
     opt.value = c.id;
@@ -4508,7 +4509,8 @@ async function sidebarAnnexLoad(contractorId) {
 
 function sidebarSnagInit() {
   var sel = document.getElementById('snag-sidebar-project');
-  if (!sel || sel.options.length > 1) return;
+  if (!sel) return;
+  sel.innerHTML = '<option value="">-- בחר פרויקט --</option>';
   (window.allProjects||[]).forEach(function(p) {
     var opt = document.createElement('option');
     opt.value = p.id;
