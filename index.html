@@ -359,8 +359,7 @@ window.addEventListener('unhandledrejection', function(e) {
 
 <!-- ══ TOP TAB BAR ══ -->
 <div id="top-tabs">
-  <div class="top-tab active" id="tab-crm"    onclick="switchTab('crm')"><span>📊</span><span>לוח בקרה</span></div>
-  <div class="top-tab"        id="tab-safety" onclick="switchTab('safety')"><span>🛡️</span><span>בטיחות / ליקויים</span></div>
+  <div class="top-tab active" id="tab-safety" onclick="switchTab('safety')"><span>🛡️</span><span>בטיחות / ליקויים</span></div>
   <div class="top-tab"        id="tab-notes"  onclick="switchTab('notes')"><span>📝</span><span>מזכרים בני</span></div>
   <div class="top-tab"        id="tab-rag"    onclick="switchTab('rag')"><span>🏗️</span><span>יעוץ AI</span></div>
 </div>
@@ -411,6 +410,26 @@ window.addEventListener('unhandledrejection', function(e) {
   <div class="nav-item" onclick="switchTab('query')" id="tab-query-nav"><span class="nav-icon">🔍</span><span>שאילתות</span></div>
   <div class="nav-item" onclick="showPage('calc')" id="nav-calc"><span class="nav-icon">🧮</span><span>מחשבון הנדסי</span></div>
   <div class="nav-item" onclick="showPage('weekly')" id="nav-weekly"><span class="nav-icon">📊</span><span>דוח שבועי</span><span class="nav-badge" id="badge-weekly" style="display:none;background:#8b5cf6;">AI</span></div>
+  <!-- נספחי בטיחות -->
+  <div class="nav-item" onclick="toggleSidebarDropdown('annexes-sidebar')" id="nav-annexes-sidebar"><span class="nav-icon">📋</span><span>נספחי בטיחות</span><span style="margin-right:auto;font-size:10px;color:#888;">▼</span></div>
+  <div id="annexes-sidebar-dropdown" style="display:none;background:rgba(0,0,0,0.25);border-right:3px solid #7c3aed;margin-bottom:4px;padding:10px 12px;">
+    <div style="font-size:11px;color:#888;margin-bottom:8px;">בחר קבלן לשליחת נספחים:</div>
+    <select id="annex-sidebar-contractor" onchange="sidebarAnnexLoad(this.value)" style="width:100%;padding:7px;background:#1a1a2e;border:1px solid rgba(255,255,255,0.15);color:#fff;border-radius:6px;font-family:Heebo,sans-serif;font-size:12px;direction:rtl;">
+      <option value="">-- בחר קבלן --</option>
+    </select>
+    <div id="annex-sidebar-content" style="margin-top:8px;"></div>
+    <button onclick="switchTab('crm');showPage('dashboard');setTimeout(function(){document.getElementById('annexes-widget').scrollIntoView();},300)" style="width:100%;margin-top:8px;background:rgba(124,58,237,0.2);border:1px solid rgba(124,58,237,0.4);color:#c4b5fd;border-radius:6px;padding:6px;font-size:11px;cursor:pointer;font-family:Heebo,sans-serif;">📋 פתח רשימה מלאה</button>
+  </div>
+  <!-- רשימת ליקויים -->
+  <div class="nav-item" onclick="toggleSidebarDropdown('snag-sidebar')" id="nav-snag-sidebar"><span class="nav-icon">🔍</span><span>רשימת ליקויים</span><span style="margin-right:auto;font-size:10px;color:#888;">▼</span></div>
+  <div id="snag-sidebar-dropdown" style="display:none;background:rgba(0,0,0,0.25);border-right:3px solid #f59e0b;margin-bottom:4px;padding:10px 12px;">
+    <div style="font-size:11px;color:#888;margin-bottom:8px;">בחר פרויקט לסריקת ליקויים:</div>
+    <select id="snag-sidebar-project" onchange="sidebarSnagLoad(this.value)" style="width:100%;padding:7px;background:#1a1a2e;border:1px solid rgba(255,255,255,0.15);color:#fff;border-radius:6px;font-family:Heebo,sans-serif;font-size:12px;direction:rtl;">
+      <option value="">-- בחר פרויקט --</option>
+    </select>
+    <div id="snag-sidebar-content" style="margin-top:8px;"></div>
+    <button onclick="switchTab('safety');setTimeout(function(){switchSafetySubTab('snag');},100)" style="width:100%;margin-top:8px;background:rgba(245,158,11,0.2);border:1px solid rgba(245,158,11,0.4);color:#f59e0b;border-radius:6px;padding:6px;font-size:11px;cursor:pointer;font-family:Heebo,sans-serif;">🔍 פתח סורק ליקויים מלא</button>
+  </div>
 </nav>
 
 <main class="main">
@@ -3980,7 +3999,7 @@ function showPage(page) {
   });
   document.querySelectorAll('.nav-item').forEach(function(n){ n.classList.remove('active'); });
   document.getElementById('crm-panel').classList.add('active');
-  document.getElementById('tab-crm') && document.getElementById('tab-crm').classList.add('active');
+  // tab-crm removed from top bar — CRM accessible via sidebar לוח בקרה
   const special = {gantt:loadGantt, quotes:loadQuotes, forecast:renderForecast, 'purchase-orders':loadPurchaseOrders, weekly: function(){ loadWeeklyData(); }, takeoff: async function(){
     // Ensure projects are loaded before takeoff page renders
     if (!allProjects || !allProjects.length) {
@@ -4438,6 +4457,89 @@ function toggleMobileSidebar(){const sidebar=document.querySelector('#crm-panel 
 (function(){const overlay=document.createElement('div');overlay.id='crm-overlay';overlay.style.cssText='display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.4);z-index:149;';overlay.onclick=toggleMobileSidebar;document.getElementById('crm-panel').appendChild(overlay);})();
 
 // ── DIGITAL CLOCK ─────────────────────────────────────────
+// ── SIDEBAR DROPDOWN HELPERS ─────────────────────────────────────────
+function toggleSidebarDropdown(id) {
+  var dd = document.getElementById(id + '-dropdown');
+  if (!dd) return;
+  var isOpen = dd.style.display !== 'none';
+  // Close all other dropdowns
+  ['annexes-sidebar-dropdown','snag-sidebar-dropdown'].forEach(function(d) {
+    var el = document.getElementById(d);
+    if (el) el.style.display = 'none';
+  });
+  if (!isOpen) {
+    dd.style.display = 'block';
+    if (id === 'annexes-sidebar') sidebarAnnexInit();
+    if (id === 'snag-sidebar')    sidebarSnagInit();
+  }
+}
+
+function sidebarAnnexInit() {
+  var sel = document.getElementById('annex-sidebar-contractor');
+  if (!sel || sel.options.length > 1) return;
+  (window.allContractors||[]).forEach(function(c) {
+    var opt = document.createElement('option');
+    opt.value = c.id;
+    opt.textContent = c.company_name || c.contact_name || 'קבלן';
+    sel.appendChild(opt);
+  });
+}
+
+async function sidebarAnnexLoad(contractorId) {
+  var box = document.getElementById('annex-sidebar-content');
+  if (!box || !contractorId) return;
+  box.innerHTML = '<div style="font-size:11px;color:#888;padding:4px;">טוען נספחים...</div>';
+  try {
+    var res = await sbQ('contractor_annexes_sent', 'select=annexes_sent,sent_at&contractor_id=eq.' + contractorId + '&order=sent_at.desc&limit=1');
+    var data = res.data && res.data[0];
+    if (data && data.annexes_sent && data.annexes_sent.length) {
+      var date = new Date(data.sent_at).toLocaleDateString('he-IL');
+      box.innerHTML = '<div style="font-size:11px;color:#4ade80;font-weight:700;">✅ נשלחו ' + data.annexes_sent.length + ' נספחים</div>'
+        + '<div style="font-size:10px;color:#555;">' + date + '</div>'
+        + '<div style="font-size:10px;color:#aaa;margin-top:4px;">נספחים: ' + data.annexes_sent.join(', ') + '</div>';
+    } else {
+      box.innerHTML = '<div style="font-size:11px;color:#f59e0b;">⚠️ לא נשלחו נספחים עדיין</div>';
+    }
+  } catch(e) {
+    box.innerHTML = '<div style="font-size:11px;color:#ef4444;">שגיאה: ' + e.message + '</div>';
+  }
+}
+
+function sidebarSnagInit() {
+  var sel = document.getElementById('snag-sidebar-project');
+  if (!sel || sel.options.length > 1) return;
+  (window.allProjects||[]).forEach(function(p) {
+    var opt = document.createElement('option');
+    opt.value = p.id;
+    opt.textContent = p.project_name || '';
+    sel.appendChild(opt);
+  });
+}
+
+async function sidebarSnagLoad(projectId) {
+  var box = document.getElementById('snag-sidebar-content');
+  if (!box || !projectId) return;
+  box.innerHTML = '<div style="font-size:11px;color:#888;padding:4px;">טוען ליקויים...</div>';
+  try {
+    var res = await sbQ('snag_findings', 'select=id,category,description,severity,status&project_id=eq.' + projectId + '&order=created_at.desc&limit=5');
+    var findings = res.data || [];
+    if (!findings.length) {
+      box.innerHTML = '<div style="font-size:11px;color:#4ade80;">✅ אין ליקויים פתוחים</div>';
+      return;
+    }
+    var sevColor = { 'חמור':'#ef4444', 'בינוני':'#f59e0b', 'קל':'#22c55e' };
+    box.innerHTML = findings.map(function(f) {
+      var col = sevColor[f.severity] || '#888';
+      return '<div style="font-size:11px;padding:4px 0;border-bottom:1px solid rgba(255,255,255,0.06);">'
+        + '<span style="color:' + col + ';font-weight:700;">' + (f.severity||'') + '</span>'
+        + ' · ' + (f.category||'') + ' · ' + (f.description||'').substring(0,30)
+        + '</div>';
+    }).join('') + '<div style="font-size:10px;color:#888;margin-top:4px;">' + findings.length + ' ליקויים (5 אחרונים)</div>';
+  } catch(e) {
+    box.innerHTML = '<div style="font-size:11px;color:#ef4444;">שגיאה: ' + e.message + '</div>';
+  }
+}
+
 function updateSidebarClock(){const now=new Date();const h=String(now.getHours()).padStart(2,'0');const m=String(now.getMinutes()).padStart(2,'0');const s=String(now.getSeconds()).padStart(2,'0');const timeEl=document.getElementById('sidebar-clock-time');if(timeEl)timeEl.textContent=h+':'+m+':'+s;const days=['ראשון','שני','שלישי','רביעי','חמישי','שישי','שבת'];const months=['ינואר','פברואר','מרץ','אפריל','מאי','יוני','יולי','אוגוסט','ספטמבר','אוקטובר','נובמבר','דצמבר'];const dateStr='יום '+days[now.getDay()]+', '+now.getDate()+' '+months[now.getMonth()]+' '+now.getFullYear();const dateEl=document.getElementById('sidebar-clock-date');if(dateEl)dateEl.textContent=dateStr;}
 updateSidebarClock();setInterval(updateSidebarClock,1000);
 
