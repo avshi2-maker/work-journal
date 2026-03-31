@@ -626,11 +626,11 @@ var _eodData = [];        // current loaded memos
 var _eodDate = '';        // current date string YYYY-MM-DD
 
 async function loadEODReport(dateStr) {
-  const list    = document.getElementById('eod-list');
-  const picker  = document.getElementById('eod-date-picker');
-  const label   = document.getElementById('eod-date-label');
-  const stats   = document.getElementById('eod-stats-bar');
-  const actions = document.getElementById('eod-action-bar');
+  var list    = document.getElementById('eod-list');
+  var picker  = document.getElementById('eod-date-picker');
+  var label   = document.getElementById('eod-date-label');
+  var stats   = document.getElementById('eod-stats-bar');
+  var actions = document.getElementById('eod-action-bar');
   if (!list) return;
 
   if (!dateStr) {
@@ -640,8 +640,8 @@ async function loadEODReport(dateStr) {
   if (picker) picker.value = dateStr;
 
   // Format label
-  const d = new Date(dateStr + 'T12:00:00');
-  const isToday = dateStr === new Date().toISOString().split('T')[0];
+  var d = new Date(dateStr + 'T12:00:00');
+  var isToday = dateStr === new Date().toISOString().split('T')[0];
   if (label) {
     label.textContent = isToday
       ? 'היום — ' + d.toLocaleDateString('he-IL', {weekday:'long', day:'numeric', month:'long'})
@@ -653,22 +653,22 @@ async function loadEODReport(dateStr) {
   if (actions) actions.style.display = 'none';
 
   try {
-    const from = dateStr + 'T00:00:00.000Z';
-    const to   = dateStr + 'T23:59:59.999Z';
+    var from = dateStr + 'T00:00:00.000Z';
+    var to   = dateStr + 'T23:59:59.999Z';
 
     // Load both eod_sessions AND voice_memos for the day
-    const [eodRes, voiceRes] = await Promise.all([
+    var [eodRes, voiceRes] = await Promise.all([
       fetch(SB_URL + '/rest/v1/eod_sessions?session_date=eq.' + dateStr + '&order=created_at.asc',
         { headers: { apikey: SB_KEY, Authorization: 'Bearer ' + SB_KEY } }),
       fetch(SB_URL + '/rest/v1/voice_memos?created_at=gte.' + from + '&created_at=lte.' + to + '&order=created_at.asc',
         { headers: { apikey: SB_KEY, Authorization: 'Bearer ' + SB_KEY } })
     ]);
 
-    const eodSessions = eodRes.ok  ? await eodRes.json()   : [];
-    const voiceMemos  = voiceRes.ok ? await voiceRes.json() : [];
+    var eodSessions = eodRes.ok  ? await eodRes.json()   : [];
+    var voiceMemos  = voiceRes.ok ? await voiceRes.json() : [];
 
     // Merge and deduplicate — mark source
-    const all = [
+    var all = [
       ...(eodSessions||[]).map(m => ({...m, _src:'eod'})),
       ...(voiceMemos||[]).map(m  => ({...m, _src:'voice'}))
     ].sort((a,b) => new Date(a.created_at) - new Date(b.created_at));
@@ -684,9 +684,9 @@ async function loadEODReport(dateStr) {
     }
 
     // Compute stats
-    let totalTasks = 0, highCount = 0, totalSecs = 0;
+    var totalTasks = 0, highCount = 0, totalSecs = 0;
     all.forEach(m => {
-      const ai = _parseAI(m.ai_result);
+      var ai = _parseAI(m.ai_result);
       if (ai?.action_items?.length) totalTasks += ai.action_items.length;
       if (ai?.priority === 'גבוה') highCount++;
       totalSecs += (m.duration_sec || 0);
@@ -717,39 +717,39 @@ function _parseAI(raw) {
 }
 
 function _renderEODList(memos) {
-  const list = document.getElementById('eod-list');
+  var list = document.getElementById('eod-list');
   if (!list) return;
 
-  const PRI_COLOR  = { 'גבוה':'#ef4444', 'רגיל':'#f59e0b', 'נמוך':'#22c55e' };
-  const CAT_ICON   = { 'משימה':'📋', 'בעיית_אתר':'⚠️', 'חומרים':'📦', 'לקוח':'👤', 'כספים':'💰', 'כללי':'📝', 'ביטחון':'🦺' };
-  const SRC_LABEL  = { 'eod':'🧠 EOD', 'voice':'🎙️ Voice' };
+  var PRI_COLOR  = { 'גבוה':'#ef4444', 'רגיל':'#f59e0b', 'נמוך':'#22c55e' };
+  var CAT_ICON   = { 'משימה':'📋', 'בעיית_אתר':'⚠️', 'חומרים':'📦', 'לקוח':'👤', 'כספים':'💰', 'כללי':'📝', 'ביטחון':'🦺' };
+  var SRC_LABEL  = { 'eod':'🧠 EOD', 'voice':'🎙️ Voice' };
 
   list.innerHTML = memos.map(function(m, idx) {
-    const ai       = _parseAI(m.ai_result);
-    const time     = new Date(m.created_at).toLocaleTimeString('he-IL', {hour:'2-digit', minute:'2-digit'});
-    const summary  = (ai?.summary) || (m.transcript||'').substring(0, 100) || 'ללא תיאור';
-    const priority = ai?.priority  || 'רגיל';
-    const category = ai?.category  || 'כללי';
-    const actions  = ai?.action_items || [];
-    const projHint = ai?.project_hint || '';
-    const priColor = PRI_COLOR[priority] || '#f59e0b';
-    const catIcon  = CAT_ICON[category]  || '📝';
-    const srcLabel = SRC_LABEL[m._src]   || '📝';
-    const mins     = m.duration_sec ? Math.round(m.duration_sec / 60) + 'ד׳' : '';
+    var ai       = _parseAI(m.ai_result);
+    var time     = new Date(m.created_at).toLocaleTimeString('he-IL', {hour:'2-digit', minute:'2-digit'});
+    var summary  = (ai?.summary) || (m.transcript||'').substring(0, 100) || 'ללא תיאור';
+    var priority = ai?.priority  || 'רגיל';
+    var category = ai?.category  || 'כללי';
+    var actions  = ai?.action_items || [];
+    var projHint = ai?.project_hint || '';
+    var priColor = PRI_COLOR[priority] || '#f59e0b';
+    var catIcon  = CAT_ICON[category]  || '📝';
+    var srcLabel = SRC_LABEL[m._src]   || '📝';
+    var mins     = m.duration_sec ? Math.round(m.duration_sec / 60) + 'ד׳' : '';
 
-    const actionsHtml = actions.length
+    var actionsHtml = actions.length
       ? '<div style="margin:8px 0;padding:8px 10px;background:rgba(0,0,0,0.15);border-radius:8px;">'
         + actions.map(a => '<div style="font-size:12px;color:#ccc;padding:2px 0;">▸ ' + a.replace(/</g,'&lt;') + '</div>').join('')
         + '</div>'
       : '';
 
-    const transcriptHtml = m.transcript
+    var transcriptHtml = m.transcript
       ? '<div style="font-size:11px;color:#555;font-style:italic;line-height:1.6;margin-top:6px;padding:6px 8px;background:rgba(0,0,0,0.2);border-radius:6px;">'
         + '"' + m.transcript.substring(0,200).replace(/</g,'&lt;') + (m.transcript.length>200?'...':'') + '"'
         + '</div>'
       : '';
 
-    const projHtml = projHint
+    var projHtml = projHint
       ? '<span style="background:rgba(59,130,246,0.2);color:#93c5fd;border-radius:12px;padding:1px 8px;font-size:10px;font-weight:700;">📁 ' + projHint.replace(/</g,'&lt;') + '</span> '
       : '';
 
@@ -777,18 +777,18 @@ function _renderEODList(memos) {
 
 function eodExportWhatsApp() {
   if (!_eodData.length) return;
-  const d = new Date(_eodDate + 'T12:00:00');
-  const dateLabel = d.toLocaleDateString('he-IL', {weekday:'long', day:'numeric', month:'long'});
-  let msg = '🧠 *יומן שטח — ' + dateLabel + '*\n';
+  var d = new Date(_eodDate + 'T12:00:00');
+  var dateLabel = d.toLocaleDateString('he-IL', {weekday:'long', day:'numeric', month:'long'});
+  var msg = '🧠 *יומן שטח — ' + dateLabel + '*\n';
   msg += '━━━━━━━━━━━━━━━━━━━━\n\n';
 
-  let taskCount = 0, highCount = 0;
+  var taskCount = 0, highCount = 0;
   _eodData.forEach(function(m, i) {
-    const ai   = _parseAI(m.ai_result);
-    const time = new Date(m.created_at).toLocaleTimeString('he-IL', {hour:'2-digit', minute:'2-digit'});
-    const sum  = ai?.summary || (m.transcript||'').substring(0,80);
-    const pri  = ai?.priority || 'רגיל';
-    const priEmoji = pri === 'גבוה' ? '🔴' : pri === 'נמוך' ? '🟢' : '🟡';
+    var ai   = _parseAI(m.ai_result);
+    var time = new Date(m.created_at).toLocaleTimeString('he-IL', {hour:'2-digit', minute:'2-digit'});
+    var sum  = ai?.summary || (m.transcript||'').substring(0,80);
+    var pri  = ai?.priority || 'רגיל';
+    var priEmoji = pri === 'גבוה' ? '🔴' : pri === 'נמוך' ? '🟢' : '🟡';
     if (pri === 'גבוה') highCount++;
     msg += (i+1) + '. ' + priEmoji + ' *[' + time + ']* ' + sum + '\n';
     if (ai?.action_items?.length) {
@@ -799,7 +799,7 @@ function eodExportWhatsApp() {
   msg += '━━━━━━━━━━━━━━━━━━━━\n';
   msg += '📊 סה״כ: ' + _eodData.length + ' הקלטות · ' + taskCount + ' משימות · ' + highCount + ' דחוף';
 
-  const waUrl = 'https://wa.me/?text=' + encodeURIComponent(msg);
+  var waUrl = 'https://wa.me/?text=' + encodeURIComponent(msg);
   window.open(waUrl, '_blank');
 }
 
@@ -807,34 +807,34 @@ async function eodSaveReport() {
   if (!_eodData.length) { showToast('אין נתונים לשמירה', 'error'); return; }
 
   // Ask which project to attach to
-  const projName = prompt('שם פרויקט (אופציונלי — לקישור לדוח):', '');
+  var projName = prompt('שם פרויקט (אופציונלי — לקישור לדוח):', '');
 
-  const d = new Date(_eodDate + 'T12:00:00');
-  const dateLabel = d.toLocaleDateString('he-IL', {weekday:'long', day:'numeric', month:'long'});
-  const reportNum = 'EOD-' + _eodDate.replace(/-/g,'');
+  var d = new Date(_eodDate + 'T12:00:00');
+  var dateLabel = d.toLocaleDateString('he-IL', {weekday:'long', day:'numeric', month:'long'});
+  var reportNum = 'EOD-' + _eodDate.replace(/-/g,'');
 
-  let totalTasks = 0, highCount = 0, totalSecs = 0;
-  const summaries = [];
+  var totalTasks = 0, highCount = 0, totalSecs = 0;
+  var summaries = [];
   _eodData.forEach(m => {
-    const ai = _parseAI(m.ai_result);
+    var ai = _parseAI(m.ai_result);
     if (ai?.summary) summaries.push(ai.summary);
     if (ai?.action_items?.length) totalTasks += ai.action_items.length;
     if (ai?.priority === 'גבוה') highCount++;
     totalSecs += (m.duration_sec || 0);
   });
 
-  const generalNotes = _eodData.length + ' הקלטות קוליות · '
+  var generalNotes = _eodData.length + ' הקלטות קוליות · '
     + totalTasks + ' משימות · '
     + highCount + ' דחוף · '
     + Math.round(totalSecs/60) + ' דקות הקלטה\n\n'
     + summaries.slice(0,5).join(' | ');
 
-  const projMatch = projName ? (allProjects||[]).find(p =>
+  var projMatch = projName ? (allProjects||[]).find(p =>
     p.project_name.includes(projName) || projName.includes(p.project_name)) : null;
 
   showLoading(true);
   try {
-    const { error } = await sb.from('reports').insert({
+    var { error } = await sb.from('reports').insert({
       report_number:  reportNum,
       report_date:    _eodDate,
       project_name:   projMatch?.project_name || projName || 'יומן שטח',
@@ -860,12 +860,12 @@ var _weeklyAIReport = '';
 var _weeklyAnthropicKey = null;
 
 function weeklyGetRange(offset) {
-  const now   = new Date();
-  const day   = now.getDay(); // 0=Sun
-  const sunday = new Date(now);
+  var now   = new Date();
+  var day   = now.getDay(); // 0=Sun
+  var sunday = new Date(now);
   sunday.setDate(now.getDate() - day + (offset * 7));
   sunday.setHours(0,0,0,0);
-  const saturday = new Date(sunday);
+  var saturday = new Date(sunday);
   saturday.setDate(sunday.getDate() + 6);
   saturday.setHours(23,59,59,999);
   return { from: sunday, to: saturday };
@@ -873,40 +873,40 @@ function weeklyGetRange(offset) {
 
 function weeklyShift(dir) {
   _weeklyOffset += dir;
-  const nextBtn = document.getElementById('weekly-next-btn');
+  var nextBtn = document.getElementById('weekly-next-btn');
   if (nextBtn) nextBtn.style.opacity = _weeklyOffset >= 0 ? '0.3' : '1';
   loadWeeklyData();
 }
 
 async function loadWeeklyData() {
-  const { from, to } = weeklyGetRange(_weeklyOffset);
-  const fromISO = from.toISOString();
-  const toISO   = to.toISOString();
-  const fromDate = from.toISOString().split('T')[0];
-  const toDate   = to.toISOString().split('T')[0];
+  var { from, to } = weeklyGetRange(_weeklyOffset);
+  var fromISO = from.toISOString();
+  var toISO   = to.toISOString();
+  var fromDate = from.toISOString().split('T')[0];
+  var toDate   = to.toISOString().split('T')[0];
 
-  const label = document.getElementById('weekly-range-label');
+  var label = document.getElementById('weekly-range-label');
   if (label) {
-    const fStr = from.toLocaleDateString('he-IL',{day:'2-digit',month:'2-digit'});
-    const tStr = to.toLocaleDateString('he-IL',{day:'2-digit',month:'2-digit',year:'numeric'});
+    var fStr = from.toLocaleDateString('he-IL',{day:'2-digit',month:'2-digit'});
+    var tStr = to.toLocaleDateString('he-IL',{day:'2-digit',month:'2-digit',year:'numeric'});
     label.textContent = fStr + ' – ' + tStr;
   }
 
-  const nextBtn = document.getElementById('weekly-next-btn');
+  var nextBtn = document.getElementById('weekly-next-btn');
   if (nextBtn) nextBtn.style.opacity = _weeklyOffset >= 0 ? '0.3' : '1';
 
   // Hide old report
-  const out = document.getElementById('weekly-report-out');
-  const waBar = document.getElementById('weekly-wa-bar');
+  var out = document.getElementById('weekly-report-out');
+  var waBar = document.getElementById('weekly-wa-bar');
   if (out)   out.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text3);font-size:13px;">טוען נתונים...</div>';
   if (waBar) waBar.style.display = 'none';
   _weeklyRawData = {};
   _weeklyAIReport = '';
 
   try {
-    const H = { apikey: SB_KEY, Authorization: 'Bearer ' + SB_KEY };
+    var H = { apikey: SB_KEY, Authorization: 'Bearer ' + SB_KEY };
 
-    const [callRes, taskRes, takeoffRes, txnRes, memoRes, insRes] = await Promise.all([
+    var [callRes, taskRes, takeoffRes, txnRes, memoRes, insRes] = await Promise.all([
       fetch(SB_URL+'/rest/v1/call_log?created_at=gte.'+fromISO+'&created_at=lte.'+toISO+'&order=created_at.desc&select=caller_name,direction,wa_sent,created_at', {headers:H}),
       fetch(SB_URL+'/rest/v1/reminders?is_done=eq.true&done_at=gte.'+fromISO+'&done_at=lte.'+toISO+'&select=text,source,done_at', {headers:H}),
       fetch(SB_URL+'/rest/v1/site_takeoffs?created_at=gte.'+fromISO+'&created_at=lte.'+toISO+'&select=project_name,total_area,takeoff_type,created_at', {headers:H}),
@@ -915,19 +915,19 @@ async function loadWeeklyData() {
       fetch(SB_URL+'/rest/v1/site_inspections?inspection_date=gte.'+fromDate+'&inspection_date=lte.'+toDate+'&select=inspection_date,status,project_name', {headers:H})
     ]);
 
-    const calls      = callRes.ok     ? await callRes.json()     : [];
-    const tasks      = taskRes.ok     ? await taskRes.json()     : [];
-    const takeoffs   = takeoffRes.ok  ? await takeoffRes.json()  : [];
-    const txns       = txnRes.ok      ? await txnRes.json()      : [];
-    const memos      = memoRes.ok     ? await memoRes.json()     : [];
-    const inspections= insRes.ok      ? await insRes.json()      : [];
+    var calls      = callRes.ok     ? await callRes.json()     : [];
+    var tasks      = taskRes.ok     ? await taskRes.json()     : [];
+    var takeoffs   = takeoffRes.ok  ? await takeoffRes.json()  : [];
+    var txns       = txnRes.ok      ? await txnRes.json()      : [];
+    var memos      = memoRes.ok     ? await memoRes.json()     : [];
+    var inspections= insRes.ok      ? await insRes.json()      : [];
 
     _weeklyRawData = { calls, tasks, takeoffs, txns, memos, inspections };
 
     // Stats
-    const totalPaid  = txns.filter(t=>t.type==='sent').reduce((s,t)=>s+Number(t.amount||0),0);
-    const statIds    = ['ws-calls','ws-tasks','ws-takeoffs','ws-payments','ws-memos','ws-inspections'];
-    const statVals   = [
+    var totalPaid  = txns.filter(t=>t.type==='sent').reduce((s,t)=>s+Number(t.amount||0),0);
+    var statIds    = ['ws-calls','ws-tasks','ws-takeoffs','ws-payments','ws-memos','ws-inspections'];
+    var statVals   = [
       calls.length,
       tasks.length,
       takeoffs.length,
@@ -935,7 +935,7 @@ async function loadWeeklyData() {
       memos.length,
       inspections.length
     ];
-    statIds.forEach((id,i) => { const el=document.getElementById(id); if(el) el.textContent=statVals[i]; });
+    statIds.forEach((id,i) => { var el=document.getElementById(id); if(el) el.textContent=statVals[i]; });
 
     // Raw data accordion
     _renderWeeklyRaw(calls, tasks, takeoffs, txns, memos, inspections);
@@ -951,7 +951,7 @@ async function loadWeeklyData() {
 }
 
 async function weeklyCheckKey() {
-  const keyRow = document.getElementById('weekly-key-row');
+  var keyRow = document.getElementById('weekly-key-row');
   if (!keyRow) return;
 
   // Try APP.config first
@@ -962,7 +962,7 @@ async function weeklyCheckKey() {
   }
   // Try fetching from app_config table
   try {
-    const res = await sbQ('app_config', 'select=key,value&key=eq.anthropic_key');
+    var res = await sbQ('app_config', 'select=key,value&key=eq.anthropic_key');
     if (res.data && res.data.length && res.data[0].value) {
       _weeklyAnthropicKey = res.data[0].value;
       keyRow.style.display = 'none';
@@ -973,8 +973,8 @@ async function weeklyCheckKey() {
 }
 
 async function weeklySaveKey() {
-  const inp = document.getElementById('weekly-api-key');
-  const key = inp ? inp.value.trim() : '';
+  var inp = document.getElementById('weekly-api-key');
+  var key = inp ? inp.value.trim() : '';
   if (!key.startsWith('sk-')) { showToast('מפתח לא תקין — צריך להתחיל ב-sk-', 'error'); return; }
   try {
     await sb.from('app_config').upsert({ key: 'anthropic_key', value: key }, { onConflict: 'key' });
@@ -993,31 +993,31 @@ async function generateWeeklyReport() {
     return;
   }
 
-  const out    = document.getElementById('weekly-report-out');
-  const btn    = document.getElementById('weekly-gen-btn');
-  const waBar  = document.getElementById('weekly-wa-bar');
+  var out    = document.getElementById('weekly-report-out');
+  var btn    = document.getElementById('weekly-gen-btn');
+  var waBar  = document.getElementById('weekly-wa-bar');
   if (btn) { btn.disabled = true; btn.textContent = '⏳ מייצר...'; }
   if (out) out.innerHTML = '<div style="text-align:center;padding:24px;color:var(--text3);font-size:13px;"><div style="font-size:32px;margin-bottom:8px;">🧠</div>Claude מנתח את השבוע...</div>';
 
-  const { calls=[], tasks=[], takeoffs=[], txns=[], memos=[], inspections=[] } = _weeklyRawData;
-  const { from, to } = weeklyGetRange(_weeklyOffset);
-  const fStr = from.toLocaleDateString('he-IL',{day:'numeric',month:'long'});
-  const tStr = to.toLocaleDateString('he-IL',{day:'numeric',month:'long',year:'numeric'});
-  const totalPaid = txns.filter(t=>t.type==='sent').reduce((s,t)=>s+Number(t.amount||0),0);
-  const totalIncome = txns.filter(t=>t.type==='client_income').reduce((s,t)=>s+Number(t.amount||0),0);
+  var { calls=[], tasks=[], takeoffs=[], txns=[], memos=[], inspections=[] } = _weeklyRawData;
+  var { from, to } = weeklyGetRange(_weeklyOffset);
+  var fStr = from.toLocaleDateString('he-IL',{day:'numeric',month:'long'});
+  var tStr = to.toLocaleDateString('he-IL',{day:'numeric',month:'long',year:'numeric'});
+  var totalPaid = txns.filter(t=>t.type==='sent').reduce((s,t)=>s+Number(t.amount||0),0);
+  var totalIncome = txns.filter(t=>t.type==='client_income').reduce((s,t)=>s+Number(t.amount||0),0);
 
-  const memoSummaries = memos.slice(0,10).map(m => {
-    const ai = m.ai_result ? (typeof m.ai_result==='string' ? (() => { try { return JSON.parse(m.ai_result); } catch(e){ return null; } })() : m.ai_result) : null;
+  var memoSummaries = memos.slice(0,10).map(m => {
+    var ai = m.ai_result ? (typeof m.ai_result==='string' ? (() => { try { return JSON.parse(m.ai_result); } catch(e){ return null; } })() : m.ai_result) : null;
     return ai?.summary || (m.transcript||'').substring(0,80);
   }).filter(Boolean).join(' | ');
 
-  const contractorsPaid = [...new Set(txns.filter(t=>t.type==='sent').map(t=>t.contractors_master?.company_name).filter(Boolean))].join(', ');
-  const projectsActive  = [...new Set([
+  var contractorsPaid = [...new Set(txns.filter(t=>t.type==='sent').map(t=>t.contractors_master?.company_name).filter(Boolean))].join(', ');
+  var projectsActive  = [...new Set([
     ...takeoffs.map(t=>t.project_name),
     ...txns.map(t=>t.projects?.project_name)
   ].filter(Boolean))].join(', ');
 
-  const prompt = `אתה מנהל בנייה בכיר. סכם את השבוע בשטח של בני פרסקי (מנהל שטח) עבור הנהלת סטונהרד.
+  var prompt = `אתה מנהל בנייה בכיר. סכם את השבוע בשטח של בני פרסקי (מנהל שטח) עבור הנהלת סטונהרד.
 
 תקופה: ${fStr} – ${tStr}
 
@@ -1041,16 +1041,16 @@ async function generateWeeklyReport() {
 פורמט: טקסט נקי, עברית, מקצועי. אין נקודות, אין כותרות מיוחדות.`;
 
   try {
-    const res = await claudeFetch(JSON.stringify({ _apiKey: _weeklyAnthropicKey,
+    var res = await claudeFetch(JSON.stringify({ _apiKey: _weeklyAnthropicKey,
         model: 'claude-sonnet-4-20250514',
         max_tokens: 800,
         messages: [{ role: 'user', content: prompt }]
       }), null);
 
-    const data = await res.json();
+    var data = await res.json();
     if (!res.ok) throw new Error(data.error?.message || 'API error ' + res.status);
 
-    const text = data.content?.[0]?.text || '';
+    var text = data.content?.[0]?.text || '';
     _weeklyAIReport = text;
 
     if (out) {
@@ -1076,13 +1076,13 @@ async function generateWeeklyReport() {
 
 function weeklyWhatsApp() {
   if (!_weeklyAIReport) return;
-  const { from, to } = weeklyGetRange(_weeklyOffset);
-  const fStr = from.toLocaleDateString('he-IL',{day:'2-digit',month:'2-digit'});
-  const tStr = to.toLocaleDateString('he-IL',{day:'2-digit',month:'2-digit',year:'numeric'});
-  const { calls=[], tasks=[], takeoffs=[], txns=[], memos=[], inspections=[] } = _weeklyRawData;
-  const totalPaid = txns.filter(t=>t.type==='sent').reduce((s,t)=>s+Number(t.amount||0),0);
+  var { from, to } = weeklyGetRange(_weeklyOffset);
+  var fStr = from.toLocaleDateString('he-IL',{day:'2-digit',month:'2-digit'});
+  var tStr = to.toLocaleDateString('he-IL',{day:'2-digit',month:'2-digit',year:'numeric'});
+  var { calls=[], tasks=[], takeoffs=[], txns=[], memos=[], inspections=[] } = _weeklyRawData;
+  var totalPaid = txns.filter(t=>t.type==='sent').reduce((s,t)=>s+Number(t.amount||0),0);
 
-  let msg = '📊 *דוח שבועי סטונהרד — ' + fStr + ' – ' + tStr + '*\n';
+  var msg = '📊 *דוח שבועי סטונהרד — ' + fStr + ' – ' + tStr + '*\n';
   msg += '━━━━━━━━━━━━━━━━━━━━\n\n';
   msg += _weeklyAIReport + '\n\n';
   msg += '━━━━━━━━━━━━━━━━━━━━\n';
@@ -1094,13 +1094,13 @@ function weeklyWhatsApp() {
 
 async function weeklySaveAsReport() {
   if (!_weeklyAIReport) return;
-  const { from, to } = weeklyGetRange(_weeklyOffset);
-  const reportNum = 'WKL-' + from.toISOString().split('T')[0].replace(/-/g,'');
-  const { calls=[], tasks=[], takeoffs=[], txns=[] } = _weeklyRawData;
-  const totalPaid = txns.filter(t=>t.type==='sent').reduce((s,t)=>s+Number(t.amount||0),0);
+  var { from, to } = weeklyGetRange(_weeklyOffset);
+  var reportNum = 'WKL-' + from.toISOString().split('T')[0].replace(/-/g,'');
+  var { calls=[], tasks=[], takeoffs=[], txns=[] } = _weeklyRawData;
+  var totalPaid = txns.filter(t=>t.type==='sent').reduce((s,t)=>s+Number(t.amount||0),0);
   showLoading(true);
   try {
-    const { error } = await sb.from('reports').insert({
+    var { error } = await sb.from('reports').insert({
       report_number: reportNum,
       report_date:   from.toISOString().split('T')[0],
       project_name:  'סיכום שבועי',
@@ -1116,10 +1116,10 @@ async function weeklySaveAsReport() {
 }
 
 function _renderWeeklyRaw(calls, tasks, takeoffs, txns, memos, inspections) {
-  const el = document.getElementById('weekly-raw');
+  var el = document.getElementById('weekly-raw');
   if (!el) return;
 
-  const section = (icon, title, count, rows) => {
+  var section = (icon, title, count, rows) => {
     if (!count) return '';
     return '<details style="margin-bottom:10px;">'
       + '<summary style="cursor:pointer;padding:10px 14px;background:var(--surface2);border-radius:10px;font-size:13px;font-weight:700;color:var(--text);list-style:none;display:flex;justify-content:space-between;align-items:center;">'
@@ -1130,23 +1130,23 @@ function _renderWeeklyRaw(calls, tasks, takeoffs, txns, memos, inspections) {
       + rows + '</div></details>';
   };
 
-  const callRows = calls.slice(0,10).map(c => {
-    const t = new Date(c.created_at).toLocaleString('he-IL',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
-    const icon = c.direction==='missed' ? '📵' : c.direction==='outgoing' ? '📲' : '📞';
+  var callRows = calls.slice(0,10).map(c => {
+    var t = new Date(c.created_at).toLocaleString('he-IL',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
+    var icon = c.direction==='missed' ? '📵' : c.direction==='outgoing' ? '📲' : '📞';
     return '<div style="font-size:12px;padding:4px 0;border-bottom:1px solid var(--border);color:var(--text2);">' + icon + ' ' + (c.caller_name||'לא ידוע').replace(/</g,'&lt;') + ' · ' + t + (c.wa_sent?' 💬':'') + '</div>';
   }).join('');
 
-  const taskRows = tasks.slice(0,10).map(t =>
+  var taskRows = tasks.slice(0,10).map(t =>
     '<div style="font-size:12px;padding:4px 0;border-bottom:1px solid var(--border);color:var(--text2);">✅ ' + (t.text||'').substring(0,80).replace(/</g,'&lt;') + '</div>'
   ).join('');
 
-  const takeoffRows = takeoffs.map(t =>
+  var takeoffRows = takeoffs.map(t =>
     '<div style="font-size:12px;padding:4px 0;border-bottom:1px solid var(--border);color:var(--text2);">📐 ' + (t.project_name||'ללא פרויקט').replace(/</g,'&lt;') + (t.total_area ? ' · ' + Number(t.total_area).toFixed(1) + ' מ"ר' : '') + '</div>'
   ).join('');
 
-  const txnRows = txns.slice(0,8).map(t => {
-    const amt = Number(t.amount||0).toLocaleString('he-IL',{maximumFractionDigits:0});
-    const type = t.type==='sent' ? '💸' : '✅';
+  var txnRows = txns.slice(0,8).map(t => {
+    var amt = Number(t.amount||0).toLocaleString('he-IL',{maximumFractionDigits:0});
+    var type = t.type==='sent' ? '💸' : '✅';
     return '<div style="font-size:12px;padding:4px 0;border-bottom:1px solid var(--border);color:var(--text2);">' + type + ' ₪' + amt + ' · ' + (t.contractors_master?.company_name||'').replace(/</g,'&lt;') + '</div>';
   }).join('');
 
@@ -1269,7 +1269,7 @@ async function loadRecentInspections() {
 }
 
 
-function onJournalProjectChange(sel){const customRow=document.getElementById('project-custom-name-row');if(!customRow)return;if(sel.value==='__custom__'){customRow.style.display='block';document.getElementById('projectNameCustom').focus();}else{customRow.style.display='none';}}
+function onJournalProjectChange(sel){var customRow=document.getElementById('project-custom-name-row');if(!customRow)return;if(sel.value==='__custom__'){customRow.style.display='block';document.getElementById('projectNameCustom').focus();}else{customRow.style.display='none';}}
 
 
 async function _spConfirmReject() {
@@ -1312,10 +1312,13 @@ function filterNotesByProject(projectId) {
   if (!projectId) {
     renderNotes(allNotes);
   } else {
-    const filtered = allNotes.filter(n => n.project_id === projectId);
+    var filtered = allNotes.filter(n => n.project_id === projectId);
     renderNotes(filtered);
   }
 }
 
-
+// Alias — sjLoadVoiceMemos was called but function was named sjLoadRecordings
+function sjLoadVoiceMemos() {
+  sjLoadRecordings();
+}
 
