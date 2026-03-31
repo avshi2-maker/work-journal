@@ -1676,10 +1676,28 @@ window.addEventListener('unhandledrejection', function(e) {
       style="flex:1;padding:10px;border-radius:10px;border:none;cursor:pointer;font-family:Heebo,sans-serif;font-size:13px;font-weight:700;background:transparent;color:#888;transition:all .15s;">
       📋 נספחי בטיחות
     </button>
+    <button id="subtab-history" onclick="switchSafetySubTab('history')"
+      style="flex:1;padding:10px;border-radius:10px;border:none;cursor:pointer;font-family:Heebo,sans-serif;font-size:13px;font-weight:700;background:transparent;color:#888;transition:all .15s;">
+      📊 ניתוחים קודמים
+    </button>
   </div>
 
   <!-- ══ SAFETY SUB-TAB ══════════════════════════════════════════ -->
   <div id="safety-sub-safety">
+
+    <!-- History first -->
+    <div id="safety-history-wrap" style="margin-bottom:24px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+        <div style="font-size:12px;font-weight:800;color:#666;text-transform:uppercase;letter-spacing:.5px;">ניתוחים קודמים</div>
+        <button onclick="safetyLoadHistory()" style="background:none;border:1px solid rgba(255,255,255,0.1);color:#555;padding:5px 12px;border-radius:8px;cursor:pointer;font-family:Heebo,sans-serif;font-size:11px;">🔄 רענן</button>
+      </div>
+      <div id="safety-history-list"><div style="text-align:center;padding:20px;color:#444;font-size:13px;">טוען...</div></div>
+    </div>
+
+    <!-- Divider -->
+    <div style="border-top:1px solid rgba(255,255,255,0.07);margin-bottom:20px;padding-top:16px;">
+      <div style="font-size:12px;font-weight:800;color:#666;text-transform:uppercase;letter-spacing:.5px;margin-bottom:16px;">➕ ניתוח חדש</div>
+    </div>
 
     <!-- Upload zone -->
     <div style="background:#1e1e35;border:2px dashed rgba(239,68,68,0.4);border-radius:16px;padding:20px;margin-bottom:20px;text-align:center;">
@@ -1733,18 +1751,24 @@ window.addEventListener('unhandledrejection', function(e) {
     </div>
 
     <div id="safety-results"></div>
-
-    <div id="safety-history-wrap" style="margin-top:28px;">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
-        <div style="font-size:12px;font-weight:800;color:#666;text-transform:uppercase;letter-spacing:.5px;">ניתוחים קודמים</div>
-        <button onclick="safetyLoadHistory()" style="background:none;border:1px solid rgba(255,255,255,0.1);color:#555;padding:5px 12px;border-radius:8px;cursor:pointer;font-family:Heebo,sans-serif;font-size:11px;">🔄 רענן</button>
-      </div>
-      <div id="safety-history-list"><div style="text-align:center;padding:20px;color:#444;font-size:13px;">טוען...</div></div>
-    </div>
   </div>
 
   <!-- ══ SNAG LIST SUB-TAB ════════════════════════════════════════ -->
   <div id="safety-sub-snag" style="display:none;">
+
+    <!-- History first -->
+    <div style="margin-bottom:24px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+        <div style="font-size:12px;font-weight:800;color:#666;text-transform:uppercase;letter-spacing:.5px;">ליקויים קודמים</div>
+        <button onclick="snagLoadHistory()" style="background:none;border:1px solid rgba(255,255,255,0.1);color:#555;padding:5px 12px;border-radius:8px;cursor:pointer;font-family:Heebo,sans-serif;font-size:11px;">🔄 רענן</button>
+      </div>
+      <div id="snag-history-list"><div style="text-align:center;padding:20px;color:#444;font-size:13px;">טוען...</div></div>
+    </div>
+
+    <!-- Divider -->
+    <div style="border-top:1px solid rgba(255,255,255,0.07);margin-bottom:20px;padding-top:16px;">
+      <div style="font-size:12px;font-weight:800;color:#666;text-transform:uppercase;letter-spacing:.5px;margin-bottom:16px;">➕ סריקה חדשה</div>
+    </div>
 
     <!-- Category selector — loaded from Supabase snag_categories -->
     <div style="background:#242438;border-radius:14px;padding:16px;margin-bottom:20px;border:1px solid rgba(255,255,255,0.06);">
@@ -1758,7 +1782,6 @@ window.addEventListener('unhandledrejection', function(e) {
       <div id="snag-categories-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(min(200px,100%),1fr));gap:8px;">
         <div style="text-align:center;padding:20px;color:#555;font-size:12px;grid-column:1/-1;">טוען קטגוריות...</div>
       </div>
-
       <!-- 5 free-text custom categories -->
       <div style="margin-top:14px;border-top:1px solid rgba(255,255,255,0.06);padding-top:14px;">
         <div style="font-size:11px;font-weight:800;color:#666;text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px;">קטגוריות נוספות (הזן ידנית):</div>
@@ -1781,10 +1804,10 @@ window.addEventListener('unhandledrejection', function(e) {
       <div style="font-size:11px;color:#666;margin-bottom:16px;">📄 PDF — ניתוח ישיר של תוכן הדוח · 🌐 HTML — ניתוח תוכן הדף</div>
       <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;">
         <label style="display:inline-flex;align-items:center;gap:8px;background:rgba(59,130,246,0.2);border:1.5px solid rgba(59,130,246,0.5);color:#93c5fd;padding:10px 20px;border-radius:12px;cursor:pointer;font-size:13px;font-weight:700;font-family:Heebo,sans-serif;">
-          📁 בחר קובץ<input type="file" id="snag-file-input" accept="image/*,video/mp4,video/quicktime,video/webm,video/avi,video/x-m4v,.pdf,.html,.htm" multiple style="display:none;" onchange="snagHandleFile(this)"> 
+          📁 בחר קובץ<input type="file" id="snag-file-input" accept="image/*,video/mp4,video/quicktime,video/webm,video/avi,video/x-m4v,.pdf,.html,.htm" multiple style="display:none;" onchange="snagHandleFile(this)">
         </label>
         <label style="display:inline-flex;align-items:center;gap:8px;background:rgba(139,92,246,0.15);border:1.5px solid rgba(139,92,246,0.4);color:#c4b5fd;padding:10px 20px;border-radius:12px;cursor:pointer;font-size:13px;font-weight:700;font-family:Heebo,sans-serif;">
-          📸 צלם עכשיו<input type="file" id="snag-camera-input" accept="image/*" capture="environment" style="display:none;" onchange="snagHandleFile(this)"> 
+          📸 צלם עכשיו<input type="file" id="snag-camera-input" accept="image/*" capture="environment" style="display:none;" onchange="snagHandleFile(this)">
         </label>
         <button onclick="snagUseShared()" id="snag-use-shared-btn" style="display:none;background:rgba(34,197,94,0.15);border:1.5px solid rgba(34,197,94,0.4);color:#86efac;padding:10px 20px;border-radius:12px;cursor:pointer;font-size:13px;font-weight:700;font-family:Heebo,sans-serif;">
           ♻️ השתמש בקבצים טעונים
@@ -1817,15 +1840,6 @@ window.addEventListener('unhandledrejection', function(e) {
 
     <!-- Snag results -->
     <div id="snag-results"></div>
-
-    <!-- Snag history -->
-    <div style="margin-top:28px;">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
-        <div style="font-size:12px;font-weight:800;color:#666;text-transform:uppercase;letter-spacing:.5px;">ליקויים קודמים</div>
-        <button onclick="snagLoadHistory()" style="background:none;border:1px solid rgba(255,255,255,0.1);color:#555;padding:5px 12px;border-radius:8px;cursor:pointer;font-family:Heebo,sans-serif;font-size:11px;">🔄 רענן</button>
-      </div>
-      <div id="snag-history-list"><div style="text-align:center;padding:20px;color:#444;font-size:13px;">טוען...</div></div>
-    </div>
   </div>
 
   <!-- ══ ANNEXES SUB-TAB ════════════════════════════════════════════ -->
@@ -1837,7 +1851,27 @@ window.addEventListener('unhandledrejection', function(e) {
     <div id="annexes-widget-inner"><div style="text-align:center;padding:24px;color:#555;font-size:13px;">טוען נספחים...</div></div>
   </div>
 
-  <!-- ══ SNAG LIST SUB-TAB (full view) ════════════════════════════ -->
+  <!-- ══ HISTORY SUB-TAB ══════════════════════════════════════════ -->
+  <div id="safety-sub-history" style="display:none;">
+
+    <!-- Safety analyses history -->
+    <div style="margin-bottom:28px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+        <div style="font-size:13px;font-weight:800;color:#ef4444;">🛡️ ניתוחי בטיחות קודמים</div>
+        <button onclick="safetyLoadHistory()" style="background:none;border:1px solid rgba(255,255,255,0.1);color:#555;padding:5px 12px;border-radius:8px;cursor:pointer;font-family:Heebo,sans-serif;font-size:11px;">🔄 רענן</button>
+      </div>
+      <div id="safety-history-list"><div style="text-align:center;padding:20px;color:#444;font-size:13px;">טוען...</div></div>
+    </div>
+
+    <!-- Snag reports history -->
+    <div style="border-top:1px solid rgba(255,255,255,0.07);padding-top:24px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+        <div style="font-size:13px;font-weight:800;color:#2d6a9f;">🔍 סריקות ליקויים קודמות</div>
+        <button onclick="snagLoadHistory()" style="background:none;border:1px solid rgba(255,255,255,0.1);color:#555;padding:5px 12px;border-radius:8px;cursor:pointer;font-family:Heebo,sans-serif;font-size:11px;">🔄 רענן</button>
+      </div>
+      <div id="snag-history-list"><div style="text-align:center;padding:20px;color:#444;font-size:13px;">טוען...</div></div>
+    </div>
+  </div>
   <div id="safety-sub-snaglist" style="display:none;">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px;">
       <div style="font-size:15px;font-weight:800;color:#f59e0b;">🔍 רשימת ליקויים</div>
@@ -5614,26 +5648,16 @@ async function _fetchJournalModule() {
 
 
 
-// Stub — real switchSafetySubTab is in safety_28032026.html
+// Stub — real switchSafetySubTab is in safety_28032026.js
 function switchSafetySubTab(tab) {
-  // Handle annexes + snaglist tabs locally — no need for safety module
-  if (tab === 'annexes' || tab === 'snaglist') {
-    ['safety','snag','snaglist','annexes'].forEach(function(t) {
-      var el = document.getElementById('safety-sub-' + t);
-      if (el) el.style.display = (t === tab) ? 'block' : 'none';
-      var btn = document.getElementById('subtab-' + t);
-      if (btn) {
-        var activeColor = t === 'annexes' ? '#7c3aed' : '#f59e0b';
-        btn.style.background = (t === tab) ? activeColor : 'transparent';
-        btn.style.color      = (t === tab) ? '#fff' : '#888';
-      }
-    });
+  // Always delegate to safety module (handles all 5 tabs)
+  // For annexes + snaglist we also handle locally as fallback before module loads
+  _fetchSafetyModule().then(function(){
+    if (typeof _switchSafetySubTabReal === 'function') {
+      _switchSafetySubTabReal(tab);
+    }
     if (tab === 'annexes') renderAnnexWidget();
     if (tab === 'snaglist') snagListLoad();
-    return;
-  }
-  _fetchSafetyModule().then(function(){
-    if (typeof _switchSafetySubTabReal === 'function') _switchSafetySubTabReal(tab);
   });
 }
 
