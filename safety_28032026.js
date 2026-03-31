@@ -798,7 +798,7 @@ async function safetyLoadHistory() {
   list.innerHTML = '<div style="text-align:center;padding:12px;color:#555;font-size:12px;">טוען...</div>';
 
   try {
-    var res   = await sbQ('safety_analyses', 'select=id,project_name,max_severity,frame_count,is_video,created_at,findings&order=created_at.desc&limit=20');
+    var res   = await sbQ('safety_analyses', 'select=id,project_name,project_id,max_severity,frame_count,is_video,created_at,findings,file_url&order=created_at.desc&limit=20');
     var items = res.data || [];
 
     if (!items.length) {
@@ -814,15 +814,28 @@ async function safetyLoadHistory() {
       var sev  = item.max_severity || 'OK';
       var findings = typeof item.findings === 'string' ? JSON.parse(item.findings) : item.findings;
       var issues = SAFETY_CATEGORIES.filter(function(c){ return findings && (findings[c.id]||{}).severity !== 'OK'; });
+      var fileUrl  = item.file_url || '';
+      var cardTitle = (item.project_name||'ניתוח בטיחות') + ' · ' + date;
 
-      return '<div style="background:#242438;border:1px solid rgba(255,255,255,0.06);border-right:4px solid ' + (SEV_COLOR[sev]||'#22c55e') + ';border-radius:12px;padding:12px 16px;margin-bottom:8px;cursor:pointer;" onclick="safetyShowHistoryItem(' + item.id + ')">'
-        + '<div style="display:flex;align-items:center;gap:10px;">'
+      var actionBar =
+        '<div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:8px;padding-top:8px;border-top:1px solid rgba(255,255,255,0.07);">'
+        + (fileUrl ? '<a href="' + fileUrl + '" target="_blank" rel="noopener" style="padding:3px 8px;background:#1a3d5c;color:white;border-radius:5px;font-size:10px;font-weight:700;text-decoration:none;">👁️ צפה</a>' : '')
+        + (fileUrl ? '<a href="' + fileUrl + '" target="_blank" style="padding:3px 8px;background:#374151;color:white;border-radius:5px;font-size:10px;font-weight:700;text-decoration:none;">🖨️ הדפס</a>' : '')
+        + (fileUrl ? '<a href="mailto:?subject=' + encodeURIComponent('ניתוח בטיחות: ' + cardTitle) + '&body=' + encodeURIComponent(cardTitle + '\n\n' + fileUrl) + '" style="padding:3px 8px;background:#1e3a5f;color:#93c5fd;border-radius:5px;font-size:10px;font-weight:700;text-decoration:none;">📧 מייל</a>' : '')
+        + (fileUrl ? '<a href="https://wa.me/?text=' + encodeURIComponent('ניתוח בטיחות: ' + cardTitle + '\n' + fileUrl) + '" target="_blank" style="padding:3px 8px;background:#15803d;color:white;border-radius:5px;font-size:10px;font-weight:700;text-decoration:none;">💬 וואטסאפ</a>' : '')
+        + '<button onclick="event.stopPropagation();annexLinkProject(this,\'\',\'' + encodeURIComponent(cardTitle) + '\')" style="padding:3px 8px;background:#78350f;color:#fcd34d;border-radius:5px;font-size:10px;font-weight:700;cursor:pointer;border:none;font-family:Heebo,sans-serif;">📁 פרויקט</button>'
+        + '</div>';
+
+      return '<div style="background:#242438;border:1px solid rgba(255,255,255,0.06);border-right:4px solid ' + (SEV_COLOR[sev]||'#22c55e') + ';border-radius:12px;padding:12px 16px;margin-bottom:8px;">'
+        + '<div style="display:flex;align-items:center;gap:10px;cursor:pointer;" onclick="safetyShowHistoryItem(' + item.id + ')">'
         + '<span style="font-size:20px;">' + (SEV_EMOJI[sev]||'✅') + '</span>'
         + '<div style="flex:1;">'
         + '<div style="font-size:13px;font-weight:700;color:#fff;">' + (item.project_name||'ללא פרויקט') + '</div>'
         + '<div style="font-size:11px;color:#555;">' + date + ' · ' + (item.is_video ? item.frame_count + ' פריימים' : 'תמונה') + '</div>'
         + (issues.length ? '<div style="font-size:11px;color:#888;margin-top:4px;">' + issues.map(function(c){return c.icon + ' ' + c.name.split(' ')[0];}).join(' · ') + '</div>' : '<div style="font-size:11px;color:#22c55e;margin-top:4px;">✅ לא נמצאו בעיות</div>')
-        + '</div></div></div>';
+        + '</div></div>'
+        + actionBar
+        + '</div>';
     }).join('');
   } catch(e) {
     list.innerHTML = '<div style="color:#ef4444;padding:12px;font-size:12px;">שגיאה: ' + e.message + '</div>';
@@ -1453,7 +1466,7 @@ async function snagLoadHistory() {
   if (!list) return;
   list.innerHTML = '<div style="text-align:center;padding:12px;color:#555;font-size:12px;">טוען...</div>';
   try {
-    var res   = await sbQ('snag_reports','select=id,project_name,max_severity,frame_count,is_video,created_at&order=created_at.desc&limit=20');
+    var res   = await sbQ('snag_reports','select=id,project_name,project_id,max_severity,frame_count,is_video,created_at,file_url&order=created_at.desc&limit=20');
     var items = res.data || [];
     if (!items.length) {
       list.innerHTML = '<div style="text-align:center;padding:20px;color:#444;font-size:13px;">אין ניתוחים עדיין — העלה תמונה ולחץ סריקה</div>';
@@ -1464,13 +1477,27 @@ async function snagLoadHistory() {
     list.innerHTML = items.map(function(item) {
       var date = new Date(item.created_at).toLocaleString('he-IL',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
       var sev  = item.max_severity||'NONE';
-      return '<div style="background:#242438;border:1px solid rgba(255,255,255,0.06);border-right:4px solid ' + (SC[sev]||'#22c55e') + ';border-radius:12px;padding:12px 16px;margin-bottom:8px;cursor:pointer;" onclick="snagShowHistoryItem(' + item.id + ')">'
-        + '<div style="display:flex;align-items:center;gap:10px;">'
+      var fileUrl  = item.file_url || '';
+      var cardTitle = (item.project_name||'סריקת ליקויים') + ' · ' + date;
+
+      var actionBar =
+        '<div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:8px;padding-top:8px;border-top:1px solid rgba(255,255,255,0.07);">'
+        + (fileUrl ? '<a href="' + fileUrl + '" target="_blank" rel="noopener" style="padding:3px 8px;background:#1a3d5c;color:white;border-radius:5px;font-size:10px;font-weight:700;text-decoration:none;">👁️ צפה</a>' : '')
+        + (fileUrl ? '<a href="' + fileUrl + '" target="_blank" style="padding:3px 8px;background:#374151;color:white;border-radius:5px;font-size:10px;font-weight:700;text-decoration:none;">🖨️ הדפס</a>' : '')
+        + (fileUrl ? '<a href="mailto:?subject=' + encodeURIComponent('סריקת ליקויים: ' + cardTitle) + '&body=' + encodeURIComponent(cardTitle + '\n\n' + fileUrl) + '" style="padding:3px 8px;background:#1e3a5f;color:#93c5fd;border-radius:5px;font-size:10px;font-weight:700;text-decoration:none;">📧 מייל</a>' : '')
+        + (fileUrl ? '<a href="https://wa.me/?text=' + encodeURIComponent('סריקת ליקויים: ' + cardTitle + '\n' + fileUrl) + '" target="_blank" style="padding:3px 8px;background:#15803d;color:white;border-radius:5px;font-size:10px;font-weight:700;text-decoration:none;">💬 וואטסאפ</a>' : '')
+        + '<button onclick="event.stopPropagation();annexLinkProject(this,\'\',\'' + encodeURIComponent(cardTitle) + '\')" style="padding:3px 8px;background:#78350f;color:#fcd34d;border-radius:5px;font-size:10px;font-weight:700;cursor:pointer;border:none;font-family:Heebo,sans-serif;">📁 פרויקט</button>'
+        + '</div>';
+
+      return '<div style="background:#242438;border:1px solid rgba(255,255,255,0.06);border-right:4px solid ' + (SC[sev]||'#22c55e') + ';border-radius:12px;padding:12px 16px;margin-bottom:8px;">'
+        + '<div style="display:flex;align-items:center;gap:10px;cursor:pointer;" onclick="snagShowHistoryItem(' + item.id + ')">'
         + '<span style="font-size:20px;">' + (SE[sev]||'✅') + '</span>'
         + '<div style="flex:1;">'
         + '<div style="font-size:13px;font-weight:700;color:#fff;">' + (item.project_name||'ללא פרויקט') + '</div>'
         + '<div style="font-size:11px;color:#555;">' + date + ' · ' + (item.is_video ? item.frame_count + ' פריימים' : 'תמונה') + '</div>'
-        + '</div></div></div>';
+        + '</div></div>'
+        + actionBar
+        + '</div>';
     }).join('');
   } catch(e) {
     list.innerHTML = '<div style="color:#ef4444;padding:12px;font-size:12px;">שגיאה: ' + e.message + '</div>';

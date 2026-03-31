@@ -1666,7 +1666,15 @@ window.addEventListener('unhandledrejection', function(e) {
     </button>
     <button id="subtab-snag" onclick="switchSafetySubTab('snag')"
       style="flex:1;padding:10px;border-radius:10px;border:none;cursor:pointer;font-family:Heebo,sans-serif;font-size:13px;font-weight:700;background:transparent;color:#888;transition:all .15s;">
-      🔍 רשימת ליקויים
+      🔍 סריקת ליקויים
+    </button>
+    <button id="subtab-snaglist" onclick="switchSafetySubTab('snaglist')"
+      style="flex:1;padding:10px;border-radius:10px;border:none;cursor:pointer;font-family:Heebo,sans-serif;font-size:13px;font-weight:700;background:transparent;color:#888;transition:all .15s;">
+      📋 רשימת ליקויים
+    </button>
+    <button id="subtab-annexes" onclick="switchSafetySubTab('annexes')"
+      style="flex:1;padding:10px;border-radius:10px;border:none;cursor:pointer;font-family:Heebo,sans-serif;font-size:13px;font-weight:700;background:transparent;color:#888;transition:all .15s;">
+      📋 נספחי בטיחות
     </button>
   </div>
 
@@ -1818,6 +1826,35 @@ window.addEventListener('unhandledrejection', function(e) {
       </div>
       <div id="snag-history-list"><div style="text-align:center;padding:20px;color:#444;font-size:13px;">טוען...</div></div>
     </div>
+  </div>
+
+  <!-- ══ ANNEXES SUB-TAB ════════════════════════════════════════════ -->
+  <div id="safety-sub-annexes" style="display:none;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+      <div style="font-size:15px;font-weight:800;color:#c4b5fd;">📋 נספחי בטיחות לקבלן משנה</div>
+      <button onclick="renderAnnexWidget()" style="background:none;border:1px solid rgba(255,255,255,0.1);color:#555;padding:5px 12px;border-radius:8px;cursor:pointer;font-family:Heebo,sans-serif;font-size:11px;">🔄 רענן</button>
+    </div>
+    <div id="annexes-widget-inner"><div style="text-align:center;padding:24px;color:#555;font-size:13px;">טוען נספחים...</div></div>
+  </div>
+
+  <!-- ══ SNAG LIST SUB-TAB (full view) ════════════════════════════ -->
+  <div id="safety-sub-snaglist" style="display:none;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px;">
+      <div style="font-size:15px;font-weight:800;color:#f59e0b;">🔍 רשימת ליקויים</div>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+        <select id="snaglist-project-filter" onchange="snagListLoad()" style="background:#1a1a2e;border:1px solid rgba(255,255,255,0.15);color:#ccc;padding:7px 10px;border-radius:8px;font-family:Heebo,sans-serif;font-size:12px;direction:rtl;">
+          <option value="">📁 כל הפרויקטים</option>
+        </select>
+        <select id="snaglist-status-filter" onchange="snagListLoad()" style="background:#1a1a2e;border:1px solid rgba(255,255,255,0.15);color:#ccc;padding:7px 10px;border-radius:8px;font-family:Heebo,sans-serif;font-size:12px;direction:rtl;">
+          <option value="">כל הסטטוסים</option>
+          <option value="open">פתוח</option>
+          <option value="in_progress">בטיפול</option>
+          <option value="resolved">טופל</option>
+        </select>
+        <button onclick="snagListLoad()" style="background:none;border:1px solid rgba(255,255,255,0.1);color:#555;padding:7px 12px;border-radius:8px;cursor:pointer;font-family:Heebo,sans-serif;font-size:11px;">🔄 רענן</button>
+      </div>
+    </div>
+    <div id="snaglist-inner"><div style="text-align:center;padding:24px;color:#555;font-size:13px;">טוען ליקויים...</div></div>
   </div>
 
 </div></div></div>
@@ -5579,9 +5616,150 @@ async function _fetchJournalModule() {
 
 // Stub — real switchSafetySubTab is in safety_28032026.html
 function switchSafetySubTab(tab) {
+  // Handle annexes + snaglist tabs locally — no need for safety module
+  if (tab === 'annexes' || tab === 'snaglist') {
+    ['safety','snag','snaglist','annexes'].forEach(function(t) {
+      var el = document.getElementById('safety-sub-' + t);
+      if (el) el.style.display = (t === tab) ? 'block' : 'none';
+      var btn = document.getElementById('subtab-' + t);
+      if (btn) {
+        var activeColor = t === 'annexes' ? '#7c3aed' : '#f59e0b';
+        btn.style.background = (t === tab) ? activeColor : 'transparent';
+        btn.style.color      = (t === tab) ? '#fff' : '#888';
+      }
+    });
+    if (tab === 'annexes') renderAnnexWidget();
+    if (tab === 'snaglist') snagListLoad();
+    return;
+  }
   _fetchSafetyModule().then(function(){
     if (typeof _switchSafetySubTabReal === 'function') _switchSafetySubTabReal(tab);
   });
+}
+
+// ── רשימת ליקויים full view ───────────────────────────────────────────────────
+async function snagListLoad() {
+  var box = document.getElementById('snaglist-inner');
+  if (!box) return;
+  box.innerHTML = '<div style="text-align:center;padding:24px;color:#555;font-size:13px;">טוען ליקויים...</div>';
+
+  // Populate project filter if empty
+  var pSel = document.getElementById('snaglist-project-filter');
+  if (pSel && pSel.options.length < 2) {
+    (window.allProjects || []).forEach(function(p) {
+      var o = document.createElement('option');
+      o.value = p.id; o.textContent = p.project_name;
+      pSel.appendChild(o);
+    });
+  }
+
+  var projId  = (document.getElementById('snaglist-project-filter') || {}).value || '';
+  var status  = (document.getElementById('snaglist-status-filter')  || {}).value || '';
+
+  var query = 'select=id,category,description,severity,status,project_id,created_at,file_url&order=created_at.desc&limit=100';
+  if (projId)  query += '&project_id=eq.' + projId;
+  if (status)  query += '&status=eq.' + status;
+
+  try {
+    var res = await sbQ('snag_findings', query);
+    var findings = res.data || [];
+
+    if (!findings.length) {
+      box.innerHTML = '<div style="text-align:center;padding:32px;color:#555;font-size:13px;">✅ אין ליקויים</div>';
+      return;
+    }
+
+    var sevColor = { 'חמור':'#ef4444', 'בינוני':'#f59e0b', 'קל':'#22c55e' };
+    var statusHe = { 'open':'פתוח', 'in_progress':'בטיפול', 'resolved':'טופל' };
+
+    var html = '<div style="display:flex;flex-direction:column;gap:10px;">';
+    findings.forEach(function(f) {
+      var col     = sevColor[f.severity] || '#888';
+      var stHe    = statusHe[f.status]   || f.status || '';
+      var proj    = (window.allProjects || []).find(function(p){ return p.id === f.project_id; });
+      var projName = proj ? proj.project_name : '';
+      var fileUrl  = f.file_url || '';
+      var title    = (f.category || '') + ' — ' + (f.description || '').substring(0, 60);
+      var dateStr  = f.created_at ? new Date(f.created_at).toLocaleDateString('he-IL') : '';
+
+      html +=
+        '<div style="background:#1e1e35;border:1px solid rgba(255,255,255,0.08);border-right:3px solid ' + col + ';border-radius:10px;padding:12px 14px;">' +
+          '<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px;margin-bottom:6px;">' +
+            '<div style="font-size:13px;font-weight:700;color:#fff;">' + (f.category || '') + '</div>' +
+            '<div style="display:flex;gap:6px;align-items:center;">' +
+              '<span style="font-size:11px;font-weight:800;color:' + col + ';">' + (f.severity || '') + '</span>' +
+              '<span style="font-size:10px;background:rgba(255,255,255,0.07);color:#888;padding:2px 8px;border-radius:10px;">' + stHe + '</span>' +
+            '</div>' +
+          '</div>' +
+          '<div style="font-size:12px;color:#aaa;margin-bottom:4px;">' + (f.description || '') + '</div>' +
+          '<div style="display:flex;gap:10px;font-size:10px;color:#555;margin-bottom:8px;">' +
+            (projName ? '<span>📁 ' + projName + '</span>' : '') +
+            (dateStr  ? '<span>📅 ' + dateStr  + '</span>' : '') +
+          '</div>' +
+          // Action bar — same 5 buttons as annexes
+          '<div style="display:flex;gap:4px;flex-wrap:wrap;padding-top:8px;border-top:1px solid rgba(255,255,255,0.06);">' +
+            (fileUrl ? '<a href="' + fileUrl + '" target="_blank" rel="noopener" style="padding:3px 8px;background:#1a3d5c;color:white;border-radius:5px;font-size:10px;font-weight:700;text-decoration:none;">👁️ צפה</a>' : '') +
+            (fileUrl ? '<a href="' + fileUrl + '" target="_blank" style="padding:3px 8px;background:#374151;color:white;border-radius:5px;font-size:10px;font-weight:700;text-decoration:none;">🖨️ הדפס</a>' : '') +
+            (fileUrl ? '<a href="mailto:?subject=' + encodeURIComponent('ליקוי: ' + title) + '&body=' + encodeURIComponent('ליקוי: ' + title + '\n\n' + fileUrl) + '" style="padding:3px 8px;background:#1e3a5f;color:#93c5fd;border-radius:5px;font-size:10px;font-weight:700;text-decoration:none;">📧 מייל</a>' : '') +
+            (fileUrl ? '<a href="https://wa.me/?text=' + encodeURIComponent('ליקוי: ' + title + '\n' + fileUrl) + '" target="_blank" style="padding:3px 8px;background:#15803d;color:white;border-radius:5px;font-size:10px;font-weight:700;text-decoration:none;">💬 וואטסאפ</a>' : '') +
+            '<button onclick="snagFindingLinkProject(this,\'' + f.id + '\',\'' + (f.project_id||'') + '\',\'' + encodeURIComponent(title) + '\')" style="padding:3px 8px;background:#78350f;color:#fcd34d;border-radius:5px;font-size:10px;font-weight:700;cursor:pointer;border:none;font-family:Heebo,sans-serif;">📁 פרויקט</button>' +
+          '</div>' +
+        '</div>';
+    });
+    html += '</div>';
+    box.innerHTML = html;
+
+  } catch(e) {
+    box.innerHTML = '<div style="text-align:center;padding:24px;color:#ef4444;font-size:13px;">שגיאה: ' + e.message + '</div>';
+  }
+}
+
+function snagFindingLinkProject(btn, findingId, currentProjId, encodedTitle) {
+  var title = decodeURIComponent(encodedTitle);
+  var existing = btn.parentNode.querySelector('.snag-proj-popup');
+  if (existing) { existing.remove(); return; }
+
+  var popup = document.createElement('div');
+  popup.className = 'snag-proj-popup';
+  popup.style.cssText = 'position:absolute;z-index:999;background:#1a1a2e;border:1.5px solid rgba(255,255,255,0.15);border-radius:10px;padding:10px;min-width:220px;box-shadow:0 8px 32px rgba(0,0,0,0.6);';
+
+  var label = document.createElement('div');
+  label.style.cssText = 'font-size:11px;color:#aaa;margin-bottom:6px;font-family:Heebo,sans-serif;';
+  label.textContent = 'קשר לפרויקט: ' + title;
+  popup.appendChild(label);
+
+  var sel = document.createElement('select');
+  sel.style.cssText = 'width:100%;padding:7px;background:#0f0f1a;border:1px solid rgba(255,255,255,0.15);color:#fff;border-radius:6px;font-family:Heebo,sans-serif;font-size:12px;direction:rtl;margin-bottom:8px;';
+  var defOpt = document.createElement('option');
+  defOpt.value = ''; defOpt.textContent = '-- בחר פרויקט --';
+  sel.appendChild(defOpt);
+  (window.allProjects || []).forEach(function(p) {
+    var o = document.createElement('option');
+    o.value = p.id; o.textContent = p.project_name;
+    if (p.id === currentProjId) o.selected = true;
+    sel.appendChild(o);
+  });
+  popup.appendChild(sel);
+
+  var goBtn = document.createElement('button');
+  goBtn.textContent = '✅ שמור ועבור לפרויקט';
+  goBtn.style.cssText = 'width:100%;padding:7px;background:linear-gradient(135deg,#15803d,#16a34a);color:white;border:none;border-radius:7px;font-family:Heebo,sans-serif;font-size:12px;font-weight:700;cursor:pointer;';
+  goBtn.onclick = async function() {
+    var projId = sel.value;
+    if (!projId) { alert('יש לבחור פרויקט'); return; }
+    try {
+      await sbQ('snag_findings', 'id=eq.' + findingId, 'PATCH', { project_id: projId });
+    } catch(e) { /* proceed anyway */ }
+    popup.remove();
+    switchTab('crm');
+    showPage('projects');
+    setTimeout(function() { openProjectModal(projId); }, 400);
+  };
+  popup.appendChild(goBtn);
+
+  btn.style.position = 'relative';
+  btn.parentNode.style.position = 'relative';
+  btn.parentNode.appendChild(popup);
 }
 // ══ SAFETY + SNAG + CAP + PRINT — loaded via fetch() ═════════════════════
 var _safetyFetched = false;
