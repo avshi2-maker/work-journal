@@ -1839,22 +1839,11 @@ window.addEventListener('unhandledrejection', function(e) {
 
   <!-- ══ נספחי ליקויים SUB-TAB ══════════════════════════════════════ -->
   <div id="safety-sub-snagannexes" style="display:none;">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px;">
-      <div style="font-size:15px;font-weight:800;color:#f59e0b;">📁 נספחי ליקויים</div>
-      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
-        <select id="snagannexes-project-filter" onchange="snagAnnexesLoad()" style="background:#1a1a2e;border:1px solid rgba(255,255,255,0.15);color:#ccc;padding:7px 10px;border-radius:8px;font-family:Heebo,sans-serif;font-size:12px;direction:rtl;">
-          <option value="">📁 כל הפרויקטים</option>
-        </select>
-        <select id="snagannexes-status-filter" onchange="snagAnnexesLoad()" style="background:#1a1a2e;border:1px solid rgba(255,255,255,0.15);color:#ccc;padding:7px 10px;border-radius:8px;font-family:Heebo,sans-serif;font-size:12px;direction:rtl;">
-          <option value="">כל הסטטוסים</option>
-          <option value="open">פתוח</option>
-          <option value="in_progress">בטיפול</option>
-          <option value="resolved">טופל</option>
-        </select>
-        <button onclick="snagAnnexesLoad()" style="background:none;border:1px solid rgba(255,255,255,0.1);color:#555;padding:7px 12px;border-radius:8px;cursor:pointer;font-family:Heebo,sans-serif;font-size:11px;">🔄 רענן</button>
-      </div>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+      <div style="font-size:15px;font-weight:800;color:#f59e0b;">📁 נספחי ליקויים לקבלן משנה</div>
+      <button onclick="renderSnagAnnexWidget()" style="background:none;border:1px solid rgba(255,255,255,0.1);color:#555;padding:5px 12px;border-radius:8px;cursor:pointer;font-family:Heebo,sans-serif;font-size:11px;">🔄 רענן</button>
     </div>
-    <div id="snagannexes-inner"><div style="text-align:center;padding:24px;color:#555;font-size:13px;">טוען ליקויים...</div></div>
+    <div id="snagannexes-widget-inner"><div style="text-align:center;padding:24px;color:#555;font-size:13px;">טוען נספחי ליקויים...</div></div>
   </div>
 
   <!-- ══ HISTORY SUB-TAB ══════════════════════════════════════════ -->
@@ -5676,7 +5665,7 @@ function switchSafetySubTab(tab) {
   });
   // Step 3: Load data for the tab
   if (tab === 'snaglist') { snagListLoad(); }
-  if (tab === 'snagannexes') { snagAnnexesLoad(); }
+  if (tab === 'snagannexes') { renderSnagAnnexWidget(); }
   if (tab === 'annexes')  { renderAnnexWidget(); }
   if (tab === 'history')  {
     _fetchSafetyModule().then(function() {
@@ -5692,81 +5681,164 @@ function switchSafetySubTab(tab) {
   });
 }
 
-// ── רשימת ליקויים full view ───────────────────────────────────────────────────
-async function snagAnnexesLoad() {
-  var box = document.getElementById('snagannexes-inner');
-  if (!box) return;
-  box.innerHTML = '<div style="text-align:center;padding:24px;color:#555;font-size:13px;">טוען ליקויים...</div>';
+// ── נספחי ליקויים widget — same structure as renderAnnexWidget ────────────────
+var SNAG_ANNEX_LIST = [
+  {num:'01', icon:'🧱', title:'ליקויי בטון — סדקים, קילוף, ריצוף לקוי'},
+  {num:'02', icon:'🔩', title:'ברזל ופלדה — חלודה, עיוות, חיבורים רופפים'},
+  {num:'03', icon:'🪟', title:'טיח וגבס — בליטות, נפיחויות, סדקים'},
+  {num:'04', icon:'🎨', title:'צביעה — ניגורים, לא אחיד, צבע פולח'},
+  {num:'05', icon:'💧', title:'איטום ורטיבות — דליפות, כתמי רטיבות'},
+  {num:'06', icon:'⬜', title:'ריצוף וחיפוי — אריחים שבורים, פגמי מפגש'},
+  {num:'07', icon:'🚪', title:'דלתות ואלומיניום — עיוות, מסגרת לא ישרה'},
+  {num:'08', icon:'⚡', title:'חשמל ותקשורת — כיסויים חסרים, נקודות לקויות'},
+  {num:'09', icon:'🚿', title:'אינסטלציה — נזילות, לחץ נמוך, חיבורים'},
+  {num:'10', icon:'🔧', title:'גמר ועבודת נגרות — פגמי גימור, חיבורים גלויים'},
+];
 
-  // Populate project filter if empty
-  var pSel = document.getElementById('snagannexes-project-filter');
-  if (pSel && pSel.options.length < 2) {
-    (window.allProjects || []).forEach(function(p) {
-      var o = document.createElement('option');
-      o.value = p.id; o.textContent = p.project_name;
-      pSel.appendChild(o);
-    });
-  }
+function renderSnagAnnexWidget() {
+  var container = document.getElementById('snagannexes-widget-inner');
+  if (!container) return;
 
-  var projId  = (document.getElementById('snagannexes-project-filter') || {}).value || '';
-  var status  = (document.getElementById('snagannexes-status-filter')  || {}).value || '';
+  var html = [
+    '<div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:14px;">',
+      '<div style="font-size:12px;font-weight:800;color:var(--text2);margin-bottom:12px;">📤 שלח נספחי ליקויים לקבלן</div>',
+      '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;">',
+        '<div style="flex:1;min-width:140px;">',
+          '<div style="font-size:11px;color:var(--text3);margin-bottom:4px;">קבלן *</div>',
+          '<select id="snag-annex-contractor-sel" style="width:100%;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-family:Heebo,sans-serif;font-size:13px;background:var(--surface);color:var(--text);">',
+            '<option value="">בחר קבלן...</option>',
+          '</select>',
+        '</div>',
+        '<div style="flex:1;min-width:120px;">',
+          '<div style="font-size:11px;color:var(--text3);margin-bottom:4px;">פרויקט</div>',
+          '<select id="snag-annex-project-sel" style="width:100%;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-family:Heebo,sans-serif;font-size:13px;background:var(--surface);color:var(--text);">',
+            '<option value="">בחר פרויקט...</option>',
+          '</select>',
+        '</div>',
+      '</div>',
+      '<div style="font-size:11px;font-weight:800;color:var(--text2);margin-bottom:8px;">בחר נספחים לשליחה:</div>',
+      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-bottom:12px;" id="snag-annex-checkboxes">',
+  ].join('');
 
-  var query = 'select=id,category,description,severity,status,project_id,created_at,file_url&order=created_at.desc&limit=100';
-  if (projId)  query += '&project_id=eq.' + projId;
-  if (status)  query += '&status=eq.' + status;
+  SNAG_ANNEX_LIST.forEach(function(a) {
+    var pdfUrl = _annexStorageBase + 'snag_annex_' + a.num + '.pdf';
+    var title  = a.num + '. ' + a.title;
+    html +=
+      '<div style="display:flex;flex-direction:column;gap:4px;padding:6px 8px;border-radius:8px;background:var(--surface);border:1px solid var(--border);">' +
+        '<label style="display:flex;align-items:center;gap:6px;cursor:pointer;">' +
+          '<input type="checkbox" class="snag-annex-cb" value="' + a.num + '" style="width:14px;height:14px;cursor:pointer;flex-shrink:0;">' +
+          '<span style="font-size:11px;font-weight:700;color:var(--text2);">' + a.icon + ' ' + title + '</span>' +
+        '</label>' +
+        '<div style="display:flex;gap:4px;flex-wrap:wrap;">' +
+          '<a href="' + pdfUrl + '" target="_blank" rel="noopener" style="padding:3px 8px;background:#1a3d5c;color:white;border-radius:5px;font-size:10px;font-weight:700;text-decoration:none;white-space:nowrap;">👁️ צפה</a>' +
+          '<a href="' + pdfUrl + '" target="_blank" rel="noopener" style="padding:3px 8px;background:#374151;color:white;border-radius:5px;font-size:10px;font-weight:700;text-decoration:none;white-space:nowrap;">🖨️ הדפס</a>' +
+          '<a href="mailto:?subject=' + encodeURIComponent('נספח ליקויים ' + title) + '&body=' + encodeURIComponent('נספח ליקויים: ' + title + '\n\nקישור לצפייה:\n' + pdfUrl) + '" style="padding:3px 8px;background:#1e3a5f;color:#93c5fd;border-radius:5px;font-size:10px;font-weight:700;text-decoration:none;white-space:nowrap;">📧 מייל</a>' +
+          '<a href="https://wa.me/?text=' + encodeURIComponent('נספח ליקויים: ' + title + '\n' + pdfUrl) + '" target="_blank" rel="noopener" style="padding:3px 8px;background:#15803d;color:white;border-radius:5px;font-size:10px;font-weight:700;text-decoration:none;white-space:nowrap;">💬 וואטסאפ</a>' +
+          '<button onclick="snagAnnexLinkProject(this,\'' + a.num + '\',\'' + encodeURIComponent(title) + '\')" style="padding:3px 8px;background:#78350f;color:#fcd34d;border-radius:5px;font-size:10px;font-weight:700;cursor:pointer;border:none;font-family:Heebo,sans-serif;white-space:nowrap;">📁 פרויקט</button>' +
+        '</div>' +
+      '</div>';
+  });
 
-  try {
-    var res = await sbQ('snag_findings', query);
-    var findings = res.data || [];
+  html += [
+      '</div>',
+      '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">',
+        '<label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text3);cursor:pointer;">',
+          '<input type="checkbox" id="snag-annex-select-all" onchange="toggleAllSnagAnnexes(this.checked)" style="width:13px;height:13px;">',
+          'בחר הכל',
+        '</label>',
+        '<div style="flex:1;"></div>',
+        '<button onclick="sendSnagAnnexes()" style="padding:9px 16px;background:linear-gradient(135deg,#92400e,#b45309);color:white;border:none;border-radius:8px;font-family:Heebo,sans-serif;font-size:13px;font-weight:800;cursor:pointer;">',
+          '💬 שלח נספחי ליקויים בוואטסאפ',
+        '</button>',
+      '</div>',
+    '</div>',
+  ].join('');
 
-    if (!findings.length) {
-      box.innerHTML = '<div style="text-align:center;padding:32px;color:#555;font-size:13px;">✅ אין ליקויים</div>';
-      return;
-    }
+  container.innerHTML = html;
 
-    var sevColor = { 'חמור':'#ef4444', 'בינוני':'#f59e0b', 'קל':'#22c55e' };
-    var statusHe = { 'open':'פתוח', 'in_progress':'בטיפול', 'resolved':'טופל' };
-
-    var html = '<div style="display:flex;flex-direction:column;gap:10px;">';
-    findings.forEach(function(f) {
-      var col     = sevColor[f.severity] || '#888';
-      var stHe    = statusHe[f.status]   || f.status || '';
-      var proj    = (window.allProjects || []).find(function(p){ return p.id === f.project_id; });
-      var projName = proj ? proj.project_name : '';
-      var fileUrl  = f.file_url || '';
-      var title    = (f.category || '') + ' — ' + (f.description || '').substring(0, 60);
-      var dateStr  = f.created_at ? new Date(f.created_at).toLocaleDateString('he-IL') : '';
-
-      html +=
-        '<div style="background:#1e1e35;border:1px solid rgba(255,255,255,0.08);border-right:3px solid ' + col + ';border-radius:10px;padding:12px 14px;">' +
-          '<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px;margin-bottom:6px;">' +
-            '<div style="font-size:13px;font-weight:700;color:#fff;">' + (f.category || '') + '</div>' +
-            '<div style="display:flex;gap:6px;align-items:center;">' +
-              '<span style="font-size:11px;font-weight:800;color:' + col + ';">' + (f.severity || '') + '</span>' +
-              '<span style="font-size:10px;background:rgba(255,255,255,0.07);color:#888;padding:2px 8px;border-radius:10px;">' + stHe + '</span>' +
-            '</div>' +
-          '</div>' +
-          '<div style="font-size:12px;color:#aaa;margin-bottom:4px;">' + (f.description || '') + '</div>' +
-          '<div style="display:flex;gap:10px;font-size:10px;color:#555;margin-bottom:8px;">' +
-            (projName ? '<span>📁 ' + projName + '</span>' : '') +
-            (dateStr  ? '<span>📅 ' + dateStr  + '</span>' : '') +
-          '</div>' +
-          '<div style="display:flex;gap:4px;flex-wrap:wrap;padding-top:8px;border-top:1px solid rgba(255,255,255,0.06);">' +
-            (fileUrl ? '<a href="' + fileUrl + '" target="_blank" rel="noopener" style="padding:3px 8px;background:#1a3d5c;color:white;border-radius:5px;font-size:10px;font-weight:700;text-decoration:none;">👁️ צפה</a>' : '') +
-            (fileUrl ? '<a href="' + fileUrl + '" target="_blank" style="padding:3px 8px;background:#374151;color:white;border-radius:5px;font-size:10px;font-weight:700;text-decoration:none;">🖨️ הדפס</a>' : '') +
-            (fileUrl ? '<a href="mailto:?subject=' + encodeURIComponent('ליקוי: ' + title) + '&body=' + encodeURIComponent('ליקוי: ' + title + '\n\n' + fileUrl) + '" style="padding:3px 8px;background:#1e3a5f;color:#93c5fd;border-radius:5px;font-size:10px;font-weight:700;text-decoration:none;">📧 מייל</a>' : '') +
-            (fileUrl ? '<a href="https://wa.me/?text=' + encodeURIComponent('ליקוי: ' + title + '\n' + fileUrl) + '" target="_blank" style="padding:3px 8px;background:#15803d;color:white;border-radius:5px;font-size:10px;font-weight:700;text-decoration:none;">💬 וואטסאפ</a>' : '') +
-            '<button onclick="snagFindingLinkProject(this,\'' + f.id + '\',\'' + (f.project_id||'') + '\',\'' + encodeURIComponent(title) + '\')" style="padding:3px 8px;background:#78350f;color:#fcd34d;border-radius:5px;font-size:10px;font-weight:700;cursor:pointer;border:none;font-family:Heebo,sans-serif;">📁 פרויקט</button>' +
-          '</div>' +
-        '</div>';
-    });
-    html += '</div>';
-    box.innerHTML = html;
-
-  } catch(e) {
-    box.innerHTML = '<div style="text-align:center;padding:24px;color:#ef4444;font-size:13px;">שגיאה: ' + e.message + '</div>';
-  }
+  // Fill contractor + project selects
+  var cSel = document.getElementById('snag-annex-contractor-sel');
+  var pSel = document.getElementById('snag-annex-project-sel');
+  (allContractors || []).filter(function(c){ return c.is_active; }).forEach(function(c) {
+    var opt = document.createElement('option');
+    opt.value = c.id; opt.dataset.name = c.company_name;
+    opt.dataset.mobile = c.mobile || '';
+    opt.textContent = c.company_name;
+    cSel.appendChild(opt);
+  });
+  (allProjects || []).forEach(function(p) {
+    var opt = document.createElement('option');
+    opt.value = p.id; opt.textContent = p.project_name;
+    pSel.appendChild(opt);
+  });
 }
+
+function toggleAllSnagAnnexes(checked) {
+  document.querySelectorAll('.snag-annex-cb').forEach(function(cb){ cb.checked = checked; });
+}
+
+function sendSnagAnnexes() {
+  var cSel    = document.getElementById('snag-annex-contractor-sel');
+  var pSel    = document.getElementById('snag-annex-project-sel');
+  var checked = Array.from(document.querySelectorAll('.snag-annex-cb:checked'));
+  if (!checked.length) { showToast('בחר לפחות נספח אחד', 'error'); return; }
+  var contractor = cSel && cSel.selectedOptions[0] ? cSel.selectedOptions[0].textContent : '';
+  var project    = pSel && pSel.selectedOptions[0] ? pSel.selectedOptions[0].textContent : '';
+  var mobile     = cSel && cSel.selectedOptions[0] ? (cSel.selectedOptions[0].dataset.mobile || '') : '';
+  var phone      = mobile ? '972' + mobile.replace(/[^0-9]/g,'').replace(/^0/,'') : '';
+  var titles     = checked.map(function(cb) {
+    var a = SNAG_ANNEX_LIST.find(function(x){ return x.num === cb.value; });
+    return a ? cb.value + '. ' + a.title : cb.value;
+  });
+  var msg = '📋 *נספחי ליקויים*\n';
+  if (contractor) msg += 'קבלן: ' + contractor + '\n';
+  if (project)    msg += 'פרויקט: ' + project + '\n';
+  msg += '\nנספחים לעיון וחתימה:\n' + titles.map(function(t){ return '• ' + t; }).join('\n');
+  var waUrl = phone
+    ? 'https://wa.me/' + phone + '?text=' + encodeURIComponent(msg)
+    : 'https://wa.me/?text='              + encodeURIComponent(msg);
+  window.open(waUrl, '_blank');
+}
+
+function snagAnnexLinkProject(btn, annexNum, encodedTitle) {
+  var title    = decodeURIComponent(encodedTitle);
+  var existing = btn.parentNode.querySelector('.snag-ann-proj-popup');
+  if (existing) { existing.remove(); return; }
+  var popup = document.createElement('div');
+  popup.className = 'snag-ann-proj-popup';
+  popup.style.cssText = 'position:absolute;z-index:999;background:#1a1a2e;border:1.5px solid rgba(255,255,255,0.15);border-radius:10px;padding:10px;min-width:220px;box-shadow:0 8px 32px rgba(0,0,0,0.6);';
+  var label = document.createElement('div');
+  label.style.cssText = 'font-size:11px;color:#aaa;margin-bottom:6px;font-family:Heebo,sans-serif;';
+  label.textContent = 'קשר לפרויקט: ' + title;
+  popup.appendChild(label);
+  var sel = document.createElement('select');
+  sel.style.cssText = 'width:100%;padding:7px;background:#0f0f1a;border:1px solid rgba(255,255,255,0.15);color:#fff;border-radius:6px;font-family:Heebo,sans-serif;font-size:12px;direction:rtl;margin-bottom:8px;';
+  var defOpt = document.createElement('option');
+  defOpt.value = ''; defOpt.textContent = '-- בחר פרויקט --';
+  sel.appendChild(defOpt);
+  (window.allProjects || []).forEach(function(p) {
+    var o = document.createElement('option');
+    o.value = p.id; o.textContent = p.project_name;
+    sel.appendChild(o);
+  });
+  popup.appendChild(sel);
+  var goBtn = document.createElement('button');
+  goBtn.textContent = '✅ עבור לפרויקט';
+  goBtn.style.cssText = 'width:100%;padding:7px;background:linear-gradient(135deg,#92400e,#b45309);color:white;border:none;border-radius:7px;font-family:Heebo,sans-serif;font-size:12px;font-weight:700;cursor:pointer;';
+  goBtn.onclick = function() {
+    var projId = sel.value;
+    if (!projId) { alert('יש לבחור פרויקט'); return; }
+    popup.remove();
+    switchTab('crm');
+    showPage('projects');
+    setTimeout(function(){ openProjectModal(projId); }, 400);
+  };
+  popup.appendChild(goBtn);
+  btn.style.position = 'relative';
+  btn.parentNode.style.position = 'relative';
+  btn.parentNode.appendChild(popup);
+}
+
 
 async function snagListLoad() {
   var box = document.getElementById('snaglist-inner');
