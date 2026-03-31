@@ -856,13 +856,17 @@ async function safetyShowHistoryItem(id) {
 
 // ══ SAFETY / SNAG SUB-TAB SWITCHER ════════════════════════════════════
 function _switchSafetySubTabReal(tab) {
-  document.getElementById('safety-sub-safety').style.display = tab === 'safety' ? 'block' : 'none';
-  document.getElementById('safety-sub-snag').style.display   = tab === 'snag'   ? 'block' : 'none';
-  document.getElementById('subtab-safety').style.background  = tab === 'safety' ? '#ef4444' : 'transparent';
-  document.getElementById('subtab-safety').style.color       = tab === 'safety' ? '#fff' : '#888';
-  document.getElementById('subtab-snag').style.background    = tab === 'snag'   ? '#2d6a9f' : 'transparent';
-  document.getElementById('subtab-snag').style.color         = tab === 'snag'   ? '#fff' : '#888';
-  if (tab === 'snag') { snagLoadCategories(); snagLoadHistory(); }
+  var tabs = ['safety','snag','snaglist','annexes','history'];
+  var colors = { safety:'#ef4444', snag:'#2d6a9f', snaglist:'#f59e0b', annexes:'#7c3aed', history:'#6366f1' };
+  tabs.forEach(function(t) {
+    var el  = document.getElementById('safety-sub-' + t);
+    var btn = document.getElementById('subtab-' + t);
+    if (el)  el.style.display      = (t === tab) ? 'block' : 'none';
+    if (btn) btn.style.background  = (t === tab) ? (colors[t]||'#2d6a9f') : 'transparent';
+    if (btn) btn.style.color       = (t === tab) ? '#fff' : '#888';
+  });
+  if (tab === 'snag')    { snagLoadCategories(); }
+  if (tab === 'history') { safetyLoadHistory(); snagLoadHistory(); }
 }
 
 
