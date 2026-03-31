@@ -1367,9 +1367,7 @@ window.addEventListener('unhandledrejection', function(e) {
       <div style="font-size:10px;letter-spacing:3px;color:#9a6f00;text-transform:uppercase;margin-bottom:4px">בני פרסקי</div>
       <h1 style="font-size:26px;font-weight:900;color:#fff">📝 יומן חכם</h1>
     </div>
-    <div style="display:flex;gap:8px;align-items:center;">
-      <button onclick="printNotes()" style="background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.15);color:#ccc;padding:8px 14px;border-radius:20px;cursor:pointer;font-family:Heebo,sans-serif;font-size:12px;font-weight:700">🖨️ הדפס הערות</button>
-    </div>
+
   </div>
   <!-- Hidden project filter — still needed by sjPopulateProjectFilter() -->
   <select id="smart-project-filter" onchange="smartJournalFilter()" style="display:none;">
@@ -1378,11 +1376,12 @@ window.addEventListener('unhandledrejection', function(e) {
 
   <!-- 5 TABS NAV -->
   <div style="display:flex;gap:4px;margin-bottom:20px;background:#242438;border-radius:14px;padding:5px;overflow-x:auto;scrollbar-width:none;">
-    <button id="sj-tab-notes"     onclick="switchSmartTab('notes')"      style="flex:1;min-width:80px;padding:9px 6px;border-radius:10px;border:none;cursor:pointer;font-family:Heebo,sans-serif;font-size:12px;font-weight:700;background:#9a6f00;color:#fff;transition:all .15s;">📝 הערות</button>
-    <button id="sj-tab-photos"    onclick="switchSmartTab('photos')"     style="flex:1;min-width:80px;padding:9px 6px;border-radius:10px;border:none;cursor:pointer;font-family:Heebo,sans-serif;font-size:12px;font-weight:700;background:transparent;color:#888;transition:all .15s;">📷 תמונות</button>
-    <button id="sj-tab-videos"    onclick="switchSmartTab('videos')"     style="flex:1;min-width:80px;padding:9px 6px;border-radius:10px;border:none;cursor:pointer;font-family:Heebo,sans-serif;font-size:12px;font-weight:700;background:transparent;color:#888;transition:all .15s;">🎬 סרטונים</button>
-    <button id="sj-tab-takeoffs"  onclick="switchSmartTab('takeoffs')"   style="flex:1;min-width:80px;padding:9px 6px;border-radius:10px;border:none;cursor:pointer;font-family:Heebo,sans-serif;font-size:12px;font-weight:700;background:transparent;color:#888;transition:all .15s;">📐 מדידות</button>
-    <button id="sj-tab-recordings" onclick="switchSmartTab('recordings')" style="flex:1;min-width:80px;padding:9px 6px;border-radius:10px;border:none;cursor:pointer;font-family:Heebo,sans-serif;font-size:12px;font-weight:700;background:transparent;color:#888;transition:all .15s;">🎙️ הקלטות</button>
+    <button id="sj-tab-notes"     onclick="switchSmartTab('notes')"      style="flex:1;min-width:70px;padding:9px 4px;border-radius:10px;border:none;cursor:pointer;font-family:Heebo,sans-serif;font-size:11px;font-weight:700;background:#9a6f00;color:#fff;transition:all .15s;">📝 הערות</button>
+    <button id="sj-tab-photos"    onclick="switchSmartTab('photos')"     style="flex:1;min-width:70px;padding:9px 4px;border-radius:10px;border:none;cursor:pointer;font-family:Heebo,sans-serif;font-size:11px;font-weight:700;background:transparent;color:#888;transition:all .15s;">📷 תמונות</button>
+    <button id="sj-tab-videos"    onclick="switchSmartTab('videos')"     style="flex:1;min-width:70px;padding:9px 4px;border-radius:10px;border:none;cursor:pointer;font-family:Heebo,sans-serif;font-size:11px;font-weight:700;background:transparent;color:#888;transition:all .15s;">🎬 סרטונים</button>
+    <button id="sj-tab-takeoffs"  onclick="switchSmartTab('takeoffs')"   style="flex:1;min-width:70px;padding:9px 4px;border-radius:10px;border:none;cursor:pointer;font-family:Heebo,sans-serif;font-size:11px;font-weight:700;background:transparent;color:#888;transition:all .15s;">📐 מדידות</button>
+    <button id="sj-tab-recordings" onclick="switchSmartTab('recordings')" style="flex:1;min-width:70px;padding:9px 4px;border-radius:10px;border:none;cursor:pointer;font-family:Heebo,sans-serif;font-size:11px;font-weight:700;background:transparent;color:#888;transition:all .15s;">🎙️ הקלטות</button>
+    <button id="sj-tab-ocr"       onclick="switchSmartTab('ocr')"        style="flex:1;min-width:70px;padding:9px 4px;border-radius:10px;border:none;cursor:pointer;font-family:Heebo,sans-serif;font-size:11px;font-weight:700;background:transparent;color:#888;transition:all .15s;">🔬 OCR/AI</button>
   </div>
 
   <!-- ── TAB: NOTES ─────────────────────────────────────── -->
@@ -1408,6 +1407,7 @@ window.addEventListener('unhandledrejection', function(e) {
         oninput="this.style.borderColor='#9a6f00'"></textarea>
       <div style="display:flex;gap:10px;margin-top:12px;justify-content:flex-end">
         <button onclick="clearNoteForm()" style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);color:#888;padding:10px 20px;border-radius:10px;cursor:pointer;font-family:Heebo,sans-serif;font-size:13px">נקה</button>
+        <button onclick="printNotes()" style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);color:#888;padding:10px 16px;border-radius:10px;cursor:pointer;font-family:Heebo,sans-serif;font-size:13px">🖨️ הדפס</button>
         <button onclick="saveNote()" style="background:linear-gradient(135deg,#9a6f00,#c9a84c);border:none;color:#1a1a2e;padding:10px 28px;border-radius:10px;cursor:pointer;font-family:Heebo,sans-serif;font-size:14px;font-weight:900">💾 שמור הערה</button>
       </div>
     </div>
@@ -1424,47 +1424,7 @@ window.addEventListener('unhandledrejection', function(e) {
       <span style="color:#666;font-size:11px">עד</span>
       <input id="note-date-to" type="date" oninput="filterNotesByDate()" style="background:#1a1a2e;border:1px solid rgba(255,255,255,0.12);color:#ccc;padding:7px 10px;border-radius:20px;font-family:Heebo,sans-serif;font-size:11px">
     </div>
-    <!-- OCR panel -->
-    <div style="background:#1e1e35;border:1px solid rgba(201,168,76,0.3);border-radius:16px;padding:16px;margin-bottom:20px;">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
-        <div style="font-size:14px;font-weight:800;color:#c9a84c;">📷 OCR — קרא כתב יד עם AI</div>
-        <span style="font-size:10px;color:#555;background:#242438;border-radius:20px;padding:2px 8px;">Claude Vision</span>
-      </div>
-      <div style="display:flex;gap:8px;margin-bottom:10px;">
-        <label style="flex:1;display:flex;align-items:center;justify-content:center;gap:6px;background:rgba(201,168,76,0.15);border:1px solid rgba(201,168,76,0.3);border-radius:10px;padding:10px;cursor:pointer;font-size:13px;font-weight:700;color:#c9a84c;font-family:Heebo,sans-serif;">
-          📁 העלה קובץ/תמונה מהמחשב<input type="file" id="journal-ocr-file" accept="image/*,application/pdf" style="display:none;" onchange="journalOcrLoad(this)">
-        </label>
-      </div>
-      <div style="font-size:10px;color:#666;margin-bottom:8px;">⚠️ גודל מקסימלי: 5MB לתמונה</div>
-      <div id="journal-ocr-preview" style="display:none;margin-bottom:10px;">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
-          <div id="journal-ocr-filename" style="font-size:11px;color:#888;"></div>
-          <button onclick="journalOcrClear()" style="background:rgba(239,68,68,0.15);border:1px solid rgba(239,68,68,0.3);color:#fca5a5;border-radius:6px;padding:3px 8px;font-size:11px;cursor:pointer;">🗑️ הסר</button>
-        </div>
-        <img id="journal-ocr-preview-img" src="" style="width:100%;max-height:200px;border-radius:8px;object-fit:contain;border:1px solid rgba(255,255,255,0.1);display:block;">
-        <div id="journal-ocr-pdf-notice" style="display:none;background:rgba(59,130,246,0.1);border:1px solid rgba(59,130,246,0.3);border-radius:8px;padding:10px;text-align:center;color:#93c5fd;font-size:13px;font-weight:700;">📄 PDF טעון — מוכן לניתוח AI</div>
-        <button onclick="journalOcrRunAI()" style="width:100%;margin-top:8px;background:linear-gradient(135deg,#c9a84c,#9a6f00);color:#fff;border:none;border-radius:10px;padding:12px;font-size:14px;font-weight:900;cursor:pointer;font-family:Heebo,sans-serif;">🧠 קרא כתב יד עם AI</button>
-      </div>
-      <div id="journal-ocr-loading" style="display:none;text-align:center;padding:14px;">
-        <div style="font-size:13px;color:#c9a84c;font-weight:700;margin-bottom:8px;">🧠 Claude קורא את הכתב יד...</div>
-        <div style="display:flex;justify-content:center;gap:20px;">
-          <div style="text-align:center;"><div id="ocr-tokens-display" style="font-size:18px;font-weight:900;color:#c4b5fd;font-family:monospace;">~0</div><div style="font-size:9px;color:#555;text-transform:uppercase;letter-spacing:.5px;">טוקנים</div></div>
-          <div style="text-align:center;"><div id="ocr-cost-display" style="font-size:18px;font-weight:900;color:#22c55e;font-family:monospace;">$0.000</div><div style="font-size:9px;color:#555;text-transform:uppercase;letter-spacing:.5px;">עלות</div></div>
-          <div style="text-align:center;"><div id="ocr-time-display" style="font-size:18px;font-weight:900;color:#fde68a;font-family:monospace;">0s</div><div style="font-size:9px;color:#555;text-transform:uppercase;letter-spacing:.5px;">זמן</div></div>
-        </div>
-      </div>
-      <div id="journal-ocr-result" style="display:none;">
-        <textarea id="journal-ocr-text" rows="4" style="width:100%;background:#1a1a2e;border:1px solid rgba(255,255,255,0.1);color:#fff;padding:12px;border-radius:10px;font-family:Heebo,sans-serif;font-size:14px;resize:vertical;direction:rtl;outline:none;line-height:1.7;box-sizing:border-box;"></textarea>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px;">
-          <button onclick="journalOcrSend('note')"    style="background:rgba(245,158,11,0.15);border:1px solid rgba(245,158,11,0.4);color:#f59e0b;border-radius:10px;padding:10px;font-family:Heebo,sans-serif;font-size:12px;font-weight:800;cursor:pointer;">📝 מזכר</button>
-          <button onclick="journalOcrSend('task')"    style="background:rgba(34,197,94,0.12);border:1px solid rgba(34,197,94,0.3);color:#4ade80;border-radius:10px;padding:10px;font-family:Heebo,sans-serif;font-size:12px;font-weight:800;cursor:pointer;">✅ משימה</button>
-          <button onclick="journalOcrSend('takeoff')" style="background:rgba(59,130,246,0.12);border:1px solid rgba(59,130,246,0.3);color:#93c5fd;border-radius:10px;padding:10px;font-family:Heebo,sans-serif;font-size:12px;font-weight:800;cursor:pointer;">📐 טייקאוף</button>
-          <button onclick="journalOcrSend('report')"  style="background:rgba(139,92,246,0.12);border:1px solid rgba(139,92,246,0.3);color:#c4b5fd;border-radius:10px;padding:10px;font-family:Heebo,sans-serif;font-size:12px;font-weight:800;cursor:pointer;">📄 דוח</button>
-        </div>
-        <div id="journal-ocr-status" style="margin-top:8px;font-size:12px;color:#4ade80;text-align:center;min-height:16px;"></div>
-      </div>
-    </div>
-    <!-- Notes wall -->
+    <!-- Notes wall — text notes only, no media -->
     <div id="notes-wall" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(min(220px,100%),1fr));gap:10px">
       <div style="grid-column:1/-1;text-align:center;padding:60px 20px;color:#444">
         <div style="font-size:48px;margin-bottom:12px">📝</div>
@@ -1478,9 +1438,9 @@ window.addEventListener('unhandledrejection', function(e) {
     <div style="display:flex;gap:8px;margin-bottom:16px;align-items:center;flex-wrap:wrap;">
       <div style="font-size:13px;color:#888;">תמונות מהשטח לפי פרויקט</div>
       <div id="sj-photos-count" style="font-size:12px;color:#555;flex:1;"></div>
-      <button onclick="switchTab('crm');showPage('dashboard')" style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);color:#888;padding:6px 14px;border-radius:20px;cursor:pointer;font-family:Heebo,sans-serif;font-size:11px;font-weight:700;">🏠 לוח בקרה</button>
+      <button onclick="window.print()" style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);color:#888;padding:6px 12px;border-radius:20px;cursor:pointer;font-family:Heebo,sans-serif;font-size:11px;font-weight:700;">🖨️</button>
     </div>
-    <div id="sj-photos-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(min(140px,100%),1fr));gap:10px;">
+    <div id="sj-photos-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(min(140px,100%),1fr));gap:10px;margin-top:8px;">
       <div style="grid-column:1/-1;text-align:center;padding:40px;color:#444;">
         <div style="font-size:40px;margin-bottom:10px;">📷</div>
         <div style="font-size:13px;">בחר פרויקט למעלה לצפייה בתמונות</div>
@@ -1493,8 +1453,7 @@ window.addEventListener('unhandledrejection', function(e) {
     <div style="display:flex;gap:8px;margin-bottom:16px;align-items:center;flex-wrap:wrap;">
       <div style="font-size:13px;color:#888;">סרטוני שטח מ-Google Drive</div>
       <div id="sj-videos-count" style="font-size:12px;color:#555;flex:1;"></div>
-      <button onclick="switchTab('crm');showPage('dashboard')" style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);color:#888;padding:6px 14px;border-radius:20px;cursor:pointer;font-family:Heebo,sans-serif;font-size:11px;font-weight:700;">🏠 לוח בקרה</button>
-      <button onclick="switchTab('safety')" style="background:rgba(239,68,68,0.15);border:1px solid rgba(239,68,68,0.3);color:#fca5a5;padding:6px 14px;border-radius:20px;cursor:pointer;font-family:Heebo,sans-serif;font-size:11px;font-weight:700;">🛡️ ניתח בטיחות</button>
+      <button onclick="window.print()" style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);color:#888;padding:6px 12px;border-radius:20px;cursor:pointer;font-family:Heebo,sans-serif;font-size:11px;font-weight:700;">🖨️</button>
     </div>
     <div id="sj-videos-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(min(200px,100%),1fr));gap:12px;">
       <div style="grid-column:1/-1;text-align:center;padding:40px;color:#444;">
@@ -1524,12 +1483,63 @@ window.addEventListener('unhandledrejection', function(e) {
   <div id="sj-panel-recordings" style="display:none;">
     <div style="display:flex;gap:8px;margin-bottom:16px;align-items:center;flex-wrap:wrap;">
       <div style="font-size:13px;color:#888;">הקלטות קוליות מהשטח</div>
-      <div id="sj-recordings-count" style="font-size:12px;color:#555;margin-right:auto;"></div>
+      <div id="sj-recordings-count" style="font-size:12px;color:#555;flex:1;"></div>
+      <button onclick="window.print()" style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);color:#888;padding:6px 12px;border-radius:20px;cursor:pointer;font-family:Heebo,sans-serif;font-size:11px;font-weight:700;">🖨️</button>
     </div>
     <div id="sj-recordings-list">
       <div style="text-align:center;padding:40px;color:#444;">
         <div style="font-size:40px;margin-bottom:10px;">🎙️</div>
         <div style="font-size:13px;">בחר פרויקט למעלה</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── TAB: OCR/AI ─────────────────────────────────────── -->
+  <div id="sj-panel-ocr" style="display:none;">
+    <div style="background:#1e1e35;border:1px solid rgba(201,168,76,0.3);border-radius:16px;padding:20px;margin-bottom:16px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+        <div style="font-size:15px;font-weight:800;color:#c9a84c;">🔬 OCR — קרא כתב יד עם AI</div>
+        <span style="font-size:10px;color:#888;background:#242438;border-radius:20px;padding:3px 10px;">Claude Vision</span>
+      </div>
+      <label style="display:flex;align-items:center;justify-content:center;gap:8px;background:rgba(201,168,76,0.15);border:1px solid rgba(201,168,76,0.3);border-radius:10px;padding:14px;cursor:pointer;font-size:13px;font-weight:700;color:#c9a84c;font-family:Heebo,sans-serif;margin-bottom:8px;">
+        📁 העלה קובץ / תמונה / PDF מהמחשב
+        <input type="file" id="journal-ocr-file" accept="image/*,application/pdf" style="display:none;" onchange="journalOcrLoad(this)">
+      </label>
+      <div style="font-size:10px;color:#666;margin-bottom:10px;">⚠️ גודל מקסימלי: 5MB</div>
+
+      <!-- Preview -->
+      <div id="journal-ocr-preview" style="display:none;margin-bottom:12px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+          <div id="journal-ocr-filename" style="font-size:11px;color:#aaa;font-weight:700;"></div>
+          <button onclick="journalOcrClear()" style="background:rgba(239,68,68,0.15);border:1px solid rgba(239,68,68,0.3);color:#fca5a5;border-radius:6px;padding:3px 10px;font-size:11px;cursor:pointer;">🗑️ הסר</button>
+        </div>
+        <img id="journal-ocr-preview-img" src="" style="width:100%;max-height:220px;border-radius:10px;object-fit:contain;border:1px solid rgba(255,255,255,0.1);display:block;">
+        <div id="journal-ocr-pdf-notice" style="display:none;background:rgba(59,130,246,0.1);border:1px solid rgba(59,130,246,0.3);border-radius:8px;padding:12px;text-align:center;color:#93c5fd;font-size:13px;font-weight:700;margin-top:8px;">📄 PDF טעון — מוכן לניתוח AI</div>
+        <button id="ocr-run-btn" onclick="journalOcrRunAI()" style="width:100%;margin-top:10px;background:linear-gradient(135deg,#c9a84c,#9a6f00);color:#fff;border:none;border-radius:10px;padding:13px;font-size:14px;font-weight:900;cursor:pointer;font-family:Heebo,sans-serif;">🧠 קרא כתב יד עם AI</button>
+      </div>
+
+      <!-- Running meter -->
+      <div id="journal-ocr-loading" style="display:none;background:#242438;border-radius:12px;padding:14px;margin-bottom:12px;">
+        <div style="font-size:12px;color:#c9a84c;font-weight:700;margin-bottom:10px;text-align:center;">⏳ Claude קורא...</div>
+        <div style="display:flex;justify-content:space-around;margin-bottom:10px;">
+          <div style="text-align:center;"><div id="ocr-tokens-display" style="font-size:20px;font-weight:900;color:#c4b5fd;font-family:monospace;">~0</div><div style="font-size:9px;color:#666;text-transform:uppercase;">טוקנים</div></div>
+          <div style="text-align:center;"><div id="ocr-cost-display" style="font-size:20px;font-weight:900;color:#22c55e;font-family:monospace;">$0.000</div><div style="font-size:9px;color:#666;text-transform:uppercase;">עלות</div></div>
+          <div style="text-align:center;"><div id="ocr-time-display" style="font-size:20px;font-weight:900;color:#fde68a;font-family:monospace;">0s</div><div style="font-size:9px;color:#666;text-transform:uppercase;">זמן</div></div>
+        </div>
+        <button onclick="journalOcrStop()" style="width:100%;background:rgba(239,68,68,0.2);border:1px solid rgba(239,68,68,0.4);color:#fca5a5;border-radius:8px;padding:8px;font-size:12px;font-weight:700;cursor:pointer;font-family:Heebo,sans-serif;">⏹️ עצור</button>
+      </div>
+
+      <!-- Result -->
+      <div id="journal-ocr-result" style="display:none;">
+        <textarea id="journal-ocr-text" rows="5" style="width:100%;background:#1a1a2e;border:1px solid rgba(255,255,255,0.1);color:#fff;padding:12px;border-radius:10px;font-family:Heebo,sans-serif;font-size:14px;resize:vertical;direction:rtl;outline:none;line-height:1.7;box-sizing:border-box;margin-bottom:10px;"></textarea>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;">
+          <button onclick="journalOcrSend('note')"    style="background:rgba(245,158,11,0.15);border:1px solid rgba(245,158,11,0.4);color:#f59e0b;border-radius:10px;padding:10px;font-family:Heebo,sans-serif;font-size:12px;font-weight:800;cursor:pointer;">📝 מזכר</button>
+          <button onclick="journalOcrSend('task')"    style="background:rgba(34,197,94,0.12);border:1px solid rgba(34,197,94,0.3);color:#4ade80;border-radius:10px;padding:10px;font-family:Heebo,sans-serif;font-size:12px;font-weight:800;cursor:pointer;">✅ משימה</button>
+          <button onclick="journalOcrSend('takeoff')" style="background:rgba(59,130,246,0.12);border:1px solid rgba(59,130,246,0.3);color:#93c5fd;border-radius:10px;padding:10px;font-family:Heebo,sans-serif;font-size:12px;font-weight:800;cursor:pointer;">📐 טייקאוף</button>
+          <button onclick="journalOcrSend('report')"  style="background:rgba(139,92,246,0.12);border:1px solid rgba(139,92,246,0.3);color:#c4b5fd;border-radius:10px;padding:10px;font-family:Heebo,sans-serif;font-size:12px;font-weight:800;cursor:pointer;">📄 דוח</button>
+        </div>
+        <button onclick="journalOcrRunAI()" style="width:100%;background:rgba(201,168,76,0.15);border:1px solid rgba(201,168,76,0.3);color:#c9a84c;border-radius:8px;padding:8px;font-size:12px;font-weight:700;cursor:pointer;font-family:Heebo,sans-serif;margin-bottom:6px;">🔄 הרץ שוב</button>
+        <div id="journal-ocr-status" style="font-size:11px;color:#4ade80;text-align:center;min-height:16px;"></div>
       </div>
     </div>
   </div>
@@ -4962,11 +4972,14 @@ async function journalOcrRunAI() {
   if (status)  status.textContent    = '';
 
   // Start timer
+  var _ocrAborted = false;
   var _ocrStartTime = Date.now();
   var _ocrTimerInterval = setInterval(function() {
     var el = document.getElementById('ocr-time-display');
     if (el) el.textContent = Math.round((Date.now()-_ocrStartTime)/1000) + 's';
   }, 500);
+  var runBtn = document.getElementById('ocr-run-btn');
+  if (runBtn) { runBtn.textContent = '⏳ מעבד...'; runBtn.disabled = true; }
 
   try {
 
@@ -5006,7 +5019,7 @@ async function journalOcrRunAI() {
 
     clearInterval(_ocrTimerInterval);
     if (loading) loading.style.display = 'none';
-    // Show token/cost summary
+    if (runBtn) { runBtn.textContent = '🔄 הרץ שוב'; runBtn.disabled = false; }
     var inTok  = data.usage ? data.usage.input_tokens  : 0;
     var outTok = data.usage ? data.usage.output_tokens : 0;
     var total  = inTok + outTok;
@@ -5127,7 +5140,10 @@ async function loadNotesWall(){
     } catch(innerE) {
       // DataCloneError or network — notes unavailable, show empty wall
     }
-    allNotes = notesData;
+    // Text notes only — photos/audio/video go in their own tabs
+    allNotes = notesData.filter(function(n) {
+      return !n.photo_url || n.photo_url === null || n.photo_url === '';
+    });
     renderNotes(allNotes);
     // Populate project dropdown from allProjects (already loaded)
     const sel=document.getElementById('note-project-select');

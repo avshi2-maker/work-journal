@@ -1,4 +1,4 @@
-// ══ SMART JOURNAL — 5 TABS ═════════════════════════════════════════
+// ══ SMART JOURNAL — 6 TABS ═════════════════════════════════════════
 var _sjActiveTab    = 'notes';
 var _sjProjectId    = '';
 var _sjProjects     = []; // cached projects for dropdowns
@@ -29,7 +29,7 @@ var _sjProjectName  = '';
 
 function switchSmartTab(tab) {
   _sjActiveTab = tab;
-  ['notes','photos','videos','takeoffs','recordings'].forEach(function(t) {
+  ['notes','photos','videos','takeoffs','recordings','ocr'].forEach(function(t) {
     var panel = document.getElementById('sj-panel-' + t);
     var btn   = document.getElementById('sj-tab-' + t);
     if (!panel || !btn) return;
@@ -66,6 +66,7 @@ async function sjTranscribeAudio(noteId, audioUrl) {
   if (!openaiKey) { alert('הוסף openai_key לטבלת app_config'); return; }
   btn.textContent = '⏳ מתמלל...';
   btn.disabled = true;
+  var _wStartTime = Date.now();
   try {
     // Fetch audio from Cloudinary
     var audioRes = await fetch(audioUrl);
@@ -139,10 +140,13 @@ async function sjTranscribeAudio(noteId, audioUrl) {
     var text = await res.text();
     text = text.trim();
     if (!text) throw new Error('לא זוהה טקסט בהקלטה');
-    result.innerHTML = '<div style="font-weight:700;color:#fde68a;margin-bottom:4px;">📝 תמלול:</div>' + text.replace(/</g,'&lt;');
+    var elapsed = ((Date.now() - _wStartTime) / 1000).toFixed(1);
+    result.innerHTML = '<div style="font-weight:700;color:#fde68a;margin-bottom:4px;">📝 תמלול:</div>'
+      + '<div style="white-space:pre-wrap;line-height:1.6;">' + text.replace(/</g,'&lt;') + '</div>'
+      + '<div style="font-size:10px;color:#555;margin-top:4px;">⏱ ' + elapsed + 'שנ · Whisper API</div>'
+      + '<button onclick="sjTranscribeAudio(&quot;' + noteId + '&quot;,&quot;' + audioUrl + '&quot;)" style="margin-top:6px;width:100%;background:rgba(201,168,76,0.15);border:1px solid rgba(201,168,76,0.3);color:#c9a84c;border-radius:6px;padding:5px;font-size:10px;cursor:pointer;">🔄 תמלל שוב</button>';
     result.style.display = 'block';
     btn.textContent = '✅ תומלל';
-    // Save transcript back to beni_notes
     await window.sb.from('beni_notes').update({ note_text: '🎙️ ' + text }).eq('id', noteId);
     if (typeof showToast === 'function') showToast('✅ תמלול נשמר');
   } catch(e) {
@@ -154,6 +158,47 @@ async function sjTranscribeAudio(noteId, audioUrl) {
   }
 }
 
+// ── OCR STOP ────────────────────────────────────────────────────────
+var _ocrAborted = false;
+var _ocrTimerInterval = null;
+function journalOcrStop() {
+  _ocrAborted = true;
+  if (_ocrTimerInterval) { clearInterval(_ocrTimerInterval); _ocrTimerInterval = null; }
+  var loading = document.getElementById('journal-ocr-loading');
+  var runBtn  = document.getElementById('ocr-run-btn');
+  if (loading) loading.style.display = 'none';
+  if (runBtn)  { runBtn.textContent = '🔄 הרץ שוב'; runBtn.disabled = false; }
+  if (typeof showToast === 'function') showToast('⏹️ עצרת את התהליך');
+}
+
+// ── AI METER HELPER ─────────────────────────────────────────────────
+// Returns {startTimer, stopTimer, showMeter, hideMeter}
+function sjAIMeter(resultEl, stopBtnId) {
+  var startTime = Date.now();
+  var interval = setInterval(function() {
+    var el = document.getElementById(stopBtnId + '-time');
+    if (el) el.textContent = Math.round((Date.now()-startTime)/1000) + 's';
+  }, 500);
+  return {
+    startTime: startTime,
+    interval: interval,
+    stop: function() { clearInterval(interval); },
+    showResult: function(data, el) {
+      clearInterval(interval);
+      var inTok  = data.usage ? data.usage.input_tokens  : 0;
+      var outTok = data.usage ? data.usage.output_tokens : 0;
+      var cost   = (inTok*0.000003 + outTok*0.000015).toFixed(4);
+      var secs   = ((Date.now()-startTime)/1000).toFixed(1);
+      if (el) {
+        var meter = document.createElement('div');
+        meter.style.cssText = 'font-size:10px;color:#555;margin-top:4px;';
+        meter.textContent = '⏱ ' + secs + 'שנ · 🪙 ' + (inTok+outTok) + ' טוקנים · 💰 $' + cost;
+        el.appendChild(meter);
+      }
+    }
+  };
+}
+
 // ── PHOTO AI ANALYSIS ───────────────────────────────────────────────
 async function sjPhotoSafetyAnalysis(noteId, imgUrl) {
   var resultDiv = document.getElementById('photo-ai-result-' + noteId);
@@ -161,7 +206,9 @@ async function sjPhotoSafetyAnalysis(noteId, imgUrl) {
   var apiKey = (APP.config && APP.config.anthropic_key) || null;
   if (!apiKey) { alert('מפתח Anthropic חסר'); return; }
   resultDiv.style.display = 'block';
-  resultDiv.textContent = '⏳ מנתח בטיחות...';
+  resultDiv.innerHTML = '<div style="color:#888;font-size:11px;">⏳ מנתח בטיחות... <span id="saf-time-'+noteId+'">0s</span></div>'
+    + '<button onclick="this.parentElement.innerHTML=\'בוטל\'" style="font-size:10px;background:rgba(239,68,68,0.2);border:1px solid rgba(239,68,68,0.4);color:#fca5a5;border-radius:4px;padding:2px 6px;cursor:pointer;margin-top:4px;">⏹️ עצור</button>';
+  var meter = sjAIMeter(resultDiv, 'saf-'+noteId);
   try {
     var imgRes = await fetch(imgUrl);
     var imgBlob = await imgRes.blob();
@@ -175,8 +222,11 @@ async function sjPhotoSafetyAnalysis(noteId, imgUrl) {
       ]}]})
     });
     var data = await res.json();
-    resultDiv.textContent = data.content && data.content[0] ? data.content[0].text : 'אין ממצאים';
-  } catch(e) { resultDiv.textContent = 'שגיאה: ' + e.message; }
+    var text = data.content && data.content[0] ? data.content[0].text : 'אין ממצאים';
+    resultDiv.innerHTML = '<div style="white-space:pre-wrap;line-height:1.6;">' + text.replace(/</g,'&lt;') + '</div>';
+    meter.showResult(data, resultDiv);
+    resultDiv.innerHTML += '<button onclick="sjPhotoSafetyAnalysis(&quot;'+noteId+'&quot;,&quot;'+imgUrl+'&quot;)" style="margin-top:6px;width:100%;background:rgba(201,168,76,0.15);border:1px solid rgba(201,168,76,0.3);color:#c9a84c;border-radius:6px;padding:5px;font-size:10px;cursor:pointer;">🔄 הרץ שוב</button>';
+  } catch(e) { meter.stop(); resultDiv.textContent = 'שגיאה: ' + e.message; }
 }
 
 async function sjPhotoSnagAnalysis(noteId, imgUrl) {
@@ -185,7 +235,9 @@ async function sjPhotoSnagAnalysis(noteId, imgUrl) {
   var apiKey = (APP.config && APP.config.anthropic_key) || null;
   if (!apiKey) { alert('מפתח Anthropic חסר'); return; }
   resultDiv.style.display = 'block';
-  resultDiv.textContent = '⏳ מזהה ליקויים...';
+  resultDiv.innerHTML = '<div style="color:#888;font-size:11px;">⏳ מזהה ליקויים... <span id="snag-time-'+noteId+'">0s</span></div>'
+    + '<button onclick="this.parentElement.innerHTML=\'בוטל\'" style="font-size:10px;background:rgba(239,68,68,0.2);border:1px solid rgba(239,68,68,0.4);color:#fca5a5;border-radius:4px;padding:2px 6px;cursor:pointer;margin-top:4px;">⏹️ עצור</button>';
+  var meter = sjAIMeter(resultDiv, 'snag-'+noteId);
   try {
     var imgRes = await fetch(imgUrl);
     var imgBlob = await imgRes.blob();
@@ -199,8 +251,11 @@ async function sjPhotoSnagAnalysis(noteId, imgUrl) {
       ]}]})
     });
     var data = await res.json();
-    resultDiv.textContent = data.content && data.content[0] ? data.content[0].text : 'לא נמצאו ליקויים';
-  } catch(e) { resultDiv.textContent = 'שגיאה: ' + e.message; }
+    var text = data.content && data.content[0] ? data.content[0].text : 'לא נמצאו ליקויים';
+    resultDiv.innerHTML = '<div style="white-space:pre-wrap;line-height:1.6;">' + text.replace(/</g,'&lt;') + '</div>';
+    meter.showResult(data, resultDiv);
+    resultDiv.innerHTML += '<button onclick="sjPhotoSnagAnalysis(&quot;'+noteId+'&quot;,&quot;'+imgUrl+'&quot;)" style="margin-top:6px;width:100%;background:rgba(201,168,76,0.15);border:1px solid rgba(201,168,76,0.3);color:#c9a84c;border-radius:6px;padding:5px;font-size:10px;cursor:pointer;">🔄 הרץ שוב</button>';
+  } catch(e) { meter.stop(); resultDiv.textContent = 'שגיאה: ' + e.message; }
 }
 
 // ── DELETE + LINK HELPERS ───────────────────────────────────────────
