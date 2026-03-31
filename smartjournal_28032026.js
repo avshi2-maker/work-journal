@@ -1,6 +1,30 @@
 // ══ SMART JOURNAL — 5 TABS ═════════════════════════════════════════
 var _sjActiveTab    = 'notes';
 var _sjProjectId    = '';
+var _sjProjects     = []; // cached projects for dropdowns
+
+async function sjGetProjects() {
+  if (_sjProjects.length) return _sjProjects;
+  // Try window.allProjects first
+  if (window.allProjects && window.allProjects.length) {
+    _sjProjects = window.allProjects.filter(function(p){ return p.status === 'active'; });
+    return _sjProjects;
+  }
+  // Fetch directly from Supabase
+  try {
+    var res = await fetch(SB_URL + '/rest/v1/projects?status=eq.active&select=id,project_name&order=project_name.asc',
+      { headers: { apikey: SB_KEY, Authorization: 'Bearer ' + SB_KEY } });
+    _sjProjects = res.ok ? await res.json() : [];
+  } catch(e) { _sjProjects = []; }
+  return _sjProjects;
+}
+
+function sjProjectOptionsHtml(projects) {
+  return '<option value="">📁 קשר לפרויקט...</option>'
+    + projects.map(function(p){
+        return '<option value="'+p.id+'">'+(p.project_name||'').replace(/</g,'&lt;')+'</option>';
+      }).join('');
+}
 var _sjProjectName  = '';
 
 function switchSmartTab(tab) {
@@ -212,6 +236,7 @@ async function sjLoadPhotos() {
   var countEl  = document.getElementById('sj-photos-count');
   if (!grid) return;
   grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:20px;color:#555;font-size:13px;">טוען תמונות...</div>';
+  var _projects = await sjGetProjects();
 
   try {
     var query = 'select=id,note_text,photo_url,color,created_at,project_id&photo_url=not.is.null&order=created_at.desc&limit=60';
@@ -262,10 +287,7 @@ async function sjLoadPhotos() {
       var wrap = document.createElement('div');
       var projSel = document.createElement('select');
       projSel.style.cssText = 'width:100%;margin-top:4px;padding:7px 10px;background:#1a3d5c;border:1px solid rgba(201,168,76,0.4);border-radius:8px;color:#fde68a;font-size:12px;font-weight:700;font-family:Heebo,sans-serif;cursor:pointer;';
-      projSel.innerHTML = '<option value="">📁 קשר לפרויקט...</option>'
-        + (window.allProjects||[]).filter(function(p){return p.status==='active';}).map(function(p){
-          return '<option value="'+p.id+'">'+p.project_name.replace(/</g,'&lt;')+'</option>';
-        }).join('');
+      projSel.innerHTML = sjProjectOptionsHtml(_projects);
       var nid = n.id;
       projSel.addEventListener('change', function() { sjLinkProject('beni_notes', nid, this.value); });
       // Add safety + snag buttons
@@ -295,6 +317,7 @@ async function sjLoadVideos() {
   var countEl = document.getElementById('sj-videos-count');
   if (!grid) return;
   grid.innerHTML = '<div style="text-align:center;padding:20px;color:#555;font-size:13px;">טוען סרטונים...</div>';
+  var _projects = await sjGetProjects();
 
   try {
     // Query both Google Drive videos AND Cloudinary videos
@@ -322,23 +345,33 @@ async function sjLoadVideos() {
     notes.forEach(function(n) {
       var url  = n.photo_url;
       var date = new Date(n.created_at).toLocaleDateString('he-IL', {day:'2-digit',month:'2-digit',year:'2-digit'});
-      var desc = (n.note_text||'').replace(/\n.*$/,'').replace('🎬','').replace('📁 Google Drive: '+url,'').trim() || 'סרטון שטח';
-      var proj = (window.allProjects||[]).find(function(p){ return p.id===n.project_id; });
+      var desc = (n.note_text||'').replace(/\n.*$/,'').replace('🎬','').trim() || 'סרטון שטח';
+      var proj = _projects.find(function(p){ return p.id===n.project_id; });
+      var nid = n.id;
 
       var card = document.createElement('div');
-      card.style.cssText = 'background:#1e1e35;border:1px solid rgba(139,92,246,0.3);border-radius:12px;padding:14px;';
+      card.style.cssText = 'background:#1e1e35;border:1px solid rgba(139,92,246,0.3);border-radius:12px;padding:14px;margin-bottom:10px;';
+
+      var videoHtml = url.includes('res.cloudinary.com')
+        ? '<video src="'+url+'" controls playsinline style="width:100%;border-radius:8px;margin-top:8px;max-height:180px;"></video>'
+        : '<a href="'+url+'" target="_blank" style="display:block;text-align:center;padding:10px;background:rgba(66,133,244,0.2);border-radius:8px;color:#4285f4;font-weight:700;text-decoration:none;margin-top:8px;">▶️ פתח סרטון</a>';
+
+      var projOpts = sjProjectOptionsHtml(_projects);
 
       card.innerHTML =
-        '<div style="font-size:32px;text-align:center;margin-bottom:8px;">🎬</div>'
-        + '<div style="font-size:12px;font-weight:700;color:#c4b5fd;margin-bottom:4px;line-height:1.4;">' + desc.substring(0,60).replace(/</g,'&lt;') + '</div>'
-        + '<div style="font-size:10px;color:#555;margin-bottom:10px;">' + date + (proj ? ' · 📁 ' + proj.project_name.substring(0,15) : '') + '</div>'
-        + '<div style="display:flex;gap:6px;flex-wrap:wrap;">'
-        + '<a href="' + url + '" target="_blank" style="flex:1;display:flex;align-items:center;justify-content:center;gap:4px;background:rgba(66,133,244,0.2);border:1px solid rgba(66,133,244,0.4);color:#4285f4;padding:7px;border-radius:8px;font-size:11px;font-weight:700;text-decoration:none;font-family:Heebo,sans-serif;">▶️ צפה</a>'
-        + '<button onclick="sjSafetyAnalysis(\'' + n.id + '\',\'' + url + '\')" style="flex:1;background:rgba(239,68,68,0.15);border:1px solid rgba(239,68,68,0.3);color:#fca5a5;padding:7px;border-radius:8px;font-size:11px;font-weight:700;cursor:pointer;font-family:Heebo,sans-serif;">🦺 בטיחות AI</button>'
+        '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">'
+        + '<div style="font-size:12px;font-weight:700;color:#c4b5fd;">' + desc.substring(0,50).replace(/</g,'&lt;') + '</div>'
+        + '<button onclick="sjDeleteNote(&quot;'+nid+'&quot;,&quot;video&quot;)" style="background:rgba(239,68,68,0.15);border:1px solid rgba(239,68,68,0.3);color:#fca5a5;padding:3px 8px;border-radius:6px;font-size:11px;cursor:pointer;">🗑️</button>'
         + '</div>'
-        + '<button onclick="sjDeleteNote(\'' + n.id + '\',\'video\')" style="background:rgba(239,68,68,0.15);border:1px solid rgba(239,68,68,0.3);color:#fca5a5;padding:7px 10px;border-radius:8px;font-size:11px;cursor:pointer;">🗑️</button>'
-        + '<div id="safety-result-' + n.id + '" style="display:none;margin-top:8px;font-size:11px;line-height:1.6;"></div>';
-        + (url.includes('res.cloudinary.com') ? '<video src="' + url + '" controls playsinline style="width:100%;border-radius:8px;margin-top:8px;max-height:180px;"></video>' : '')
+        + '<div style="font-size:10px;color:#aaa;font-weight:700;margin-bottom:8px;">📅 ' + date + (proj ? ' · 📁 ' + proj.project_name.substring(0,15) : '') + '</div>'
+        + videoHtml
+        + '<div style="display:flex;gap:6px;margin-top:8px;">'
+        + '<button onclick="sjSafetyAnalysis(&quot;'+nid+'&quot;,&quot;'+url+'&quot;)" style="flex:1;background:rgba(239,68,68,0.15);border:1px solid rgba(239,68,68,0.3);color:#fca5a5;padding:6px;border-radius:8px;font-size:11px;font-weight:700;cursor:pointer;font-family:Heebo,sans-serif;">🦺 בטיחות AI</button>'
+        + '<button onclick="sjPhotoSnagAnalysis(&quot;'+nid+'&quot;,&quot;'+url+'&quot;)" style="flex:1;background:rgba(245,158,11,0.15);border:1px solid rgba(245,158,11,0.3);color:#f59e0b;padding:6px;border-radius:8px;font-size:11px;font-weight:700;cursor:pointer;font-family:Heebo,sans-serif;">🔍 ליקויים</button>'
+        + '</div>'
+        + '<select onchange="sjLinkProject(&quot;beni_notes&quot;,&quot;'+nid+'&quot;,this.value)" style="width:100%;margin-top:8px;padding:7px 10px;background:#1a3d5c;border:1px solid rgba(201,168,76,0.4);border-radius:8px;color:#fde68a;font-size:12px;font-weight:700;font-family:Heebo,sans-serif;cursor:pointer;">'
+        + projOpts + '</select>'
+        + '<div id="safety-result-'+nid+'" style="display:none;margin-top:8px;font-size:11px;line-height:1.6;color:#e8e6f0;background:rgba(0,0,0,0.3);border-radius:8px;padding:8px;"></div>';
 
       grid.appendChild(card);
     });
@@ -398,6 +431,7 @@ async function sjLoadTakeoffs() {
   var list    = document.getElementById('sj-takeoffs-list');
   if (!list) return;
   list.innerHTML = '<div style="text-align:center;padding:20px;color:#555;font-size:13px;">טוען מדידות...</div>';
+  var _projects = await sjGetProjects();
 
   try {
     var query = 'select=id,project_name,total_area,takeoff_type,created_at&order=created_at.desc&limit=30';
@@ -420,7 +454,7 @@ async function sjLoadTakeoffs() {
       var icon = typeIcon[t.takeoff_type||'standard'] || '📐';
       var area = t.total_area ? Number(t.total_area).toFixed(1) + ' מ"ר' : '—';
       var tid = t.id;
-      var projOpts = (window.allProjects||[]).filter(function(p){return p.status==='active';}).map(function(p){
+      var projOpts = _projects.map(function(p){
         return '<option value="'+p.id+'">'+(p.project_name||'').replace(/</g,'&lt;')+'</option>';
       }).join('');
       return '<div style="background:#242438;border:1px solid rgba(255,255,255,0.06);border-radius:12px;padding:12px 16px;margin-bottom:8px;">'
@@ -485,7 +519,7 @@ async function sjLoadRecordings() {
         + '<div id="trans-result-' + nid + '" style="display:none;background:rgba(0,0,0,0.3);border-radius:8px;padding:10px;font-size:12px;color:#e8e6f0;line-height:1.7;white-space:pre-wrap;margin-bottom:6px;"></div>'
         + '<select onchange="sjLinkProject(&quot;beni_notes&quot;,&quot;' + nid + '&quot;,this.value)" style="width:100%;margin-top:6px;padding:7px 10px;background:#1a3d5c;border:1px solid rgba(201,168,76,0.4);border-radius:8px;color:#fde68a;font-size:12px;font-weight:700;font-family:Heebo,sans-serif;cursor:pointer;">'
         + '<option value="">📁 קשר לפרויקט...</option>'
-        + (window.allProjects||[]).filter(function(p){return p.status==='active';}).map(function(p){return '<option value="'+p.id+'">'+p.project_name.replace(/</g,'&lt;')+'</option>';}).join('')
+        + _projects.map(function(p){return '<option value="'+p.id+'">'+p.project_name.replace(/</g,'&lt;')+'</option>';}).join('')
         + '</select>'
         + '<div style="font-size:10px;color:#aaa;margin-top:4px;font-weight:700;">📅 ' + time + '</div>'
         + '</div>';
