@@ -482,6 +482,7 @@ async function sjLoadRecordings() {
   var countEl = document.getElementById('sj-recordings-count');
   if (!list) return;
   list.innerHTML = '<div style="text-align:center;padding:20px;color:#555;font-size:13px;">טוען הקלטות...</div>';
+  var _projects = await sjGetProjects();
 
   try {
     var from = new Date();
