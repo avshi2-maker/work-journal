@@ -796,50 +796,111 @@ async function safetyLoadHistory() {
   var list = document.getElementById('safety-history-list');
   if (!list) return;
   list.innerHTML = '<div style="text-align:center;padding:12px;color:#555;font-size:12px;">טוען...</div>';
-
   try {
-    var res   = await sbQ('safety_analyses', 'select=id,project_name,project_id,max_severity,frame_count,is_video,created_at,findings,file_url&order=created_at.desc&limit=20');
+    var res   = await sbQ('safety_analyses', 'select=id,project_name,project_id,max_severity,frame_count,is_video,created_at,findings,file_url&order=created_at.desc&limit=50');
     var items = res.data || [];
-
     if (!items.length) {
       list.innerHTML = '<div style="text-align:center;padding:20px;color:#444;font-size:13px;">אין ניתוחים עדיין — העלה תמונה או סרטון כדי להתחיל</div>';
       return;
     }
-
     var SEV_EMOJI = { CRITICAL:'🔴', MODERATE:'🟡', MINOR:'🔵', OK:'✅' };
     var SEV_COLOR = { CRITICAL:'#ef4444', MODERATE:'#f59e0b', MINOR:'#3b82f6', OK:'#22c55e' };
-
-    list.innerHTML = items.map(function(item) {
-      var date = new Date(item.created_at).toLocaleString('he-IL',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
-      var sev  = item.max_severity || 'OK';
-      var findings = typeof item.findings === 'string' ? JSON.parse(item.findings) : item.findings;
-      var issues = SAFETY_CATEGORIES.filter(function(c){ return findings && (findings[c.id]||{}).severity !== 'OK'; });
+    var html = '<div style="display:flex;flex-direction:column;gap:10px;">';
+    items.forEach(function(item, idx) {
+      var num      = String(idx + 1).padStart(2, '0');
+      var date     = new Date(item.created_at).toLocaleString('he-IL',{day:'2-digit',month:'2-digit',year:'2-digit',hour:'2-digit',minute:'2-digit'});
+      var sev      = item.max_severity || 'OK';
+      var col      = SEV_COLOR[sev] || '#22c55e';
       var fileUrl  = item.file_url || '';
       var cardTitle = (item.project_name||'ניתוח בטיחות') + ' · ' + date;
+      var findings = '{}';
+      try { findings = typeof item.findings === 'string' ? JSON.parse(item.findings) : (item.findings || {}); } catch(e){}
+      var issues = (typeof SAFETY_CATEGORIES !== 'undefined' ? SAFETY_CATEGORIES : []).filter(function(c){ return findings && (findings[c.id]||{}).severity !== 'OK'; });
 
-      var actionBar =
-        '<div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:8px;padding-top:8px;border-top:1px solid rgba(255,255,255,0.07);">'
-        + (fileUrl ? '<a href="' + fileUrl + '" target="_blank" rel="noopener" style="padding:3px 8px;background:#1a3d5c;color:white;border-radius:5px;font-size:10px;font-weight:700;text-decoration:none;">👁️ צפה</a>' : '')
-        + (fileUrl ? '<a href="' + fileUrl + '" target="_blank" style="padding:3px 8px;background:#374151;color:white;border-radius:5px;font-size:10px;font-weight:700;text-decoration:none;">🖨️ הדפס</a>' : '')
-        + (fileUrl ? '<a href="mailto:?subject=' + encodeURIComponent('ניתוח בטיחות: ' + cardTitle) + '&body=' + encodeURIComponent(cardTitle + '\n\n' + fileUrl) + '" style="padding:3px 8px;background:#1e3a5f;color:#93c5fd;border-radius:5px;font-size:10px;font-weight:700;text-decoration:none;">📧 מייל</a>' : '')
-        + (fileUrl ? '<a href="https://wa.me/?text=' + encodeURIComponent('ניתוח בטיחות: ' + cardTitle + '\n' + fileUrl) + '" target="_blank" style="padding:3px 8px;background:#15803d;color:white;border-radius:5px;font-size:10px;font-weight:700;text-decoration:none;">💬 וואטסאפ</a>' : '')
-        + '<button onclick="event.stopPropagation();annexLinkProject(this,\'\',\'' + encodeURIComponent(cardTitle) + '\')" style="padding:3px 8px;background:#78350f;color:#fcd34d;border-radius:5px;font-size:10px;font-weight:700;cursor:pointer;border:none;font-family:Heebo,sans-serif;">📁 פרויקט</button>'
-        + '</div>';
-
-      return '<div style="background:#242438;border:1px solid rgba(255,255,255,0.06);border-right:4px solid ' + (SEV_COLOR[sev]||'#22c55e') + ';border-radius:12px;padding:12px 16px;margin-bottom:8px;">'
-        + '<div style="display:flex;align-items:center;gap:10px;cursor:pointer;" onclick="safetyShowHistoryItem(' + item.id + ')">'
-        + '<span style="font-size:20px;">' + (SEV_EMOJI[sev]||'✅') + '</span>'
-        + '<div style="flex:1;">'
-        + '<div style="font-size:13px;font-weight:700;color:#fff;">' + (item.project_name||'ללא פרויקט') + '</div>'
-        + '<div style="font-size:11px;color:#555;">' + date + ' · ' + (item.is_video ? item.frame_count + ' פריימים' : 'תמונה') + '</div>'
-        + (issues.length ? '<div style="font-size:11px;color:#888;margin-top:4px;">' + issues.map(function(c){return c.icon + ' ' + c.name.split(' ')[0];}).join(' · ') + '</div>' : '<div style="font-size:11px;color:#22c55e;margin-top:4px;">✅ לא נמצאו בעיות</div>')
-        + '</div></div>'
-        + actionBar
-        + '</div>';
-    }).join('');
+      html +=
+        '<div id="sh-card-' + item.id + '" style="background:#1e1e35;border:1px solid rgba(255,255,255,0.08);border-right:4px solid ' + col + ';border-radius:12px;padding:12px 14px;">' +
+          // Header row: number + title + date stamp + delete
+          '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">' +
+            '<span style="font-size:10px;font-weight:800;background:rgba(255,255,255,0.07);color:#666;border-radius:6px;padding:2px 7px;flex-shrink:0;">#' + num + '</span>' +
+            '<span style="font-size:20px;flex-shrink:0;">' + (SEV_EMOJI[sev]||'✅') + '</span>' +
+            '<div style="flex:1;min-width:0;cursor:pointer;" onclick="safetyShowHistoryItem(' + item.id + ')">' +
+              '<div style="font-size:13px;font-weight:700;color:#fff;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + (item.project_name||'ללא פרויקט') + '</div>' +
+              '<div style="font-size:10px;color:#555;margin-top:2px;">📅 ' + date + ' · ' + (item.is_video ? item.frame_count + ' פריימים' : 'תמונה') + '</div>' +
+            '</div>' +
+            '<button onclick="safetyDeleteAnalysis(' + item.id + ')" title="מחק" style="background:rgba(239,68,68,0.15);border:1px solid rgba(239,68,68,0.3);color:#fca5a5;border-radius:6px;padding:3px 7px;font-size:11px;cursor:pointer;flex-shrink:0;">🗑️</button>' +
+          '</div>' +
+          // Issues tags
+          (issues.length
+            ? '<div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:8px;">' + issues.map(function(c){ return '<span style="font-size:10px;background:rgba(255,255,255,0.06);color:#aaa;border-radius:6px;padding:2px 7px;">' + (c.icon||'') + ' ' + (c.name||'').split(' ')[0] + '</span>'; }).join('') + '</div>'
+            : '<div style="font-size:11px;color:#22c55e;margin-bottom:8px;">✅ לא נמצאו בעיות</div>') +
+          // Project link dropdown
+          '<div style="margin-bottom:8px;">' +
+            '<select onchange="safetyLinkProjectFromHistory(' + item.id + ',this.value)" style="width:100%;padding:6px 10px;background:#1a1a2e;border:1px solid rgba(255,255,255,0.12);color:#ccc;border-radius:8px;font-family:Heebo,sans-serif;font-size:11px;direction:rtl;">' +
+              '<option value="">📁 ' + (item.project_name ? item.project_name : 'קשר לפרויקט...') + '</option>' +
+              '<!-- projects injected by safetyFillProjectOptions -->' +
+            '</select>' +
+          '</div>' +
+          // Action bar: print / mail / whatsapp
+          '<div style="display:flex;gap:4px;flex-wrap:wrap;padding-top:8px;border-top:1px solid rgba(255,255,255,0.06);">' +
+            (fileUrl ? '<a href="' + fileUrl + '" target="_blank" rel="noopener" style="padding:4px 10px;background:#1a3d5c;color:white;border-radius:6px;font-size:10px;font-weight:700;text-decoration:none;">👁️ צפה</a>' : '') +
+            (fileUrl ? '<a href="' + fileUrl + '" target="_blank" style="padding:4px 10px;background:#374151;color:white;border-radius:6px;font-size:10px;font-weight:700;text-decoration:none;">🖨️ הדפס</a>' : '') +
+            (fileUrl ? '<a href="mailto:?subject=' + encodeURIComponent('ניתוח בטיחות #' + num + ': ' + cardTitle) + '&body=' + encodeURIComponent(cardTitle + '\n\n' + fileUrl) + '" style="padding:4px 10px;background:#1e3a5f;color:#93c5fd;border-radius:6px;font-size:10px;font-weight:700;text-decoration:none;">📧 מייל</a>' : '') +
+            (fileUrl ? '<a href="https://wa.me/?text=' + encodeURIComponent('🛡️ ניתוח בטיחות #' + num + '\n' + cardTitle + '\n' + fileUrl) + '" target="_blank" style="padding:4px 10px;background:#15803d;color:white;border-radius:6px;font-size:10px;font-weight:700;text-decoration:none;">💬 וואטסאפ</a>' : '') +
+            '<button onclick="safetyShowHistoryItem(' + item.id + ')" style="padding:4px 10px;background:rgba(239,68,68,0.15);border:1px solid rgba(239,68,68,0.3);color:#fca5a5;border-radius:6px;font-size:10px;font-weight:700;cursor:pointer;border:none;font-family:Heebo,sans-serif;">📋 פתח</button>' +
+          '</div>' +
+        '</div>';
+    });
+    html += '</div>';
+    list.innerHTML = html;
+    safetyFillProjectOptions('safety');
   } catch(e) {
     list.innerHTML = '<div style="color:#ef4444;padding:12px;font-size:12px;">שגיאה: ' + e.message + '</div>';
   }
+}
+
+async function safetyDeleteAnalysis(id) {
+  if (!confirm('מחק ניתוח זה לצמיתות?')) return;
+  try {
+    await fetch(SB_URL + '/rest/v1/safety_analyses?id=eq.' + id, {
+      method: 'DELETE',
+      headers: { apikey: SB_KEY, Authorization: 'Bearer ' + SB_KEY, Prefer: 'return=minimal' }
+    });
+    var card = document.getElementById('sh-card-' + id);
+    if (card) { card.style.opacity = '0'; card.style.transition = 'opacity 0.3s'; setTimeout(function(){ card.remove(); }, 300); }
+    if (typeof showToast === 'function') showToast('🗑️ ניתוח נמחק');
+  } catch(e) { if (typeof showToast === 'function') showToast('שגיאה: ' + e.message, 'error'); }
+}
+
+async function safetyLinkProjectFromHistory(analysisId, projectId) {
+  if (!projectId) return;
+  var proj = (window.allProjects||[]).find(function(p){ return p.id === projectId; });
+  try {
+    await fetch(SB_URL + '/rest/v1/safety_analyses?id=eq.' + analysisId, {
+      method: 'PATCH',
+      headers: { apikey: SB_KEY, Authorization: 'Bearer ' + SB_KEY, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+      body: JSON.stringify({ project_id: projectId, project_name: proj ? proj.project_name : '' })
+    });
+    if (typeof showToast === 'function') showToast('✅ קושר לפרויקט: ' + (proj ? proj.project_name : ''));
+  } catch(e) { if (typeof showToast === 'function') showToast('שגיאה: ' + e.message, 'error'); }
+}
+
+function safetyFillProjectOptions(type) {
+  var selectors = type === 'safety'
+    ? document.querySelectorAll('#safety-history-list select')
+    : document.querySelectorAll('#snag-history-list select');
+  var projects = window.allProjects || [];
+  selectors.forEach(function(sel) {
+    var cur = sel.value;
+    var firstOpt = sel.options[0];
+    sel.innerHTML = '';
+    sel.appendChild(firstOpt);
+    projects.forEach(function(p) {
+      var o = document.createElement('option');
+      o.value = p.id; o.textContent = p.project_name;
+      sel.appendChild(o);
+    });
+    if (cur) sel.value = cur;
+  });
 }
 
 async function safetyShowHistoryItem(id) {
@@ -856,8 +917,8 @@ async function safetyShowHistoryItem(id) {
 
 // ══ SAFETY / SNAG SUB-TAB SWITCHER ════════════════════════════════════
 function _switchSafetySubTabReal(tab) {
-  var tabs = ['safety','snag','snaglist','annexes','history'];
-  var colors = { safety:'#ef4444', snag:'#2d6a9f', snaglist:'#f59e0b', annexes:'#7c3aed', history:'#6366f1' };
+  var tabs = ['annexes','safety','safetyreports','snagannexes','snag','snagreports'];
+  var colors = { annexes:'#185FA5', safety:'#A32D2D', safetyreports:'#3B6D11', snagannexes:'#854F0B', snag:'#533AB7', snagreports:'#0F6E56' };
   tabs.forEach(function(t) {
     var el  = document.getElementById('safety-sub-' + t);
     var btn = document.getElementById('subtab-' + t);
@@ -866,7 +927,8 @@ function _switchSafetySubTabReal(tab) {
     if (btn) btn.style.color       = (t === tab) ? '#fff' : '#888';
   });
   if (tab === 'snag')    { snagLoadCategories(); }
-  if (tab === 'history') { safetyLoadHistory(); snagLoadHistory(); }
+  if (tab === 'safetyreports') { safetyLoadHistory(); }
+  if (tab === 'snagreports')   { snagLoadHistory(); }
 }
 
 
@@ -1470,42 +1532,80 @@ async function snagLoadHistory() {
   if (!list) return;
   list.innerHTML = '<div style="text-align:center;padding:12px;color:#555;font-size:12px;">טוען...</div>';
   try {
-    var res   = await sbQ('snag_reports','select=id,project_name,project_id,max_severity,frame_count,is_video,created_at,file_url&order=created_at.desc&limit=20');
+    var res   = await sbQ('snag_reports','select=id,project_name,project_id,max_severity,frame_count,is_video,created_at,file_url&order=created_at.desc&limit=50');
     var items = res.data || [];
     if (!items.length) {
-      list.innerHTML = '<div style="text-align:center;padding:20px;color:#444;font-size:13px;">אין ניתוחים עדיין — העלה תמונה ולחץ סריקה</div>';
+      list.innerHTML = '<div style="text-align:center;padding:20px;color:#444;font-size:13px;">אין סריקות עדיין — העלה תמונה ולחץ ניתוח</div>';
       return;
     }
     var SE = {CRITICAL:'🔴',MODERATE:'🟡',MINOR:'🔵',NONE:'✅'};
     var SC = {CRITICAL:'#ef4444',MODERATE:'#f59e0b',MINOR:'#3b82f6',NONE:'#22c55e'};
-    list.innerHTML = items.map(function(item) {
-      var date = new Date(item.created_at).toLocaleString('he-IL',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
-      var sev  = item.max_severity||'NONE';
-      var fileUrl  = item.file_url || '';
-      var cardTitle = (item.project_name||'סריקת ליקויים') + ' · ' + date;
+    var html = '<div style="display:flex;flex-direction:column;gap:10px;">';
+    items.forEach(function(item, idx) {
+      var num     = String(idx + 1).padStart(2, '0');
+      var date    = new Date(item.created_at).toLocaleString('he-IL',{day:'2-digit',month:'2-digit',year:'2-digit',hour:'2-digit',minute:'2-digit'});
+      var sev     = item.max_severity || 'NONE';
+      var col     = SC[sev] || '#22c55e';
+      var fileUrl = item.file_url || '';
+      var cardTitle = (item.project_name||'ניתוח ליקויים') + ' · ' + date;
 
-      var actionBar =
-        '<div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:8px;padding-top:8px;border-top:1px solid rgba(255,255,255,0.07);">'
-        + (fileUrl ? '<a href="' + fileUrl + '" target="_blank" rel="noopener" style="padding:3px 8px;background:#1a3d5c;color:white;border-radius:5px;font-size:10px;font-weight:700;text-decoration:none;">👁️ צפה</a>' : '')
-        + (fileUrl ? '<a href="' + fileUrl + '" target="_blank" style="padding:3px 8px;background:#374151;color:white;border-radius:5px;font-size:10px;font-weight:700;text-decoration:none;">🖨️ הדפס</a>' : '')
-        + (fileUrl ? '<a href="mailto:?subject=' + encodeURIComponent('סריקת ליקויים: ' + cardTitle) + '&body=' + encodeURIComponent(cardTitle + '\n\n' + fileUrl) + '" style="padding:3px 8px;background:#1e3a5f;color:#93c5fd;border-radius:5px;font-size:10px;font-weight:700;text-decoration:none;">📧 מייל</a>' : '')
-        + (fileUrl ? '<a href="https://wa.me/?text=' + encodeURIComponent('סריקת ליקויים: ' + cardTitle + '\n' + fileUrl) + '" target="_blank" style="padding:3px 8px;background:#15803d;color:white;border-radius:5px;font-size:10px;font-weight:700;text-decoration:none;">💬 וואטסאפ</a>' : '')
-        + '<button onclick="event.stopPropagation();annexLinkProject(this,\'\',\'' + encodeURIComponent(cardTitle) + '\')" style="padding:3px 8px;background:#78350f;color:#fcd34d;border-radius:5px;font-size:10px;font-weight:700;cursor:pointer;border:none;font-family:Heebo,sans-serif;">📁 פרויקט</button>'
-        + '</div>';
-
-      return '<div style="background:#242438;border:1px solid rgba(255,255,255,0.06);border-right:4px solid ' + (SC[sev]||'#22c55e') + ';border-radius:12px;padding:12px 16px;margin-bottom:8px;">'
-        + '<div style="display:flex;align-items:center;gap:10px;cursor:pointer;" onclick="snagShowHistoryItem(' + item.id + ')">'
-        + '<span style="font-size:20px;">' + (SE[sev]||'✅') + '</span>'
-        + '<div style="flex:1;">'
-        + '<div style="font-size:13px;font-weight:700;color:#fff;">' + (item.project_name||'ללא פרויקט') + '</div>'
-        + '<div style="font-size:11px;color:#555;">' + date + ' · ' + (item.is_video ? item.frame_count + ' פריימים' : 'תמונה') + '</div>'
-        + '</div></div>'
-        + actionBar
-        + '</div>';
-    }).join('');
+      html +=
+        '<div id="snag-card-' + item.id + '" style="background:#1e1e35;border:1px solid rgba(255,255,255,0.08);border-right:4px solid ' + col + ';border-radius:12px;padding:12px 14px;">' +
+          '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">' +
+            '<span style="font-size:10px;font-weight:800;background:rgba(255,255,255,0.07);color:#666;border-radius:6px;padding:2px 7px;flex-shrink:0;">#' + num + '</span>' +
+            '<span style="font-size:20px;flex-shrink:0;">' + (SE[sev]||'✅') + '</span>' +
+            '<div style="flex:1;min-width:0;cursor:pointer;" onclick="snagShowHistoryItem(' + item.id + ')">' +
+              '<div style="font-size:13px;font-weight:700;color:#fff;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + (item.project_name||'ללא פרויקט') + '</div>' +
+              '<div style="font-size:10px;color:#555;margin-top:2px;">📅 ' + date + ' · ' + (item.is_video ? item.frame_count + ' פריימים' : 'תמונה') + '</div>' +
+            '</div>' +
+            '<button onclick="snagDeleteReport(' + item.id + ')" title="מחק" style="background:rgba(239,68,68,0.15);border:1px solid rgba(239,68,68,0.3);color:#fca5a5;border-radius:6px;padding:3px 7px;font-size:11px;cursor:pointer;flex-shrink:0;">🗑️</button>' +
+          '</div>' +
+          '<div style="margin-bottom:8px;">' +
+            '<select onchange="snagLinkProjectFromHistory(' + item.id + ',this.value)" style="width:100%;padding:6px 10px;background:#1a1a2e;border:1px solid rgba(255,255,255,0.12);color:#ccc;border-radius:8px;font-family:Heebo,sans-serif;font-size:11px;direction:rtl;">' +
+              '<option value="">📁 ' + (item.project_name ? item.project_name : 'קשר לפרויקט...') + '</option>' +
+            '</select>' +
+          '</div>' +
+          '<div style="display:flex;gap:4px;flex-wrap:wrap;padding-top:8px;border-top:1px solid rgba(255,255,255,0.06);">' +
+            (fileUrl ? '<a href="' + fileUrl + '" target="_blank" rel="noopener" style="padding:4px 10px;background:#1a3d5c;color:white;border-radius:6px;font-size:10px;font-weight:700;text-decoration:none;">👁️ צפה</a>' : '') +
+            (fileUrl ? '<a href="' + fileUrl + '" target="_blank" style="padding:4px 10px;background:#374151;color:white;border-radius:6px;font-size:10px;font-weight:700;text-decoration:none;">🖨️ הדפס</a>' : '') +
+            (fileUrl ? '<a href="mailto:?subject=' + encodeURIComponent('ניתוח ליקויים #' + num + ': ' + cardTitle) + '&body=' + encodeURIComponent(cardTitle + '\n\n' + fileUrl) + '" style="padding:4px 10px;background:#1e3a5f;color:#93c5fd;border-radius:6px;font-size:10px;font-weight:700;text-decoration:none;">📧 מייל</a>' : '') +
+            (fileUrl ? '<a href="https://wa.me/?text=' + encodeURIComponent('🔍 ניתוח ליקויים #' + num + '\n' + cardTitle + '\n' + fileUrl) + '" target="_blank" style="padding:4px 10px;background:#15803d;color:white;border-radius:6px;font-size:10px;font-weight:700;text-decoration:none;">💬 וואטסאפ</a>' : '') +
+            '<button onclick="snagShowHistoryItem(' + item.id + ')" style="padding:4px 10px;background:rgba(245,158,11,0.15);border:1px solid rgba(245,158,11,0.3);color:#f59e0b;border-radius:6px;font-size:10px;font-weight:700;cursor:pointer;font-family:Heebo,sans-serif;">📋 פתח</button>' +
+          '</div>' +
+        '</div>';
+    });
+    html += '</div>';
+    list.innerHTML = html;
+    safetyFillProjectOptions('snag');
   } catch(e) {
     list.innerHTML = '<div style="color:#ef4444;padding:12px;font-size:12px;">שגיאה: ' + e.message + '</div>';
   }
+}
+
+async function snagDeleteReport(id) {
+  if (!confirm('מחק סריקה זו לצמיתות?')) return;
+  try {
+    await fetch(SB_URL + '/rest/v1/snag_reports?id=eq.' + id, {
+      method: 'DELETE',
+      headers: { apikey: SB_KEY, Authorization: 'Bearer ' + SB_KEY, Prefer: 'return=minimal' }
+    });
+    var card = document.getElementById('snag-card-' + id);
+    if (card) { card.style.opacity = '0'; card.style.transition = 'opacity 0.3s'; setTimeout(function(){ card.remove(); }, 300); }
+    if (typeof showToast === 'function') showToast('🗑️ סריקה נמחקה');
+  } catch(e) { if (typeof showToast === 'function') showToast('שגיאה: ' + e.message, 'error'); }
+}
+
+async function snagLinkProjectFromHistory(reportId, projectId) {
+  if (!projectId) return;
+  var proj = (window.allProjects||[]).find(function(p){ return p.id === projectId; });
+  try {
+    await fetch(SB_URL + '/rest/v1/snag_reports?id=eq.' + reportId, {
+      method: 'PATCH',
+      headers: { apikey: SB_KEY, Authorization: 'Bearer ' + SB_KEY, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+      body: JSON.stringify({ project_id: projectId, project_name: proj ? proj.project_name : '' })
+    });
+    if (typeof showToast === 'function') showToast('✅ קושר לפרויקט: ' + (proj ? proj.project_name : ''));
+  } catch(e) { if (typeof showToast === 'function') showToast('שגיאה: ' + e.message, 'error'); }
 }
 
 async function snagShowHistoryItem(id) {
