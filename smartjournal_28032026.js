@@ -7,12 +7,12 @@ async function sjGetProjects() {
   if (_sjProjects.length) return _sjProjects;
   // Try window.allProjects first
   if (window.allProjects && window.allProjects.length) {
-    _sjProjects = window.allProjects.filter(function(p){ return p.status === 'active'; });
+    _sjProjects = (window.allProjects||[]).slice();
     return _sjProjects;
   }
   // Fetch directly from Supabase
   try {
-    var res = await fetch(SB_URL + '/rest/v1/projects?status=eq.active&select=id,project_name&order=project_name.asc',
+    var res = await fetch(SB_URL + '/rest/v1/projects?select=id,project_name&order=project_name.asc&limit=100',
       { headers: { apikey: SB_KEY, Authorization: 'Bearer ' + SB_KEY } });
     _sjProjects = res.ok ? await res.json() : [];
   } catch(e) { _sjProjects = []; }
