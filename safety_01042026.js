@@ -536,6 +536,7 @@ async function safetyRunAnalysis() {
 
   var messages = [{ role: 'user', content: [...imageBlocks, { type: 'text', text: safetyPrompt }] }];
 
+  document.getElementById('safety-progress').style.display = 'block';
   progTxt.textContent = '🧠 Claude מנתח ' + _safetyFrames.length + ' פריימים ב-8 קטגוריות בטיחות...';
   progBar.style.width = '70%';
   safetyStartMeter();
@@ -1954,13 +1955,13 @@ function capRenderItems() {
       // Deadline
       + '<div style="flex:1;min-width:140px;">'
       + '<div style="font-size:10px;font-weight:800;color:#666;text-transform:uppercase;margin-bottom:4px;">📅 דדליין</div>'
-      + '<input type="date" id="cap-deadline-' + idx + '" value="' + item.deadline + '" oninput="_capItems[' + idx + '].deadline=this.value"'
+      + '<input type="date" id="cap-deadline-' + idx + '" value="' + item.deadline + '" oninput="_capItems[' + idx + '].deadline=this.value" onchange="_capItems[' + idx + '].deadline=this.value"'
       + ' style="width:100%;background:#1a1a2e;border:1px solid rgba(255,255,255,0.12);color:#fff;padding:8px 10px;border-radius:8px;font-family:Heebo,sans-serif;font-size:12px;box-sizing:border-box;">'
       + '</div>'
       // Cost estimate
       + '<div style="flex:1;min-width:140px;">'
       + '<div style="font-size:10px;font-weight:800;color:#666;text-transform:uppercase;margin-bottom:4px;">💰 עלות משוערת (₪)</div>'
-      + '<input placeholder="מ... עד..." id="cap-cost-' + idx + '" oninput="_capItems[' + idx + '].cost_min=this.value"'
+      + '<input placeholder="מ... עד..." id="cap-cost-' + idx + '" oninput="_capItems[' + idx + '].cost_min=this.value" onchange="_capItems[' + idx + '].cost_min=this.value"'
       + ' style="width:100%;background:#1a1a2e;border:1px solid rgba(255,255,255,0.12);color:#fff;padding:8px 10px;border-radius:8px;font-family:Heebo,sans-serif;font-size:12px;direction:rtl;outline:none;box-sizing:border-box;">'
       + '</div>'
       + '</div>'
@@ -2071,8 +2072,11 @@ function capSendItemWA(idx) {
   if (deadline) msg += '\n⏰ *דדליין לתיקון: ' + deadline + '*\n';
   if (item.cost_min) msg += '💰 עלות משוערת: ' + item.cost_min + '\n';
   if (_capFileUrl) msg += '\n📸 תמונת ממצא: ' + _capFileUrl + '\n';
+  var crmLink = 'https://avshi2-maker.github.io/work-journal/' + (_capProjectId ? '?project=' + _capProjectId : '');
   msg += '\n━━━━━━━━━━━━━━━━━━━━\n';
-  msg += 'נא לאשר קבלת הוראה זו ולעדכן על מועד ביצוע.';
+  msg += '🔗 לצפייה בפרויקט: ' + crmLink + '\n\n';
+  msg += '✅ קיבלתי ואישרתי לביצוע עד: ___\n';
+  msg += 'נא להחזיר הודעה זו עם תאריך הביצוע המאושר.';
 
   // Send to specific contractor if assigned, else open picker
   var url;
