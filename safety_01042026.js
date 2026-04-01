@@ -871,15 +871,15 @@ async function safetyLoadHistory() {
               '<!-- projects injected by safetyFillProjectOptions -->' +
             '</select>' +
           '</div>' +
-          // Action bar: print / mail / whatsapp
-          '<div style="display:flex;gap:4px;flex-wrap:wrap;padding-top:8px;border-top:1px solid rgba(255,255,255,0.06);">' +
-            (fileUrl ? '<a href="' + fileUrl + '" target="_blank" rel="noopener" style="padding:4px 10px;background:#1a3d5c;color:white;border-radius:6px;font-size:10px;font-weight:700;text-decoration:none;">👁️ צפה</a>' : '') +
-            (fileUrl ? '<a href="' + fileUrl + '" target="_blank" style="padding:4px 10px;background:#374151;color:white;border-radius:6px;font-size:10px;font-weight:700;text-decoration:none;">🖨️ הדפס</a>' : '') +
-            (fileUrl ? '<a href="mailto:?subject=' + encodeURIComponent('ניתוח בטיחות #' + num + ': ' + cardTitle) + '&body=' + encodeURIComponent(cardTitle + '\n\n' + fileUrl) + '" style="padding:4px 10px;background:#1e3a5f;color:#93c5fd;border-radius:6px;font-size:10px;font-weight:700;text-decoration:none;">📧 מייל</a>' : '') +
-            (fileUrl ? '<a href="https://wa.me/?text=' + encodeURIComponent('🛡️ ניתוח בטיחות #' + num + '\n' + cardTitle + '\n' + fileUrl) + '" target="_blank" style="padding:4px 10px;background:#15803d;color:white;border-radius:6px;font-size:10px;font-weight:700;text-decoration:none;">💬 וואטסאפ</a>' : '') +
-            '<button onclick="safetyShowHistoryItem(' + item.id + ')" style="padding:4px 10px;background:rgba(239,68,68,0.15);border:1px solid rgba(239,68,68,0.3);color:#fca5a5;border-radius:6px;font-size:10px;font-weight:700;cursor:pointer;border:none;font-family:Heebo,sans-serif;">📋 פתח</button>' +
-          '</div>' +
-        '</div>';
+           // Action bar: always show mail/wa/open; file buttons only when fileUrl exists
+           '<div style="display:flex;gap:4px;flex-wrap:wrap;padding-top:8px;border-top:1px solid rgba(255,255,255,0.06);">'+
+             (fileUrl ? '<a href="' + fileUrl + '" target="_blank" rel="noopener" style="padding:4px 10px;background:#1a3d5c;color:white;border-radius:6px;font-size:10px;font-weight:700;text-decoration:none;">👁️ צפה</a>' : '') +
+             (fileUrl ? '<a href="' + fileUrl + '" target="_blank" style="padding:4px 10px;background:#374151;color:white;border-radius:6px;font-size:10px;font-weight:700;text-decoration:none;">🖨️ הדפס</a>' : '') +
+             '<a href="mailto:?subject=' + encodeURIComponent('ניתוח בטיחות #' + num + ': ' + cardTitle) + '&body=' + encodeURIComponent(cardTitle + (fileUrl ? '\n\n' + fileUrl : '')) + '" style="padding:4px 10px;background:#1e3a5f;color:#93c5fd;border-radius:6px;font-size:10px;font-weight:700;text-decoration:none;">📧 מייל</a>' +
+             '<a href="https://wa.me/?text=' + encodeURIComponent('🛡️ ניתוח בטיחות #' + num + '\n' + cardTitle + (fileUrl ? '\n' + fileUrl : '')) + '" target="_blank" style="padding:4px 10px;background:#15803d;color:white;border-radius:6px;font-size:10px;font-weight:700;text-decoration:none;">💬 וואטסאפ</a>' +
+             '<button onclick="safetyShowHistoryItem(' + item.id + ')" style="padding:4px 10px;background:rgba(239,68,68,0.15);border:1px solid rgba(239,68,68,0.3);color:#fca5a5;border-radius:6px;font-size:10px;font-weight:700;cursor:pointer;font-family:Heebo,sans-serif;">📋 פתח דוח</button>' +
+           '</div>' +
+         '</div>';
     });
     html += '</div>';
     list.innerHTML = html;
@@ -1603,15 +1603,15 @@ async function snagLoadHistory() {
               '<option value="">📁 ' + (item.project_name ? item.project_name : 'קשר לפרויקט...') + '</option>' +
             '</select>' +
           '</div>' +
-          '<div style="display:flex;gap:4px;flex-wrap:wrap;padding-top:8px;border-top:1px solid rgba(255,255,255,0.06);">' +
-            (fileUrl ? '<a href="' + fileUrl + '" target="_blank" rel="noopener" style="padding:4px 10px;background:#1a3d5c;color:white;border-radius:6px;font-size:10px;font-weight:700;text-decoration:none;">👁️ צפה</a>' : '') +
-            (fileUrl ? '<a href="' + fileUrl + '" target="_blank" style="padding:4px 10px;background:#374151;color:white;border-radius:6px;font-size:10px;font-weight:700;text-decoration:none;">🖨️ הדפס</a>' : '') +
-            (fileUrl ? '<a href="mailto:?subject=' + encodeURIComponent('ניתוח ליקויים #' + num + ': ' + cardTitle) + '&body=' + encodeURIComponent(cardTitle + '\n\n' + fileUrl) + '" style="padding:4px 10px;background:#1e3a5f;color:#93c5fd;border-radius:6px;font-size:10px;font-weight:700;text-decoration:none;">📧 מייל</a>' : '') +
-            (fileUrl ? '<a href="https://wa.me/?text=' + encodeURIComponent('🔍 ניתוח ליקויים #' + num + '\n' + cardTitle + '\n' + fileUrl) + '" target="_blank" style="padding:4px 10px;background:#15803d;color:white;border-radius:6px;font-size:10px;font-weight:700;text-decoration:none;">💬 וואטסאפ</a>' : '') +
-            '<button onclick="snagShowHistoryItem(' + item.id + ')" style="padding:4px 10px;background:rgba(245,158,11,0.15);border:1px solid rgba(245,158,11,0.3);color:#f59e0b;border-radius:6px;font-size:10px;font-weight:700;cursor:pointer;font-family:Heebo,sans-serif;">📋 פתח דוח</button>' +
-            '<button onclick="snagOpenCAPFromHistory(' + item.id + ')" style="padding:4px 10px;background:linear-gradient(135deg,rgba(124,58,237,0.3),rgba(45,106,159,0.3));border:1px solid rgba(124,58,237,0.5);color:#c4b5fd;border-radius:6px;font-size:10px;font-weight:700;cursor:pointer;font-family:Heebo,sans-serif;">🔧 CAP</button>' +
-          '</div>' +
-        '</div>';
+           '<div style="display:flex;gap:4px;flex-wrap:wrap;padding-top:8px;border-top:1px solid rgba(255,255,255,0.06);">'+
+             (fileUrl ? '<a href="' + fileUrl + '" target="_blank" rel="noopener" style="padding:4px 10px;background:#1a3d5c;color:white;border-radius:6px;font-size:10px;font-weight:700;text-decoration:none;">👁️ צפה</a>' : '') +
+             (fileUrl ? '<a href="' + fileUrl + '" target="_blank" style="padding:4px 10px;background:#374151;color:white;border-radius:6px;font-size:10px;font-weight:700;text-decoration:none;">🖨️ הדפס</a>' : '') +
+             '<a href="mailto:?subject=' + encodeURIComponent('ניתוח ליקויים #' + num + ': ' + cardTitle) + '&body=' + encodeURIComponent(cardTitle + (fileUrl ? '\n\n' + fileUrl : '')) + '" style="padding:4px 10px;background:#1e3a5f;color:#93c5fd;border-radius:6px;font-size:10px;font-weight:700;text-decoration:none;">📧 מייל</a>' +
+             '<a href="https://wa.me/?text=' + encodeURIComponent('🔍 ניתוח ליקויים #' + num + '\n' + cardTitle + (fileUrl ? '\n' + fileUrl : '')) + '" target="_blank" style="padding:4px 10px;background:#15803d;color:white;border-radius:6px;font-size:10px;font-weight:700;text-decoration:none;">💬 וואטסאפ</a>' +
+             '<button onclick="snagShowHistoryItem(' + item.id + ')" style="padding:4px 10px;background:rgba(245,158,11,0.15);border:1px solid rgba(245,158,11,0.3);color:#f59e0b;border-radius:6px;font-size:10px;font-weight:700;cursor:pointer;font-family:Heebo,sans-serif;">📋 פתח דוח</button>' +
+             '<button onclick="snagOpenCAPFromHistory(' + item.id + ')" style="padding:4px 10px;background:linear-gradient(135deg,rgba(124,58,237,0.3),rgba(45,106,159,0.3));border:1px solid rgba(124,58,237,0.5);color:#c4b5fd;border-radius:6px;font-size:10px;font-weight:700;cursor:pointer;font-family:Heebo,sans-serif;">🔧 CAP</button>' +
+           '</div>' +
+         '</div>';
     });
     html += '</div>';
     list.innerHTML = html;
