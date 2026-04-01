@@ -50,10 +50,21 @@ function jwGoto(step) {
 
   // Step 1: show CTA if project selected
   if (step === 1) jwUpdateCTA();
+  // Step 5: populate material + equipment dropdowns
+  if (step === 5) {
+    if (typeof populateMaterialSelect  === 'function') populateMaterialSelect();
+    if (typeof populateEquipmentSelect === 'function') populateEquipmentSelect();
+  }
+  // Step 4: add initial row if empty
   // Step 3: add initial row if empty
   if (step === 3) { var wc = document.getElementById('workersContainer'); if (wc && !wc.children.length) addWorkerRow(); }
   // Step 4: add initial row if empty
   if (step === 4) { var ac = document.getElementById('activitiesContainer'); if (ac && !ac.children.length) addActivityRow(); }
+  // Step 5: populate material + equipment dropdowns
+  if (step === 5) {
+    if (typeof populateMaterialSelect  === 'function') populateMaterialSelect();
+    if (typeof populateEquipmentSelect === 'function') populateEquipmentSelect();
+  }
 }
 
 function jwNext() {
@@ -1069,6 +1080,21 @@ function removeOwnerPhoto(index) {
 // ============================================
 
 function collectFormData() {
+    // Contractors
+    var contractors = [];
+    document.querySelectorAll('#contractorsBody tr').forEach(function(row) {
+        var company = row.querySelector('.contr-company');
+        var occ     = row.querySelector('.contr-occupation');
+        var workers = row.querySelector('.contr-workers');
+        if (company && company.value) {
+            contractors.push({
+                company_name:    company.value,
+                main_occupation: occ ? occ.value : '',
+                workers_count:   workers ? (parseInt(workers.value)||1) : 1
+            });
+        }
+    });
+
     // Basic data
     var workers = [];
     document.querySelectorAll('#workersContainer .form-row').forEach(row => {
@@ -1210,6 +1236,7 @@ function collectFormData() {
         general_notes: document.getElementById('generalNotes').value,
         tomorrow_date: document.getElementById('tomorrowDate').value,
         tomorrow_plan: document.getElementById('tomorrowPlan').value,
+        contractors,
         workers,
         activities,
         materials,
@@ -1224,172 +1251,93 @@ function collectFormData() {
 // SAVE FUNCTIONS
 // ============================================
 
+async function _jwSaveToSupabase(data, status) {
+  var body = {
+    report_number:   data.report_number,
+    project_id:      _mbProjectId || null,
+    project_name:    data.project_name,
+    report_date:     data.report_date,
+    manager_name:    data.manager_name,
+    weather:         data.weather,
+    start_time:      data.start_time || null,
+    end_time:        data.end_time   || null,
+    break_hours:     data.break_hours,
+    total_work_hours:data.total_work_hours,
+    general_notes:   data.general_notes,
+    tomorrow_date:   data.tomorrow_date || null,
+    tomorrow_plan:   data.tomorrow_plan,
+    contractors:     JSON.stringify(data.contractors || []),
+    workers:         JSON.stringify(data.workers     || []),
+    activities:      JSON.stringify(data.activities  || []),
+    materials:       JSON.stringify(data.materials   || []),
+    equipment:       JSON.stringify(data.equipment   || []),
+    safety:          JSON.stringify(data.safety      || []),
+    inspections:     JSON.stringify(data.inspections || []),
+    delays:          JSON.stringify(data.delays      || []),
+    status:          status,
+    sent_at:         status === 'sent' ? new Date().toISOString() : null
+  };
+  var res = await fetch(SB_URL + '/rest/v1/site_reports', {
+    method: 'POST',
+    headers: { apikey: SB_KEY, Authorization: 'Bearer ' + SB_KEY, 'Content-Type': 'application/json', Prefer: 'return=representation' },
+    body: JSON.stringify(body)
+  });
+  var rows = await res.json();
+  if (!res.ok) throw new Error((rows.message || rows.error || JSON.stringify(rows)));
+  return rows[0];
+}
+
 async function saveDraft() {
-    showLoading(true);
-    
-    try {
-        var data = collectFormData();
-        
-        if (!data.project_name) {
-            showToast('❌ נא למלא שם פרוייקט');
-            showLoading(false);
-            return;
-        }
-        
-        var signaturePath = await uploadSignature(signaturePad, 'manager');
-        
-        var { data: report, error} = await supabaseClient
-            .from('reports')
-            .insert({
-                report_number: data.report_number,
-                project_name: data.project_name,
-                report_date: data.report_date,
-                manager_name: data.manager_name,
-                weather: data.weather,
-                start_time: data.start_time,
-                end_time: data.end_time,
-                break_hours: data.break_hours,
-                total_work_hours: data.total_work_hours,
-                general_notes: data.general_notes,
-                tomorrow_date: data.tomorrow_date,
-                tomorrow_plan: data.tomorrow_plan,
-                manager_signature_path: signaturePath,
-                status: 'draft'
-            })
-            .select()
-            .single();
-        
-        if (error) throw error;
-        
-        // Save related data
-        await saveRelatedData(report.id, data);
-        
-        await uploadPhotos(report.id, selectedPhotos, 'manager');
-        
-        showToast('✅ טיוטה נשמרה!');
-        
-    } catch (error) {
-        console.error('Error:', error);
-        showToast('❌ שגיאה: ' + error.message, 'error');
-    } finally {
-        showLoading(false);
-    }
+  showLoading(true);
+  try {
+    var data = collectFormData();
+    if (!data.project_name) { showToast('נא לבחור פרויקט תחילה', 'error'); return; }
+    var report = await _jwSaveToSupabase(data, 'draft');
+    showToast('✅ טיוטה נשמרה! #' + data.report_number);
+  } catch(e) {
+    console.error('saveDraft:', e);
+    showToast('שגיאה בשמירה: ' + e.message, 'error');
+  } finally { showLoading(false); }
 }
 
 async function sendReport() {
-    showLoading(true);
-    
-    try {
-        var data = collectFormData();
-        
-        if (!data.project_name) {
-            showToast('❌ נא למלא שם פרוייקט');
-            showLoading(false);
-            return;
-        }
-        
-        var signaturePath = await uploadSignature(signaturePad, 'manager');
-        
-        var { data: report, error } = await supabaseClient
-            .from('reports')
-            .insert({
-                report_number: data.report_number,
-                project_name: data.project_name,
-                report_date: data.report_date,
-                manager_name: data.manager_name,
-                weather: data.weather,
-                start_time: data.start_time,
-                end_time: data.end_time,
-                break_hours: data.break_hours,
-                total_work_hours: data.total_work_hours,
-                general_notes: data.general_notes,
-                tomorrow_date: data.tomorrow_date,
-                tomorrow_plan: data.tomorrow_plan,
-                manager_signature_path: signaturePath,
-                status: 'sent',
-                sent_at: new Date().toISOString()
-            })
-            .select()
-            .single();
-        
-        if (error) throw error;
-        
-        await saveRelatedData(report.id, data);
-        await uploadPhotos(report.id, selectedPhotos, 'manager');
-        
-        var shareURL = `${window.location.origin}${window.location.pathname}?token=${report.share_token}`;
-        
-        var message = `🔒 *דוח עבודה יומי מאובטח*\n\n` +
-            `📋 *מספר דוח:* ${data.report_number}\n` +
-            `👷 *מנהל:* אבשי ספיר\n` +
-            `🏗️ *פרוייקט:* ${data.project_name}\n` +
-            `📅 *תאריך:* ${data.report_date}\n` +
-            `⚖️ *תיעוד משפטי מלא*\n\n` +
-            `✅ *לחץ לאישור:*\n${shareURL}\n\n` +
-            `📱 050-5231042`;
-        
-        window.open(`https://wa.me/?text=${encodeURIComponent(message)}`);
-        
-        showToast('✅ דוח נשלח!\n\nקישור: ' + shareURL, 'error');
-        
-    } catch (error) {
-        console.error('Error:', error);
-        showToast('❌ שגיאה: ' + error.message, 'error');
-    } finally {
-        showLoading(false);
-    }
+  showLoading(true);
+  try {
+    var data = collectFormData();
+    if (!data.project_name) { showToast('נא לבחור פרויקט תחילה', 'error'); return; }
+    var report = await _jwSaveToSupabase(data, 'sent');
+    showToast('✅ דוח נשמר ונשלח!');
+    // Also open WA
+    sendReportWhatsApp(data);
+  } catch(e) {
+    console.error('sendReport:', e);
+    showToast('שגיאה בשליחה: ' + e.message, 'error');
+  } finally { showLoading(false); }
 }
 
-async function saveRelatedData(reportId, data) {
-    // Workers
-    if (data.workers.length > 0) {
-        await supabaseClient.from('workers').insert(
-            data.workers.map(w => ({ ...w, report_id: reportId }))
-        );
-    }
-    
-    // Activities
-    if (data.activities.length > 0) {
-        await supabaseClient.from('activities').insert(
-            data.activities.map(a => ({ ...a, report_id: reportId }))
-        );
-    }
-    
-    // Materials
-    if (data.materials.length > 0) {
-        await supabaseClient.from('materials').insert(
-            data.materials.map(m => ({ ...m, report_id: reportId }))
-        );
-    }
-    
-    // Equipment
-    if (data.equipment.length > 0) {
-        await supabaseClient.from('equipment').insert(
-            data.equipment.map(e => ({ ...e, report_id: reportId }))
-        );
-    }
-    
-    // Safety Incidents
-    if (data.safety.length > 0) {
-        await supabaseClient.from('safety_incidents').insert(
-            data.safety.map(s => ({ ...s, report_id: reportId }))
-        );
-    }
-    
-    // Inspections
-    if (data.inspections.length > 0) {
-        await supabaseClient.from('inspections').insert(
-            data.inspections.map(i => ({ ...i, report_id: reportId }))
-        );
-    }
-    
-    // Delays
-    if (data.delays.length > 0) {
-        await supabaseClient.from('delays').insert(
-            data.delays.map(d => ({ ...d, report_id: reportId }))
-        );
-    }
+function sendReportWhatsApp(data) {
+  if (!data) { try { data = collectFormData(); } catch(e) { return; } }
+  var crmLink = 'https://avshi2-maker.github.io/work-journal/';
+  var msg = '📋 *דוח עבודה יומי*\n';
+  msg += '🔢 מספר דוח: ' + (data.report_number||'') + '\n';
+  msg += '🏗️ פרויקט: ' + (data.project_name||'') + '\n';
+  msg += '📅 תאריך: ' + (data.report_date||'') + '\n';
+  msg += '👷 מנהל: ' + (data.manager_name||'אבשי ספיר') + '\n';
+  if (data.weather) msg += '🌤️ מזג אוויר: ' + data.weather + '\n';
+  if (data.total_work_hours) msg += '⏱️ שעות עבודה: ' + data.total_work_hours + '\n';
+  if (data.workers && data.workers.length) msg += '👷 כוח אדם: ' + data.workers.length + ' תפקידים\n';
+  if (data.activities && data.activities.length) msg += '🔨 פעילויות: ' + data.activities.length + '\n';
+  if (data.general_notes) msg += '\n📝 הערות: ' + data.general_notes.substring(0,120) + (data.general_notes.length>120?'...':'') + '\n';
+  msg += '\n🔗 ' + crmLink + '\n';
+  msg += '\n━━━━━━━━━━━━━━━━━━━━\n';
+  msg += '✅ קיבלתי ואישרתי: ___\nנא לאשר בהודעה חוזרת.';
+  var a = document.createElement('a');
+  a.href = 'https://wa.me/?text=' + encodeURIComponent(msg);
+  a.target = '_blank'; a.rel = 'noopener';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
 }
+
+
 
 // ============================================
 // UPLOAD FUNCTIONS
