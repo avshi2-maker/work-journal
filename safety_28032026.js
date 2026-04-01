@@ -885,10 +885,15 @@ async function safetyLinkProjectFromHistory(analysisId, projectId) {
 }
 
 function safetyFillProjectOptions(type) {
+  var projects = window.allProjects || [];
+  // If projects not loaded yet, retry after short delay
+  if (!projects.length) {
+    setTimeout(function(){ safetyFillProjectOptions(type); }, 800);
+    return;
+  }
   var selectors = type === 'safety'
     ? document.querySelectorAll('#safety-history-list select')
     : document.querySelectorAll('#snag-history-list select');
-  var projects = window.allProjects || [];
   selectors.forEach(function(sel) {
     var cur = sel.value;
     var firstOpt = sel.options[0];
@@ -1292,6 +1297,8 @@ function snagStopMeter(inTok, outTok) {
 
 // ── Report renderer ────────────────────────────────────────────────────
 function snagRenderReport(findings, allCats, customCats, metadata) {
+  // Store file_url globally so CAP modal can attach it to WhatsApp as photo evidence
+  window._snagLastFileUrl = (metadata && metadata.file_url) ? metadata.file_url : '';
   var results = document.getElementById('snag-results');
   if (!results) return;
 
@@ -1570,7 +1577,8 @@ async function snagLoadHistory() {
             (fileUrl ? '<a href="' + fileUrl + '" target="_blank" style="padding:4px 10px;background:#374151;color:white;border-radius:6px;font-size:10px;font-weight:700;text-decoration:none;">🖨️ הדפס</a>' : '') +
             (fileUrl ? '<a href="mailto:?subject=' + encodeURIComponent('ניתוח ליקויים #' + num + ': ' + cardTitle) + '&body=' + encodeURIComponent(cardTitle + '\n\n' + fileUrl) + '" style="padding:4px 10px;background:#1e3a5f;color:#93c5fd;border-radius:6px;font-size:10px;font-weight:700;text-decoration:none;">📧 מייל</a>' : '') +
             (fileUrl ? '<a href="https://wa.me/?text=' + encodeURIComponent('🔍 ניתוח ליקויים #' + num + '\n' + cardTitle + '\n' + fileUrl) + '" target="_blank" style="padding:4px 10px;background:#15803d;color:white;border-radius:6px;font-size:10px;font-weight:700;text-decoration:none;">💬 וואטסאפ</a>' : '') +
-            '<button onclick="snagShowHistoryItem(' + item.id + ')" style="padding:4px 10px;background:rgba(245,158,11,0.15);border:1px solid rgba(245,158,11,0.3);color:#f59e0b;border-radius:6px;font-size:10px;font-weight:700;cursor:pointer;font-family:Heebo,sans-serif;">📋 פתח</button>' +
+            '<button onclick="snagShowHistoryItem(' + item.id + ')" style="padding:4px 10px;background:rgba(245,158,11,0.15);border:1px solid rgba(245,158,11,0.3);color:#f59e0b;border-radius:6px;font-size:10px;font-weight:700;cursor:pointer;font-family:Heebo,sans-serif;">📋 פתח דוח</button>' +
+            '<button onclick="snagOpenCAPFromHistory(' + item.id + ')" style="padding:4px 10px;background:linear-gradient(135deg,rgba(124,58,237,0.3),rgba(45,106,159,0.3));border:1px solid rgba(124,58,237,0.5);color:#c4b5fd;border-radius:6px;font-size:10px;font-weight:700;cursor:pointer;font-family:Heebo,sans-serif;">🔧 CAP</button>' +
           '</div>' +
         '</div>';
     });
@@ -1608,6 +1616,26 @@ async function snagLinkProjectFromHistory(reportId, projectId) {
   } catch(e) { if (typeof showToast === 'function') showToast('שגיאה: ' + e.message, 'error'); }
 }
 
+async function snagOpenCAPFromHistory(id) {
+  // Load the full report, set globals, then open CAP modal
+  var res = await sbQ('snag_reports','select=*&id=eq.' + id);
+  var item = res.data && res.data[0];
+  if (!item) { if (typeof showToast==='function') showToast('לא נמצא דוח','error'); return; }
+  var findings = typeof item.findings==='string' ? JSON.parse(item.findings) : item.findings;
+  _snagLastFindings = findings;
+  window._snagLastFileUrl = item.file_url || '';
+  // Set project context
+  if (item.project_id) {
+    var projSel = document.getElementById('safety-project-sel');
+    if (projSel) projSel.value = item.project_id;
+  }
+  // Load categories needed by CAP
+  await snagLoadCategories();
+  // Set scanned frames to empty (base64 not stored — use file_url instead)
+  _snagFrames = [];
+  capOpenModal();
+}
+
 async function snagShowHistoryItem(id) {
   var res = await sbQ('snag_reports','select=*&id=eq.' + id);
   var item = res.data && res.data[0];
@@ -1633,6 +1661,7 @@ var _capItems        = [];   // array of {catId, catName, icon, severity, findin
 var _capContractors  = [];   // contractors_master list
 var _capProjectId    = null;
 var _capProjectName  = '';
+var _capFileUrl      = '';   // Cloudinary URL of scanned asset — sent as evidence in WhatsApp
 
 // Deadline days per severity
 var CAP_DEADLINES = { CRITICAL: 1, MODERATE: 7, MINOR: 30 };
@@ -1720,6 +1749,8 @@ async function capOpenModal() {
   _capProjectName = projSel?.selectedOptions[0]?.textContent?.replace('📁 ','').trim() || '';
   var projLabel = document.getElementById('cap-project-label');
   if (projLabel) projLabel.textContent = _capProjectName ? '📁 ' + _capProjectName : '';
+  // Carry file_url from the last snag report (set by snagRenderReport)
+  _capFileUrl = (typeof _snagLastFileUrl !== 'undefined' && _snagLastFileUrl) ? _snagLastFileUrl : '';
 
   // Show scanned photo in CAP header
   var capPhotoDiv = document.getElementById('cap-photo-wrap');
@@ -1877,9 +1908,9 @@ function capRenderItems() {
       + '</div>'
 
       // ── Contractor assignment + deadline + cost ───────────────────────
-      + '<div style="display:grid;grid-template-columns:2fr 1fr 1fr;gap:10px;margin-bottom:12px;flex-wrap:wrap;">'
+      + '<div style="display:flex;flex-wrap:wrap;gap:10px;margin-bottom:12px;">'
       // Contractor picker
-      + '<div>'
+      + '<div style="flex:2;min-width:180px;">'
       + '<div style="font-size:10px;font-weight:800;color:#666;text-transform:uppercase;margin-bottom:4px;">👷 קבלן אחראי</div>'
       + '<select id="cap-contractor-' + idx + '" onchange="capAssignContractor(' + idx + ',this)"'
       + ' style="width:100%;background:#1a1a2e;border:1px solid rgba(255,255,255,0.12);color:#fff;padding:8px 10px;border-radius:8px;font-family:Heebo,sans-serif;font-size:12px;direction:rtl;">'
@@ -1889,13 +1920,13 @@ function capRenderItems() {
         )
       + '</select></div>'
       // Deadline
-      + '<div>'
+      + '<div style="flex:1;min-width:140px;">'
       + '<div style="font-size:10px;font-weight:800;color:#666;text-transform:uppercase;margin-bottom:4px;">📅 דדליין</div>'
       + '<input type="date" id="cap-deadline-' + idx + '" value="' + item.deadline + '" oninput="_capItems[' + idx + '].deadline=this.value"'
       + ' style="width:100%;background:#1a1a2e;border:1px solid rgba(255,255,255,0.12);color:#fff;padding:8px 10px;border-radius:8px;font-family:Heebo,sans-serif;font-size:12px;box-sizing:border-box;">'
       + '</div>'
       // Cost estimate
-      + '<div>'
+      + '<div style="flex:1;min-width:140px;">'
       + '<div style="font-size:10px;font-weight:800;color:#666;text-transform:uppercase;margin-bottom:4px;">💰 עלות משוערת (₪)</div>'
       + '<input placeholder="מ... עד..." id="cap-cost-' + idx + '" oninput="_capItems[' + idx + '].cost_min=this.value"'
       + ' style="width:100%;background:#1a1a2e;border:1px solid rgba(255,255,255,0.12);color:#fff;padding:8px 10px;border-radius:8px;font-family:Heebo,sans-serif;font-size:12px;direction:rtl;outline:none;box-sizing:border-box;">'
@@ -2007,6 +2038,7 @@ function capSendItemWA(idx) {
   if (item.standard) msg += '\n📋 תקן: ' + item.standard + '\n';
   if (deadline) msg += '\n⏰ *דדליין לתיקון: ' + deadline + '*\n';
   if (item.cost_min) msg += '💰 עלות משוערת: ' + item.cost_min + '\n';
+  if (_capFileUrl) msg += '\n📸 תמונת ממצא: ' + _capFileUrl + '\n';
   msg += '\n━━━━━━━━━━━━━━━━━━━━\n';
   msg += 'נא לאשר קבלת הוראה זו ולעדכן על מועד ביצוע.';
 
