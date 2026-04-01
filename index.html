@@ -4040,11 +4040,13 @@ async function loadTransactions() {
 }
 
 async function loadReports() {
-  const {data,error} = await sbQ('reports','select=*&order=report_date.desc&limit=100');
-  if(error) throw error;
-  allReports = data || [];
-  renderReports();
-  populateReportProjectFilter();
+  try {
+    var r = await sbQ('reports','select=*&order=report_date.desc&limit=100');
+    if (r.error) { console.warn('loadReports:', r.error.message); allReports = []; }
+    else { allReports = r.data || []; }
+    if (typeof renderReports === 'function') renderReports();
+    if (typeof populateReportProjectFilter === 'function') populateReportProjectFilter();
+  } catch(e) { console.warn('loadReports skipped:', e.message); allReports = []; }
 }
 
 // ── NAVIGATION ───────────────────────────────────────────
@@ -5647,6 +5649,41 @@ async function _fetchJournalModule() {
 
 
 
+// ── sjPopulateProjectFilter stub — safe fallback before smartjournal module loads ──
+function sjPopulateProjectFilter() {
+  _fetchSmartJournal().then(function() {
+    if (typeof _sjPopulateProjectFilterReal === 'function') _sjPopulateProjectFilterReal();
+  });
+}
+function switchSmartTab(tab) {
+  _fetchSmartJournal().then(function() {
+    if (typeof _switchSmartTabReal === 'function') _switchSmartTabReal(tab);
+  });
+}
+
+// ── safetyHandleFile stub — loads module first, then delegates ───────────────
+function safetyHandleFile(input) {
+  var files = Array.from(input.files || []);
+  if (!files.length) return;
+  // Show scan button immediately so user sees something
+  var btn = document.getElementById('safety-scan-btn');
+  var prog = document.getElementById('safety-progress');
+  var progTxt = document.getElementById('safety-progress-text');
+  if (prog) { prog.style.display = 'block'; }
+  if (progTxt) { progTxt.textContent = '⏳ טוען מודול בטיחות...'; }
+  _fetchSafetyModule().then(function() {
+    if (typeof _safetyHandleFileReal === 'function') {
+      _safetyHandleFileReal(input);
+    } else {
+      // Fallback: module loaded but old version — show button manually
+      if (prog) prog.style.display = 'none';
+      if (btn) btn.style.display = 'block';
+    }
+  }).catch(function(e) {
+    if (progTxt) progTxt.textContent = '❌ שגיאה בטעינת מודול: ' + e.message;
+  });
+}
+
 // Stub — real switchSafetySubTab is in safety_28032026.js
 function switchSafetySubTab(tab) {
   // Step 1: Show/hide divs immediately (don't wait for module)
@@ -6182,11 +6219,10 @@ function _ensureRetryBar() {
 // ══ SMART JOURNAL + EOD + WEEKLY — loaded via fetch() ════════════════════
 var _sjFetched = false;
 async function _fetchSmartJournal() {
-  if (_sjFetched && typeof sjPopulateProjectFilter === 'function') return;
-  _sjFetched = false;
+  if (_sjFetched && typeof sjPopulateProjectFilter === 'function') return Promise.resolve();
   _sjFetched = true;
   try {
-    var res = await fetch('smartjournal_28032026.js?v=' + Date.now());
+    var res = await fetch('smartjournal_01042026.js?v=' + Date.now());
     if (!res.ok) throw new Error('HTTP ' + res.status);
     var code = await res.text();
     if (code.trim().startsWith('<')) throw new Error('Got HTML not JS');
