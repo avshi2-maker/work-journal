@@ -1696,6 +1696,20 @@ window.addEventListener('unhandledrejection', function(e) {
       <div style="font-size:12px;font-weight:800;color:#666;text-transform:uppercase;letter-spacing:.5px;margin-bottom:16px;">➕ ניתוח חדש</div>
     </div>
 
+    <!-- Category selector -->
+    <div style="background:#242438;border-radius:14px;padding:16px;margin-bottom:20px;border:1px solid rgba(255,255,255,0.06);">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px;">
+        <div style="font-size:13px;font-weight:800;color:#fff;">קטגוריות לניתוח</div>
+        <div style="display:flex;gap:8px;">
+          <button onclick="safetySelectAll(true)"  style="background:rgba(239,68,68,0.15);border:1px solid rgba(239,68,68,0.3);color:#fca5a5;padding:5px 12px;border-radius:8px;cursor:pointer;font-family:Heebo,sans-serif;font-size:11px;font-weight:700;">בחר הכל</button>
+          <button onclick="safetySelectAll(false)" style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);color:#666;padding:5px 12px;border-radius:8px;cursor:pointer;font-family:Heebo,sans-serif;font-size:11px;">נקה הכל</button>
+        </div>
+      </div>
+      <div id="safety-categories-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(min(200px,100%),1fr));gap:8px;">
+        <div style="text-align:center;padding:20px;color:#555;font-size:12px;grid-column:1/-1;">טוען קטגוריות...</div>
+      </div>
+    </div>
+
     <!-- Upload zone -->
     <div style="background:#1e1e35;border:2px dashed rgba(239,68,68,0.4);border-radius:16px;padding:20px;margin-bottom:20px;text-align:center;">
       <div style="font-size:36px;margin-bottom:8px;">📸</div>
@@ -1715,20 +1729,6 @@ window.addEventListener('unhandledrejection', function(e) {
         </button>
       </div>
       <div id="safety-shared-status" style="margin-top:10px;"></div>
-    </div>
-
-    <!-- Category selector -->
-    <div style="background:#242438;border-radius:14px;padding:16px;margin-bottom:20px;border:1px solid rgba(255,255,255,0.06);">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px;">
-        <div style="font-size:13px;font-weight:800;color:#fff;">קטגוריות לניתוח</div>
-        <div style="display:flex;gap:8px;">
-          <button onclick="safetySelectAll(true)"  style="background:rgba(239,68,68,0.15);border:1px solid rgba(239,68,68,0.3);color:#fca5a5;padding:5px 12px;border-radius:8px;cursor:pointer;font-family:Heebo,sans-serif;font-size:11px;font-weight:700;">בחר הכל</button>
-          <button onclick="safetySelectAll(false)" style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);color:#666;padding:5px 12px;border-radius:8px;cursor:pointer;font-family:Heebo,sans-serif;font-size:11px;">נקה הכל</button>
-        </div>
-      </div>
-      <div id="safety-categories-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(min(200px,100%),1fr));gap:8px;">
-        <div style="text-align:center;padding:20px;color:#555;font-size:12px;grid-column:1/-1;">טוען קטגוריות...</div>
-      </div>
     </div>
 
     <!-- Safety scan button -->
@@ -2917,7 +2917,23 @@ async function _spDelete(id){if(!confirm('מחוק דוח זה?'))return;try{awa
 
 // ── ADDITIONAL HELPERS ─────────────────────────────────────
 
-function addContractorRow(data={}){const tbody=document.getElementById('contractorsBody');const emptyRow=tbody.querySelector('.contractors-empty');if(emptyRow)emptyRow.closest('tr').remove();const tr=document.createElement('tr');tr.innerHTML='<td><input type="text" placeholder="שם חברה / קבלן" class="contr-company" value="'+(data.company_name||'')+'"></td><td><input type="text" placeholder="שם איש קשר" class="contr-contact" value="'+(data.contact_name||'')+'"></td><td><input type="tel" placeholder="05X-XXXXXXX" class="contr-mobile" value="'+(data.mobile||'')+'" style="min-width:120px"></td><td><input type="tel" placeholder="0X-XXXXXXX" class="contr-office" value="'+(data.office_tel||'')+'" style="min-width:110px"></td><td><select class="contr-occupation">'+OCCUPATION_OPTIONS.map(o=>'<option value="'+o+'" '+(o===data.main_occupation?'selected':'')+'>'+( o||'— בחר עיסוק —')+'</option>').join('')+'</select></td><td><input type="text" placeholder="מה הוא עושה בפרוייקט זה?" class="contr-activity" value="'+(data.project_activity||'')+'" style="min-width:160px"></td><td class="td-actions"><button type="button" class="btn-remove-contractor" onclick="removeContractorRow(this)" title="הסר">×</button></td>';tbody.appendChild(tr);}
+var OCCUPATION_OPTIONS = ['','אינסטלטור','חשמלאי','טייח','צבע','ריצוף','גבס','נגר','מסגר','קבלן עפר','קבלן בטון','איטום','מזגנים','מעליות','אלומיניום','זגג','גינון','ניקיון','שלד','גמר','אחר'];
+function addContractorRow(data){
+  data = data || {};
+  var tbody = document.getElementById('contractorsBody');
+  if (!tbody) return;
+  var emptyRow = tbody.querySelector('.contractors-empty');
+  if (emptyRow) { var ep = emptyRow.closest('tr'); if (ep) ep.remove(); }
+  var tr = document.createElement('tr');
+  var occOpts = (typeof OCCUPATION_OPTIONS !== 'undefined' ? OCCUPATION_OPTIONS : ['','אינסטלטור','חשמלאי','טייח','צבע','ריצוף','גבס','נגר','מסגר','קבלן עפר','קבלן בטון','איטום','מזגנים','אלומיניום','אחר'])
+    .map(function(o){ return '<option value="'+o+'"'+(o===(data.main_occupation||'')?'selected':'')+'>'+( o||'— מקצוע —')+'</option>'; }).join('');
+  tr.innerHTML =
+    '<td><input type="text" placeholder="שם קבלן" class="contr-company" value="'+(data.company_name||'')+'" style="width:100%;padding:6px;border:1px solid #ddd;border-radius:6px;font-family:Heebo,sans-serif;font-size:13px;direction:rtl;"></td>'+
+    '<td><select class="contr-occupation" style="width:100%;padding:6px;border:1px solid #ddd;border-radius:6px;font-family:Heebo,sans-serif;font-size:13px;direction:rtl;">'+occOpts+'</select></td>'+
+    '<td><input type="number" class="contr-workers" value="'+(data.workers||1)+'" min="0" style="width:70px;padding:6px;border:1px solid #ddd;border-radius:6px;font-size:13px;text-align:center;"></td>'+
+    '<td style="text-align:center;"><button type="button" onclick="this.parentElement.parentElement.remove()" style="background:rgba(239,68,68,0.15);border:1px solid rgba(239,68,68,0.3);color:#ef4444;border-radius:6px;padding:4px 8px;cursor:pointer;font-size:13px;">×</button></td>';
+  tbody.appendChild(tr);
+}
 function removeContractorRow(btn){const tbody=document.getElementById('contractorsBody');btn.closest('tr').remove();if(tbody.rows.length===0){const tr=document.createElement('tr');tr.innerHTML='<td colspan="7" class="contractors-empty">לחץ ״➕ הוסף קבלן״</td>';tbody.appendChild(tr);}}
 
 function addEquipmentFromList(){const sel=document.getElementById('equipmentQuickSelect');if(!sel)return;const val=sel.value;if(!val){showToast('בחר ציוד מהרשימה תחילה', 'error'); return;}if(val==='__other__'){addEquipmentRow('');sel.value='';return;}addEquipmentRow(val);sel.value='';}
