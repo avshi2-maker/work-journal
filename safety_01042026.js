@@ -452,6 +452,12 @@ function safetyExtractFrames(file, maxFrames) {
 
 // ── MAIN AI ANALYSIS ──────────────────────────────────────────────────
 async function safetyRunAnalysis() {
+  // Guard: must have a file loaded before running
+  if (!_safetyFrames || !_safetyFrames.length) {
+    showToast('יש להעלות קובץ לפני הפעלת הניתוח', 'error');
+    return;
+  }
+
   // Hide scan button while running
   var safetyBtn = document.getElementById('safety-scan-btn');
   if (safetyBtn) safetyBtn.style.display = 'none';
@@ -578,6 +584,9 @@ async function safetyRunAnalysis() {
     progBar.style.background = '#ef4444';
     progBar.style.width = '100%';
     showToast('שגיאה בניתוח: ' + e.message, 'error');
+    // Always restore scan button on error
+    var safetyBtnRestore = document.getElementById('safety-scan-btn');
+    if (safetyBtnRestore) safetyBtnRestore.style.display = 'block';
   }
 }
 
