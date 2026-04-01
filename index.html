@@ -5667,12 +5667,15 @@ function switchSafetySubTab(tab) {
   if (tab === 'snagannexes')   { renderSnagAnnexWidget(); }
   if (tab === 'safetyreports') { _fetchSafetyModule().then(function(){ if (typeof safetyLoadHistory === 'function') safetyLoadHistory(); }); }
   if (tab === 'snagreports')   { _fetchSafetyModule().then(function(){ if (typeof snagLoadHistory   === 'function') snagLoadHistory(); }); }
-  // Step 4: Also delegate to module (for its own logic) once loaded
-  _fetchSafetyModule().then(function(){
-    if (typeof _switchSafetySubTabReal === 'function') {
-      _switchSafetySubTabReal(tab);
-    }
-  });
+  // Step 4: Delegate to module for its own logic — but NOT for report tabs
+  // (those are handled in Step 3 above to avoid double-loading)
+  if (tab !== 'safetyreports' && tab !== 'snagreports') {
+    _fetchSafetyModule().then(function(){
+      if (typeof _switchSafetySubTabReal === 'function') {
+        _switchSafetySubTabReal(tab);
+      }
+    });
+  }
 }
 
 // ── נספחי ליקויים widget — same structure as renderAnnexWidget ────────────────
@@ -5960,7 +5963,8 @@ function snagFindingLinkProject(btn, findingId, currentProjId, encodedTitle) {
 // ══ SAFETY + SNAG + CAP + PRINT — loaded via fetch() ═════════════════════
 var _safetyFetched = false;
 async function _fetchSafetyModule() {
-  if (_safetyFetched) return;
+  if (_safetyFetched && typeof _switchSafetySubTabReal === 'function') return Promise.resolve();
+  if (_safetyFetched) return Promise.resolve();
   _safetyFetched = true;
   try {
     var res = await fetch('safety_28032026.js?v=' + Date.now());
