@@ -5973,7 +5973,7 @@ async function _fetchSafetyModule() {
   if (_safetyFetched) return Promise.resolve();
   _safetyFetched = true;
   try {
-    var res = await fetch('safety_28032026.js?v=' + Date.now());
+    var res = await fetch('safety_01042026.js?v=' + Date.now());
     if (!res.ok) throw new Error('HTTP ' + res.status);
     var code = await res.text();
     if (code.trim().startsWith('<')) throw new Error('Got HTML not JS');
