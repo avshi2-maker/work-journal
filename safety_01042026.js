@@ -255,6 +255,8 @@ function safetyTabInit() {
   safetyLoadCategories().then(function() {
     safetyLoadHistory();
   });
+  // Ensure the correct sub-tab is visible on load
+  _switchSafetySubTabReal('safety');
   // Pre-load snag categories in background
   setTimeout(snagLoadCategories, 500);
 }
