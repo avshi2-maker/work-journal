@@ -368,7 +368,13 @@ async function safetyHandleFile(input) {
     }
 
     progBar.style.width = '55%';
-    await safetyRunAnalysis();
+    // Show the scan button — don't auto-run
+    var scanBtn = document.getElementById('safety-scan-btn');
+    if (scanBtn) {
+      scanBtn.style.display = 'block';
+      scanBtn.scrollIntoView({behavior:'smooth', block:'center'});
+    }
+    prog.style.display = 'none';
 
   } catch(e) {
     progTxt.textContent = '❌ שגיאה: ' + e.message;
@@ -446,6 +452,10 @@ function safetyExtractFrames(file, maxFrames) {
 
 // ── MAIN AI ANALYSIS ──────────────────────────────────────────────────
 async function safetyRunAnalysis() {
+  // Hide scan button while running
+  var safetyBtn = document.getElementById('safety-scan-btn');
+  if (safetyBtn) safetyBtn.style.display = 'none';
+
   // Ensure categories are loaded from Supabase
   await safetyLoadCategories();
 
@@ -457,6 +467,7 @@ async function safetyRunAnalysis() {
   if (!apiKey) {
     showToast('הגדר מפתח Anthropic API תחילה', 'error');
     document.getElementById('safety-progress').style.display = 'none';
+    if (safetyBtn) safetyBtn.style.display = 'block';
     return;
   }
 
@@ -531,7 +542,16 @@ async function safetyRunAnalysis() {
     safetyStopMeter(data.usage && data.usage.input_tokens, data.usage && data.usage.output_tokens);
     raw = raw.replace(/```json|```/g,'').trim();
 
-    findings = ragSafeParseJSON(raw);
+    // Parse JSON safely — local fallback (ragSafeParseJSON lives in rag module which may not be loaded)
+    try {
+      findings = JSON.parse(raw);
+    } catch(parseErr) {
+      // Try to extract JSON object from text
+      var match = raw.match(/\{[\s\S]*\}/);
+      if (match) {
+        try { findings = JSON.parse(match[0]); } catch(e2) { findings = null; }
+      } else { findings = null; }
+    }
     if (!findings || typeof findings !== 'object' || Array.isArray(findings)) {
       throw new Error('תגובת AI לא תקינה — נסה שוב');
     }

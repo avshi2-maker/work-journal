@@ -1731,6 +1731,12 @@ window.addEventListener('unhandledrejection', function(e) {
       </div>
     </div>
 
+    <!-- Safety scan button — shown after file loaded, mirrors snag scan button exactly -->
+    <button onclick="safetyRunAnalysis()" id="safety-scan-btn"
+      style="display:none;width:100%;padding:14px;background:linear-gradient(135deg,#7c3aed,#ef4444);border:none;color:#fff;border-radius:12px;font-family:Heebo,sans-serif;font-size:15px;font-weight:800;cursor:pointer;margin-bottom:20px;">
+      🛡️ הפעל ניתוח בטיחות AI
+    </button>
+
     <!-- Progress -->
     <div id="safety-progress" style="display:none;background:#1e1e35;border:1.5px solid rgba(139,92,246,0.4);border-radius:14px;padding:20px;margin-bottom:20px;">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;gap:12px;flex-wrap:wrap;">
