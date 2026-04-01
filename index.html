@@ -1737,10 +1737,10 @@ window.addEventListener('unhandledrejection', function(e) {
       🛡️ הפעל ניתוח בטיחות AI
     </button>
 
+    <!-- Safety scan button -->
+    <button onclick="safetyRunAnalysis()" id="safety-scan-btn" style="display:none;width:100%;padding:14px;background:linear-gradient(135deg,#7c3aed,#ef4444);border:none;color:#fff;border-radius:12px;font-family:Heebo,sans-serif;font-size:15px;font-weight:800;cursor:pointer;margin-bottom:20px;">🛡️ הפעל ניתוח בטיחות AI</button>
+
     <!-- Progress -->
-    <button onclick="safetyRunAnalysis()" id="safety-scan-btn" style="display:none;width:100%;padding:14px;background:linear-gradient(135deg,#7c3aed,#ef4444);border:none;color:#fff;border-radius:12px;font-family:Heebo,sans-serif;font-size:15px;font-weight:800;cursor:pointer;margin-bottom:20px;">
-      🛡️ הפעל ניתוח בטיחות AI
-    </button>
     <div id="safety-progress" style="display:none;background:#1e1e35;border:1.5px solid rgba(139,92,246,0.4);border-radius:14px;padding:20px;margin-bottom:20px;">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;gap:12px;flex-wrap:wrap;">
         <div id="safety-progress-text" style="font-size:13px;color:#c4b5fd;font-weight:700;">מכין ניתוח...</div>
@@ -4045,10 +4045,10 @@ async function loadTransactions() {
 async function loadReports() {
   try {
     var r = await sbQ('reports','select=*&order=report_date.desc&limit=100');
-    allReports = (r.error ? [] : r.data) || [];
-    if (typeof renderReports === 'function') renderReports();
-    if (typeof populateReportProjectFilter === 'function') populateReportProjectFilter();
-  } catch(e) { console.warn('loadReports:', e.message); allReports = []; }
+    allReports = (r && !r.error ? r.data : []) || [];
+    if (typeof renderReports==='function') renderReports();
+    if (typeof populateReportProjectFilter==='function') populateReportProjectFilter();
+  } catch(e){ console.warn('loadReports:',e.message); allReports=[]; }
 }
 
 // ── NAVIGATION ───────────────────────────────────────────
@@ -5651,18 +5651,6 @@ async function _fetchJournalModule() {
 
 
 
-// safetyHandleFile stub — loads module then delegates
-function safetyHandleFile(input) {
-  var prog = document.getElementById('safety-progress');
-  var progTxt = document.getElementById('safety-progress-text');
-  if (prog) prog.style.display = 'block';
-  if (progTxt) progTxt.textContent = '⧗ טוען...';
-  _fetchSafetyModule().then(function() {
-    if (prog) prog.style.display = 'none';
-    if (typeof _safetyHandleFileReal === 'function') { _safetyHandleFileReal(input); }
-    else { var b=document.getElementById('safety-scan-btn'); if(b) b.style.display='block'; }
-  });
-}
 // Stub — real switchSafetySubTab is in safety_28032026.js
 function switchSafetySubTab(tab) {
   // Step 1: Show/hide divs immediately (don't wait for module)
@@ -6196,20 +6184,16 @@ function _ensureRetryBar() {
 
 
 // ══ SMART JOURNAL + EOD + WEEKLY — loaded via fetch() ════════════════════
-// sjPopulateProjectFilter defined inline — never depends on module load timing
 function sjPopulateProjectFilter() {
   var sel = document.getElementById('smart-project-filter');
-  if (!sel || !window.allProjects || !window.allProjects.length) return;
-  var current = sel.value;
-  sel.innerHTML = '<option value="">📁 כל הפרויקטים</option>';
-  (window.allProjects || []).forEach(function(p) {
-    var opt = document.createElement('option');
-    opt.value = p.id; opt.textContent = p.project_name;
-    sel.appendChild(opt);
+  if (!sel) return;
+  var cur = sel.value;
+  sel.innerHTML = '<option value="">\u{1F4C1} \u05DB\u05DC \u05D4\u05E4\u05E8\u05D5\u05D9\u05E7\u05D8\u05D9\u05DD</option>';
+  (window.allProjects||[]).forEach(function(p){
+    var o=document.createElement('option'); o.value=p.id; o.textContent=p.project_name; sel.appendChild(o);
   });
-  if (current) sel.value = current;
+  if (cur) sel.value = cur;
 }
-
 var _sjFetched = false;
 async function _fetchSmartJournal() {
   if (_sjFetched) return Promise.resolve();
@@ -6221,10 +6205,7 @@ async function _fetchSmartJournal() {
     if (code.trim().startsWith('<')) throw new Error('Got HTML not JS');
     var ns = document.createElement('script'); ns.textContent = code;
     document.head.appendChild(ns);
-  } catch(e) {
-    console.warn('smartjournal fetch failed (non-critical):', e.message);
-    _sjFetched = false;
-  }
+  } catch(e) { console.error('smartjournal fetch failed:', e); _sjFetched = false; }
 }
 
 // ══════════════════════════════════════════════════════
