@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<title>Building Standards Prompt Launcher</title>
+<style>
+  body { font-family: Arial, sans-serif; background:#1a1a2e; color:#fff; margin:0; padding:20px; direction:rtl; }
+  h1 { color:#c9a84c; font-size:22px; margin-bottom:6px; }
+  .subtitle { color:#888; font-size:13px; margin-bottom:20px; }
+  .search-bar { width:100%; padding:10px; font-size:15px; border-radius:8px; border:1px solid #444; background:#242438; color:#fff; margin-bottom:16px; box-sizing:border-box; direction:rtl; }
+  .cat-table { width:100%; border-collapse:collapse; margin-bottom:30px; }
+  .cat-table th { background:#1a3d5c; color:#fff; padding:10px 12px; font-size:13px; text-align:right; }
+  .cat-table td { padding:8px 12px; border-bottom:1px solid rgba(255,255,255,0.07); font-size:13px; vertical-align:middle; }
+  .cat-table tr:hover td { background:rgba(255,255,255,0.04); }
+  .num { color:#c9a84c; font-weight:800; width:40px; }
+  .cat-name { color:#fff; }
+  .btn-prompt { background:#7c3aed; border:none; color:#fff; border-radius:6px; padding:6px 14px; font-size:12px; cursor:pointer; white-space:nowrap; }
+  .btn-prompt:hover { background:#6d28d9; }
+  .prompt-box { display:none; background:#0f0f1e; border:1.5px solid #7c3aed; border-radius:10px; padding:16px; margin-top:8px; position:relative; }
+  .prompt-text { font-size:13px; color:#e2e8f0; white-space:pre-wrap; line-height:1.7; font-family:monospace; }
+  .btn-copy { position:absolute; top:10px; left:10px; background:#22c55e; border:none; color:#fff; border-radius:6px; padding:6px 14px; font-size:12px; cursor:pointer; font-weight:800; }
+  .btn-copy:hover { background:#16a34a; }
+  .copied { background:#1a3d5c !important; }
+  .section-label { background:#374151; color:#c9a84c; font-size:11px; font-weight:800; padding:4px 10px; border-radius:4px; text-transform:uppercase; letter-spacing:.5px; }
+  .filter-row { display:flex; gap:10px; margin-bottom:12px; flex-wrap:wrap; }
+  .filter-btn { padding:6px 14px; border-radius:20px; border:1px solid #444; background:transparent; color:#888; cursor:pointer; font-size:12px; }
+  .filter-btn.active { background:#1a3d5c; color:#fff; border-color:#1a3d5c; }
+  .count-badge { background:#7c3aed; color:#fff; border-radius:10px; padding:2px 8px; font-size:11px; margin-right:6px; }
+</style>
+</head>
+<body>
+
+<h1>🏗️ Building Standards Prompt Launcher</h1>
+<p class="subtitle">97 categories — click "הצג פרומפט" → copy → paste to Perplexity/Comet</p>
+
+<input class="search-bar" type="text" id="searchBox" placeholder="🔍 חפש קטגוריה..." oninput="filterTable()">
+
+<div class="filter-row">
+  <button class="filter-btn active" onclick="filterSection('all',this)">הכל <span class="count-badge">97</span></button>
+  <button class="filter-btn" onclick="filterSection('green',this)">🌱 Green</button>
+  <button class="filter-btn" onclick="filterSection('safety',this)">🛡️ Safety</button>
+  <button class="filter-btn" onclick="filterSection('structure',this)">🏗️ Structure</button>
+</div>
+
+<table class="cat-table" id="mainTable">
+<thead>
+  <tr>
+    <th class="num">#</th>
+    <th>קטגוריה</th>
+    <th style="width:120px;text-align:center;">פרומפט</th>
+  </tr>
+</thead>
+<tbody id="tableBody"></tbody>
+</table>
+
+<script>
+const CATEGORIES = [
+  ["A","Acoustics & Sound Insulation (בידוד אקוסטי)"],
+  ["A","Air Conditioning & HVAC (מיזוג אוויר)"],
+  ["A","Aluminum Framing — Windows/Doors/Balconies (אלומיניום)"],
+  ["A","Asphalt & Paving (כביש ומדרכות)"],
+  ["A","Accessibility & Disabled Access (נגישות)"],
+  ["B","Basement & Underground Structures (מרתפים)"],
+  ["B","Brickwork & Masonry (בנייה מאבן ולבנים)"],
+  ["C","Carpentry & Woodwork (נגרות)"],
+  ["C","Ceilings — Suspended & Drywall (תקרות תלויות)"],
+  ["C","Cement & Concrete (בטון ומלט)"],
+  ["C","Cladding & Facade Systems (חיפוי חזיתות)"],
+  ["C","Cold Storage & Insulated Rooms (קירור ובידוד)"],
+  ["C","Concrete Reinforcement — Steel Rebar (זיין בטון)"],
+  ["C","Crane & Lifting Equipment (עגורנים והרמה)"],
+  ["D","Demolition & Excavation (הריסה וחפירה)"],
+  ["D","Drainage & Stormwater (ניקוז מי גשם)"],
+  ["D","Drywall & Plasterboard (גבס)"],
+  ["D","Dust & Noise Control on Site (אבק ורעש באתר)"],
+  ["E","Earthworks & Soil Compaction (עבודות עפר)"],
+  ["E","Electrical Installations (חשמל)"],
+  ["E","Elevators & Escalators (מעליות)"],
+  ["E","Emergency Exits & Escape Routes (יציאות חירום)"],
+  ["E","Energy Efficiency — Building Envelope (תקן 1045)"],
+  ["E","Environmental Impact Assessment (הערכת השפעה סביבתית)"],
+  ["E","Exterior Plaster & Render (טיח חוץ)"],
+  ["F","Facade Waterproofing (איטום חזיתות)"],
+  ["F","Fire Protection — Active Systems (כיבוי אש)"],
+  ["F","Fire Protection — Passive/Structural (עמידות אש מבנית)"],
+  ["F","Fire Doors & Fire Rated Assemblies (דלתות אש)"],
+  ["F","Flooring — Industrial (ריצוף תעשייתי)"],
+  ["F","Flooring — Ceramic & Stone (ריצוף קרמיקה ואבן)"],
+  ["F","Flooring — Epoxy & Resin (ריצוף אפוקסי)"],
+  ["F","Formwork & Scaffolding (קלויות ופיגומים)"],
+  ["F","Foundations & Piling (יסודות ועמודים)"],
+  ["G","Gas Installations (גז)"],
+  ["G","Glazing & Glass (זיגוג)"],
+  ["G","Green Building — LEED Standards (בנייה ירוקה LEED)"],
+  ["G","Green Building — Israeli Standard 5281 (תקן 5281)"],
+  ["G","Grounding & Lightning Protection (הארקה והגנה מברק)"],
+  ["H","Hazardous Materials on Site (חומרים מסוכנים)"],
+  ["H","Heat & Thermal Insulation (בידוד תרמי)"],
+  ["H","High-Rise Structural Requirements (מגדלים ובנייה גבוהה)"],
+  ["I","Indoor Air Quality (איכות אוויר פנים)"],
+  ["I","Industrial Flooring Joints & Expansion (פרזול ריצוף)"],
+  ["I","Inspection & Testing Protocols (פיקוח ובדיקות)"],
+  ["J","Joints & Sealants (פרזול ואטמים)"],
+  ["L","Landscaping & Outdoor Works (גינון ועבודות חוץ)"],
+  ["L","Lighting — Internal & External (תאורה)"],
+  ["L","Load Bearing Calculations (חישובי עומסים)"],
+  ["M","Materials Testing & Certification (בדיקות חומרים)"],
+  ["M","Metal Structures — Steel (מבנה פלדה)"],
+  ["M","Moisture & Damp Proofing (הגנה מרטיבות)"],
+  ["N","Natural Ventilation (אוורור טבעי)"],
+  ["P","Paint & Coatings (צביעה וציפויים)"],
+  ["P","Parking Structures (חניונים)"],
+  ["P","Partitions — Internal (מחיצות פנים)"],
+  ["P","Plumbing & Sanitary (אינסטלציה)"],
+  ["P","Prefabricated Elements (אלמנטים טרומיים)"],
+  ["R","Rainwater Harvesting (איסוף מי גשם)"],
+  ["R","Rebar & Reinforcement Connections (חיבורי זיון)"],
+  ["R","Retaining Walls (קירות תמך)"],
+  ["R","Roofing — Flat & Pitched (גגות)"],
+  ["S","Safety on Construction Sites (בטיחות באתר בנייה)"],
+  ["S","Seismic & Earthquake Resistance (עמידות רעידות אדמה — תקן 413)"],
+  ["S","Sewage & Wastewater (ביוב)"],
+  ["S","Site Lighting & Signage (תאורת אתר ושילוט)"],
+  ["S","Solar Energy — PV Panels (אנרגיה סולארית)"],
+  ["S","Soil Investigation & Geotechnical (קרקע וגאוטכניקה)"],
+  ["S","Stairs & Handrails (מדרגות ומעקות)"],
+  ["S","Steel Connections & Welding (ריתוך וחיבורי פלדה)"],
+  ["S","Structural Concrete — Quality Control (בקרת איכות בטון)"],
+  ["S","Structural Loads & Codes (עומסים תקנתיים)"],
+  ["S","Swimming Pools (בריכות שחייה)"],
+  ["T","Thermal Bridges (גשרים תרמיים)"],
+  ["T","Tiles & Stone Cladding (אריחים וחיפוי אבן)"],
+  ["T","Timber Structures (מבנה עץ)"],
+  ["U","Underground Waterproofing (איטום תת קרקעי)"],
+  ["V","Ventilation — Mechanical (אוורור מכני)"],
+  ["W","Waste Management on Site (ניהול פסולת באתר)"],
+  ["W","Water Efficiency & Conservation (חיסכון במים)"],
+  ["W","Waterproofing — Roofs & Wet Areas (איטום גגות ואזורים רטובים)"],
+  ["W","Wind Load Calculations (עומס רוח)"],
+  ["W","Window Energy Rating (דירוג אנרגטי לחלונות)"],
+  ["Z","Zero Energy Building Standards (בנייה אפס אנרגיה)"],
+  ["🌱","Green — Israeli Standard 5281 (תקן 5281)"],
+  ["🌱","Green — LEED v4 for Construction"],
+  ["🌱","Green — BREEAM Construction Standards"],
+  ["🌱","Green — Carbon Footprint of Construction Materials"],
+  ["🌱","Green — Embodied Carbon & Low-Carbon Concrete"],
+  ["🌱","Green — Recycled Materials Usage Requirements"],
+  ["🌱","Green — Construction Waste Reduction & Sorting"],
+  ["🌱","Green — Rainwater Harvesting Systems"],
+  ["🌱","Green — Greywater Recycling"],
+  ["🌱","Green — Solar Obligatory Requirements Israel"],
+  ["🌱","Green — Tree Protection on Site"],
+  ["🌱","Green — Biodiversity & Site Ecology"],
+  ["🌱","Green — Zero Energy Building"],
+];
+
+const PROMPT_TEMPLATE = (cat) => `Search Israeli and international standards for the following building category:
+
+CATEGORY: ${cat}
+
+For each standard or specification found, return the following fields:
+- standard_id     : the official standard number (e.g. ת"י 1099, EN 14351, ISO 10077)
+- title_he        : title in Hebrew if available
+- title_en        : title in English
+- category        : one of [מידות, עמידות, בידוד תרמי, בידוד אקוסטי, עמידות לרוח, אטימות, התקנה, חומרים, בטיחות אש, סביבה, כללי]
+- scope           : 1-2 sentences describing what it covers
+- key_requirements: list of 3-5 most important technical requirements
+- applies_to      : specific elements this standard applies to
+- authority       : SII (מכון התקנים) / EU / ISO / other
+- mandatory_in_israel : yes / no / partial
+- notes           : practical notes for a field engineer in Israel
+
+Return ONLY a valid JSON array. No markdown. No explanation. No code blocks.
+One JSON object per standard.`;
+
+let activeSection = 'all';
+
+function buildTable(cats) {
+  const tbody = document.getElementById('tableBody');
+  tbody.innerHTML = '';
+  cats.forEach(([letter, name], i) => {
+    const globalIdx = CATEGORIES.findIndex(c => c[1] === name) + 1;
+    const tr = document.createElement('tr');
+    tr.dataset.name = name.toLowerCase();
+    tr.dataset.letter = letter;
+    tr.innerHTML = `
+      <td class="num">${globalIdx}</td>
+      <td class="cat-name">${name}</td>
+      <td style="text-align:center;">
+        <button class="btn-prompt" onclick="togglePrompt(${globalIdx}, this)">הצג פרומפט</button>
+      </td>`;
+    tbody.appendChild(tr);
+
+    // Prompt row
+    const pr = document.createElement('tr');
+    pr.id = 'prompt-row-' + globalIdx;
+    pr.style.display = 'none';
+    pr.innerHTML = `<td colspan="3" style="padding:0 12px 12px;">
+      <div class="prompt-box" id="prompt-box-${globalIdx}">
+        <textarea id="prompt-text-${globalIdx}" onclick="this.select()" style="width:100%;height:220px;background:#fff;color:#000;font-family:monospace;font-size:12px;padding:10px;border-radius:6px;border:2px solid #7c3aed;resize:vertical;box-sizing:border-box;direction:ltr;" readonly>${PROMPT_TEMPLATE(name)}</textarea>
+        <div style="margin-top:6px;color:#22c55e;font-size:12px;font-weight:700;">👆 לחץ על הטקסט → Ctrl+A → Ctrl+C → הדבק ב-Perplexity</div>
+      </div>
+    </td>`;
+    tbody.appendChild(pr);
+  });
+}
+
+function togglePrompt(idx, btn) {
+  const row = document.getElementById('prompt-row-' + idx);
+  if (!row) return;
+  const visible = row.style.display !== 'none';
+  row.style.display = visible ? 'none' : 'table-row';
+  btn.textContent = visible ? 'הצג פרומפט' : 'סגור';
+  if (!visible) row.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+function copyPrompt(idx, btn) {
+  const text = document.getElementById('prompt-text-' + idx);
+  if (!text) return;
+  navigator.clipboard.writeText(text.textContent).then(() => {
+    btn.textContent = '✅ הועתק!';
+    btn.classList.add('copied');
+    setTimeout(() => { btn.textContent = '📋 העתק'; btn.classList.remove('copied'); }, 2000);
+  });
+}
+
+function filterTable() {
+  const q = document.getElementById('searchBox').value.toLowerCase();
+  const rows = document.querySelectorAll('#tableBody tr[data-name]');
+  rows.forEach(tr => {
+    const match = tr.dataset.name.includes(q);
+    const sectionMatch = activeSection === 'all' ||
+      (activeSection === 'green' && tr.dataset.letter === '🌱') ||
+      (activeSection === 'safety' && tr.dataset.name.includes('safety')) ||
+      (activeSection === 'structure' && (tr.dataset.name.includes('concrete') || tr.dataset.name.includes('steel') || tr.dataset.name.includes('foundation') || tr.dataset.name.includes('structural') || tr.dataset.name.includes('seismic')));
+    const show = match && sectionMatch;
+    tr.style.display = show ? '' : 'none';
+    // Also hide prompt row if parent hidden
+    const pr = document.getElementById('prompt-row-' + (CATEGORIES.findIndex(c => c[1].toLowerCase() === tr.dataset.name) + 1));
+    if (pr && !show) pr.style.display = 'none';
+  });
+}
+
+function filterSection(section, btn) {
+  activeSection = section;
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  filterTable();
+}
+
+// Build on load
+buildTable(CATEGORIES);
+</script>
+</body>
+</html>
