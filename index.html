@@ -33,7 +33,7 @@ body{font-family:'Heebo',-apple-system,BlinkMacSystemFont,Arial,sans-serif;direc
 @media(max-width:600px){.form-row,.form-row.three-col,.form-row.four-col{grid-template-columns:1fr;gap:8px;}}
 .voice-textarea-container{position:relative;margin-bottom:15px}
 .voice-textarea-container textarea{padding-left:50px}
-.btn-voice{position:absolute;left:5px;top:5px;width:40px;height:40px;border:block;background:linear-gradient(135deg,#667eea,#764ba2);color:white;border-radius:50%;font-size:20px;cursor:pointer;transition:all 0.2s;z-index:10}
+.btn-voice{position:absolute;left:5px;top:5px;width:40px;height:40px;border:none;background:linear-gradient(135deg,#667eea,#764ba2);color:white;border-radius:50%;font-size:20px;cursor:pointer;transition:all 0.2s;z-index:10}
 .btn-voice.recording{animation:pulse 1.5s infinite;background:#e74c3c}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:0.6}}
 .voice-indicator{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:white;border-radius:20px;padding:40px;box-shadow:0 10px 40px rgba(0,0,0,0.3);z-index:10000;text-align:center}
@@ -367,7 +367,7 @@ window.addEventListener('unhandledrejection', function(e) {
 
 <!-- ══ PANELS — loaded dynamically from Supabase Storage ══ -->
 <div class="app-panel active" id="crm-panel"><div id="crm-content"><!-- Hamburger button for mobile -->
-<button onclick="toggleMobileSidebar()" id="btn-hamburger-fixed" style="display:block" aria-label="תפריט">☰</button>
+<button onclick="toggleMobileSidebar()" id="btn-hamburger-fixed" style="display:none" aria-label="תפריט">☰</button>
 
 <nav class="sidebar">
   <div class="sidebar-logo">
@@ -1689,7 +1689,7 @@ window.addEventListener('unhandledrejection', function(e) {
   </div>
 
   <!-- ══ SAFETY SUB-TAB ══════════════════════════════════════════ -->
-  <div id="safety-sub-safety">
+  <div id="safety-sub-safety" style="display:block;">
 
     <!-- Divider -->
     <div style="margin-bottom:20px;">
@@ -1735,7 +1735,7 @@ window.addEventListener('unhandledrejection', function(e) {
     <button onclick="safetyRunAnalysis()" id="safety-scan-btn" style="width:100%;padding:14px;background:linear-gradient(135deg,#7c3aed,#ef4444);border:none;color:#fff;border-radius:12px;font-family:Heebo,sans-serif;font-size:15px;font-weight:800;cursor:pointer;margin-bottom:20px;">🛡️ הפעל ניתוח בטיחות AI</button>
 
     <!-- Progress -->
-    <div id="safety-progress" style="display:block;background:#1e1e35;border:1.5px solid rgba(139,92,246,0.4);border-radius:14px;padding:20px;margin-bottom:20px;">
+    <div id="safety-progress" style="display:none;background:#1e1e35;border:1.5px solid rgba(139,92,246,0.4);border-radius:14px;padding:20px;margin-bottom:20px;">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;gap:12px;flex-wrap:wrap;">
         <div id="safety-progress-text" style="font-size:13px;color:#c4b5fd;font-weight:700;">מכין ניתוח...</div>
         <div style="display:flex;gap:12px;align-items:center;">
@@ -3424,7 +3424,7 @@ async function switchTab(tab) {
   // Panel-specific post-init
   if (tab === 'notes')   { _fetchSmartJournal().then(function(){ setTimeout(function(){ sjPopulateProjectFilter(); loadNotesWall(); }, 100); }); }
   if (tab === 'eod')     { Promise.all([_fetchJournalModule(), _fetchSmartJournal()]).then(function(){ setTimeout(loadEODReport, 100); }); }
-  if (tab === 'safety')  { _fetchSafetyModule().then(function(){ setTimeout(safetyTabInit, 100); }); }
+  if (tab === 'safety')  { _fetchSafetyModule().then(function(){ setTimeout(function(){ safetyTabInit(); if(typeof _switchSafetySubTabReal==='function') _switchSafetySubTabReal('safety'); }, 100); }); }
   if (tab === 'rag')      { _fetchRagModule().then(function(){ setTimeout(ragTabInit, 100); }); }
   if (tab === 'micharon') { _fetchRagModule().then(function(){ setTimeout(micharonTabInit, 100); }); }
   if (tab === 'query')    { _fetchRagModule().then(function(){ setTimeout(queryTabInit, 100); }); }
