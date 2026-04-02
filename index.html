@@ -363,6 +363,7 @@ window.addEventListener('unhandledrejection', function(e) {
   <div class="top-tab"        id="tab-safety" onclick="switchTab('safety')"><span>🛡️</span><span>בטיחות / ליקויים</span></div>
   <div class="top-tab"        id="tab-notes"  onclick="switchTab('notes')"><span>📝</span><span>מזכרים בני</span></div>
   <div class="top-tab"        id="tab-rag"    onclick="switchTab('rag')"><span>🏗️</span><span>יעוץ AI</span></div>
+  <div class="top-tab"        id="tab-standards" onclick="switchTab('standards')"><span>📚</span><span>תקני בניה</span></div>
 </div>
 
 <!-- ══ PANELS — loaded dynamically from Supabase Storage ══ -->
@@ -3427,7 +3428,7 @@ async function switchTab(tab) {
     if (ov) ov.style.display = 'none';
   }
 
-  ['crm','notes','eod','safety','rag','micharon','query','gcal','journal'].forEach(t => {
+  ['crm','notes','eod','safety','rag','micharon','query','gcal','journal','standards'].forEach(t => {
     document.getElementById(`${t}-panel`)?.classList.toggle('active', t===tab);
     document.getElementById(`tab-${t}`)?.classList.toggle('active', t===tab);
   });
@@ -3446,6 +3447,7 @@ async function switchTab(tab) {
   if (tab === 'query')    { _fetchRagModule().then(function(){ setTimeout(queryTabInit, 100); }); }
   if (tab === 'gcal')    { _fetchSmartJournal().then(function(){ if (typeof initGcal === 'function') initGcal(); }); }
   if (tab === 'journal') { _fetchJournalModule().then(async function(){ if (!allProjects || !allProjects.length) { try { await loadProjects(); } catch(e){} } if (typeof initializeManagerView === 'function') initializeManagerView(); }).catch(function(e){ console.error('journal load:', e); }); }
+  if (tab === 'standards') { _fetchStandardsModule().then(function(){ setTimeout(standardsRagInit, 100); }); }
 }
 
 // ══════════════════════════════════════════════════════
@@ -5169,6 +5171,65 @@ function generatePOPdf(po) {
   </div>
 
 </div>
+<!-- ══ STANDARDS RAG PANEL ═══════════════════════════════════════════ -->
+<div class="app-panel" id="standards-panel">
+  <div id="standards-content">
+    <div style="padding:70px 24px 60px;min-height:100vh;background:#1a1a2e;font-family:Heebo,sans-serif;direction:rtl;">
+
+      <!-- Header -->
+      <div style="margin-bottom:24px;">
+        <div style="font-size:10px;letter-spacing:3px;color:#c9a84c;text-transform:uppercase;margin-bottom:4px;">Encyclopedia</div>
+        <h1 style="font-size:24px;font-weight:900;color:#fff;margin:0;">📚 תקני בניה ישראליים</h1>
+        <div style="font-size:12px;color:#666;margin-top:4px;">חפש, קרא ושתף תקנים ומפרטים לפי קטגוריה</div>
+      </div>
+
+      <!-- Search + Filter row -->
+      <div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;">
+        <input id="std-search-input" type="text" placeholder="🔍 חפש תקן, מזהה, נושא..."
+          style="flex:2;min-width:200px;padding:11px 14px;background:#242438;border:1px solid rgba(255,255,255,0.12);color:#fff;border-radius:12px;font-family:Heebo,sans-serif;font-size:14px;direction:rtl;outline:none;">
+        <select id="std-category-filter"
+          style="flex:1;min-width:180px;padding:11px 14px;background:#242438;border:1px solid rgba(255,255,255,0.12);color:#fff;border-radius:12px;font-family:Heebo,sans-serif;font-size:13px;direction:rtl;">
+          <option value="">כל הקטגוריות</option>
+        </select>
+        <select id="std-authority-filter"
+          style="min-width:120px;padding:11px 14px;background:#242438;border:1px solid rgba(255,255,255,0.12);color:#fff;border-radius:12px;font-family:Heebo,sans-serif;font-size:13px;direction:rtl;">
+          <option value="">כל הרשויות</option>
+          <option value="SII">SII — מכון התקנים</option>
+          <option value="EU">EU / CEN</option>
+          <option value="ISO">ISO</option>
+        </select>
+        <select id="std-mandatory-filter"
+          style="min-width:120px;padding:11px 14px;background:#242438;border:1px solid rgba(255,255,255,0.12);color:#fff;border-radius:12px;font-family:Heebo,sans-serif;font-size:13px;direction:rtl;">
+          <option value="">חובה / רשות</option>
+          <option value="כן">✅ מחייב בישראל</option>
+          <option value="חלקי">⚠️ חלקי</option>
+          <option value="לא">❌ לא מחייב</option>
+        </select>
+      </div>
+
+      <!-- AI question box -->
+      <div style="display:flex;gap:10px;margin-bottom:20px;">
+        <input id="std-ai-question" type="text" placeholder="💬 שאל AI שאלה על תקן מסוים (בחר תקן למטה ואז לחץ שאל AI)..."
+          style="flex:1;padding:11px 14px;background:#242438;border:1px solid rgba(124,58,237,0.4);color:#fff;border-radius:12px;font-family:Heebo,sans-serif;font-size:13px;direction:rtl;outline:none;">
+      </div>
+
+      <!-- Stats bar -->
+      <div id="std-stats-bar" style="font-size:12px;color:#555;margin-bottom:12px;"></div>
+
+      <!-- Results -->
+      <div id="std-results-list">
+        <div style="text-align:center;padding:40px;color:#555;font-size:14px;">
+          🔍 הזן מונח חיפוש או בחר קטגוריה
+        </div>
+      </div>
+
+      <!-- AI Answer box -->
+      <div id="std-ai-answer" style="display:none;background:#1e1e35;border:1.5px solid rgba(124,58,237,0.4);border-radius:14px;padding:18px;margin-top:20px;"></div>
+
+    </div>
+  </div>
+</div>
+
 </body>
 </html>`;
 
@@ -5998,6 +6059,21 @@ async function _fetchSafetyModule() {
 
 // ══ RAG + MICHARON + QUERY — loaded via fetch() on first tab click ═══════
 var _ragFetched = false;
+// ══ STANDARDS RAG MODULE ═════════════════════════════════════════════
+var _standardsFetched = false;
+async function _fetchStandardsModule() {
+  if (_standardsFetched) return;
+  _standardsFetched = true;
+  try {
+    var res = await fetch('standards_rag.js?v=' + Date.now());
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    var code = await res.text();
+    if (code.trim().startsWith('<')) throw new Error('Got HTML not JS');
+    var ns = document.createElement('script'); ns.textContent = code;
+    document.head.appendChild(ns);
+  } catch(e) { console.error('standards fetch failed:', e); _standardsFetched = false; }
+}
+
 async function _fetchRagModule() {
   if (_ragFetched) return;
   _ragFetched = true;
@@ -6717,6 +6793,65 @@ function openLinkModal(takeoffId) {
     <input type="hidden" id="link-takeoff-id">
     <div id="link-project-list" style="max-height:320px;overflow-y:auto;display:flex;flex-direction:column;gap:6px;margin-bottom:16px;"></div>
     <button onclick="document.getElementById('modal-link-takeoff').style.display='none'" style="width:100%;padding:10px;background:#f3f4f6;color:#374151;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;font-family:Heebo,sans-serif;">ביטול</button>
+  </div>
+</div>
+
+<!-- ══ STANDARDS RAG PANEL ═══════════════════════════════════════════ -->
+<div class="app-panel" id="standards-panel">
+  <div id="standards-content">
+    <div style="padding:70px 24px 60px;min-height:100vh;background:#1a1a2e;font-family:Heebo,sans-serif;direction:rtl;">
+
+      <!-- Header -->
+      <div style="margin-bottom:24px;">
+        <div style="font-size:10px;letter-spacing:3px;color:#c9a84c;text-transform:uppercase;margin-bottom:4px;">Encyclopedia</div>
+        <h1 style="font-size:24px;font-weight:900;color:#fff;margin:0;">📚 תקני בניה ישראליים</h1>
+        <div style="font-size:12px;color:#666;margin-top:4px;">חפש, קרא ושתף תקנים ומפרטים לפי קטגוריה</div>
+      </div>
+
+      <!-- Search + Filter row -->
+      <div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;">
+        <input id="std-search-input" type="text" placeholder="🔍 חפש תקן, מזהה, נושא..."
+          style="flex:2;min-width:200px;padding:11px 14px;background:#242438;border:1px solid rgba(255,255,255,0.12);color:#fff;border-radius:12px;font-family:Heebo,sans-serif;font-size:14px;direction:rtl;outline:none;">
+        <select id="std-category-filter"
+          style="flex:1;min-width:180px;padding:11px 14px;background:#242438;border:1px solid rgba(255,255,255,0.12);color:#fff;border-radius:12px;font-family:Heebo,sans-serif;font-size:13px;direction:rtl;">
+          <option value="">כל הקטגוריות</option>
+        </select>
+        <select id="std-authority-filter"
+          style="min-width:120px;padding:11px 14px;background:#242438;border:1px solid rgba(255,255,255,0.12);color:#fff;border-radius:12px;font-family:Heebo,sans-serif;font-size:13px;direction:rtl;">
+          <option value="">כל הרשויות</option>
+          <option value="SII">SII — מכון התקנים</option>
+          <option value="EU">EU / CEN</option>
+          <option value="ISO">ISO</option>
+        </select>
+        <select id="std-mandatory-filter"
+          style="min-width:120px;padding:11px 14px;background:#242438;border:1px solid rgba(255,255,255,0.12);color:#fff;border-radius:12px;font-family:Heebo,sans-serif;font-size:13px;direction:rtl;">
+          <option value="">חובה / רשות</option>
+          <option value="כן">✅ מחייב בישראל</option>
+          <option value="חלקי">⚠️ חלקי</option>
+          <option value="לא">❌ לא מחייב</option>
+        </select>
+      </div>
+
+      <!-- AI question box -->
+      <div style="display:flex;gap:10px;margin-bottom:20px;">
+        <input id="std-ai-question" type="text" placeholder="💬 שאל AI שאלה על תקן מסוים (בחר תקן למטה ואז לחץ שאל AI)..."
+          style="flex:1;padding:11px 14px;background:#242438;border:1px solid rgba(124,58,237,0.4);color:#fff;border-radius:12px;font-family:Heebo,sans-serif;font-size:13px;direction:rtl;outline:none;">
+      </div>
+
+      <!-- Stats bar -->
+      <div id="std-stats-bar" style="font-size:12px;color:#555;margin-bottom:12px;"></div>
+
+      <!-- Results -->
+      <div id="std-results-list">
+        <div style="text-align:center;padding:40px;color:#555;font-size:14px;">
+          🔍 הזן מונח חיפוש או בחר קטגוריה
+        </div>
+      </div>
+
+      <!-- AI Answer box -->
+      <div id="std-ai-answer" style="display:none;background:#1e1e35;border:1.5px solid rgba(124,58,237,0.4);border-radius:14px;padding:18px;margin-top:20px;"></div>
+
+    </div>
   </div>
 </div>
 
