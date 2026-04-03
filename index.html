@@ -6327,19 +6327,13 @@ async function _fetchRagModule() {
   _ragFetched = true;
   // Always inject the fallback FIRST so ragSubmit is always available
   _ragInjectFallback();
-  // Then try to load the full module (overrides the fallback with richer features)
-  try {
-    var res = await fetch('rag_03042026.js?v=' + Date.now());
-    if (!res.ok) return;
-    var code = await res.text();
-    if (!code || code.trim().startsWith('<')) return;
-    var ns = document.createElement('script'); ns.textContent = code;
-    document.head.appendChild(ns);
-  } catch(e) { console.warn('rag full module failed, using inline fallback'); }
+  // External module disabled — inline ragSubmit is the active implementation
+  // rag_03042026.js has ragBuildContext bug (results vs retrieved) that overwrites
+  // the working inline version with a broken one. Re-enable after fixing that file.
 }
 
 function _ragInjectFallback() {
-  if (window.ragSubmit) return; // already injected
+  // Always overwrite — never skip — ensures working version always wins
   window._ragHistory = window._ragHistory || [];
   window.ragTabInit = function() { var i=document.getElementById('rag-input'); if(i) i.focus(); };
   window.ragClearHistory = function() { window._ragHistory=[]; };
@@ -6410,9 +6404,12 @@ function _ragInjectFallback() {
     try {
       var bsCtx='';
       try {
-        var words=query.split(/\s+/).filter(function(w){return w.length>2;}).slice(0,4);
-        var orF=words.map(function(w){return 'scope.ilike.*'+encodeURIComponent(w)+'*,title_he.ilike.*'+encodeURIComponent(w)+'*,notes.ilike.*'+encodeURIComponent(w)+'*';}).join(',');
-        var bsRes=await fetch(SB_URL+'/rest/v1/building_standards?or=('+orF+')&limit=6&select=standard_id,title_he,scope,key_requirements,notes',{headers:{apikey:SB_KEY,Authorization:'Bearer '+SB_KEY}});
+        var words=query.split(/\s+/).filter(function(w){return w.length>2;}).slice(0,6);
+        var orParts=words.map(function(w){return 'scope.ilike.*'+encodeURIComponent(w)+'*,title_he.ilike.*'+encodeURIComponent(w)+'*,notes.ilike.*'+encodeURIComponent(w)+'*,industry_category.ilike.*'+encodeURIComponent(w)+'*,standard_category.ilike.*'+encodeURIComponent(w)+'*';});
+        var numMatch=query.match(/\b(\d{3,5})\b/g);
+        if(numMatch){numMatch.slice(0,3).forEach(function(n){orParts.push('standard_id.ilike.*'+encodeURIComponent(n)+'*');});}
+        var orF=orParts.join(',');
+        var bsRes=await fetch(SB_URL+'/rest/v1/building_standards?or=('+orF+')&limit=10&select=standard_id,title_he,scope,key_requirements,notes,industry_category',{headers:{apikey:SB_KEY,Authorization:'Bearer '+SB_KEY}});
         var bsData=bsRes.ok?(await bsRes.json()||[]):[];
         if(bsData.length){
           bsCtx='== תקני בנייה רלוונטיים ==\n';
