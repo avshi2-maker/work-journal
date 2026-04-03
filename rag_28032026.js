@@ -78,7 +78,7 @@ async function ragQuery(userQuery, projectId) {
 
 // ── Retrieve: keyword search against Supabase ─────────────────────────
 async function ragRetrieve(query) {
-  var results = { mamad: [], spec: [], renovation: [] };
+  var results = { mamad: [], spec: [], building_standards: [], renovation: [] };
   var q = encodeURIComponent(query.substring(0, 200));
   var h = { apikey: SB_KEY, Authorization: 'Bearer ' + SB_KEY };
   var qLow = query.toLowerCase();
