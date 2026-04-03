@@ -61,7 +61,8 @@ async function ragQuery(userQuery, projectId) {
     if (_ragHistory.length > 12) _ragHistory = _ragHistory.slice(-12);
 
     // Log to Supabase
-    await ragLogQuery(userQuery, retrieved.map(function(r){ return r.component_id; }),
+    var _retFlat = (retrieved.mamad||[]).concat(retrieved.spec||[]).concat(retrieved.building_standards||[]).concat(retrieved.renovation||[]);
+    await ragLogQuery(userQuery, _retFlat.map(function(r){ return r.component_id||r.standard_id||''; }),
       answer, inTok + outTok, cost, projectId);
 
     return {
@@ -155,13 +156,14 @@ async function ragRetrieve(query) {
 
 // ── Build context string for Claude ──────────────────────────────────
 function ragBuildContext(retrieved, query) {
-  // Support both old array format and new {mamad, spec, renovation} dict
-  var mamadItems   = Array.isArray(retrieved) ? retrieved : (retrieved.mamad     || []);
-  var specItems    = Array.isArray(retrieved) ? []        : (retrieved.spec      || []);
-  var renovItems   = Array.isArray(retrieved) ? []        : (retrieved.renovation|| []);
-  var hasAny = mamadItems.length || specItems.length || renovItems.length;
+  // Support both old array format and new {mamad, spec, building_standards, renovation} dict
+  var mamadItems   = Array.isArray(retrieved) ? retrieved : (retrieved.mamad              || []);
+  var specItems    = Array.isArray(retrieved) ? []        : (retrieved.spec               || []);
+  var renovItems   = Array.isArray(retrieved) ? []        : (retrieved.renovation         || []);
+  var bsItems      = Array.isArray(retrieved) ? []        : (retrieved.building_standards || []);
+  var hasAny = mamadItems.length || specItems.length || renovItems.length || bsItems.length;
   if (!hasAny) {
-    return 'לא נמצאו רשומות רלוונטיות במאגר הידע עבור שאלה זו.';
+    return 'לא נמצאו רשומות ספציפיות במאגר — ענה לפי ידע הנדסי כללי ותקנים ישראליים.';
   }
 
   var ctx = '## רשומות רלוונטיות ממאגר הידע ממ"ד\n\n';
@@ -249,6 +251,21 @@ function ragBuildContext(retrieved, query) {
         ctx += '**ערכים מספריים:** ' + nv.map(function(v){ return v.param + ': ' + v.value + (v.unit?' '+v.unit:''); }).slice(0,4).join(', ') + '\n';
       }
       if (r.text_snippet || r.text_content) ctx += (r.text_snippet || (r.text_content||'').substring(0,250)) + '\n';
+      ctx += '\n';
+    });
+  }
+
+
+  // Building standards encyclopedia section
+  if (bsItems && bsItems.length) {
+    ctx += '\n== אנציקלופדיית תקני בנייה (' + bsItems.length + ' תקנים רלוונטיים) ==\n';
+    bsItems.forEach(function(s) {
+      ctx += (s.standard_id||'') + ': ' + (s.title_he||'') + '\n';
+      if (s.scope) ctx += (s.scope||'').substring(0,200) + '\n';
+      var reqs = s.key_requirements || [];
+      if (typeof reqs === 'string') { try { reqs = JSON.parse(reqs); } catch(_e) { reqs = []; } }
+      if (Array.isArray(reqs) && reqs.length) ctx += 'דרישות: ' + reqs.slice(0,3).join(' | ') + '\n';
+      if (s.notes) ctx += 'הערה: ' + (s.notes||'').substring(0,100) + '\n';
       ctx += '\n';
     });
   }
@@ -414,9 +431,10 @@ async function ragSubmit() {
         + formattedAnswer + '</div>';
 
       // Retrieved components bar
-      if (result.retrieved && result.retrieved.length > 0) {
+      var _flatRet = Array.isArray(result.retrieved) ? result.retrieved : ((result.retrieved&&result.retrieved.mamad)||[]).concat((result.retrieved&&result.retrieved.building_standards)||[]);
+      if (_flatRet.length > 0) {
         retBar.style.display = 'block';
-        retBar.innerHTML = '📚 רכיבים שנשלפו: ' + result.retrieved.map(function(r) {
+        retBar.innerHTML = '📚 רכיבים שנשלפו: ' + _flatRet.map(function(r) {
           return '<span style="background:rgba(139,92,246,0.15);border:1px solid rgba(139,92,246,0.3);color:#c4b5fd;padding:2px 8px;border-radius:10px;margin-right:4px;font-size:10px;">'
             + (r.component_id || r.component_name || '') + '</span>';
         }).join('');
