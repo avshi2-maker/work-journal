@@ -47,8 +47,29 @@ async function assetInboxLoad() {
       widget.style.display = _inboxItems.length ? 'block' : 'none';
     }
 
+    // Update tab badge
+    var tabBadge = document.getElementById('tab-inbox-badge');
+    if (tabBadge) {
+      tabBadge.textContent = _inboxItems.length;
+      tabBadge.style.display = _inboxItems.length ? 'inline' : 'none';
+    }
+
+    // Update stats row
+    var statsRow = document.getElementById('inbox-stats-row');
+    if (statsRow && _inboxItems.length) {
+      var imgs   = _inboxItems.filter(function(i){ return i.file_type==='image'; }).length;
+      var videos = _inboxItems.filter(function(i){ return i.file_type==='video'; }).length;
+      var audios = _inboxItems.filter(function(i){ return i.file_type==='audio'; }).length;
+      var pdfs   = _inboxItems.filter(function(i){ return i.file_type==='pdf'; }).length;
+      statsRow.innerHTML =
+        (imgs   ? '<div style="background:#1e1e35;border-radius:10px;padding:10px 16px;"><span style="font-size:18px;">📸</span> <strong style="color:#fff;">'+imgs+'</strong> <span style="color:#666;font-size:12px;">תמונות</span></div>' : '') +
+        (videos ? '<div style="background:#1e1e35;border-radius:10px;padding:10px 16px;"><span style="font-size:18px;">🎬</span> <strong style="color:#fff;">'+videos+'</strong> <span style="color:#666;font-size:12px;">סרטונים</span></div>' : '') +
+        (audios ? '<div style="background:#1e1e35;border-radius:10px;padding:10px 16px;"><span style="font-size:18px;">🎙️</span> <strong style="color:#fff;">'+audios+'</strong> <span style="color:#666;font-size:12px;">הקלטות</span></div>' : '') +
+        (pdfs   ? '<div style="background:#1e1e35;border-radius:10px;padding:10px 16px;"><span style="font-size:18px;">📄</span> <strong style="color:#fff;">'+pdfs+'</strong> <span style="color:#666;font-size:12px;">מסמכים</span></div>' : '');
+    }
+
     if (!_inboxItems.length) {
-      list.innerHTML = '<div style="text-align:center;padding:20px;color:#555;font-size:13px;">✅ תיבת הנכנסים ריקה</div>';
+      list.innerHTML = '<div style="text-align:center;padding:40px;color:#555;font-size:14px;">✅ תיבת הנכנסים ריקה<br><span style="font-size:12px;color:#444;">כל הקבצים שולבו במערכת</span></div>';
       return;
     }
 

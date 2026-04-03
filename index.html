@@ -364,6 +364,7 @@ window.addEventListener('unhandledrejection', function(e) {
   <div class="top-tab"        id="tab-notes"  onclick="switchTab('notes')"><span>📝</span><span>מזכרים בני</span></div>
   <div class="top-tab"        id="tab-rag"    onclick="switchTab('rag')"><span>🏗️</span><span>יעוץ AI</span></div>
   <div class="top-tab"        id="tab-standards" onclick="switchTab('standards')"><span>📚</span><span>תקני בניה</span></div>
+  <div class="top-tab"        id="tab-inbox" onclick="switchTab('inbox')"><span>📥</span><span>תיבת נכנסים</span><span id="tab-inbox-badge" style="display:none;background:#ef4444;color:#fff;border-radius:8px;padding:1px 6px;font-size:9px;font-weight:800;"></span></div>
   <div class="top-tab"        id="tab-smartscan" onclick="switchTab('smartscan')"><span>🚀</span><span>סריקה חכמה</span></div>
 </div>
 
@@ -3483,7 +3484,7 @@ async function switchTab(tab) {
     if (ov) ov.style.display = 'none';
   }
 
-  ['crm','notes','eod','safety','rag','micharon','query','gcal','journal','standards','smartscan'].forEach(t => {
+  ['crm','notes','eod','safety','rag','micharon','query','gcal','journal','standards','smartscan','inbox'].forEach(t => {
     document.getElementById(`${t}-panel`)?.classList.toggle('active', t===tab);
     document.getElementById(`tab-${t}`)?.classList.toggle('active', t===tab);
   });
@@ -3505,6 +3506,7 @@ async function switchTab(tab) {
   if (tab === 'journal') { _fetchJournalModule().then(async function(){ if (!allProjects || !allProjects.length) { try { await loadProjects(); } catch(e){} } if (typeof initializeManagerView === 'function') initializeManagerView(); }).catch(function(e){ console.error('journal load:', e); }); _fetchCallRecordingsModule().then(function(){ setTimeout(function(){ if(typeof callRecordingsInit==='function') callRecordingsInit(); },200); }); }
   if (tab === 'standards') { _fetchStandardsModule().then(function(){ setTimeout(standardsRagInit, 100); }); }
   if (tab === 'smartscan')  { _fetchSmartScanModule().then(function(){ setTimeout(function(){ smartScanInit(); _ssPopulateProjects(); }, 100); }); }
+  if (tab === 'inbox')      { _fetchAssetInboxModule().then(function(){ setTimeout(function(){ assetInboxInit(); }, 100); }); }
 }
 
 // ══════════════════════════════════════════════════════
@@ -5358,6 +5360,33 @@ function generatePOPdf(po) {
   </div>
 </div>
 
+<!-- ══ INBOX PANEL ════════════════════════════════════════════════════ -->
+<div class="app-panel" id="inbox-panel">
+  <div style="padding:70px 24px 60px;min-height:100vh;background:#1a1a2e;font-family:Heebo,sans-serif;direction:rtl;">
+
+    <!-- Header -->
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;flex-wrap:wrap;gap:10px;">
+      <div>
+        <div style="font-size:10px;letter-spacing:3px;color:#c9a84c;text-transform:uppercase;margin-bottom:4px;">Asset Inbox</div>
+        <h1 style="font-size:24px;font-weight:900;color:#fff;margin:0;">📥 תיבת נכנסים — קבצי בני</h1>
+        <div style="font-size:12px;color:#666;margin-top:4px;">כל הקבצים שבני העלה מהאנדרואיד — בחר יעד לכל קובץ ולחץ אישור</div>
+      </div>
+      <div style="display:flex;gap:8px;">
+        <button onclick="assetInboxLoad()" style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);color:#aaa;border-radius:10px;padding:9px 16px;font-size:12px;cursor:pointer;font-family:Heebo,sans-serif;">🔄 רענן</button>
+      </div>
+    </div>
+
+    <!-- Stats row -->
+    <div style="display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap;" id="inbox-stats-row"></div>
+
+    <!-- List -->
+    <div id="asset-inbox-list">
+      <div style="text-align:center;padding:40px;color:#555;font-size:14px;">טוען קבצים...</div>
+    </div>
+
+  </div>
+</div>
+
 </body>
 </html>`;
 
@@ -7096,6 +7125,33 @@ function openLinkModal(takeoffId) {
       <div id="ss-results" style="display:none;"></div>
 
     </div>
+  </div>
+</div>
+
+<!-- ══ INBOX PANEL ════════════════════════════════════════════════════ -->
+<div class="app-panel" id="inbox-panel">
+  <div style="padding:70px 24px 60px;min-height:100vh;background:#1a1a2e;font-family:Heebo,sans-serif;direction:rtl;">
+
+    <!-- Header -->
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;flex-wrap:wrap;gap:10px;">
+      <div>
+        <div style="font-size:10px;letter-spacing:3px;color:#c9a84c;text-transform:uppercase;margin-bottom:4px;">Asset Inbox</div>
+        <h1 style="font-size:24px;font-weight:900;color:#fff;margin:0;">📥 תיבת נכנסים — קבצי בני</h1>
+        <div style="font-size:12px;color:#666;margin-top:4px;">כל הקבצים שבני העלה מהאנדרואיד — בחר יעד לכל קובץ ולחץ אישור</div>
+      </div>
+      <div style="display:flex;gap:8px;">
+        <button onclick="assetInboxLoad()" style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);color:#aaa;border-radius:10px;padding:9px 16px;font-size:12px;cursor:pointer;font-family:Heebo,sans-serif;">🔄 רענן</button>
+      </div>
+    </div>
+
+    <!-- Stats row -->
+    <div style="display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap;" id="inbox-stats-row"></div>
+
+    <!-- List -->
+    <div id="asset-inbox-list">
+      <div style="text-align:center;padding:40px;color:#555;font-size:14px;">טוען קבצים...</div>
+    </div>
+
   </div>
 </div>
 
