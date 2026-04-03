@@ -1959,9 +1959,9 @@ window.addEventListener('unhandledrejection', function(e) {
   <!-- Header -->
   <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:12px;">
     <div>
-      <div style="font-size:10px;letter-spacing:3px;color:#7c3aed;text-transform:uppercase;margin-bottom:4px;">RAG · 473 תקנים · 22 קטגוריות</div>
+      <div style="font-size:10px;letter-spacing:3px;color:#7c3aed;text-transform:uppercase;margin-bottom:4px;">RAG · 838 תקנים · 83 קטגוריות</div>
       <h1 style="font-size:24px;font-weight:900;color:#fff;">🏗️ ייעוץ הנדסי מקצועי</h1>
-      <div style="font-size:12px;color:#555;margin-top:4px;">שאל כל שאלה על בנייה, תיקון, מפרטים ועלויות — מאגר 473 תקנים ישראליים ובינלאומיים + ממ"ד</div>
+      <div style="font-size:12px;color:#555;margin-top:4px;">שאל כל שאלה על בנייה, תיקון, מפרטים ועלויות — מאגר 838 תקנים ישראליים ובינלאומיים</div>
     </div>
     <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
       <select id="rag-region-sel" style="background:#1a1a2e;border:1px solid rgba(255,255,255,0.15);color:#ccc;padding:8px 12px;border-radius:20px;font-family:Heebo,sans-serif;font-size:12px;direction:rtl;">
@@ -2014,12 +2014,12 @@ window.addEventListener('unhandledrejection', function(e) {
   <!-- Quick questions -->
   <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px;" id="rag-quick-btns">
     <div style="font-size:11px;color:#555;width:100%;margin-bottom:2px;">שאלות מהירות:</div>
-    <button onclick="ragQuickAsk('מה עובי קיר ממ"ד תקני דרגה T2 ומה הזיון הנדרש?')" style="background:rgba(139,92,246,0.12);border:1px solid rgba(139,92,246,0.3);color:#c4b5fd;padding:7px 12px;border-radius:20px;cursor:pointer;font-family:Heebo,sans-serif;font-size:11px;">קיר T2 — עובי וזיון</button>
-    <button onclick="ragQuickAsk('מה מחיר בניית ממ"ד דירתי 9 מ"ר באזור המרכז?')" style="background:rgba(139,92,246,0.12);border:1px solid rgba(139,92,246,0.3);color:#c4b5fd;padding:7px 12px;border-radius:20px;cursor:pointer;font-family:Heebo,sans-serif;font-size:11px;">עלות ממ"ד 9 מ"ר</button>
-    <button onclick="ragQuickAsk('יש לי סדקים בקיר ממ"ד אחרי פגיעה — כיצד לתקן?')" style="background:rgba(239,68,68,0.12);border:1px solid rgba(239,68,68,0.3);color:#fca5a5;padding:7px 12px;border-radius:20px;cursor:pointer;font-family:Heebo,sans-serif;font-size:11px;">תיקון סדקים אחרי פגיעה</button>
-    <button onclick="ragQuickAsk('מה ההבדל בין דרגה T1 ל-T2 ל-T3?')" style="background:rgba(139,92,246,0.12);border:1px solid rgba(139,92,246,0.3);color:#c4b5fd;padding:7px 12px;border-radius:20px;cursor:pointer;font-family:Heebo,sans-serif;font-size:11px;">הבדלי דרגות T1/T2/T3</button>
-    <button onclick="ragQuickAsk('מה דרישות הדלת ממ"ד? ת"י 4422')" style="background:rgba(139,92,246,0.12);border:1px solid rgba(139,92,246,0.3);color:#c4b5fd;padding:7px 12px;border-radius:20px;cursor:pointer;font-family:Heebo,sans-serif;font-size:11px;">דלת ממ"ד — ת"י 4422</button>
-    <button onclick="ragQuickAsk('מה בדיקות בקרת האיכות הנדרשות לפני יציקת ממ"ד?')" style="background:rgba(139,92,246,0.12);border:1px solid rgba(139,92,246,0.3);color:#c4b5fd;padding:7px 12px;border-radius:20px;cursor:pointer;font-family:Heebo,sans-serif;font-size:11px;">בדיקות QA לפני יציקה</button>
+    <button onclick="ragQuickAsk('מה דרישות תקן 413 לבניין מגורים רגיל באזור IIB?')" style="background:rgba(139,92,246,0.12);border:1px solid rgba(139,92,246,0.3);color:#c4b5fd;padding:7px 12px;border-radius:20px;cursor:pointer;font-family:Heebo,sans-serif;font-size:11px;">תקן 413 — עמידות רעידות אדמה</button>
+    <button onclick="ragQuickAsk('מה ערך U נדרש לחלון לפי תקן 1045 עדכון 2023?')" style="background:rgba(139,92,246,0.12);border:1px solid rgba(139,92,246,0.3);color:#c4b5fd;padding:7px 12px;border-radius:20px;cursor:pointer;font-family:Heebo,sans-serif;font-size:11px;">תקן 1045 — חלונות וחום</button>
+    <button onclick="ragQuickAsk('מה דרישות הבטיחות לפיגום בגובה 6 מטר?')" style="background:rgba(239,68,68,0.12);border:1px solid rgba(239,68,68,0.3);color:#fca5a5;padding:7px 12px;border-radius:20px;cursor:pointer;font-family:Heebo,sans-serif;font-size:11px;">פיגום 6 מטר — בטיחות</button>
+    <button onclick="ragQuickAsk('מה חוזק בטון מינימום לפלטת רצפה ומה כיסוי הזיון הנדרש?')" style="background:rgba(139,92,246,0.12);border:1px solid rgba(139,92,246,0.3);color:#c4b5fd;padding:7px 12px;border-radius:20px;cursor:pointer;font-family:Heebo,sans-serif;font-size:11px;">בטון — חוזק וכיסוי זיון</button>
+    <button onclick="ragQuickAsk('מה הדרישות לאיטום גג שטוח לפי ת\"י 1518?')" style="background:rgba(59,130,246,0.12);border:1px solid rgba(59,130,246,0.3);color:#93c5fd;padding:7px 12px;border-radius:20px;cursor:pointer;font-family:Heebo,sans-serif;font-size:11px;">איטום גג שטוח — ת"י 1518</button>
+    <button onclick="ragQuickAsk('מה דרישות ת\"י 5281 לחיסכון במים בבניין מגורים?')" style="background:rgba(34,197,94,0.12);border:1px solid rgba(34,197,94,0.3);color:#86efac;padding:7px 12px;border-radius:20px;cursor:pointer;font-family:Heebo,sans-serif;font-size:11px;">ת"י 5281 — בנייה ירוקה</button>
   </div>
 
   <!-- Chat history -->
@@ -2041,14 +2041,14 @@ window.addEventListener('unhandledrejection', function(e) {
   <div id="rag-chat-history" style="display:flex;flex-direction:column;gap:16px;margin-bottom:20px;min-height:80px;">
     <div style="text-align:center;padding:40px;color:#333;font-size:13px;">
       <div style="font-size:32px;margin-bottom:8px;">🏗️</div>
-      <div>שאל שאלה על ממ"ד — תיקון, בנייה, מפרטים, עלויות</div>
+      <div>שאל כל שאלה הנדסית — בטיחות, בנייה, תקנים, מפרטים, עלויות</div>
       <div style="font-size:11px;color:#444;margin-top:8px;">המערכת שולפת ממאגר 15 רכיבים הנדסיים עם 205 פריטי עלות</div>
     </div>
   </div>
 
   <!-- Input area -->
   <div style="background:#242438;border-radius:14px;padding:14px;border:1px solid rgba(255,255,255,0.08);">
-    <textarea id="rag-input" rows="3" placeholder="שאל שאלה הנדסית על ממ&quot;ד... (לדוגמה: מה עובי קיר T2? כיצד לתקן חשיפת זיון? מה מחיר מנת&quot;ר?)"
+    <textarea id="rag-input" rows="3" placeholder="שאל כל שאלה הנדסית... (לדוגמה: מה דרישות תקן 413? כיצד לאטום גג שטוח? מה חוזק בטון מינימום?)"
       style="width:100%;background:#1a1a2e;border:1px solid rgba(139,92,246,0.3);color:#fff;padding:12px;border-radius:10px;font-family:Heebo,sans-serif;font-size:14px;resize:none;direction:rtl;outline:none;line-height:1.6;box-sizing:border-box;margin-bottom:10px;"
       onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();ragSubmit();}"></textarea>
     <div style="display:flex;gap:10px;align-items:center;justify-content:flex-start;">
