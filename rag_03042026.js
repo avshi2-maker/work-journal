@@ -207,7 +207,7 @@ function ragBuildContext(retrieved, query) {
 
 
   // ── building_standards encyclopedia ──────────────────────────────
-  var bsItems = results.building_standards || [];
+  var bsItems = retrieved.building_standards || [];
   if (bsItems.length) {
     ctx += '\n## אנציקלופדיית תקני בנייה — ' + bsItems.length + ' תקנים רלוונטיים\n\n';
     bsItems.forEach(function(s) {
