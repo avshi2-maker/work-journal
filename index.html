@@ -6315,7 +6315,7 @@ async function _fetchRagModule() {
   if (_ragFetched) return;
   _ragFetched = true;
   try {
-    var res = await fetch('rag_28032026.js?v=' + Date.now());
+    var res = await fetch('rag_03042026.js?v=' + Date.now());
     if (!res.ok) throw new Error('HTTP ' + res.status);
     var code = await res.text();
     if (code.trim().startsWith('<')) throw new Error('Got HTML not JS');
