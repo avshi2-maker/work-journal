@@ -378,10 +378,18 @@ async function ragSubmit() {
   // Get region
   var region = document.getElementById('rag-region-sel')?.value || 'מרכז';
 
+  // Live timer for ייעוץ הנדסי chat
+  var _ragStartTime = Date.now();
+  var _ragTimerInterval = setInterval(function() {
+    var secs = ((Date.now() - _ragStartTime) / 1000).toFixed(1);
+    if (status) status.innerHTML = '<span style="color:#7c3aed;font-weight:700;">⏱ '+secs+'s</span> &nbsp; <span style="color:#444;">מחשב...</span>';
+  }, 200);
+
   try {
-    if (status) status.textContent = '🧠 Claude מייצר תשובה...';
+    if (status) status.textContent = '🔍 שולף מ-838 תקנים...';
 
     var result = await ragQuery(query, null);
+    clearInterval(_ragTimerInterval);
     typingEl.remove();
 
     if (result.error) {
@@ -414,11 +422,36 @@ async function ragSubmit() {
         }).join('');
       }
 
-      // Tokens + cost
-      if (result.tokens) {
-        if (tokEl) tokEl.textContent = result.tokens.toLocaleString() + ' טוקנים';
-        if (costEl) costEl.textContent = '$' + (result.cost || 0).toFixed(3);
-      }
+      // Prominent token+time+$ display under answer
+      var elapsed = ((Date.now() - _ragStartTime) / 1000).toFixed(1);
+      var toks = result.tokens || 0;
+      var costVal = (result.cost || 0).toFixed(4);
+      var metricsBar = document.createElement('div');
+      metricsBar.style.cssText = 'display:flex;gap:12px;font-size:11px;color:#555;margin-top:6px;flex-wrap:wrap;align-items:center;';
+      metricsBar.innerHTML = '<span style="color:#7c3aed;font-weight:700;">⏱ '+elapsed+'s</span>'
+        + '<span style="color:#3b82f6;">🔢 '+toks.toLocaleString()+' tokens</span>'
+        + '<span style="color:#22c55e;">💰 $'+costVal+'</span>'
+        + '<span style="color:#555;font-size:10px;">838 תקנים · 3 מקורות</span>';
+      answerBubble.appendChild(metricsBar);
+
+      // ── Follow-up questions bar ────────────────────────────────
+      var followBar = document.createElement('div');
+      followBar.style.cssText = 'margin-top:10px;background:#1a1a2e;border:1px solid rgba(139,92,246,0.2);border-radius:10px;padding:10px 12px;';
+      followBar.innerHTML = '<div style="font-size:10px;color:#7c3aed;font-weight:700;margin-bottom:6px;">&#x1F4AC; שאלות המשך על התשובה הזו:</div>'
+        + '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;">'
+        + '<button data-q="האם יש חריגות נפוצות מהתקן בשטח?" onclick="ragFollowUpBtn(this)" style="background:rgba(139,92,246,0.1);border:1px solid rgba(139,92,246,0.3);color:#c4b5fd;padding:4px 10px;border-radius:14px;cursor:pointer;font-family:Heebo,sans-serif;font-size:11px;">האם יש חריגות נפוצות?</button>'
+        + '<button data-q="מה עלות התיקון לפי מחירון הבינוי?" onclick="ragFollowUpBtn(this)" style="background:rgba(201,168,76,0.1);border:1px solid rgba(201,168,76,0.3);color:#c9a84c;padding:4px 10px;border-radius:14px;cursor:pointer;font-family:Heebo,sans-serif;font-size:11px;">מה עלות התיקון?</button>'
+        + '<button data-q="מה צעדי הביצוע המומלצים בשטח?" onclick="ragFollowUpBtn(this)" style="background:rgba(34,197,94,0.1);border:1px solid rgba(34,197,94,0.3);color:#86efac;padding:4px 10px;border-radius:14px;cursor:pointer;font-family:Heebo,sans-serif;font-size:11px;">צעדי ביצוע בשטח</button>'
+        + '<button data-q="האם נדרש היתר או אישור מיוחד?" onclick="ragFollowUpBtn(this)" style="background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);color:#fca5a5;padding:4px 10px;border-radius:14px;cursor:pointer;font-family:Heebo,sans-serif;font-size:11px;">נדרש היתר?</button>'
+        + '</div>'
+        + '<div style="display:flex;gap:8px;">'
+        + '<input id="rag-followup-input" type="text" placeholder="שאל שאלת המשך..." dir="rtl" style="flex:1;background:rgba(255,255,255,0.05);border:1px solid rgba(139,92,246,0.3);color:#fff;padding:7px 12px;border-radius:8px;font-family:Heebo,sans-serif;font-size:12px;">'
+        + '<button onclick="ragFollowUpCustom()" style="background:rgba(139,92,246,0.3);border:none;color:#fff;padding:7px 14px;border-radius:8px;cursor:pointer;font-family:Heebo,sans-serif;font-size:12px;font-weight:700;">שאל ←</button>'
+        + '</div>';
+      answerBubble.appendChild(followBar);
+
+      if (tokEl) tokEl.textContent = toks.toLocaleString() + ' טוקנים';
+      if (costEl) costEl.textContent = '$' + costVal;
 
       history?.appendChild(answerBubble);
     }
@@ -431,6 +464,21 @@ async function ragSubmit() {
 
   if (btn) { btn.disabled = false; btn.textContent = '🏗️ שאל'; }
   history?.scrollTo(0, history.scrollHeight);
+}
+// ── Follow-up question helpers ────────────────────────────────────────
+function ragFollowUpBtn(btn) {
+  var q = btn.getAttribute('data-q') || '';
+  if (!q) return;
+  var input = document.getElementById('rag-input');
+  if (input) { input.value = q; ragSubmit(); }
+}
+function ragFollowUpCustom() {
+  var fi = document.getElementById('rag-followup-input');
+  var q = fi ? fi.value.trim() : '';
+  if (!q) return;
+  var input = document.getElementById('rag-input');
+  if (input) { input.value = q; ragSubmit(); }
+  if (fi) fi.value = '';
 }
 
 
@@ -2054,6 +2102,18 @@ async function qRunSingle(num, question, apiKey) {
 
   try {
     // 1. Parallel: search all 3 spec tables + price items
+    // Also fetch from building_standards encyclopedia (safe — never crashes)
+    var buildingStds = [];
+    try {
+      var bsWords = question.split(/\s+/).filter(function(w){return w.length>2;}).slice(0,3);
+      var bsFilter = bsWords.map(function(w){return 'scope.ilike.*'+encodeURIComponent(w)+'*,title_he.ilike.*'+encodeURIComponent(w)+'*';}).join(',');
+      var bsUrl = (typeof SB_URL !== 'undefined' ? SB_URL : window.SB_URL || '') +
+        '/rest/v1/building_standards?or=('+bsFilter+')&limit=5&select=standard_id,title_he,scope,key_requirements,notes,industry_category';
+      var bsKey = typeof SB_KEY !== 'undefined' ? SB_KEY : window.SB_KEY || '';
+      var bsRes = await fetch(bsUrl, {headers:{apikey:bsKey,Authorization:'Bearer '+bsKey}});
+      buildingStds = bsRes.ok ? (await bsRes.json()||[]) : [];
+    } catch(_e) { buildingStds = []; }
+
     var [mamadRes, renovRes, priceRes] = await Promise.all([
       qFetchSpec('mamad_spec_chapters', question),
       qFetchSpec('renovation_spec', question),
@@ -2093,10 +2153,24 @@ async function qRunSingle(num, question, apiKey) {
       });
     }
 
+    // Add building_standards context
+    if (buildingStds && buildingStds.length) {
+      context += '== אנציקלופדיית תקני בנייה (' + buildingStds.length + ' תקנים) ==\n';
+      buildingStds.forEach(function(s) {
+        context += s.standard_id + ': ' + (s.title_he||'') + '\n';
+        if (s.scope) context += (s.scope||'').substring(0,200) + '\n';
+        var reqs = s.key_requirements || [];
+        if (typeof reqs === 'string') { try { reqs = JSON.parse(reqs); } catch(e) { reqs = []; } }
+        if (reqs.length) context += 'דרישות: ' + reqs.slice(0,3).join(' | ') + '\n';
+        if (s.notes) context += 'הערות: ' + (s.notes||'').substring(0,100) + '\n';
+        context += '\n';
+      });
+    }
+
     if (!context.trim()) context = 'אין נתונים ספציפיים בבסיס הנתונים — ענה מידע הנדסי כללי.';
 
     // 3. Ask Claude
-    var prompt = 'אתה יועץ הנדסי בנייה ישראלי מקצועי עם גישה לאנציקלופדיית 473 תקנים ישראליים ובינלאומיים. עברית בלבד. תשובה ממוקדת ומעשית.\n\n'
+    var prompt = 'אתה יועץ הנדסי בנייה ישראלי מקצועי עם גישה לאנציקלופדיית 838 תקנים ישראליים ובינלאומיים. עברית בלבד. תשובה ממוקדת ומעשית.\n\n'
       + 'בסיס ידע רלוונטי:\n' + context + '\n'
       + 'שאלה: ' + question + '\n\n'
       + 'ענה בפורמט הבא (השתמש ב-** לכותרות):\n'
