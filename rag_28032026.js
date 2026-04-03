@@ -117,7 +117,18 @@ async function ragRetrieve(query) {
     }
   } catch(e) {}
 
-  // ── 3. renovation spec ────────────────────────────────────────────
+  // ── 3. building_standards encyclopedia (473 standards) ───────────
+  try {
+    var words = query.split(/\s+/).filter(function(w){ return w.length > 2; }).slice(0,3);
+    var bsFilter = words.map(function(w){
+      return 'scope.ilike.*'+encodeURIComponent(w)+'*,title_he.ilike.*'+encodeURIComponent(w)+'*,notes.ilike.*'+encodeURIComponent(w)+'*';
+    }).join(',');
+    var bsRes = await fetch(SB_URL + '/rest/v1/building_standards?or=('+bsFilter+')&mandatory_in_israel=eq.כן&limit=4&select=standard_id,title_he,scope,key_requirements,notes,industry_category',
+      { headers: h });
+    results.building_standards = bsRes.ok ? (await bsRes.json() || []) : [];
+  } catch(e) { results.building_standards = []; }
+
+  // ── 4. renovation spec ────────────────────────────────────────────
   try {
     var catMap = {
       concrete:      ['בטון','זיון','פלדה','יציקה','חוזק','cfrp','jacketing','ליבה','חשיפה'],
@@ -192,6 +203,22 @@ function ragBuildContext(retrieved, query) {
     ctx += '\n';
   });
 
+
+  // ── building_standards encyclopedia ──────────────────────────────
+  var bsItems = results.building_standards || [];
+  if (bsItems.length) {
+    ctx += '\n## אנציקלופדיית תקני בנייה — ' + bsItems.length + ' תקנים רלוונטיים\n\n';
+    bsItems.forEach(function(s) {
+      ctx += '### ' + (s.standard_id||'') + ': ' + (s.title_he||'') + '\n';
+      ctx += '**קטגוריה:** ' + (s.industry_category||'') + '\n';
+      if (s.scope) ctx += '**תיאור:** ' + s.scope.substring(0,200) + '\n';
+      var reqs = s.key_requirements || [];
+      if (typeof reqs === 'string') { try { reqs = JSON.parse(reqs); } catch(e) { reqs = []; } }
+      if (reqs.length) ctx += '**דרישות:** ' + reqs.slice(0,3).join(' | ') + '\n';
+      if (s.notes) ctx += '**הערות שטח:** ' + s.notes.substring(0,150) + '\n';
+      ctx += '\n';
+    });
+  }
 
   // ── ממ"ד Spec chapters ────────────────────────────────────────────
   if (specItems.length) {
@@ -2069,7 +2096,7 @@ async function qRunSingle(num, question, apiKey) {
     if (!context.trim()) context = 'אין נתונים ספציפיים בבסיס הנתונים — ענה מידע הנדסי כללי.';
 
     // 3. Ask Claude
-    var prompt = 'אתה יועץ הנדסי בנייה ישראלי מקצועי. עברית בלבד. תשובה ממוקדת ומעשית.\n\n'
+    var prompt = 'אתה יועץ הנדסי בנייה ישראלי מקצועי עם גישה לאנציקלופדיית 473 תקנים ישראליים ובינלאומיים. עברית בלבד. תשובה ממוקדת ומעשית.\n\n'
       + 'בסיס ידע רלוונטי:\n' + context + '\n'
       + 'שאלה: ' + question + '\n\n'
       + 'ענה בפורמט הבא (השתמש ב-** לכותרות):\n'
