@@ -6314,15 +6314,114 @@ async function _fetchStandardsModule() {
 async function _fetchRagModule() {
   if (_ragFetched) return;
   _ragFetched = true;
+  // Always inject the fallback FIRST so ragSubmit is always available
+  _ragInjectFallback();
+  // Then try to load the full module (overrides the fallback with richer features)
   try {
     var res = await fetch('rag_03042026.js?v=' + Date.now());
-    if (!res.ok) throw new Error('HTTP ' + res.status);
+    if (!res.ok || (await res.clone().text()).trim().startsWith('<')) return;
     var code = await res.text();
-    if (code.trim().startsWith('<')) throw new Error('Got HTML not JS');
     var ns = document.createElement('script'); ns.textContent = code;
     document.head.appendChild(ns);
-  } catch(e) { console.error('rag fetch failed:', e); _ragFetched = false; }
+  } catch(e) { console.warn('rag full module failed, using inline fallback'); }
 }
+
+function _ragInjectFallback() {
+  if (window.ragSubmit) return; // already injected
+  window._ragHistory = window._ragHistory || [];
+  window.ragTabInit = function() { var i=document.getElementById('rag-input'); if(i) i.focus(); };
+  window.ragClearHistory = function() { window._ragHistory=[]; };
+  window.ragClearChat = function() {
+    var h=document.getElementById('rag-chat-history');
+    if(h) h.innerHTML='<div style="text-align:center;padding:40px;color:#333;font-size:13px;"><div style="font-size:32px;">🏗️</div><div>שאל שאלה הנדסית</div></div>';
+  };
+  window.ragQuickAsk = function(q) { var i=document.getElementById('rag-input'); if(i) i.value=q; window.ragSubmit(); };
+  window.ragFollowUpBtn = function(btn) { var q=btn.getAttribute('data-q')||''; if(!q) return; var i=document.getElementById('rag-input'); if(i){i.value=q;window.ragSubmit();} };
+  window.ragFollowUpCustom = function() { var fi=document.getElementById('rag-followup-input'); var q=fi?fi.value.trim():''; if(!q) return; var i=document.getElementById('rag-input'); if(i){i.value=q;window.ragSubmit();} if(fi) fi.value=''; };
+  window.ragHandlePhoto = function() {};
+
+  window.ragSubmit = async function() {
+    var apiKey = APP && APP.config && APP.config.anthropic_key;
+    if (!apiKey) { showToast('מפתח API חסר','error'); return; }
+    var input  = document.getElementById('rag-input');
+    var query  = (input?input.value:'').trim();
+    if (!query) return;
+    var history= document.getElementById('rag-chat-history');
+    var status = document.getElementById('rag-status');
+    var btn    = document.getElementById('rag-send-btn');
+    if (btn){btn.disabled=true;btn.textContent='⏳';}
+    if (input) input.value='';
+    var empty=history&&history.querySelector('[style*="text-align:center"]'); if(empty) empty.remove();
+    var ub=document.createElement('div');
+    ub.style.cssText='display:flex;justify-content:flex-end;margin-bottom:8px;';
+    ub.innerHTML='<div style="background:rgba(139,92,246,0.2);border:1px solid rgba(139,92,246,0.4);color:#fff;padding:12px 16px;border-radius:14px 14px 4px 14px;max-width:75%;font-size:14px;direction:rtl;">'+query.replace(/</g,'&lt;')+'</div>';
+    if(history) history.appendChild(ub);
+    var typing=document.createElement('div');
+    typing.innerHTML='<div style="background:#242438;border:1px solid rgba(255,255,255,0.08);border-radius:14px;padding:12px 16px;font-size:13px;color:#888;display:inline-block;">🧠 מחפש ב-838 תקנים...</div>';
+    if(history) history.appendChild(typing);
+    if(history) history.scrollTo(0,history.scrollHeight);
+    var t0=Date.now();
+    if(status) status.innerHTML='<span style="color:#7c3aed;font-weight:700;">⏱ 0.0s</span>';
+    var timer=setInterval(function(){var s=((Date.now()-t0)/1000).toFixed(1);if(status) status.innerHTML='<span style="color:#7c3aed;font-weight:700;">⏱ '+s+'s</span>';},200);
+    try {
+      var bsCtx='';
+      try {
+        var words=query.split(/\s+/).filter(function(w){return w.length>2;}).slice(0,4);
+        var orF=words.map(function(w){return 'scope.ilike.*'+encodeURIComponent(w)+'*,title_he.ilike.*'+encodeURIComponent(w)+'*,notes.ilike.*'+encodeURIComponent(w)+'*';}).join(',');
+        var bsRes=await fetch(SB_URL+'/rest/v1/building_standards?or=('+orF+')&limit=6&select=standard_id,title_he,scope,key_requirements,notes',{headers:{apikey:SB_KEY,Authorization:'Bearer '+SB_KEY}});
+        var bsData=bsRes.ok?(await bsRes.json()||[]):[];
+        if(bsData.length){
+          bsCtx='== תקני בנייה רלוונטיים ==\n';
+          bsData.forEach(function(s){
+            bsCtx+=(s.standard_id||'')+': '+(s.title_he||'')+'\n';
+            if(s.scope) bsCtx+=s.scope.substring(0,150)+'\n';
+            var reqs=s.key_requirements||[];
+            if(typeof reqs==='string'){try{reqs=JSON.parse(reqs);}catch(_){reqs=[];}}
+            if(reqs.length) bsCtx+=reqs.slice(0,3).join(' | ')+'\n';
+            bsCtx+='\n';
+          });
+        }
+      } catch(_e){}
+      var msgs=(window._ragHistory||[]).slice(-8).concat([{role:'user',content:(bsCtx?bsCtx+'\n---\n':'')+'שאלה: '+query}]);
+      var resp=await claudeFetch(JSON.stringify({_apiKey:apiKey,model:'claude-sonnet-4-20250514',max_tokens:1500,system:'אתה יועץ הנדסי בנייה ישראלי מקצועי. ענה בעברית בלבד. תשובות ממוקדות ומעשיות עם מספרים. השתמש בתקנים שסופקו.',messages:msgs}),null);
+      var data=await resp.json();
+      clearInterval(timer); typing.remove();
+      if(!resp.ok) throw new Error((data.error&&data.error.message)||'API error');
+      var answer=(data.content&&data.content[0]&&data.content[0].text)||'';
+      var inTok=(data.usage&&data.usage.input_tokens)||0;
+      var outTok=(data.usage&&data.usage.output_tokens)||0;
+      var cost=((inTok*3+outTok*15)/1e6).toFixed(4);
+      var elapsed=((Date.now()-t0)/1000).toFixed(1);
+      window._ragHistory.push({role:'user',content:query});
+      window._ragHistory.push({role:'assistant',content:answer});
+      if(window._ragHistory.length>12) window._ragHistory=window._ragHistory.slice(-12);
+      var fmt=answer.replace(/</g,'&lt;').replace(/\*\*([^*]+)\*\*/g,'<strong style="color:#c9a84c;">$1</strong>').replace(/\n/g,'<br>');
+      var ab=document.createElement('div');
+      ab.style.cssText='margin-bottom:12px;';
+      ab.innerHTML='<div style="background:#1e1e35;border:1px solid rgba(139,92,246,0.25);color:#e2e8f0;padding:14px 18px;border-radius:14px 14px 14px 4px;font-size:13px;line-height:1.8;direction:rtl;">'+fmt+'</div>'
+        +'<div style="display:flex;gap:12px;font-size:11px;margin-top:5px;"><span style="color:#7c3aed;font-weight:700;">⏱ '+elapsed+'s</span><span style="color:#3b82f6;">🔢 '+(inTok+outTok).toLocaleString()+' tokens</span><span style="color:#22c55e;">💰 $'+cost+'</span></div>'
+        +'<div style="margin-top:8px;background:#1a1a2e;border:1px solid rgba(139,92,246,0.2);border-radius:10px;padding:10px 12px;">'
+        +'<div style="font-size:10px;color:#7c3aed;font-weight:700;margin-bottom:6px;">💬 שאלות המשך:</div>'
+        +'<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;">'
+        +'<button data-q="האם יש חריגות נפוצות מהתקן?" onclick="ragFollowUpBtn(this)" style="background:rgba(139,92,246,0.1);border:1px solid rgba(139,92,246,0.3);color:#c4b5fd;padding:4px 10px;border-radius:14px;cursor:pointer;font-family:Heebo,sans-serif;font-size:11px;">חריגות נפוצות?</button>'
+        +'<button data-q="מה עלות התיקון לפי מחירון הבינוי?" onclick="ragFollowUpBtn(this)" style="background:rgba(201,168,76,0.1);border:1px solid rgba(201,168,76,0.3);color:#c9a84c;padding:4px 10px;border-radius:14px;cursor:pointer;font-family:Heebo,sans-serif;font-size:11px;">עלות תיקון?</button>'
+        +'<button data-q="מה צעדי הביצוע בשטח?" onclick="ragFollowUpBtn(this)" style="background:rgba(34,197,94,0.1);border:1px solid rgba(34,197,94,0.3);color:#86efac;padding:4px 10px;border-radius:14px;cursor:pointer;font-family:Heebo,sans-serif;font-size:11px;">צעדי ביצוע</button>'
+        +'<button data-q="האם נדרש היתר מיוחד?" onclick="ragFollowUpBtn(this)" style="background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);color:#fca5a5;padding:4px 10px;border-radius:14px;cursor:pointer;font-family:Heebo,sans-serif;font-size:11px;">נדרש היתר?</button>'
+        +'</div><div style="display:flex;gap:8px;"><input id="rag-followup-input" type="text" placeholder="שאל שאלת המשך..." dir="rtl" style="flex:1;background:rgba(255,255,255,0.05);border:1px solid rgba(139,92,246,0.3);color:#fff;padding:7px 12px;border-radius:8px;font-family:Heebo,sans-serif;font-size:12px;"><button onclick="ragFollowUpCustom()" style="background:rgba(139,92,246,0.3);border:none;color:#fff;padding:7px 14px;border-radius:8px;cursor:pointer;font-family:Heebo,sans-serif;font-size:12px;font-weight:700;">שאל ←</button></div></div>';
+      if(history) history.appendChild(ab);
+      if(status) status.textContent='';
+    } catch(err) {
+      clearInterval(timer); typing.remove();
+      var eb=document.createElement('div');
+      eb.innerHTML='<div style="background:rgba(239,68,68,0.12);border:1px solid rgba(239,68,68,0.3);color:#fca5a5;padding:12px 16px;border-radius:14px;font-size:13px;direction:rtl;">❌ '+err.message+'</div>';
+      if(history) history.appendChild(eb);
+      if(status) status.textContent='';
+    }
+    if(btn){btn.disabled=false;btn.textContent='🏗️ שאל';}
+    if(history) history.scrollTo(0,history.scrollHeight);
+  };
+}
+
 
 // ══ Global AI Stop / Running state ═══════════════════════════════════
 var _claudeRunning = false;
@@ -6517,19 +6616,109 @@ function sjPopulateProjectFilter() {
   });
   if (cur) sel.value = cur;
 }
-var _sjFetched = false;
-async function _fetchSmartJournal() {
-  if (_sjFetched) return Promise.resolve();
-  _sjFetched = true;
-  try {
-    var res = await fetch('smartjournal_28032026.js?v=' + Date.now());
-    if (!res.ok) throw new Error('HTTP ' + res.status);
-    var code = await res.text();
-    if (code.trim().startsWith('<')) throw new Error('Got HTML not JS');
-    var ns = document.createElement('script'); ns.textContent = code;
-    document.head.appendChild(ns);
-  } catch(e) { console.error('smartjournal fetch failed:', e); _sjFetched = false; }
+
+function smOpenPhoto(img) {
+  var s = img.getAttribute('data-src');
+  if (s) window.open(decodeURIComponent(s), '_blank');
 }
+// ══ SMART JOURNAL — inline fallback (replaces smartjournal_28032026.js) ═══
+function switchSmartTab(tab) {
+  var tabs    = ['notes','photos','videos','takeoffs','recordings','ocr'];
+  var panels  = document.querySelectorAll('[id^="sj-panel-"]');
+  var buttons = document.querySelectorAll('[id^="sj-tab-"]');
+  panels.forEach(function(p){ p.style.display='none'; });
+  buttons.forEach(function(b){ b.style.background='transparent'; b.style.color='#888'; });
+  var panel = document.getElementById('sj-panel-'+tab);
+  var btn   = document.getElementById('sj-tab-'+tab);
+  if (panel) panel.style.display='block';
+  if (btn)   { btn.style.background='#9a6f00'; btn.style.color='#fff'; }
+  // Load content per tab
+  if (tab==='photos')     loadSmartPhotos();
+  if (tab==='videos')     loadSmartVideos();
+  if (tab==='recordings') loadSmartRecordings();
+  if (tab==='takeoffs')   { if(typeof loadTakeoffList==='function') loadTakeoffList(); }
+  if (tab==='ocr')        { /* OCR panel ready */ }
+}
+
+function smartJournalFilter() {
+  var tab = document.querySelector('[id^="sj-tab-"][style*="#9a6f00"]');
+  var tabId = tab ? tab.id.replace('sj-tab-','') : 'notes';
+  if (tabId==='notes') loadNotesWall();
+  else if (tabId==='photos') loadSmartPhotos();
+  else if (tabId==='videos') loadSmartVideos();
+  else if (tabId==='recordings') loadSmartRecordings();
+}
+
+async function loadSmartPhotos() {
+  var container = document.getElementById('sj-panel-photos');
+  if (!container) return;
+  var pid = document.getElementById('smart-project-filter')?.value||'';
+  container.innerHTML = '<div style="padding:20px;color:#888;text-align:center;direction:rtl;">⏳ טוען תמונות...</div>';
+  try {
+    var url = SB_URL + '/rest/v1/beni_notes?note_type=eq.photo&order=created_at.desc&limit=30';
+    if (pid) url += '&project_id=eq.'+pid;
+    var res = await fetch(url,{headers:{apikey:SB_KEY,Authorization:'Bearer '+SB_KEY}});
+    var data = res.ok?(await res.json()||[]):[];
+    if (!data.length) { container.innerHTML='<div style="padding:30px;color:#555;text-align:center;direction:rtl;">📷 אין תמונות עדיין</div>'; return; }
+    container.innerHTML = '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;padding:10px;">'
+      + data.map(function(n){
+          var src = n.photo_url || n.cloudinary_url || '';
+          return src ? '<div style="border-radius:10px;overflow:hidden;border:1px solid rgba(255,255,255,0.1);">'
+            +'<img src="'+src+'" style="width:100%;height:100px;object-fit:cover;cursor:pointer;" data-src="'+encodeURIComponent(src)+'" onclick="smOpenPhoto(this)">'
+            +'<div style="padding:5px;font-size:10px;color:#888;direction:rtl;">'+((n.note_text||'').substring(0,30))+'</div></div>' : '';
+        }).join('')
+      + '</div>';
+  } catch(e) { container.innerHTML='<div style="color:#ef4444;padding:20px;direction:rtl;">שגיאה: '+e.message+'</div>'; }
+}
+
+async function loadSmartVideos() {
+  var container = document.getElementById('sj-panel-videos');
+  if (!container) return;
+  var pid = document.getElementById('smart-project-filter')?.value||'';
+  container.innerHTML = '<div style="padding:20px;color:#888;text-align:center;direction:rtl;">⏳ טוען סרטונים...</div>';
+  try {
+    var url = SB_URL + '/rest/v1/beni_notes?note_type=eq.video&order=created_at.desc&limit=20';
+    if (pid) url += '&project_id=eq.'+pid;
+    var res = await fetch(url,{headers:{apikey:SB_KEY,Authorization:'Bearer '+SB_KEY}});
+    var data = res.ok?(await res.json()||[]):[];
+    if (!data.length) { container.innerHTML='<div style="padding:30px;color:#555;text-align:center;direction:rtl;">🎬 אין סרטונים עדיין</div>'; return; }
+    container.innerHTML = '<div style="display:flex;flex-direction:column;gap:10px;padding:10px;">'
+      + data.map(function(n){
+          var src = n.photo_url || n.cloudinary_url || '';
+          return src ? '<div style="background:rgba(255,255,255,0.05);border-radius:10px;padding:10px;">'
+            +'<video src="'+src+'" controls style="width:100%;border-radius:8px;max-height:200px;"></video>'
+            +'<div style="font-size:11px;color:#888;margin-top:5px;direction:rtl;">'+((n.note_text||'').substring(0,50))+'</div></div>' : '';
+        }).join('')
+      + '</div>';
+  } catch(e) { container.innerHTML='<div style="color:#ef4444;padding:20px;direction:rtl;">שגיאה: '+e.message+'</div>'; }
+}
+
+async function loadSmartRecordings() {
+  var container = document.getElementById('sj-panel-recordings');
+  if (!container) return;
+  var pid = document.getElementById('smart-project-filter')?.value||'';
+  container.innerHTML = '<div style="padding:20px;color:#888;text-align:center;direction:rtl;">⏳ טוען הקלטות...</div>';
+  try {
+    var url = SB_URL + '/rest/v1/call_log?order=created_at.desc&limit=20&select=*';
+    if (pid) url += '&project_id=eq.'+pid;
+    var res = await fetch(url,{headers:{apikey:SB_KEY,Authorization:'Bearer '+SB_KEY}});
+    var data = res.ok?(await res.json()||[]):[];
+    if (!data.length) { container.innerHTML='<div style="padding:30px;color:#555;text-align:center;direction:rtl;">🎙️ אין הקלטות עדיין</div>'; return; }
+    container.innerHTML = '<div style="display:flex;flex-direction:column;gap:10px;padding:10px;">'
+      + data.map(function(r){
+          return '<div style="background:rgba(255,255,255,0.05);border-radius:10px;padding:12px;direction:rtl;">'
+            +'<div style="font-size:12px;font-weight:700;color:#c4b5fd;margin-bottom:6px;">'+(r.caller_name||r.contractor_name||'שיחה')+' · '+new Date(r.created_at).toLocaleDateString('he-IL')+'</div>'
+            +(r.recording_url?'<audio src="'+r.recording_url+'" controls style="width:100%;margin-bottom:6px;"></audio>':'')
+            +(r.ai_summary?'<div style="font-size:11px;color:#888;">'+r.ai_summary+'</div>':'')
+            +'</div>';
+        }).join('')
+      + '</div>';
+  } catch(e) { container.innerHTML='<div style="color:#ef4444;padding:20px;direction:rtl;">שגיאה: '+e.message+'</div>'; }
+}
+// ══ END SMART JOURNAL INLINE ════════════════════════════════════════════
+
+var _sjFetched = true; // inline — no fetch needed
+async function _fetchSmartJournal() { return Promise.resolve(); }
 
 // ══════════════════════════════════════════════════════
 // TAKEOFF SYSTEM — Full featured
