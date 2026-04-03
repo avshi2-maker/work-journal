@@ -6319,8 +6319,9 @@ async function _fetchRagModule() {
   // Then try to load the full module (overrides the fallback with richer features)
   try {
     var res = await fetch('rag_03042026.js?v=' + Date.now());
-    if (!res.ok || (await res.clone().text()).trim().startsWith('<')) return;
+    if (!res.ok) return;
     var code = await res.text();
+    if (!code || code.trim().startsWith('<')) return;
     var ns = document.createElement('script'); ns.textContent = code;
     document.head.appendChild(ns);
   } catch(e) { console.warn('rag full module failed, using inline fallback'); }
