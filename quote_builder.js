@@ -52,7 +52,7 @@ function _qbAddItem(desc, type, qty, unitPrice, unit, priority, days, notes) {
   _qb.items.push({
     id:        _qbNextId++,
     desc:      desc      || '',
-    type:      type      || 'labor',   // labor / material / equipment
+    type:      type      || 'labor',   // labor / material / equipment / combined / subcontract
     qty:       qty       || 1,
     unit:      unit      || 'יח\'',
     unitPrice: unitPrice || 0,
@@ -79,12 +79,21 @@ function _qbRemoveFixed(id) {
 function _qbUpdateItem(id, field, value) {
   var item = _qb.items.find(function(i){ return i.id === id; });
   if (!item) return;
-  if (field === 'qty' || field === 'unitPrice' || field === 'priority' || field === 'days') {
+  if (field === 'qty' || field === 'unitPrice' || field === 'days') {
     item[field] = parseFloat(value) || 0;
+    _qbUpdateTotals();
+  } else if (field === 'priority') {
+    item[field] = parseInt(value) || 3;
+    // Update priority badge color only
+    var PRIO_COLORS = ['','#22c55e','#86efac','#f59e0b','#ef4444','#7f1d1d'];
+    var sel = document.querySelector('[data-prio-id="'+id+'"]');
+    if (sel) sel.style.background = (PRIO_COLORS[item.priority]||'#888')+'22';
+  } else if (field === 'type') {
+    item[field] = value;
+    // Re-render only the type select — no full re-render needed
   } else {
     item[field] = value;
   }
-  _qbUpdateTotals();
 }
 
 function _qbUpdateFixed(id, field, value) {
@@ -138,7 +147,7 @@ function _qbFmt(n) {
 function _qbRender() {
   var c = _qbCalc();
 
-  var TYPE_HE = { labor:'עבודה', material:'חומרים', equipment:'ציוד' };
+  var TYPE_HE = { labor:'עבודה', material:'חומרים', equipment:'ציוד', combined:'עבודה וחומרים', subcontract:'קומפלט' };
   var UNIT_OPTS = ['יח\'','מ"ר','מ\'','מ"ק','ש"ע','יום','חודש','ק"ג','ט'].map(function(u){
     return '<option>'+u+'</option>';
   }).join('');
@@ -196,7 +205,7 @@ function _qbRender() {
         '<td style="padding:6px 4px;"><input type="number" value="'+item.unitPrice+'" min="0" oninput="_qbUpdateItem('+item.id+',\'unitPrice\',this.value)" style="'+_qbInp('width:90px;text-align:center;')+'"></td>' +
         '<td style="padding:6px 4px;"><input type="number" value="'+item.days+'" min="1" oninput="_qbUpdateItem('+item.id+',\'days\',this.value)" style="'+_qbInp('width:60px;text-align:center;')+'"></td>' +
         '<td style="padding:6px 4px;text-align:center;">' +
-          '<select onchange="_qbUpdateItem('+item.id+',\'priority\',this.value)" style="background:'+pc+'22;border:2px solid '+pc+';border-radius:6px;padding:4px 6px;font-size:11px;font-weight:800;color:'+pc+';font-family:Heebo,sans-serif;cursor:pointer;">' +
+          '<select data-prio-id="'+item.id+'" onchange="_qbUpdateItem('+item.id+',\'priority\',this.value)" style="background:'+pc+'22;border:2px solid '+pc+';border-radius:6px;padding:4px 6px;font-size:11px;font-weight:800;color:'+pc+';font-family:Heebo,sans-serif;cursor:pointer;">' +
           [1,2,3,4,5].map(function(p){ return '<option value="'+p+'"'+(item.priority===p?' selected':'')+'>'+p+'</option>'; }).join('') +
           '</select>' +
         '</td>' +
@@ -448,7 +457,7 @@ function qbPrint() {
   var w = window.open('','_blank');
   var rows = _qb.items.filter(function(i){ return i.desc||i.unitPrice; }).map(function(item,idx){
     var tot = (parseFloat(item.qty)||0)*(parseFloat(item.unitPrice)||0);
-    var TYPE_HE = { labor:'עבודה', material:'חומרים', equipment:'ציוד' };
+    var TYPE_HE = { labor:'עבודה', material:'חומרים', equipment:'ציוד', combined:'עבודה וחומרים', subcontract:'קומפלט' };
     return '<tr style="background:'+(idx%2?'#f9f9f9':'white')+'">' +
       '<td>'+(idx+1)+'</td><td>'+item.desc+'</td><td>'+(TYPE_HE[item.type]||item.type)+'</td>' +
       '<td>'+item.qty+' '+item.unit+'</td><td>₪'+Math.round(item.unitPrice).toLocaleString()+'</td>' +
