@@ -7359,16 +7359,9 @@ async function _fetchQuoteBuilder() {
 // ══ ASSET INBOX MODULE ═══════════════════════════════════════════════
 var _assetInboxFetched = false;
 async function _fetchAssetInboxModule() {
-  if (_assetInboxFetched) return;
+  // asset_inbox.js is now fully inline — no external fetch needed
   _assetInboxFetched = true;
-  try {
-    var res = await fetch('asset_inbox.js?v=' + Date.now());
-    if (!res.ok) throw new Error('HTTP ' + res.status);
-    var code = await res.text();
-    if (code.trim().startsWith('<')) throw new Error('Got HTML not JS');
-    var ns = document.createElement('script'); ns.textContent = code;
-    document.head.appendChild(ns);
-  } catch(e) { console.error('asset_inbox fetch failed:', e); _assetInboxFetched = false; }
+  // assetInboxInit and assetInboxLoad are defined inline above
 }
 
 // ══ CALL RECORDINGS MODULE ═══════════════════════════════════════════
