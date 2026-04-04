@@ -6355,13 +6355,91 @@ function _ragInjectFallback() {
     reader.onload = function(e) {
       if (img) img.src = e.target.result;
       if (preview) preview.style.display = 'block';
-      var analysis = document.getElementById('rag-photo-analysis');
-      if (analysis) analysis.innerHTML = '🔍 תמונה נטענה — שאל שאלה הנדסית על מה שרואים, או לחץ צור הזמנת עבודה';
       var actions = document.getElementById('rag-photo-actions');
       if (actions) actions.style.display = 'flex';
       window._ragCurrentPhoto = e.target.result;
+      // Auto-analyze immediately
+      window._ragAutoAnalyzePhoto();
     };
     reader.readAsDataURL(file);
+  };
+
+  window._ragAutoAnalyzePhoto = async function() {
+    var apiKey = APP && APP.config && APP.config.anthropic_key;
+    if (!apiKey) return;
+    var analysisEl = document.getElementById('rag-photo-analysis');
+    if (analysisEl) analysisEl.innerHTML = '🔍 Claude Vision מנתח את התמונה...';
+    var b64 = window._ragCurrentPhoto;
+    if (!b64) return;
+    var mimeMatch = b64.match(/^data:(image\/[a-z]+);base64,/);
+    var mime = mimeMatch ? mimeMatch[1] : 'image/jpeg';
+    var base64Data = b64.replace(/^data:image\/[a-z]+;base64,/, '');
+    try {
+      var resp = await claudeFetch({
+        _apiKey: apiKey,
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 800,
+        system: 'אתה מהנדס בנייה ישראלי מנוסה. בדוק את התמונה וספק: 1) זיהוי הנזק/הבעיה, 2) חומרה (קל/בינוני/חמור), 3) תקן ישראלי רלוונטי, 4) המלצת תיקון קצרה. ענה בעברית בלבד, תמציתי.',
+        messages: [{ role: 'user', content: [
+          { type: 'image', source: { type: 'base64', media_type: mime, data: base64Data } },
+          { type: 'text', text: 'נתח את הנזק הנראה בתמונה וספק הערכה הנדסית קצרה.' }
+        ]}]
+      }, null);
+      var data = await resp.json();
+      var answer = (data.content && data.content[0] && data.content[0].text) || 'לא ניתן לנתח';
+      var fmt = answer.replace(/</g,'&lt;').replace(/\*\*([^*]+)\*\*/g,'<strong style="color:#c9a84c;">$1</strong>').replace(/\n/g,'<br>');
+      if (analysisEl) analysisEl.innerHTML = fmt;
+      window._ragPhotoAnalysis = answer;
+    } catch(e) {
+      if (analysisEl) analysisEl.innerHTML = '❌ שגיאה בניתוח: ' + e.message;
+    }
+  };
+
+  window.ragAskAboutPhoto = function() {
+    if (!window._ragCurrentPhoto) { showToast('יש להעלות תמונה תחילה', 'error'); return; }
+    var inp = document.getElementById('rag-input');
+    var context = window._ragPhotoAnalysis ? 'בהתבסס על ניתוח התמונה: ' + window._ragPhotoAnalysis + '\n\n' : '';
+    if (inp) inp.value = context + 'מה תוכנית התיקון המומלצת ומה העלות המשוערת?';
+    inp && inp.focus();
+  };
+
+  window.ragGeneratePO = async function() {
+    if (!window._ragCurrentPhoto) { showToast('יש להעלות תמונה תחילה', 'error'); return; }
+    var apiKey = APP && APP.config && APP.config.anthropic_key;
+    if (!apiKey) { showToast('מפתח API חסר', 'error'); return; }
+    var btn = document.getElementById('rag-gen-po-btn');
+    if (btn) { btn.disabled = true; btn.textContent = '⏳ יוצר...'; }
+    var b64 = window._ragCurrentPhoto;
+    var mimeMatch = b64.match(/^data:(image\/[a-z]+);base64,/);
+    var mime = mimeMatch ? mimeMatch[1] : 'image/jpeg';
+    var base64Data = b64.replace(/^data:image\/[a-z]+;base64,/, '');
+    var analysis = window._ragPhotoAnalysis || 'נזק נראה בתמונה';
+    try {
+      var resp = await claudeFetch({
+        _apiKey: apiKey,
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 1000,
+        system: 'אתה מהנדס בנייה ישראלי. צור הזמנת עבודה מפורטת בעברית בפורמט: כותרת, תיאור הנזק, עבודות נדרשות (רשימה), חומרים, אומדן עלות בש"ח, הערות בטיחות.',
+        messages: [{ role: 'user', content: [
+          { type: 'image', source: { type: 'base64', media_type: mime, data: base64Data } },
+          { type: 'text', text: 'ניתוח קודם: ' + analysis + '\n\nצור הזמנת עבודה מפורטת לתיקון הנזק הנראה.' }
+        ]}]
+      }, null);
+      var data = await resp.json();
+      var po = (data.content && data.content[0] && data.content[0].text) || '';
+      var fmt = po.replace(/</g,'&lt;').replace(/\*\*([^*]+)\*\*/g,'<strong style="color:#c9a84c;">$1</strong>').replace(/\n/g,'<br>');
+      var history = document.getElementById('rag-chat-history');
+      if (history) {
+        var empty = history.querySelector('[style*="text-align:center"]'); if (empty) empty.remove();
+        var div = document.createElement('div');
+        div.innerHTML = '<div style="background:#1e1e35;border:2px solid rgba(201,168,76,0.4);border-radius:14px;padding:16px;font-size:13px;color:#e2e8f0;line-height:1.8;direction:rtl;">'
+          + '<div style="font-size:14px;font-weight:900;color:#c9a84c;margin-bottom:10px;">📄 הזמנת עבודה — מניתוח תמונה</div>'
+          + fmt + '</div>';
+        history.appendChild(div);
+        history.scrollTo(0, history.scrollHeight);
+      }
+    } catch(e) { showToast('שגיאה: ' + e.message, 'error'); }
+    if (btn) { btn.disabled = false; btn.textContent = '📄 צור הזמנת עבודה מהניתוח'; }
   };
   window.ragHandleVideo = function(input) {
     if (!input || !input.files || !input.files[0]) return;
