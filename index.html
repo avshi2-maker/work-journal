@@ -365,7 +365,7 @@ window.addEventListener('unhandledrejection', function(e) {
   <div class="top-tab"        id="tab-rag"    onclick="switchTab('rag')"><span>🏗️</span><span>ייעוץ הנדסי</span></div>
   <div class="top-tab"        id="tab-standards" onclick="switchTab('standards')"><span>📚</span><span>תקני בניה</span></div>
   <div class="top-tab"        id="tab-inbox" onclick="switchTab('inbox')"><span>📥</span><span>תיבת נכנסים</span><span id="tab-inbox-badge" style="display:none;background:#ef4444;color:#fff;border-radius:8px;padding:1px 6px;font-size:9px;font-weight:800;"></span></div>
-  <div class="top-tab"        id="tab-smartscan" onclick="switchTab('smartscan')"><span>🚀</span><span>סריקה חכמה</span></div>
+  <div class="top-tab"        id="tab-smartscan" onclick="switchTab('smartscan')"><span>🚀</span><span>סריקה מהירה</span></div>
 </div>
 
 <!-- ══ PANELS — loaded dynamically from Supabase Storage ══ -->
@@ -5580,8 +5580,9 @@ function generatePOPdf(po) {
       <!-- Header -->
       <div style="margin-bottom:24px;">
         <div style="font-size:10px;letter-spacing:3px;color:#c9a84c;text-transform:uppercase;margin-bottom:4px;">AI Multi-Analysis</div>
-        <h1 style="font-size:24px;font-weight:900;color:#fff;margin:0;">🚀 סריקה חכמה — 4 ניתוחים במקביל</h1>
-        <div style="font-size:12px;color:#666;margin-top:4px;">העלה תמונה או סרטון — בחר ניתוחים — קבל דוח מקיף + CAP</div>
+        <h1 style="font-size:24px;font-weight:900;color:#fff;margin:0;">🚀 סריקה מהירה</h1>
+        <div style="font-size:12px;color:#c9a84c;font-weight:700;margin-top:2px;">ניתוח מקדים — 4 ניתוחים במקביל</div>
+        <div style="font-size:12px;color:#666;margin-top:4px;">העלה תמונה או סרטון → בחר ניתוחים → קבל דוח מיידי → עבור לניתוח מעמיק בטאב בטיחות</div>
       </div>
 
       <!-- Project selector -->
@@ -5607,7 +5608,12 @@ function generatePOPdf(po) {
         <div id="ss-upload-progress" style="display:none;margin-top:10px;">
           <div style="font-size:12px;color:#888;" id="ss-upload-status">⏳ טוען...</div>
         </div>
-        <img id="ss-thumb" style="display:none;max-height:150px;border-radius:8px;margin-top:12px;border:1px solid rgba(255,255,255,0.1);">
+        <img id="ss-thumb" style="display:none;max-height:150px;border-radius:8px;margin-top:12px;border:1px solid rgba(255,255,255,0.1);cursor:zoom-in;" onclick="if(this.src)openLightbox(this.src,'תמונה לסריקה')">
+        <!-- Journal photo indicator — shown when photo arrives from יומן חכם -->
+        <div id="ss-journal-badge" style="display:none;margin-top:8px;background:rgba(201,168,76,0.12);border:1px solid rgba(201,168,76,0.3);border-radius:8px;padding:7px 12px;font-size:11px;color:#c9a84c;direction:rtl;">
+          📋 תמונה מיומן חכם — <span id="ss-journal-caption"></span>
+          <button onclick="switchTab('notes');setTimeout(function(){switchSmartTab('photos');},300);" style="background:none;border:none;color:#c9a84c;cursor:pointer;font-size:11px;text-decoration:underline;font-family:Heebo,sans-serif;">חזור ליומן</button>
+        </div>
       </div>
 
       <!-- Analysis checkboxes -->
@@ -6882,7 +6888,80 @@ function sjPopulateProjectFilter() {
 
 function smOpenPhoto(img) {
   var s = img.getAttribute('data-src');
-  if (s) window.open(decodeURIComponent(s), '_blank');
+  if (!s) return;
+  var url = decodeURIComponent(s);
+  openLightbox(url, img.closest('[data-note-text]') ? img.closest('[data-note-text]').dataset.noteText : '');
+}
+
+// ── Send photo from יומן חכם to סריקה מהירה ──────────────────────────
+async function smSendToScan(url, caption) {
+  showToast('📤 טוען תמונה לסריקה מהירה...', 'success');
+  try {
+    // Fetch image and convert to base64
+    var res  = await fetch(url);
+    var blob = await res.blob();
+    var b64  = await new Promise(function(resolve) {
+      var r = new FileReader();
+      r.onload = function(e) { resolve(e.target.result); };
+      r.readAsDataURL(blob);
+    });
+    // Store for smartScanRun to use
+    window._ssSharedPhotoUrl = url;
+    window._ssSharedPhotoB64 = b64;
+    window._ssSharedCaption  = caption || '';
+
+    // Switch to scan tab
+    await switchTab('smartscan');
+    setTimeout(function() {
+      // Show thumb and scan button
+      var thumb = document.getElementById('ss-thumb');
+      var btn   = document.getElementById('ss-scan-btn');
+      var status= document.getElementById('ss-upload-status');
+      var prog  = document.getElementById('ss-upload-progress');
+      if (thumb) { thumb.src = b64; thumb.style.display = 'block'; }
+      if (btn)     btn.style.display = 'block';
+      if (prog)   prog.style.display = 'block';
+      if (status) status.innerHTML = '✅ תמונה מיומן חכם: ' + (caption || '').substring(0,40);
+      var badge   = document.getElementById('ss-journal-badge');
+      var capSpan = document.getElementById('ss-journal-caption');
+      if (badge)   badge.style.display = 'block';
+      if (capSpan) capSpan.textContent  = (caption || 'ללא כיתוב').substring(0, 40);
+      showToast('✅ תמונה נטענה — לחץ הפעל ניתוח חכם', 'success');
+    }, 300);
+  } catch(e) {
+    showToast('❌ שגיאה בטעינת תמונה: ' + e.message, 'error');
+  }
+}
+
+// ── Send photo from יומן חכם to בטיחות ────────────────────────────────
+async function smSendToSafety(url, caption) {
+  showToast('📤 טוען תמונה לניתוח בטיחות...', 'success');
+  try {
+    var res  = await fetch(url);
+    var blob = await res.blob();
+    var b64  = await new Promise(function(resolve) {
+      var r = new FileReader();
+      r.onload = function(e) { resolve(e.target.result); };
+      r.readAsDataURL(blob);
+    });
+    window._safetySharedPhotoB64 = b64;
+    window._safetySharedCaption  = caption || '';
+
+    await switchTab('safety');
+    setTimeout(function() {
+      // Show shared button in safety tab
+      var btn = document.getElementById('safety-use-shared-btn');
+      var sts = document.getElementById('safety-shared-status');
+      if (btn) {
+        btn.style.display = 'inline-flex';
+        btn.innerHTML = '📷 השתמש בתמונה מיומן חכם';
+      }
+      if (sts) sts.innerHTML = '<div style="font-size:11px;color:#86efac;margin-top:4px;">✅ תמונה מוכנה: ' + (caption||'').substring(0,40) + '</div>';
+      showToast('✅ תמונה נטענה — לחץ הפעל ניתוח בטיחות', 'success');
+    }, 300);
+  } catch(e) {
+    showToast('❌ שגיאה: ' + e.message, 'error');
+  }
 }
 // ══ SMART JOURNAL — inline fallback (replaces smartjournal_28032026.js) ═══
 function switchSmartTab(tab) {
@@ -6923,14 +7002,50 @@ async function loadSmartPhotos() {
     var res = await fetch(url,{headers:{apikey:SB_KEY,Authorization:'Bearer '+SB_KEY}});
     var data = res.ok?(await res.json()||[]):[];
     if (!data.length) { container.innerHTML='<div style="padding:30px;color:#555;text-align:center;direction:rtl;">📷 אין תמונות עדיין</div>'; return; }
-    container.innerHTML = '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;padding:10px;">'
-      + data.map(function(n){
-          var src = n.photo_url || n.cloudinary_url || '';
-          return src ? '<div style="border-radius:10px;overflow:hidden;border:1px solid rgba(255,255,255,0.1);">'
-            +'<img src="'+src+'" style="width:100%;height:100px;object-fit:cover;cursor:pointer;" data-src="'+encodeURIComponent(src)+'" onclick="smOpenPhoto(this)">'
-            +'<div style="padding:5px;font-size:10px;color:#888;direction:rtl;">'+((n.note_text||'').substring(0,30))+'</div></div>' : '';
-        }).join('')
-      + '</div>';
+    // Build photo grid with action buttons
+    container.innerHTML = '';
+    var grid = document.createElement('div');
+    grid.style.cssText = 'display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px;padding:10px;';
+    data.forEach(function(n) {
+      var src     = n.photo_url || n.cloudinary_url || '';
+      var caption = (n.note_text || '').substring(0, 40);
+      if (!src) return;
+      var card = document.createElement('div');
+      card.style.cssText = 'border-radius:12px;overflow:hidden;border:1px solid rgba(255,255,255,0.1);background:#1e1e35;';
+      card.setAttribute('data-note-text', caption);
+      // Photo
+      var img = document.createElement('img');
+      img.src = src;
+      img.style.cssText = 'width:100%;height:110px;object-fit:cover;cursor:zoom-in;display:block;';
+      img.setAttribute('data-src', encodeURIComponent(src));
+      img.onclick = function() { openLightbox(src, caption); };
+      card.appendChild(img);
+      // Caption
+      var cap = document.createElement('div');
+      cap.style.cssText = 'padding:5px 8px;font-size:10px;color:#888;direction:rtl;';
+      cap.textContent = caption;
+      card.appendChild(cap);
+      // Action buttons
+      var acts = document.createElement('div');
+      acts.style.cssText = 'display:flex;gap:4px;padding:6px 6px 8px;';
+      // Scan button
+      var scanBtn = document.createElement('button');
+      scanBtn.style.cssText = 'flex:1;background:rgba(201,168,76,0.15);border:1px solid rgba(201,168,76,0.4);color:#c9a84c;padding:5px 4px;border-radius:8px;cursor:pointer;font-family:Heebo,sans-serif;font-size:10px;font-weight:700;';
+      scanBtn.textContent = '🚀 סרוק';
+      scanBtn.title = 'שלח לסריקה מהירה';
+      scanBtn.onclick = (function(u,c){ return function(){ smSendToScan(u,c); }; })(src, caption);
+      acts.appendChild(scanBtn);
+      // Safety button
+      var safeBtn = document.createElement('button');
+      safeBtn.style.cssText = 'flex:1;background:rgba(239,68,68,0.12);border:1px solid rgba(239,68,68,0.3);color:#fca5a5;padding:5px 4px;border-radius:8px;cursor:pointer;font-family:Heebo,sans-serif;font-size:10px;font-weight:700;';
+      safeBtn.textContent = '🛡️ בטיחות';
+      safeBtn.title = 'שלח לניתוח בטיחות';
+      safeBtn.onclick = (function(u,c){ return function(){ smSendToSafety(u,c); }; })(src, caption);
+      acts.appendChild(safeBtn);
+      card.appendChild(acts);
+      grid.appendChild(card);
+    });
+    container.appendChild(grid);
   } catch(e) { container.innerHTML='<div style="color:#ef4444;padding:20px;direction:rtl;">שגיאה: '+e.message+'</div>'; }
 }
 
@@ -7565,8 +7680,9 @@ function openLinkModal(takeoffId) {
       <!-- Header -->
       <div style="margin-bottom:24px;">
         <div style="font-size:10px;letter-spacing:3px;color:#c9a84c;text-transform:uppercase;margin-bottom:4px;">AI Multi-Analysis</div>
-        <h1 style="font-size:24px;font-weight:900;color:#fff;margin:0;">🚀 סריקה חכמה — 4 ניתוחים במקביל</h1>
-        <div style="font-size:12px;color:#666;margin-top:4px;">העלה תמונה או סרטון — בחר ניתוחים — קבל דוח מקיף + CAP</div>
+        <h1 style="font-size:24px;font-weight:900;color:#fff;margin:0;">🚀 סריקה מהירה</h1>
+        <div style="font-size:12px;color:#c9a84c;font-weight:700;margin-top:2px;">ניתוח מקדים — 4 ניתוחים במקביל</div>
+        <div style="font-size:12px;color:#666;margin-top:4px;">העלה תמונה או סרטון → בחר ניתוחים → קבל דוח מיידי → עבור לניתוח מעמיק בטאב בטיחות</div>
       </div>
 
       <!-- Project selector -->
@@ -7592,7 +7708,12 @@ function openLinkModal(takeoffId) {
         <div id="ss-upload-progress" style="display:none;margin-top:10px;">
           <div style="font-size:12px;color:#888;" id="ss-upload-status">⏳ טוען...</div>
         </div>
-        <img id="ss-thumb" style="display:none;max-height:150px;border-radius:8px;margin-top:12px;border:1px solid rgba(255,255,255,0.1);">
+        <img id="ss-thumb" style="display:none;max-height:150px;border-radius:8px;margin-top:12px;border:1px solid rgba(255,255,255,0.1);cursor:zoom-in;" onclick="if(this.src)openLightbox(this.src,'תמונה לסריקה')">
+        <!-- Journal photo indicator — shown when photo arrives from יומן חכם -->
+        <div id="ss-journal-badge" style="display:none;margin-top:8px;background:rgba(201,168,76,0.12);border:1px solid rgba(201,168,76,0.3);border-radius:8px;padding:7px 12px;font-size:11px;color:#c9a84c;direction:rtl;">
+          📋 תמונה מיומן חכם — <span id="ss-journal-caption"></span>
+          <button onclick="switchTab('notes');setTimeout(function(){switchSmartTab('photos');},300);" style="background:none;border:none;color:#c9a84c;cursor:pointer;font-size:11px;text-decoration:underline;font-family:Heebo,sans-serif;">חזור ליומן</button>
+        </div>
       </div>
 
       <!-- Analysis checkboxes -->
