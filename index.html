@@ -366,6 +366,7 @@ window.addEventListener('unhandledrejection', function(e) {
   <div class="top-tab"        id="tab-standards" onclick="switchTab('standards')"><span>📚</span><span>תקני בניה</span></div>
   <div class="top-tab"        id="tab-inbox" onclick="switchTab('inbox')"><span>📥</span><span>תיבת נכנסים</span><span id="tab-inbox-badge" style="display:none;background:#ef4444;color:#fff;border-radius:8px;padding:1px 6px;font-size:9px;font-weight:800;"></span></div>
   <div class="top-tab"        id="tab-smartscan" onclick="switchTab('smartscan')"><span>🚀</span><span>סריקה מהירה</span></div>
+  <div class="top-tab"        id="tab-misc"      onclick="switchTab('misc')"><span>📥</span><span>מגוון</span><span id="misc-badge" style="display:none;background:#ef4444;color:#fff;border-radius:8px;font-size:9px;padding:1px 5px;margin-right:2px;">0</span></div>
 </div>
 
 <!-- ══ PANELS — loaded dynamically from Supabase Storage ══ -->
@@ -3665,6 +3666,610 @@ function ragHistShowDetail(row) {
 }
 
 
+// ══════════════════════════════════════════════════════════════════════
+// MISCELLANEOUS / FALLOUT TAB
+// Shows unrouted items from beni_notes + asset_inbox
+// AI attempts to categorize; Avshi manually routes the rest
+// ══════════════════════════════════════════════════════════════════════
+
+async function loadMiscTab() {
+  var listEl   = document.getElementById('misc-list');
+  var filter   = (document.getElementById('misc-filter-type') || {}).value || 'all';
+  if (listEl) listEl.innerHTML = '<div style="text-align:center;padding:24px;color:#888;">טוען...</div>';
+
+  try {
+    // Load unrouted beni_notes (no project_id OR note_type = unrouted/null)
+    var qs = 'select=id,note_text,photo_url,note_type,color,project_id,created_at&order=created_at.desc&limit=100';
+    qs += '&routed=eq.false';  // we add routed column via SQL below
+    // Fallback: load all notes without project
+    var { data: notes } = await sbQ('beni_notes', 'project_id=is.null&order=created_at.desc&limit=80&select=id,note_text,photo_url,note_type,color,created_at');
+    notes = notes || [];
+
+    // Load pending asset_inbox
+    var { data: inbox } = await sbQ('asset_inbox', 'status=eq.pending&order=created_at.desc&limit=50&select=id,cloudinary_url,file_name,file_type,thumbnail_url,project_id,created_at');
+    inbox = inbox || [];
+
+    // Apply type filter
+    var filteredNotes = notes;
+    var filteredInbox = inbox;
+    if (filter !== 'all') {
+      filteredNotes = notes.filter(function(n) {
+        if (filter === 'audio') return n.note_type === 'audio' || (n.photo_url && (n.photo_url.includes('/beni_voice/') || /\.(mp3|m4a|wav|ogg|webm)(\?|$)/i.test(n.photo_url)));
+        if (filter === 'photo') return n.note_type === 'photo' || (n.photo_url && !n.photo_url.includes('/beni_voice/') && !/\.(mp4|mov|avi|m4v|webm)(\?|$)/i.test(n.photo_url));
+        if (filter === 'video') return n.note_type === 'video' || (n.photo_url && /\.(mp4|mov|avi|m4v)(\?|$)/i.test(n.photo_url));
+        if (filter === 'text')  return !n.photo_url;
+        return true;
+      });
+      filteredInbox = inbox.filter(function(i) { return i.file_type === filter; });
+    }
+
+    // Update stats
+    var audioCount = notes.filter(function(n){ return n.note_type==='audio'||(n.photo_url&&n.photo_url.includes('/beni_voice/')); }).length;
+    var photoCount = notes.filter(function(n){ return n.note_type==='photo'; }).length + inbox.filter(function(i){ return i.file_type==='image'; }).length;
+    var textCount  = notes.filter(function(n){ return !n.photo_url; }).length;
+    var el = function(id,v){ var e=document.getElementById(id); if(e) e.textContent=v; };
+    el('misc-count-unrouted', filteredNotes.length + filteredInbox.length);
+    el('misc-count-audio',    audioCount);
+    el('misc-count-photo',    photoCount);
+    el('misc-count-text',     textCount);
+
+    // Update nav badge
+    var badge = document.getElementById('misc-badge');
+    var total = notes.length + inbox.length;
+    if (badge) { badge.textContent = total; badge.style.display = total ? 'inline' : 'none'; }
+
+    if (!filteredNotes.length && !filteredInbox.length) {
+      if (listEl) listEl.innerHTML = '<div style="text-align:center;padding:40px;color:#444;font-size:13px;">✅ אין פריטים ממתינים לסיווג</div>';
+      return;
+    }
+
+    // Build cards
+    if (listEl) listEl.innerHTML = '';
+    var frag = document.createDocumentFragment();
+
+    // beni_notes cards
+    filteredNotes.forEach(function(n) {
+      frag.appendChild(buildMiscCard({
+        id:         'note_' + n.id,
+        rawId:      n.id,
+        source:     'beni_notes',
+        text:       n.note_text || '',
+        mediaUrl:   n.photo_url || '',
+        noteType:   n.note_type || (n.photo_url ? 'media' : 'text'),
+        date:       n.created_at,
+        projectId:  n.project_id
+      }));
+    });
+
+    // asset_inbox cards
+    filteredInbox.forEach(function(i) {
+      frag.appendChild(buildMiscCard({
+        id:         'inbox_' + i.id,
+        rawId:      i.id,
+        source:     'asset_inbox',
+        text:       i.file_name || '',
+        mediaUrl:   i.thumbnail_url || i.cloudinary_url || '',
+        noteType:   i.file_type || 'media',
+        date:       i.created_at,
+        projectId:  i.project_id
+      }));
+    });
+
+    if (listEl) listEl.appendChild(frag);
+
+  } catch(e) {
+    if (listEl) listEl.innerHTML = '<div style="color:#fca5a5;padding:20px;direction:rtl;">❌ ' + e.message + '</div>';
+  }
+}
+
+function buildMiscCard(item) {
+  var card = document.createElement('div');
+  card.id = 'misc-card-' + item.id;
+  card.style.cssText = 'background:#1e1e35;border:1px solid rgba(255,255,255,0.07);border-radius:14px;padding:14px;margin-bottom:10px;';
+
+  var typeIcon = { audio:'🎙️', photo:'📸', video:'🎬', image:'📸', text:'📝', media:'📎' }[item.noteType] || '📎';
+  var date = new Date(item.date).toLocaleDateString('he-IL') + ' ' + new Date(item.date).toLocaleTimeString('he-IL',{hour:'2-digit',minute:'2-digit'});
+  var sourceLabel = item.source === 'asset_inbox' ? '🔄 סנכרון' : '📱 בני פוקט';
+
+  // Media preview
+  var mediaHtml = '';
+  if (item.mediaUrl) {
+    var isAudio = /\.(mp3|m4a|wav|ogg|webm)(\?|$)/i.test(item.mediaUrl) || item.mediaUrl.includes('/beni_voice/');
+    var isVideo = /\.(mp4|mov|avi|m4v)(\?|$)/i.test(item.mediaUrl);
+    if (isAudio) {
+      mediaHtml = '<audio controls style="width:100%;margin:8px 0;border-radius:8px;" src="' + item.mediaUrl + '"></audio>';
+    } else if (isVideo) {
+      mediaHtml = '<video controls style="width:100%;max-height:140px;border-radius:8px;margin:8px 0;" src="' + item.mediaUrl + '"></video>';
+    } else {
+      mediaHtml = '<img src="' + item.mediaUrl + '" style="width:100%;max-height:140px;object-fit:cover;border-radius:8px;margin:8px 0;cursor:zoom-in;" onclick="if(this.src)openLightbox(this.src,\'\')">';
+    }
+  }
+
+
+  // Build card content using DOM to avoid quote issues
+  var headerDiv = document.createElement('div');
+  headerDiv.style.cssText = 'display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;';
+  var leftDiv = document.createElement('div');
+  leftDiv.style.cssText = 'display:flex;align-items:center;gap:6px;';
+  var iconSpan = document.createElement('span');
+  iconSpan.style.fontSize = '18px'; iconSpan.textContent = typeIcon;
+  var textDiv = document.createElement('div');
+  var titleEl = document.createElement('div');
+  titleEl.style.cssText = 'font-size:12px;font-weight:700;color:#fff;';
+  titleEl.textContent = (item.text || '').substring(0, 60);
+  var metaEl = document.createElement('div');
+  metaEl.style.cssText = 'font-size:10px;color:#555;margin-top:1px;';
+  metaEl.textContent = sourceLabel + ' · ' + date;
+  textDiv.appendChild(titleEl); textDiv.appendChild(metaEl);
+  leftDiv.appendChild(iconSpan); leftDiv.appendChild(textDiv);
+  var projBadge = document.createElement('span');
+  projBadge.style.cssText = 'font-size:10px;padding:2px 8px;border-radius:6px;white-space:nowrap;' + (item.projectId ? 'color:#86efac;background:rgba(34,197,94,0.1);' : 'color:#fca5a5;background:rgba(239,68,68,0.1);');
+  projBadge.textContent = item.projectId ? '🏗️ מקושר' : '⚠️ ללא פרויקט';
+  headerDiv.appendChild(leftDiv); headerDiv.appendChild(projBadge);
+  card.appendChild(headerDiv);
+
+  // Media element
+  if (item.mediaUrl) {
+    var isAudio = /\.(mp3|m4a|wav|ogg|webm)(\?|$)/i.test(item.mediaUrl) || item.mediaUrl.includes('/beni_voice/');
+    var isVid   = /\.(mp4|mov|avi|m4v)(\?|$)/i.test(item.mediaUrl);
+    var mediaEl;
+    if (isAudio) {
+      mediaEl = document.createElement('audio');
+      mediaEl.controls = true;
+      mediaEl.style.cssText = 'width:100%;margin:8px 0;border-radius:8px;display:block;';
+    } else if (isVid) {
+      mediaEl = document.createElement('video');
+      mediaEl.controls = true;
+      mediaEl.style.cssText = 'width:100%;max-height:140px;border-radius:8px;margin:8px 0;display:block;';
+    } else {
+      mediaEl = document.createElement('img');
+      mediaEl.style.cssText = 'width:100%;max-height:140px;object-fit:cover;border-radius:8px;margin:8px 0;cursor:zoom-in;display:block;';
+      mediaEl.addEventListener('click', (function(u){ return function(){ openLightbox(u,''); }; })(item.mediaUrl));
+    }
+    mediaEl.src = item.mediaUrl;
+    card.appendChild(mediaEl);
+  }
+
+  // Route buttons — pure DOM, no inline onclick
+  var btnsRow = document.createElement('div');
+  btnsRow.id = 'misc-btns-' + item.id;
+  btnsRow.style.cssText = 'display:flex;gap:5px;margin-top:8px;';
+  [
+    { label:'🛡️ בטיחות', bg:'rgba(239,68,68,0.15)',   bd:'rgba(239,68,68,0.4)',   col:'#fca5a5', dest:'safety' },
+    { label:'📝 יומן',    bg:'rgba(201,168,76,0.15)',  bd:'rgba(201,168,76,0.4)',  col:'#c9a84c', dest:'notes'  },
+    { label:'✅ משימה',   bg:'rgba(34,197,94,0.15)',   bd:'rgba(34,197,94,0.4)',   col:'#86efac', dest:'task'   },
+    { label:'🏗️ הנדסי',  bg:'rgba(139,92,246,0.15)',  bd:'rgba(139,92,246,0.4)', col:'#c4b5fd', dest:'rag'    },
+    { label:'🗑️ מחק',    bg:'rgba(255,255,255,0.04)', bd:'rgba(255,255,255,0.1)', col:'#666',    dest:'delete' }
+  ].forEach(function(b) {
+    var btn = document.createElement('button');
+    btn.textContent = b.label;
+    btn.style.cssText = 'flex:1;background:' + b.bg + ';border:1px solid ' + b.bd + ';color:' + b.col + ';padding:6px 2px;border-radius:8px;cursor:pointer;font-family:Heebo,sans-serif;font-size:10px;font-weight:700;';
+    btn.addEventListener('click', (function(id,src,rid,dest,txt,media){
+      return function(){ miscRouteItem(id,src,rid,dest,txt,media); };
+    })(item.id, item.source, item.rawId, b.dest, item.text, item.mediaUrl));
+    btnsRow.appendChild(btn);
+  });
+  card.appendChild(btnsRow);
+
+  var aiEl = document.createElement('div');
+  aiEl.id = 'misc-ai-' + item.id;
+  aiEl.style.cssText = 'margin-top:6px;font-size:11px;color:#555;direction:rtl;';
+  card.appendChild(aiEl);
+
+  return card;
+}
+
+async function miscRouteItem(cardId, source, rawId, dest, encodedText, encodedMedia) {
+  var text  = decodeURIComponent(encodedText);
+  var media = decodeURIComponent(encodedMedia);
+  var card  = document.getElementById('misc-card-' + cardId);
+  var btns  = document.getElementById('misc-btns-' + cardId);
+  if (btns) btns.innerHTML = '<span style="color:#888;font-size:11px;">⏳ מנתב...</span>';
+
+  try {
+    if (dest === 'delete') {
+      if (source === 'beni_notes')  await fetch(SB_URL+'/rest/v1/beni_notes?id=eq.'+rawId,  {method:'DELETE',headers:{apikey:SB_KEY,Authorization:'Bearer '+SB_KEY}});
+      if (source === 'asset_inbox') await fetch(SB_URL+'/rest/v1/asset_inbox?id=eq.'+rawId, {method:'DELETE',headers:{apikey:SB_KEY,Authorization:'Bearer '+SB_KEY}});
+      if (card) { card.style.opacity='0.3'; setTimeout(function(){ if(card) card.remove(); }, 400); }
+      showToast('🗑️ נמחק', 'success');
+      return;
+    }
+    if (dest === 'task') {
+      await fetch(SB_URL+'/rest/v1/reminders',{method:'POST',headers:{apikey:SB_KEY,Authorization:'Bearer '+SB_KEY,'Content-Type':'application/json',Prefer:'return=minimal'},body:JSON.stringify({text:text,priority:'רגיל',is_done:false,created_at:new Date().toISOString()})});
+    }
+    if (dest === 'notes') {
+      // already in beni_notes — just mark as routed (update color to green)
+      if (source === 'beni_notes') await fetch(SB_URL+'/rest/v1/beni_notes?id=eq.'+rawId,{method:'PATCH',headers:{apikey:SB_KEY,Authorization:'Bearer '+SB_KEY,'Content-Type':'application/json',Prefer:'return=minimal'},body:JSON.stringify({color:'green'})});
+    }
+    if (dest === 'safety') {
+      await fetch(SB_URL+'/rest/v1/safety_analyses',{method:'POST',headers:{apikey:SB_KEY,Authorization:'Bearer '+SB_KEY,'Content-Type':'application/json',Prefer:'return=minimal'},body:JSON.stringify({title:text.substring(0,100)||'ממגוון',file_url:media||null,status:'pending',created_at:new Date().toISOString()})});
+    }
+    if (dest === 'rag') {
+      // Route to engineering advice — open rag tab with context
+      await switchTab('rag');
+      var inp = document.getElementById('rag-input');
+      if (inp) inp.value = text;
+      showToast('🏗️ שאלה נטענה לייעוץ הנדסי', 'success');
+      return;
+    }
+    // Mark asset_inbox as approved
+    if (source === 'asset_inbox') {
+      await fetch(SB_URL+'/rest/v1/asset_inbox?id=eq.'+rawId,{method:'PATCH',headers:{apikey:SB_KEY,Authorization:'Bearer '+SB_KEY,'Content-Type':'application/json',Prefer:'return=minimal'},body:JSON.stringify({status:'approved'})});
+    }
+    if (card) { card.style.opacity='0.3'; setTimeout(function(){ if(card) card.remove(); }, 400); }
+    showToast('✅ נותב ל' + dest, 'success');
+  } catch(e) {
+    showToast('❌ ' + e.message, 'error');
+    if (btns) btns.innerHTML = '<span style="color:#fca5a5;font-size:11px;">שגיאה — רענן</span>';
+  }
+}
+
+async function miscProcessAll() {
+  var apiKey = APP && APP.config && APP.config.anthropic_key;
+  if (!apiKey) { showToast('מפתח API חסר', 'error'); return; }
+  var arcEl = document.getElementById('misc-arc');
+  if (window.arc && arcEl) arc.start(arcEl);
+
+  // Get all text-based unrouted notes
+  var { data: notes } = await sbQ('beni_notes', 'project_id=is.null&order=created_at.desc&limit=30&select=id,note_text,note_type,photo_url');
+  notes = notes || [];
+  var textNotes = notes.filter(function(n){ return n.note_text && !n.photo_url; });
+
+  if (!textNotes.length) {
+    if (window.arc && arcEl) arc.reset();
+    showToast('אין פריטי טקסט לניתוח', 'error');
+    return;
+  }
+
+  try {
+    var prompt = [
+      'אתה מנתב תוכן של קבלן בנייה ישראלי.',
+      'לכל פריט החזר JSON עם: route (safety|task|notes|engineering|miscellaneous), reason (עברית קצרה), project_hint (שם פרויקט אם מוזכר, אחרת null).',
+      '',
+      'פריטים:',
+      textNotes.map(function(n,i){ return (i+1)+'. '+n.note_text.substring(0,150); }).join('\n'),
+      '',
+      'החזר JSON בלבד: {"items":[{"id":"...","route":"...","reason":"...","project_hint":null}]}'
+    ].join('\n');
+
+    var resp = await claudeFetch({
+      _apiKey: apiKey, model: 'claude-sonnet-4-20250514', max_tokens: 1000,
+      system: 'מנתב תוכן. החזר JSON בלבד ללא markdown.',
+      messages: [{ role: 'user', content: prompt }]
+    }, null);
+    var data = await resp.json();
+    var inTok  = (data.usage && data.usage.input_tokens)  || 0;
+    var outTok = (data.usage && data.usage.output_tokens) || 0;
+    if (window.arc && arcEl) arc.finish(inTok, outTok);
+
+    var text   = (data.content && data.content[0] && data.content[0].text) || '{}';
+    var clean  = text.replace(/```json|```/g, '').trim();
+    var result = JSON.parse(clean);
+    var items  = result.items || [];
+
+    items.forEach(function(item) {
+      var aiEl = document.getElementById('misc-ai-note_' + item.id);
+      if (!aiEl) return;
+      var routeColors = { safety:'#fca5a5', task:'#86efac', notes:'#c9a84c', engineering:'#c4b5fd', miscellaneous:'#888' };
+      var routeIcons  = { safety:'🛡️', task:'✅', notes:'📝', engineering:'🏗️', miscellaneous:'📥' };
+      aiEl.innerHTML = '<span style="color:' + (routeColors[item.route]||'#888') + ';font-weight:700;">' +
+        (routeIcons[item.route]||'📎') + ' AI מציע: ' + item.route + '</span>' +
+        (item.reason ? ' — ' + item.reason : '') +
+        (item.project_hint ? ' | 🏗️ ' + item.project_hint : '');
+    });
+
+    showToast('✅ AI ניתח ' + items.length + ' פריטים — בדוק הצעות', 'success');
+  } catch(e) {
+    if (window.arc && arcEl) arc.reset();
+    showToast('❌ שגיאה בניתוח: ' + e.message, 'error');
+  }
+}
+
+async function loadMiscTab() {
+  var listEl   = document.getElementById('misc-list');
+  var filter   = (document.getElementById('misc-filter-type') || {}).value || 'all';
+  if (listEl) listEl.innerHTML = '<div style="text-align:center;padding:24px;color:#888;">טוען...</div>';
+
+  try {
+    // Load unrouted beni_notes (no project_id OR note_type = unrouted/null)
+    var qs = 'select=id,note_text,photo_url,note_type,color,project_id,created_at&order=created_at.desc&limit=100';
+    qs += '&routed=eq.false';  // we add routed column via SQL below
+    // Fallback: load all notes without project
+    var { data: notes } = await sbQ('beni_notes', 'project_id=is.null&order=created_at.desc&limit=80&select=id,note_text,photo_url,note_type,color,created_at');
+    notes = notes || [];
+
+    // Load pending asset_inbox
+    var { data: inbox } = await sbQ('asset_inbox', 'status=eq.pending&order=created_at.desc&limit=50&select=id,cloudinary_url,file_name,file_type,thumbnail_url,project_id,created_at');
+    inbox = inbox || [];
+
+    // Apply type filter
+    var filteredNotes = notes;
+    var filteredInbox = inbox;
+    if (filter !== 'all') {
+      filteredNotes = notes.filter(function(n) {
+        if (filter === 'audio') return n.note_type === 'audio' || (n.photo_url && (n.photo_url.includes('/beni_voice/') || /\.(mp3|m4a|wav|ogg|webm)(\?|$)/i.test(n.photo_url)));
+        if (filter === 'photo') return n.note_type === 'photo' || (n.photo_url && !n.photo_url.includes('/beni_voice/') && !/\.(mp4|mov|avi|m4v|webm)(\?|$)/i.test(n.photo_url));
+        if (filter === 'video') return n.note_type === 'video' || (n.photo_url && /\.(mp4|mov|avi|m4v)(\?|$)/i.test(n.photo_url));
+        if (filter === 'text')  return !n.photo_url;
+        return true;
+      });
+      filteredInbox = inbox.filter(function(i) { return i.file_type === filter; });
+    }
+
+    // Update stats
+    var audioCount = notes.filter(function(n){ return n.note_type==='audio'||(n.photo_url&&n.photo_url.includes('/beni_voice/')); }).length;
+    var photoCount = notes.filter(function(n){ return n.note_type==='photo'; }).length + inbox.filter(function(i){ return i.file_type==='image'; }).length;
+    var textCount  = notes.filter(function(n){ return !n.photo_url; }).length;
+    var el = function(id,v){ var e=document.getElementById(id); if(e) e.textContent=v; };
+    el('misc-count-unrouted', filteredNotes.length + filteredInbox.length);
+    el('misc-count-audio',    audioCount);
+    el('misc-count-photo',    photoCount);
+    el('misc-count-text',     textCount);
+
+    // Update nav badge
+    var badge = document.getElementById('misc-badge');
+    var total = notes.length + inbox.length;
+    if (badge) { badge.textContent = total; badge.style.display = total ? 'inline' : 'none'; }
+
+    if (!filteredNotes.length && !filteredInbox.length) {
+      if (listEl) listEl.innerHTML = '<div style="text-align:center;padding:40px;color:#444;font-size:13px;">✅ אין פריטים ממתינים לסיווג</div>';
+      return;
+    }
+
+    // Build cards
+    if (listEl) listEl.innerHTML = '';
+    var frag = document.createDocumentFragment();
+
+    // beni_notes cards
+    filteredNotes.forEach(function(n) {
+      frag.appendChild(buildMiscCard({
+        id:         'note_' + n.id,
+        rawId:      n.id,
+        source:     'beni_notes',
+        text:       n.note_text || '',
+        mediaUrl:   n.photo_url || '',
+        noteType:   n.note_type || (n.photo_url ? 'media' : 'text'),
+        date:       n.created_at,
+        projectId:  n.project_id
+      }));
+    });
+
+    // asset_inbox cards
+    filteredInbox.forEach(function(i) {
+      frag.appendChild(buildMiscCard({
+        id:         'inbox_' + i.id,
+        rawId:      i.id,
+        source:     'asset_inbox',
+        text:       i.file_name || '',
+        mediaUrl:   i.thumbnail_url || i.cloudinary_url || '',
+        noteType:   i.file_type || 'media',
+        date:       i.created_at,
+        projectId:  i.project_id
+      }));
+    });
+
+    if (listEl) listEl.appendChild(frag);
+
+  } catch(e) {
+    if (listEl) listEl.innerHTML = '<div style="color:#fca5a5;padding:20px;direction:rtl;">❌ ' + e.message + '</div>';
+  }
+}
+
+function buildMiscCard(item) {
+  var card = document.createElement('div');
+  card.id = 'misc-card-' + item.id;
+  card.style.cssText = 'background:#1e1e35;border:1px solid rgba(255,255,255,0.07);border-radius:14px;padding:14px;margin-bottom:10px;';
+
+  var typeIcon = { audio:'🎙️', photo:'📸', video:'🎬', image:'📸', text:'📝', media:'📎' }[item.noteType] || '📎';
+  var date = new Date(item.date).toLocaleDateString('he-IL') + ' ' + new Date(item.date).toLocaleTimeString('he-IL',{hour:'2-digit',minute:'2-digit'});
+  var sourceLabel = item.source === 'asset_inbox' ? '🔄 סנכרון' : '📱 בני פוקט';
+
+  // Media preview
+  var mediaHtml = '';
+  if (item.mediaUrl) {
+    var isAudio = /\.(mp3|m4a|wav|ogg|webm)(\?|$)/i.test(item.mediaUrl) || item.mediaUrl.includes('/beni_voice/');
+    var isVideo = /\.(mp4|mov|avi|m4v)(\?|$)/i.test(item.mediaUrl);
+    if (isAudio) {
+      mediaHtml = '<audio controls style="width:100%;margin:8px 0;border-radius:8px;" src="' + item.mediaUrl + '"></audio>';
+    } else if (isVideo) {
+      mediaHtml = '<video controls style="width:100%;max-height:140px;border-radius:8px;margin:8px 0;" src="' + item.mediaUrl + '"></video>';
+    } else {
+      mediaHtml = '<img src="' + item.mediaUrl + '" style="width:100%;max-height:140px;object-fit:cover;border-radius:8px;margin:8px 0;cursor:zoom-in;" onclick="if(this.src)openLightbox(this.src,\'\')">';
+    }
+  }
+
+
+  // Build card content using DOM to avoid quote issues
+  var headerDiv = document.createElement('div');
+  headerDiv.style.cssText = 'display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;';
+  var leftDiv = document.createElement('div');
+  leftDiv.style.cssText = 'display:flex;align-items:center;gap:6px;';
+  var iconSpan = document.createElement('span');
+  iconSpan.style.fontSize = '18px'; iconSpan.textContent = typeIcon;
+  var textDiv = document.createElement('div');
+  var titleEl = document.createElement('div');
+  titleEl.style.cssText = 'font-size:12px;font-weight:700;color:#fff;';
+  titleEl.textContent = (item.text || '').substring(0, 60);
+  var metaEl = document.createElement('div');
+  metaEl.style.cssText = 'font-size:10px;color:#555;margin-top:1px;';
+  metaEl.textContent = sourceLabel + ' · ' + date;
+  textDiv.appendChild(titleEl); textDiv.appendChild(metaEl);
+  leftDiv.appendChild(iconSpan); leftDiv.appendChild(textDiv);
+  var projBadge = document.createElement('span');
+  projBadge.style.cssText = 'font-size:10px;padding:2px 8px;border-radius:6px;white-space:nowrap;' + (item.projectId ? 'color:#86efac;background:rgba(34,197,94,0.1);' : 'color:#fca5a5;background:rgba(239,68,68,0.1);');
+  projBadge.textContent = item.projectId ? '🏗️ מקושר' : '⚠️ ללא פרויקט';
+  headerDiv.appendChild(leftDiv); headerDiv.appendChild(projBadge);
+  card.appendChild(headerDiv);
+
+  // Media element
+  if (item.mediaUrl) {
+    var isAudio = /\.(mp3|m4a|wav|ogg|webm)(\?|$)/i.test(item.mediaUrl) || item.mediaUrl.includes('/beni_voice/');
+    var isVid   = /\.(mp4|mov|avi|m4v)(\?|$)/i.test(item.mediaUrl);
+    var mediaEl;
+    if (isAudio) {
+      mediaEl = document.createElement('audio');
+      mediaEl.controls = true;
+      mediaEl.style.cssText = 'width:100%;margin:8px 0;border-radius:8px;display:block;';
+    } else if (isVid) {
+      mediaEl = document.createElement('video');
+      mediaEl.controls = true;
+      mediaEl.style.cssText = 'width:100%;max-height:140px;border-radius:8px;margin:8px 0;display:block;';
+    } else {
+      mediaEl = document.createElement('img');
+      mediaEl.style.cssText = 'width:100%;max-height:140px;object-fit:cover;border-radius:8px;margin:8px 0;cursor:zoom-in;display:block;';
+      mediaEl.addEventListener('click', (function(u){ return function(){ openLightbox(u,''); }; })(item.mediaUrl));
+    }
+    mediaEl.src = item.mediaUrl;
+    card.appendChild(mediaEl);
+  }
+
+  // Route buttons — pure DOM, no inline onclick
+  var btnsRow = document.createElement('div');
+  btnsRow.id = 'misc-btns-' + item.id;
+  btnsRow.style.cssText = 'display:flex;gap:5px;margin-top:8px;';
+  [
+    { label:'🛡️ בטיחות', bg:'rgba(239,68,68,0.15)',   bd:'rgba(239,68,68,0.4)',   col:'#fca5a5', dest:'safety' },
+    { label:'📝 יומן',    bg:'rgba(201,168,76,0.15)',  bd:'rgba(201,168,76,0.4)',  col:'#c9a84c', dest:'notes'  },
+    { label:'✅ משימה',   bg:'rgba(34,197,94,0.15)',   bd:'rgba(34,197,94,0.4)',   col:'#86efac', dest:'task'   },
+    { label:'🏗️ הנדסי',  bg:'rgba(139,92,246,0.15)',  bd:'rgba(139,92,246,0.4)', col:'#c4b5fd', dest:'rag'    },
+    { label:'🗑️ מחק',    bg:'rgba(255,255,255,0.04)', bd:'rgba(255,255,255,0.1)', col:'#666',    dest:'delete' }
+  ].forEach(function(b) {
+    var btn = document.createElement('button');
+    btn.textContent = b.label;
+    btn.style.cssText = 'flex:1;background:' + b.bg + ';border:1px solid ' + b.bd + ';color:' + b.col + ';padding:6px 2px;border-radius:8px;cursor:pointer;font-family:Heebo,sans-serif;font-size:10px;font-weight:700;';
+    btn.addEventListener('click', (function(id,src,rid,dest,txt,media){
+      return function(){ miscRouteItem(id,src,rid,dest,txt,media); };
+    })(item.id, item.source, item.rawId, b.dest, item.text, item.mediaUrl));
+    btnsRow.appendChild(btn);
+  });
+  card.appendChild(btnsRow);
+
+  var aiEl = document.createElement('div');
+  aiEl.id = 'misc-ai-' + item.id;
+  aiEl.style.cssText = 'margin-top:6px;font-size:11px;color:#555;direction:rtl;';
+  card.appendChild(aiEl);
+
+  return card;
+}
+
+async function miscRouteItem(cardId, source, rawId, dest, encodedText, encodedMedia) {
+  var text  = decodeURIComponent(encodedText);
+  var media = decodeURIComponent(encodedMedia);
+  var card  = document.getElementById('misc-card-' + cardId);
+  var btns  = document.getElementById('misc-btns-' + cardId);
+  if (btns) btns.innerHTML = '<span style="color:#888;font-size:11px;">⏳ מנתב...</span>';
+
+  try {
+    if (dest === 'delete') {
+      if (source === 'beni_notes')  await fetch(SB_URL+'/rest/v1/beni_notes?id=eq.'+rawId,  {method:'DELETE',headers:{apikey:SB_KEY,Authorization:'Bearer '+SB_KEY}});
+      if (source === 'asset_inbox') await fetch(SB_URL+'/rest/v1/asset_inbox?id=eq.'+rawId, {method:'DELETE',headers:{apikey:SB_KEY,Authorization:'Bearer '+SB_KEY}});
+      if (card) { card.style.opacity='0.3'; setTimeout(function(){ if(card) card.remove(); }, 400); }
+      showToast('🗑️ נמחק', 'success');
+      return;
+    }
+    if (dest === 'task') {
+      await fetch(SB_URL+'/rest/v1/reminders',{method:'POST',headers:{apikey:SB_KEY,Authorization:'Bearer '+SB_KEY,'Content-Type':'application/json',Prefer:'return=minimal'},body:JSON.stringify({text:text,priority:'רגיל',is_done:false,created_at:new Date().toISOString()})});
+    }
+    if (dest === 'notes') {
+      // already in beni_notes — just mark as routed (update color to green)
+      if (source === 'beni_notes') await fetch(SB_URL+'/rest/v1/beni_notes?id=eq.'+rawId,{method:'PATCH',headers:{apikey:SB_KEY,Authorization:'Bearer '+SB_KEY,'Content-Type':'application/json',Prefer:'return=minimal'},body:JSON.stringify({color:'green'})});
+    }
+    if (dest === 'safety') {
+      await fetch(SB_URL+'/rest/v1/safety_analyses',{method:'POST',headers:{apikey:SB_KEY,Authorization:'Bearer '+SB_KEY,'Content-Type':'application/json',Prefer:'return=minimal'},body:JSON.stringify({title:text.substring(0,100)||'ממגוון',file_url:media||null,status:'pending',created_at:new Date().toISOString()})});
+    }
+    if (dest === 'rag') {
+      // Route to engineering advice — open rag tab with context
+      await switchTab('rag');
+      var inp = document.getElementById('rag-input');
+      if (inp) inp.value = text;
+      showToast('🏗️ שאלה נטענה לייעוץ הנדסי', 'success');
+      return;
+    }
+    // Mark asset_inbox as approved
+    if (source === 'asset_inbox') {
+      await fetch(SB_URL+'/rest/v1/asset_inbox?id=eq.'+rawId,{method:'PATCH',headers:{apikey:SB_KEY,Authorization:'Bearer '+SB_KEY,'Content-Type':'application/json',Prefer:'return=minimal'},body:JSON.stringify({status:'approved'})});
+    }
+    if (card) { card.style.opacity='0.3'; setTimeout(function(){ if(card) card.remove(); }, 400); }
+    showToast('✅ נותב ל' + dest, 'success');
+  } catch(e) {
+    showToast('❌ ' + e.message, 'error');
+    if (btns) btns.innerHTML = '<span style="color:#fca5a5;font-size:11px;">שגיאה — רענן</span>';
+  }
+}
+
+async function miscProcessAll() {
+  var apiKey = APP && APP.config && APP.config.anthropic_key;
+  if (!apiKey) { showToast('מפתח API חסר', 'error'); return; }
+  var arcEl = document.getElementById('misc-arc');
+  if (window.arc && arcEl) arc.start(arcEl);
+
+  // Get all text-based unrouted notes
+  var { data: notes } = await sbQ('beni_notes', 'project_id=is.null&order=created_at.desc&limit=30&select=id,note_text,note_type,photo_url');
+  notes = notes || [];
+  var textNotes = notes.filter(function(n){ return n.note_text && !n.photo_url; });
+
+  if (!textNotes.length) {
+    if (window.arc && arcEl) arc.reset();
+    showToast('אין פריטי טקסט לניתוח', 'error');
+    return;
+  }
+
+  try {
+    var prompt = [
+      'אתה מנתב תוכן של קבלן בנייה ישראלי.',
+      'לכל פריט החזר JSON: route (safety|task|notes|engineering|miscellaneous), reason (עברית), project_hint.',
+      'פריטים:',
+      textNotes.map(function(n,i){ return (i+1)+'. '+n.note_text.substring(0,150); }).join('\n'),
+      'החזר JSON בלבד: {"items":[{"id":"...","route":"...","reason":"...","project_hint":null}]}'
+    ].join('\n');
+
+    var resp = await claudeFetch({ _apiKey: apiKey, model: 'claude-sonnet-4-20250514', max_tokens: 1000,
+      system: 'מנתב תוכן. החזר JSON בלבד ללא markdown.',
+      messages: [{ role: 'user', content: prompt }]
+    }, null);
+    var data = await resp.json();
+    var inTok  = (data.usage && data.usage.input_tokens)  || 0;
+    var outTok = (data.usage && data.usage.output_tokens) || 0;
+    if (window.arc && arcEl) arc.finish(inTok, outTok);
+
+    var text = (data.content && data.content[0] && data.content[0].text) || '{}';
+    var clean = text.replace(/```json|```/g,'').trim();
+    var result = JSON.parse(clean);
+    var items = result.items || [];
+
+    // Show AI suggestions on each card
+    items.forEach(function(item) {
+      var aiEl = document.getElementById('misc-ai-note_' + item.id);
+      if (!aiEl) return;
+      var routeColors = { safety:'#fca5a5', task:'#86efac', notes:'#c9a84c', engineering:'#c4b5fd', miscellaneous:'#888' };
+      var routeIcons  = { safety:'🛡️', task:'✅', notes:'📝', engineering:'🏗️', miscellaneous:'📥' };
+      aiEl.innerHTML = '<span style="color:' + (routeColors[item.route]||'#888') + ';font-weight:700;">' +
+        (routeIcons[item.route]||'📎') + ' AI מציע: ' + item.route + '</span>' +
+        (item.reason ? ' — ' + item.reason : '') +
+        (item.project_hint ? ' | 🏗️ ' + item.project_hint : '');
+    });
+
+    showToast('✅ AI ניתח ' + items.length + ' פריטים — בדוק הצעות', 'success');
+  } catch(e) {
+    if (window.arc && arcEl) arc.reset();
+    showToast('❌ שגיאה בניתוח: ' + e.message, 'error');
+  }
+}
+
+// Update misc badge on boot
+async function updateMiscBadge() {
+  try {
+    var { data } = await sbQ('beni_notes', 'project_id=is.null&select=id');
+    data = data || [];
+    var { data: data2 } = await sbQ('asset_inbox', 'status=eq.pending&select=id');
+    data2 = data2 || [];
+    var total = data.length + data2.length;
+    var badge = document.getElementById('misc-badge');
+    if (badge) { badge.textContent = total; badge.style.display = total ? 'inline' : 'none'; }
+  } catch(e) {}
+}
+
+
 async function bootstrap() {
   try {
     // 1. Load lookups + config — graceful if tables don't exist yet
@@ -3754,7 +4359,7 @@ async function switchTab(tab) {
     if (ov) ov.style.display = 'none';
   }
 
-  ['crm','notes','eod','safety','rag','micharon','query','gcal','journal','standards','smartscan','inbox'].forEach(t => {
+  ['crm','notes','eod','safety','rag','micharon','query','gcal','journal','standards','smartscan','inbox','misc'].forEach(t => {
     document.getElementById(`${t}-panel`)?.classList.toggle('active', t===tab);
     document.getElementById(`tab-${t}`)?.classList.toggle('active', t===tab);
   });
@@ -3777,6 +4382,7 @@ async function switchTab(tab) {
   if (tab === 'standards') { _fetchStandardsModule().then(function(){ setTimeout(standardsRagInit, 100); }); }
   if (tab === 'smartscan')  { _fetchSmartScanModule().then(function(){ setTimeout(function(){ smartScanInit(); _ssPopulateProjects(); }, 100); }); }
   if (tab === 'inbox')      { _fetchAssetInboxModule().then(function(){ setTimeout(function(){ assetInboxInit(); }, 100); }); }
+  if (tab === 'misc')       { setTimeout(loadMiscTab, 100); }
 }
 
 // ══════════════════════════════════════════════════════
@@ -4290,6 +4896,7 @@ function calcCost(){var qty=parseFloat(document.getElementById('cost-qty').value
 
 document.addEventListener('DOMContentLoaded', async () => {
   await bootstrap();
+  setTimeout(updateMiscBadge, 3000);
   // Restore last tab
   try {
     const saved = localStorage.getItem('beni_active_tab');
@@ -6632,16 +7239,11 @@ function _ragInjectFallback() {
 // Do NOT paste code here. Source of truth is Supabase.
 // ══════════════════════════════════════════════════════════════════════
 async function _loadSharedModules() {
-  // Load order matters: arc and ecf must be ready before rag_engine uses them
   var ORDER = ['arc', 'ecf', 'rag_engine'];
   try {
-    var res = await fetch(
-      SB_URL + '/rest/v1/shared_modules?name=in.(arc,ecf,rag_engine)&select=name,js_code',
-      { headers: { apikey: SB_KEY, Authorization: 'Bearer ' + SB_KEY } }
-    );
-    if (!res.ok) throw new Error('HTTP ' + res.status);
-    var rows = await res.json();
-    // Inject in defined order
+    var { data: rows, error } = await sbQ('shared_modules', 'name=in.(arc,ecf,rag_engine)&select=name,js_code');
+    if (error && error.message) throw new Error(error.message);
+    rows = rows || [];
     ORDER.forEach(function(name) {
       var m = rows.find(function(r){ return r.name === name; });
       if (!m) { console.warn('shared_module not found:', name); return; }
@@ -7566,7 +8168,6 @@ function openLinkModal(takeoffId) {
   document.getElementById('modal-link-takeoff').style.display = 'flex';
 }
 
-
 // ===== END INLINED MODULES =====
 
 
@@ -7810,5 +8411,66 @@ function openLinkModal(takeoffId) {
   <div id="lightbox-caption" style="color:rgba(255,255,255,0.6);font-size:12px;margin-top:12px;font-family:Heebo,sans-serif;direction:rtl;"></div>
   <div style="color:rgba(255,255,255,0.3);font-size:11px;margin-top:4px;font-family:Heebo,sans-serif;">לחץ על התמונה להגדלה · לחץ מחוץ לתמונה לסגירה · Esc לסגירה</div>
 </div>
+
+<!-- ══ MISCELLANEOUS / FALLOUT PANEL ════════════════════════════════ -->
+<div class="app-panel" id="misc-panel">
+  <div id="misc-content">
+    <div style="padding:70px 24px 60px;min-height:100vh;background:#1a1a2e;font-family:Heebo,sans-serif;direction:rtl;">
+
+      <!-- Header -->
+      <div style="margin-bottom:24px;">
+        <div style="font-size:10px;letter-spacing:3px;color:#ef4444;text-transform:uppercase;margin-bottom:4px;">Fallout Queue</div>
+        <h1 style="font-size:24px;font-weight:900;color:#fff;">📥 מגוון — לא מסווג</h1>
+        <div style="font-size:12px;color:#666;margin-top:4px;">פריטים שה-AI לא הצליח לנתב לקטגוריה מוגדרת — ממתינים לסיווג ידני</div>
+      </div>
+
+      <!-- Stats row -->
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:20px;">
+        <div style="background:#1e1e35;border:1px solid rgba(239,68,68,0.3);border-radius:12px;padding:12px;text-align:center;">
+          <div id="misc-count-unrouted" style="font-size:22px;font-weight:900;color:#fca5a5;">0</div>
+          <div style="font-size:10px;color:#666;margin-top:2px;">ממתין לסיווג</div>
+        </div>
+        <div style="background:#1e1e35;border:1px solid rgba(201,168,76,0.3);border-radius:12px;padding:12px;text-align:center;">
+          <div id="misc-count-audio" style="font-size:22px;font-weight:900;color:#c9a84c;">0</div>
+          <div style="font-size:10px;color:#666;margin-top:2px;">הקלטות</div>
+        </div>
+        <div style="background:#1e1e35;border:1px solid rgba(59,130,246,0.3);border-radius:12px;padding:12px;text-align:center;">
+          <div id="misc-count-photo" style="font-size:22px;font-weight:900;color:#93c5fd;">0</div>
+          <div style="font-size:10px;color:#666;margin-top:2px;">תמונות/וידאו</div>
+        </div>
+        <div style="background:#1e1e35;border:1px solid rgba(139,92,246,0.3);border-radius:12px;padding:12px;text-align:center;">
+          <div id="misc-count-text" style="font-size:22px;font-weight:900;color:#c4b5fd;">0</div>
+          <div style="font-size:10px;color:#666;margin-top:2px;">הערות טקסט</div>
+        </div>
+      </div>
+
+      <!-- Action bar -->
+      <div style="display:flex;gap:8px;margin-bottom:20px;flex-wrap:wrap;">
+        <button onclick="miscProcessAll()" style="background:linear-gradient(135deg,#7c3aed,#5b21b6);border:none;color:#fff;padding:10px 20px;border-radius:10px;cursor:pointer;font-family:Heebo,sans-serif;font-size:13px;font-weight:800;">
+          🤖 נתח הכל עם AI
+        </button>
+        <button onclick="loadMiscTab()" style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);color:#888;padding:10px 16px;border-radius:10px;cursor:pointer;font-family:Heebo,sans-serif;font-size:12px;">
+          🔄 רענן
+        </button>
+        <select id="misc-filter-type" onchange="loadMiscTab()" style="background:#1e1e35;border:1px solid rgba(255,255,255,0.12);color:#ccc;padding:10px 12px;border-radius:10px;font-family:Heebo,sans-serif;font-size:12px;direction:rtl;">
+          <option value="all">כל הסוגים</option>
+          <option value="audio">🎙️ הקלטות</option>
+          <option value="photo">📸 תמונות</option>
+          <option value="video">🎬 וידאו</option>
+          <option value="text">📝 טקסט</option>
+        </select>
+        <!-- ARC timer for AI processing -->
+        <div id="misc-arc" style="flex:1;"></div>
+      </div>
+
+      <!-- Items list -->
+      <div id="misc-list">
+        <div style="text-align:center;padding:40px;color:#444;font-size:13px;">לחץ רענן לטעינת הפריטים</div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
 </body>
 </html>
