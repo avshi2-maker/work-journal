@@ -3694,10 +3694,12 @@ async function loadMiscTab() {
     var filteredInbox = inbox;
     if (filter !== 'all') {
       filteredNotes = notes.filter(function(n) {
-        if (filter === 'audio') return n.note_type === 'audio' || (n.photo_url && (n.photo_url.includes('/beni_voice/') || /\.(mp3|m4a|wav|ogg|webm)(\?|$)/i.test(n.photo_url)));
-        if (filter === 'photo') return n.note_type === 'photo' || (n.photo_url && !n.photo_url.includes('/beni_voice/') && !/\.(mp4|mov|avi|m4v|webm)(\?|$)/i.test(n.photo_url));
-        if (filter === 'video') return n.note_type === 'video' || (n.photo_url && /\.(mp4|mov|avi|m4v)(\?|$)/i.test(n.photo_url));
-        if (filter === 'text')  return !n.photo_url;
+        var url = n.photo_url || '';
+        var nt  = n.note_type || '';
+        if (filter === 'audio') return nt === 'audio' || url.includes('/beni_voice/') || /\.(mp3|m4a|wav|ogg|webm)(\?|$)/i.test(url);
+        if (filter === 'video') return nt === 'video' || /\.(mp4|mov|avi|m4v|3gp)(\?|$)/i.test(url);
+        if (filter === 'photo') return nt === 'photo' || nt === 'doc' || (url && !url.includes('/beni_voice/') && !/\.(mp4|mov|avi|m4v|3gp|mp3|m4a|wav|ogg|webm)(\?|$)/i.test(url));
+        if (filter === 'text')  return !url && (nt === 'text' || !nt);
         return true;
       });
       filteredInbox = inbox.filter(function(i) { return i.file_type === filter; });
@@ -3865,11 +3867,15 @@ function buildMiscCard(item) {
   btnsRow.id = 'misc-btns-' + item.id;
   btnsRow.style.cssText = 'display:flex;gap:5px;margin-top:8px;';
   [
-    { label:'🛡️ בטיחות', bg:'rgba(239,68,68,0.15)',   bd:'rgba(239,68,68,0.4)',   col:'#fca5a5', dest:'safety' },
-    { label:'📝 יומן',    bg:'rgba(201,168,76,0.15)',  bd:'rgba(201,168,76,0.4)',  col:'#c9a84c', dest:'notes'  },
-    { label:'✅ משימה',   bg:'rgba(34,197,94,0.15)',   bd:'rgba(34,197,94,0.4)',   col:'#86efac', dest:'task'   },
-    { label:'🏗️ הנדסי',  bg:'rgba(139,92,246,0.15)',  bd:'rgba(139,92,246,0.4)', col:'#c4b5fd', dest:'rag'    },
-    { label:'🗑️ מחק',    bg:'rgba(255,255,255,0.04)', bd:'rgba(255,255,255,0.1)', col:'#666',    dest:'delete' }
+    { label:'🛡️ בטיחות',   bg:'rgba(239,68,68,0.15)',   bd:'rgba(239,68,68,0.4)',   col:'#fca5a5', dest:'safety'    },
+    { label:'🚀 סריקה',    bg:'rgba(201,168,76,0.15)',  bd:'rgba(201,168,76,0.4)',  col:'#c9a84c', dest:'smartscan' },
+    { label:'🏗️ הנדסי',   bg:'rgba(139,92,246,0.15)',  bd:'rgba(139,92,246,0.4)', col:'#c4b5fd', dest:'rag'       },
+    { label:'📝 יומן',     bg:'rgba(59,130,246,0.15)',  bd:'rgba(59,130,246,0.4)',  col:'#93c5fd', dest:'notes'     },
+    { label:'📐 מדידות',   bg:'rgba(20,184,166,0.15)',  bd:'rgba(20,184,166,0.4)',  col:'#5eead4', dest:'takeoff'   },
+    { label:'🎙️ הקלטות',  bg:'rgba(245,158,11,0.15)',  bd:'rgba(245,158,11,0.4)',  col:'#fde68a', dest:'recordings'},
+    { label:'📄 OCR/AI',   bg:'rgba(99,102,241,0.15)',  bd:'rgba(99,102,241,0.4)',  col:'#a5b4fc', dest:'ocr'       },
+    { label:'✅ משימה',    bg:'rgba(34,197,94,0.15)',   bd:'rgba(34,197,94,0.4)',   col:'#86efac', dest:'task'      },
+    { label:'🗑️ מחק',     bg:'rgba(255,255,255,0.04)', bd:'rgba(255,255,255,0.1)', col:'#666',    dest:'delete'    }
   ].forEach(function(b) {
     var btn = document.createElement('button');
     btn.textContent = b.label;
@@ -3908,18 +3914,103 @@ async function miscRouteItem(cardId, source, rawId, dest, encodedText, encodedMe
       await fetch(SB_URL+'/rest/v1/reminders',{method:'POST',headers:{apikey:SB_KEY,Authorization:'Bearer '+SB_KEY,'Content-Type':'application/json',Prefer:'return=minimal'},body:JSON.stringify({text:text,priority:'רגיל',is_done:false,created_at:new Date().toISOString()})});
     }
     if (dest === 'notes') {
-      // already in beni_notes — just mark as routed (update color to green)
       if (source === 'beni_notes') await fetch(SB_URL+'/rest/v1/beni_notes?id=eq.'+rawId,{method:'PATCH',headers:{apikey:SB_KEY,Authorization:'Bearer '+SB_KEY,'Content-Type':'application/json',Prefer:'return=minimal'},body:JSON.stringify({color:'green'})});
     }
     if (dest === 'safety') {
       await fetch(SB_URL+'/rest/v1/safety_analyses',{method:'POST',headers:{apikey:SB_KEY,Authorization:'Bearer '+SB_KEY,'Content-Type':'application/json',Prefer:'return=minimal'},body:JSON.stringify({title:text.substring(0,100)||'ממגוון',file_url:media||null,status:'pending',created_at:new Date().toISOString()})});
     }
+    if (dest === 'smartscan') {
+      // Pre-load into סריקה מהירה
+      await switchTab('smartscan');
+      setTimeout(async function() {
+        var thumb = document.getElementById('ss-thumb');
+        var btn   = document.getElementById('ss-scan-btn');
+        var prog  = document.getElementById('ss-upload-progress');
+        var sts   = document.getElementById('ss-upload-status');
+        if (media) {
+          try {
+            var r = await fetch(media); var blob = await r.blob();
+            var b64 = await new Promise(function(res){ var rd=new FileReader(); rd.onload=function(e){res(e.target.result);}; rd.readAsDataURL(blob); });
+            window._ssSharedPhotoUrl = media; window._ssSharedPhotoB64 = b64;
+            if (thumb) { thumb.src = b64; thumb.style.display='block'; }
+          } catch(e) { if (thumb) { thumb.src=media; thumb.style.display='block'; } }
+          if (btn) btn.style.display='block';
+          if (prog) prog.style.display='block';
+          if (sts) sts.innerHTML = '✅ מ<strong>מגוון</strong>: ' + (text||'').substring(0,40);
+        }
+        showToast('🚀 תמונה נטענה — לחץ הפעל ניתוח חכם', 'success');
+      }, 400);
+      return;
+    }
+    if (dest === 'takeoff') {
+      // Switch to יומן חכם → מדידות tab
+      await switchTab('notes');
+      setTimeout(function(){ switchSmartTab('takeoffs'); }, 300);
+      showToast('📐 עבור לטאב מדידות להזנת נתונים', 'success');
+      return;
+    }
+    if (dest === 'recordings') {
+      // Switch to יומן חכם → הקלטות tab
+      await switchTab('notes');
+      setTimeout(function(){ switchSmartTab('recordings'); }, 300);
+      showToast('🎙️ עבור לטאב הקלטות', 'success');
+      return;
+    }
+    if (dest === 'ocr') {
+      // Switch to יומן חכם → OCR/AI tab and pre-load image
+      await switchTab('notes');
+      setTimeout(async function() {
+        switchSmartTab('ocr');
+        if (media) {
+          var ocrImg = document.getElementById('ocr-preview-img');
+          var ocrSrc = document.getElementById('ocr-image-src');
+          if (ocrImg) { ocrImg.src = media; ocrImg.style.display='block'; }
+          if (ocrSrc) ocrSrc.value = media;
+          window._ocrImageUrl = media;
+          showToast('📄 תמונה נטענה ל-OCR — לחץ הפעל', 'success');
+        }
+      }, 400);
+      return;
+    }
     if (dest === 'rag') {
-      // Route to engineering advice — open rag tab with context
+      // Send photo/media to ייעוץ הנדסי for Claude Vision analysis
       await switchTab('rag');
-      var inp = document.getElementById('rag-input');
-      if (inp) inp.value = text;
-      showToast('🏗️ שאלה נטענה לייעוץ הנדסי', 'success');
+      if (media) {
+        // Load photo into RAG photo input
+        window._ragCurrentPhoto = null;
+        var preview = document.getElementById('rag-photo-preview');
+        var img     = document.getElementById('rag-photo-img');
+        var ana     = document.getElementById('rag-photo-analysis');
+        var acts    = document.getElementById('rag-photo-actions');
+        // Fetch the image and convert to base64 for Claude Vision
+        try {
+          var r = await fetch(media);
+          var blob = await r.blob();
+          var b64 = await new Promise(function(resolve){
+            var rd = new FileReader();
+            rd.onload = function(e){ resolve(e.target.result); };
+            rd.readAsDataURL(blob);
+          });
+          window._ragCurrentPhoto = b64;
+          if (img)  { img.src = b64; }
+          if (preview) preview.style.display = 'block';
+          if (acts)    acts.style.display = 'flex';
+          if (ana)     ana.innerHTML = '📸 תמונה מ<strong>מגוון</strong> — לחץ <strong>🤖 הפעל בינה מלאכותית</strong> לניתוח';
+          showToast('✅ תמונה נטענה לייעוץ הנדסי — לחץ הפעל', 'success');
+        } catch(fetchErr) {
+          // If fetch fails, just set the URL directly
+          window._ragCurrentPhoto = media;
+          if (img)  { img.src = media; }
+          if (preview) preview.style.display = 'block';
+          if (acts)    acts.style.display = 'flex';
+          if (ana)     ana.innerHTML = '📸 תמונה מ<strong>מגוון</strong> — לחץ <strong>🤖 הפעל בינה מלאכותית</strong> לניתוח';
+          showToast('✅ תמונה נטענה לייעוץ הנדסי — לחץ הפעל', 'success');
+        }
+      } else if (text) {
+        var inp = document.getElementById('rag-input');
+        if (inp) inp.value = text;
+        showToast('🏗️ שאלה נטענה לייעוץ הנדסי', 'success');
+      }
       return;
     }
     // Mark asset_inbox as approved
@@ -4017,10 +4108,12 @@ async function loadMiscTab() {
     var filteredInbox = inbox;
     if (filter !== 'all') {
       filteredNotes = notes.filter(function(n) {
-        if (filter === 'audio') return n.note_type === 'audio' || (n.photo_url && (n.photo_url.includes('/beni_voice/') || /\.(mp3|m4a|wav|ogg|webm)(\?|$)/i.test(n.photo_url)));
-        if (filter === 'photo') return n.note_type === 'photo' || (n.photo_url && !n.photo_url.includes('/beni_voice/') && !/\.(mp4|mov|avi|m4v|webm)(\?|$)/i.test(n.photo_url));
-        if (filter === 'video') return n.note_type === 'video' || (n.photo_url && /\.(mp4|mov|avi|m4v)(\?|$)/i.test(n.photo_url));
-        if (filter === 'text')  return !n.photo_url;
+        var url = n.photo_url || '';
+        var nt  = n.note_type || '';
+        if (filter === 'audio') return nt === 'audio' || url.includes('/beni_voice/') || /\.(mp3|m4a|wav|ogg|webm)(\?|$)/i.test(url);
+        if (filter === 'video') return nt === 'video' || /\.(mp4|mov|avi|m4v|3gp)(\?|$)/i.test(url);
+        if (filter === 'photo') return nt === 'photo' || nt === 'doc' || (url && !url.includes('/beni_voice/') && !/\.(mp4|mov|avi|m4v|3gp|mp3|m4a|wav|ogg|webm)(\?|$)/i.test(url));
+        if (filter === 'text')  return !url && (nt === 'text' || !nt);
         return true;
       });
       filteredInbox = inbox.filter(function(i) { return i.file_type === filter; });
@@ -4188,11 +4281,15 @@ function buildMiscCard(item) {
   btnsRow.id = 'misc-btns-' + item.id;
   btnsRow.style.cssText = 'display:flex;gap:5px;margin-top:8px;';
   [
-    { label:'🛡️ בטיחות', bg:'rgba(239,68,68,0.15)',   bd:'rgba(239,68,68,0.4)',   col:'#fca5a5', dest:'safety' },
-    { label:'📝 יומן',    bg:'rgba(201,168,76,0.15)',  bd:'rgba(201,168,76,0.4)',  col:'#c9a84c', dest:'notes'  },
-    { label:'✅ משימה',   bg:'rgba(34,197,94,0.15)',   bd:'rgba(34,197,94,0.4)',   col:'#86efac', dest:'task'   },
-    { label:'🏗️ הנדסי',  bg:'rgba(139,92,246,0.15)',  bd:'rgba(139,92,246,0.4)', col:'#c4b5fd', dest:'rag'    },
-    { label:'🗑️ מחק',    bg:'rgba(255,255,255,0.04)', bd:'rgba(255,255,255,0.1)', col:'#666',    dest:'delete' }
+    { label:'🛡️ בטיחות',   bg:'rgba(239,68,68,0.15)',   bd:'rgba(239,68,68,0.4)',   col:'#fca5a5', dest:'safety'    },
+    { label:'🚀 סריקה',    bg:'rgba(201,168,76,0.15)',  bd:'rgba(201,168,76,0.4)',  col:'#c9a84c', dest:'smartscan' },
+    { label:'🏗️ הנדסי',   bg:'rgba(139,92,246,0.15)',  bd:'rgba(139,92,246,0.4)', col:'#c4b5fd', dest:'rag'       },
+    { label:'📝 יומן',     bg:'rgba(59,130,246,0.15)',  bd:'rgba(59,130,246,0.4)',  col:'#93c5fd', dest:'notes'     },
+    { label:'📐 מדידות',   bg:'rgba(20,184,166,0.15)',  bd:'rgba(20,184,166,0.4)',  col:'#5eead4', dest:'takeoff'   },
+    { label:'🎙️ הקלטות',  bg:'rgba(245,158,11,0.15)',  bd:'rgba(245,158,11,0.4)',  col:'#fde68a', dest:'recordings'},
+    { label:'📄 OCR/AI',   bg:'rgba(99,102,241,0.15)',  bd:'rgba(99,102,241,0.4)',  col:'#a5b4fc', dest:'ocr'       },
+    { label:'✅ משימה',    bg:'rgba(34,197,94,0.15)',   bd:'rgba(34,197,94,0.4)',   col:'#86efac', dest:'task'      },
+    { label:'🗑️ מחק',     bg:'rgba(255,255,255,0.04)', bd:'rgba(255,255,255,0.1)', col:'#666',    dest:'delete'    }
   ].forEach(function(b) {
     var btn = document.createElement('button');
     btn.textContent = b.label;
@@ -4231,18 +4328,103 @@ async function miscRouteItem(cardId, source, rawId, dest, encodedText, encodedMe
       await fetch(SB_URL+'/rest/v1/reminders',{method:'POST',headers:{apikey:SB_KEY,Authorization:'Bearer '+SB_KEY,'Content-Type':'application/json',Prefer:'return=minimal'},body:JSON.stringify({text:text,priority:'רגיל',is_done:false,created_at:new Date().toISOString()})});
     }
     if (dest === 'notes') {
-      // already in beni_notes — just mark as routed (update color to green)
       if (source === 'beni_notes') await fetch(SB_URL+'/rest/v1/beni_notes?id=eq.'+rawId,{method:'PATCH',headers:{apikey:SB_KEY,Authorization:'Bearer '+SB_KEY,'Content-Type':'application/json',Prefer:'return=minimal'},body:JSON.stringify({color:'green'})});
     }
     if (dest === 'safety') {
       await fetch(SB_URL+'/rest/v1/safety_analyses',{method:'POST',headers:{apikey:SB_KEY,Authorization:'Bearer '+SB_KEY,'Content-Type':'application/json',Prefer:'return=minimal'},body:JSON.stringify({title:text.substring(0,100)||'ממגוון',file_url:media||null,status:'pending',created_at:new Date().toISOString()})});
     }
+    if (dest === 'smartscan') {
+      // Pre-load into סריקה מהירה
+      await switchTab('smartscan');
+      setTimeout(async function() {
+        var thumb = document.getElementById('ss-thumb');
+        var btn   = document.getElementById('ss-scan-btn');
+        var prog  = document.getElementById('ss-upload-progress');
+        var sts   = document.getElementById('ss-upload-status');
+        if (media) {
+          try {
+            var r = await fetch(media); var blob = await r.blob();
+            var b64 = await new Promise(function(res){ var rd=new FileReader(); rd.onload=function(e){res(e.target.result);}; rd.readAsDataURL(blob); });
+            window._ssSharedPhotoUrl = media; window._ssSharedPhotoB64 = b64;
+            if (thumb) { thumb.src = b64; thumb.style.display='block'; }
+          } catch(e) { if (thumb) { thumb.src=media; thumb.style.display='block'; } }
+          if (btn) btn.style.display='block';
+          if (prog) prog.style.display='block';
+          if (sts) sts.innerHTML = '✅ מ<strong>מגוון</strong>: ' + (text||'').substring(0,40);
+        }
+        showToast('🚀 תמונה נטענה — לחץ הפעל ניתוח חכם', 'success');
+      }, 400);
+      return;
+    }
+    if (dest === 'takeoff') {
+      // Switch to יומן חכם → מדידות tab
+      await switchTab('notes');
+      setTimeout(function(){ switchSmartTab('takeoffs'); }, 300);
+      showToast('📐 עבור לטאב מדידות להזנת נתונים', 'success');
+      return;
+    }
+    if (dest === 'recordings') {
+      // Switch to יומן חכם → הקלטות tab
+      await switchTab('notes');
+      setTimeout(function(){ switchSmartTab('recordings'); }, 300);
+      showToast('🎙️ עבור לטאב הקלטות', 'success');
+      return;
+    }
+    if (dest === 'ocr') {
+      // Switch to יומן חכם → OCR/AI tab and pre-load image
+      await switchTab('notes');
+      setTimeout(async function() {
+        switchSmartTab('ocr');
+        if (media) {
+          var ocrImg = document.getElementById('ocr-preview-img');
+          var ocrSrc = document.getElementById('ocr-image-src');
+          if (ocrImg) { ocrImg.src = media; ocrImg.style.display='block'; }
+          if (ocrSrc) ocrSrc.value = media;
+          window._ocrImageUrl = media;
+          showToast('📄 תמונה נטענה ל-OCR — לחץ הפעל', 'success');
+        }
+      }, 400);
+      return;
+    }
     if (dest === 'rag') {
-      // Route to engineering advice — open rag tab with context
+      // Send photo/media to ייעוץ הנדסי for Claude Vision analysis
       await switchTab('rag');
-      var inp = document.getElementById('rag-input');
-      if (inp) inp.value = text;
-      showToast('🏗️ שאלה נטענה לייעוץ הנדסי', 'success');
+      if (media) {
+        // Load photo into RAG photo input
+        window._ragCurrentPhoto = null;
+        var preview = document.getElementById('rag-photo-preview');
+        var img     = document.getElementById('rag-photo-img');
+        var ana     = document.getElementById('rag-photo-analysis');
+        var acts    = document.getElementById('rag-photo-actions');
+        // Fetch the image and convert to base64 for Claude Vision
+        try {
+          var r = await fetch(media);
+          var blob = await r.blob();
+          var b64 = await new Promise(function(resolve){
+            var rd = new FileReader();
+            rd.onload = function(e){ resolve(e.target.result); };
+            rd.readAsDataURL(blob);
+          });
+          window._ragCurrentPhoto = b64;
+          if (img)  { img.src = b64; }
+          if (preview) preview.style.display = 'block';
+          if (acts)    acts.style.display = 'flex';
+          if (ana)     ana.innerHTML = '📸 תמונה מ<strong>מגוון</strong> — לחץ <strong>🤖 הפעל בינה מלאכותית</strong> לניתוח';
+          showToast('✅ תמונה נטענה לייעוץ הנדסי — לחץ הפעל', 'success');
+        } catch(fetchErr) {
+          // If fetch fails, just set the URL directly
+          window._ragCurrentPhoto = media;
+          if (img)  { img.src = media; }
+          if (preview) preview.style.display = 'block';
+          if (acts)    acts.style.display = 'flex';
+          if (ana)     ana.innerHTML = '📸 תמונה מ<strong>מגוון</strong> — לחץ <strong>🤖 הפעל בינה מלאכותית</strong> לניתוח';
+          showToast('✅ תמונה נטענה לייעוץ הנדסי — לחץ הפעל', 'success');
+        }
+      } else if (text) {
+        var inp = document.getElementById('rag-input');
+        if (inp) inp.value = text;
+        showToast('🏗️ שאלה נטענה לייעוץ הנדסי', 'success');
+      }
       return;
     }
     // Mark asset_inbox as approved
@@ -4476,6 +4658,57 @@ async function inboxAction(item, action) {
       showToast('🛡️ עבור לניתוח בטיחות','success');
     }
   } catch(e) { showToast('❌ ' + e.message,'error'); }
+}
+
+
+function miscRouteAllPhotos() {
+  // Show a simple project picker to batch-assign all photo items
+  var projects = window.allProjects || [];
+  if (!projects.length) { showToast('טוען פרויקטים... נסה שוב', 'error'); return; }
+  
+  var modal = document.createElement('div');
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.8);z-index:99999;display:flex;align-items:center;justify-content:center;';
+  
+  var box = document.createElement('div');
+  box.style.cssText = 'background:#1e1e35;border-radius:16px;padding:20px;width:320px;font-family:Heebo,sans-serif;direction:rtl;';
+  box.innerHTML = '<div style="font-size:16px;font-weight:900;color:#fff;margin-bottom:14px;">📁 שייך כל התמונות לפרויקט</div>';
+  
+  projects.forEach(function(p) {
+    var btn = document.createElement('button');
+    btn.style.cssText = 'width:100%;padding:10px 14px;margin-bottom:8px;background:#242438;border:1px solid rgba(255,255,255,0.1);color:#fff;border-radius:10px;cursor:pointer;font-family:Heebo,sans-serif;font-size:13px;text-align:right;';
+    btn.textContent = '🏗️ ' + p.project_name;
+    btn.onclick = async function() {
+      modal.remove();
+      // Update all unrouted beni_notes with photo_url to this project
+      var res = await fetch(SB_URL + '/rest/v1/beni_notes?project_id=is.null&photo_url=not.is.null', {
+        method: 'PATCH',
+        headers: { apikey: SB_KEY, Authorization: 'Bearer ' + SB_KEY, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+        body: JSON.stringify({ project_id: p.id })
+      });
+      if (res.ok) {
+        showToast('✅ כל התמונות שויכו ל' + p.project_name, 'success');
+        loadMiscTab();
+      } else {
+        showToast('❌ שגיאה בשיוך', 'error');
+      }
+    };
+    box.appendChild(btn);
+  });
+  
+  var cancel = document.createElement('button');
+  cancel.style.cssText = 'width:100%;padding:10px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);color:#888;border-radius:10px;cursor:pointer;font-family:Heebo,sans-serif;font-size:13px;';
+  cancel.textContent = 'ביטול';
+  cancel.onclick = function() { modal.remove(); };
+  box.appendChild(cancel);
+  modal.appendChild(box);
+  document.body.appendChild(modal);
+}
+
+
+function miscSendToRAG() {
+  // Find first photo/video in the misc list and send to ייעוץ הנדסי
+  // Or let user pick from the cards — add a "שלח לניתוח" button on each card
+  showToast('📸 לחץ על כפתור "🏗️ הנדסי" על הכרטיס הרצוי לשליחה לניתוח', 'success');
 }
 
 
@@ -8648,8 +8881,11 @@ function openLinkModal(takeoffId) {
 
       <!-- Action bar -->
       <div style="display:flex;gap:8px;margin-bottom:20px;flex-wrap:wrap;">
-        <button onclick="miscProcessAll()" style="background:linear-gradient(135deg,#7c3aed,#5b21b6);border:none;color:#fff;padding:10px 20px;border-radius:10px;cursor:pointer;font-family:Heebo,sans-serif;font-size:13px;font-weight:800;">
-          🤖 נתח הכל עם AI
+        <button onclick="miscSendToRAG()" style="background:linear-gradient(135deg,#7c3aed,#5b21b6);border:none;color:#fff;padding:10px 20px;border-radius:10px;cursor:pointer;font-family:Heebo,sans-serif;font-size:13px;font-weight:800;">
+          🤖 שלח לייעוץ הנדסי AI
+        </button>
+        <button onclick="miscRouteAllPhotos()" style="background:linear-gradient(135deg,#1e3a5f,#2563eb);border:none;color:#fff;padding:10px 20px;border-radius:10px;cursor:pointer;font-family:Heebo,sans-serif;font-size:13px;font-weight:800;">
+          📁 שייך לפרויקט
         </button>
         <button onclick="loadMiscTab()" style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);color:#888;padding:10px 16px;border-radius:10px;cursor:pointer;font-family:Heebo,sans-serif;font-size:12px;">
           🔄 רענן
