@@ -3802,10 +3802,33 @@ function buildMiscCard(item) {
   metaEl.textContent = sourceLabel + ' · ' + date;
   textDiv.appendChild(titleEl); textDiv.appendChild(metaEl);
   leftDiv.appendChild(iconSpan); leftDiv.appendChild(textDiv);
-  var projBadge = document.createElement('span');
-  projBadge.style.cssText = 'font-size:10px;padding:2px 8px;border-radius:6px;white-space:nowrap;' + (item.projectId ? 'color:#86efac;background:rgba(34,197,94,0.1);' : 'color:#fca5a5;background:rgba(239,68,68,0.1);');
-  projBadge.textContent = item.projectId ? '🏗️ מקושר' : '⚠️ ללא פרויקט';
-  headerDiv.appendChild(leftDiv); headerDiv.appendChild(projBadge);
+  // Project selector dropdown on each card
+  var projSel = document.createElement('select');
+  projSel.style.cssText = 'font-size:11px;background:#1a1a2e;border:1px solid rgba(201,168,76,0.4);color:#c9a84c;padding:4px 6px;border-radius:6px;font-family:Heebo,sans-serif;max-width:130px;direction:rtl;cursor:pointer;';
+  var defaultOpt = document.createElement('option');
+  defaultOpt.value = '';
+  defaultOpt.textContent = item.projectId ? '🏗️ מקושר' : '📁 שייך לפרויקט';
+  projSel.appendChild(defaultOpt);
+  (window.allProjects || []).forEach(function(p) {
+    var opt = document.createElement('option');
+    opt.value = p.id;
+    opt.textContent = p.project_name;
+    if (p.id == item.projectId) opt.selected = true;
+    projSel.appendChild(opt);
+  });
+  projSel.addEventListener('change', (function(src, rid, selEl) {
+    return function() {
+      var pid = selEl.value;
+      if (!pid) return;
+      var table = src === 'asset_inbox' ? 'asset_inbox' : 'beni_notes';
+      fetch(SB_URL + '/rest/v1/' + table + '?id=eq.' + rid, {
+        method: 'PATCH',
+        headers: { apikey: SB_KEY, Authorization: 'Bearer ' + SB_KEY, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+        body: JSON.stringify({ project_id: pid })
+      }).then(function() { showToast('✅ שויך לפרויקט', 'success'); selEl.style.borderColor = '#22c55e'; selEl.style.color = '#86efac'; });
+    };
+  })(item.source, item.rawId, projSel));
+  headerDiv.appendChild(leftDiv); headerDiv.appendChild(projSel);
   card.appendChild(headerDiv);
 
   // Media element
@@ -3825,6 +3848,13 @@ function buildMiscCard(item) {
       mediaEl = document.createElement('img');
       mediaEl.style.cssText = 'width:100%;max-height:140px;object-fit:cover;border-radius:8px;margin:8px 0;cursor:zoom-in;display:block;';
       mediaEl.addEventListener('click', (function(u){ return function(){ openLightbox(u,''); }; })(item.mediaUrl));
+      mediaEl.onerror = function() {
+        // HEIC or unsupported format — show filename placeholder
+        var ph = document.createElement('div');
+        ph.style.cssText = 'background:#242438;border-radius:8px;margin:8px 0;padding:16px;text-align:center;font-size:12px;color:#888;direction:rtl;';
+        ph.innerHTML = '🖼️ ' + (item.text || 'תמונה') + '<br><a href="' + item.mediaUrl + '" target="_blank" style="color:#c9a84c;font-size:11px;">פתח בחלונית חדשה ↗</a>';
+        this.parentNode && this.parentNode.replaceChild(ph, this);
+      };
     }
     mediaEl.src = item.mediaUrl;
     card.appendChild(mediaEl);
@@ -4095,10 +4125,33 @@ function buildMiscCard(item) {
   metaEl.textContent = sourceLabel + ' · ' + date;
   textDiv.appendChild(titleEl); textDiv.appendChild(metaEl);
   leftDiv.appendChild(iconSpan); leftDiv.appendChild(textDiv);
-  var projBadge = document.createElement('span');
-  projBadge.style.cssText = 'font-size:10px;padding:2px 8px;border-radius:6px;white-space:nowrap;' + (item.projectId ? 'color:#86efac;background:rgba(34,197,94,0.1);' : 'color:#fca5a5;background:rgba(239,68,68,0.1);');
-  projBadge.textContent = item.projectId ? '🏗️ מקושר' : '⚠️ ללא פרויקט';
-  headerDiv.appendChild(leftDiv); headerDiv.appendChild(projBadge);
+  // Project selector dropdown on each card
+  var projSel = document.createElement('select');
+  projSel.style.cssText = 'font-size:11px;background:#1a1a2e;border:1px solid rgba(201,168,76,0.4);color:#c9a84c;padding:4px 6px;border-radius:6px;font-family:Heebo,sans-serif;max-width:130px;direction:rtl;cursor:pointer;';
+  var defaultOpt = document.createElement('option');
+  defaultOpt.value = '';
+  defaultOpt.textContent = item.projectId ? '🏗️ מקושר' : '📁 שייך לפרויקט';
+  projSel.appendChild(defaultOpt);
+  (window.allProjects || []).forEach(function(p) {
+    var opt = document.createElement('option');
+    opt.value = p.id;
+    opt.textContent = p.project_name;
+    if (p.id == item.projectId) opt.selected = true;
+    projSel.appendChild(opt);
+  });
+  projSel.addEventListener('change', (function(src, rid, selEl) {
+    return function() {
+      var pid = selEl.value;
+      if (!pid) return;
+      var table = src === 'asset_inbox' ? 'asset_inbox' : 'beni_notes';
+      fetch(SB_URL + '/rest/v1/' + table + '?id=eq.' + rid, {
+        method: 'PATCH',
+        headers: { apikey: SB_KEY, Authorization: 'Bearer ' + SB_KEY, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+        body: JSON.stringify({ project_id: pid })
+      }).then(function() { showToast('✅ שויך לפרויקט', 'success'); selEl.style.borderColor = '#22c55e'; selEl.style.color = '#86efac'; });
+    };
+  })(item.source, item.rawId, projSel));
+  headerDiv.appendChild(leftDiv); headerDiv.appendChild(projSel);
   card.appendChild(headerDiv);
 
   // Media element
@@ -4118,6 +4171,13 @@ function buildMiscCard(item) {
       mediaEl = document.createElement('img');
       mediaEl.style.cssText = 'width:100%;max-height:140px;object-fit:cover;border-radius:8px;margin:8px 0;cursor:zoom-in;display:block;';
       mediaEl.addEventListener('click', (function(u){ return function(){ openLightbox(u,''); }; })(item.mediaUrl));
+      mediaEl.onerror = function() {
+        // HEIC or unsupported format — show filename placeholder
+        var ph = document.createElement('div');
+        ph.style.cssText = 'background:#242438;border-radius:8px;margin:8px 0;padding:16px;text-align:center;font-size:12px;color:#888;direction:rtl;';
+        ph.innerHTML = '🖼️ ' + (item.text || 'תמונה') + '<br><a href="' + item.mediaUrl + '" target="_blank" style="color:#c9a84c;font-size:11px;">פתח בחלונית חדשה ↗</a>';
+        this.parentNode && this.parentNode.replaceChild(ph, this);
+      };
     }
     mediaEl.src = item.mediaUrl;
     card.appendChild(mediaEl);
@@ -4267,6 +4327,155 @@ async function updateMiscBadge() {
     var badge = document.getElementById('misc-badge');
     if (badge) { badge.textContent = total; badge.style.display = total ? 'inline' : 'none'; }
   } catch(e) {}
+}
+
+
+// ══ ASSET INBOX — inline (no external module needed) ══════════════════
+function assetInboxInit() { assetInboxLoad(); }
+
+async function assetInboxLoad() {
+  var listEl = document.getElementById('asset-inbox-list');
+  if (!listEl) return;
+  listEl.innerHTML = '<div style="text-align:center;padding:24px;color:#888;font-family:Heebo,sans-serif;">טוען קבצים...</div>';
+
+  var { data: items } = await sbQ('asset_inbox',
+    'status=eq.pending&order=created_at.desc&limit=100&select=id,cloudinary_url,file_name,file_type,thumbnail_url,project_id,created_at,uploaded_by');
+  items = items || [];
+
+  if (!items.length) {
+    listEl.innerHTML = '<div style="text-align:center;padding:40px;color:#555;font-family:Heebo,sans-serif;">✅ תיבת הנכנסים ריקה</div>';
+    return;
+  }
+
+  // Stats
+  var imgCount   = items.filter(function(i){ return i.file_type==='image'; }).length;
+  var vidCount   = items.filter(function(i){ return i.file_type==='video'; }).length;
+  var audCount   = items.filter(function(i){ return i.file_type==='audio'; }).length;
+  var statsEl = document.getElementById('inbox-stats');
+  if (statsEl) statsEl.innerHTML =
+    '<span style="color:#93c5fd;">📸 ' + imgCount + '</span> · ' +
+    '<span style="color:#c4b5fd;">🎬 ' + vidCount + '</span> · ' +
+    '<span style="color:#c9a84c;">🎙️ ' + audCount + '</span> · ' +
+    '<strong style="color:#fff;">' + items.length + ' סה"כ</strong>';
+
+  listEl.innerHTML = '';
+  items.forEach(function(item) {
+    var card = document.createElement('div');
+    card.id = 'inbox-card-' + item.id;
+    card.style.cssText = 'background:#1e1e35;border:1px solid rgba(255,255,255,0.07);border-radius:14px;padding:14px;margin-bottom:10px;';
+
+    var date = new Date(item.created_at).toLocaleDateString('he-IL') + ' ' +
+               new Date(item.created_at).toLocaleTimeString('he-IL',{hour:'2-digit',minute:'2-digit'});
+    var typeIcon = { image:'📸', video:'🎬', audio:'🎙️' }[item.file_type] || '📎';
+
+    // Header
+    var hdr = document.createElement('div');
+    hdr.style.cssText = 'display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;flex-wrap:wrap;gap:6px;';
+    var info = document.createElement('div');
+    info.innerHTML = '<div style="font-size:12px;font-weight:700;color:#fff;">' + typeIcon + ' ' + (item.file_name||'קובץ').replace(/</g,'&lt;') + '</div>' +
+                     '<div style="font-size:10px;color:#555;">' + date + '</div>';
+    var projSel = document.createElement('select');
+    projSel.style.cssText = 'font-size:11px;background:#1a1a2e;border:1px solid rgba(201,168,76,0.4);color:#c9a84c;padding:4px 6px;border-radius:6px;font-family:Heebo,sans-serif;direction:rtl;cursor:pointer;max-width:140px;';
+    var defOpt = document.createElement('option');
+    defOpt.value = ''; defOpt.textContent = item.project_id ? '🏗️ מקושר' : '📁 שייך לפרויקט';
+    projSel.appendChild(defOpt);
+    (window.allProjects || []).forEach(function(p) {
+      var opt = document.createElement('option');
+      opt.value = p.id; opt.textContent = p.project_name;
+      if (p.id == item.project_id) opt.selected = true;
+      projSel.appendChild(opt);
+    });
+    projSel.addEventListener('change', (function(id, sel) { return function() {
+      if (!sel.value) return;
+      fetch(SB_URL + '/rest/v1/asset_inbox?id=eq.' + id, {
+        method:'PATCH', headers:{apikey:SB_KEY,Authorization:'Bearer '+SB_KEY,'Content-Type':'application/json',Prefer:'return=minimal'},
+        body: JSON.stringify({project_id: sel.value})
+      }).then(function(){ showToast('✅ שויך לפרויקט','success'); sel.style.borderColor='#22c55e'; sel.style.color='#86efac'; });
+    }; })(item.id, projSel));
+    hdr.appendChild(info); hdr.appendChild(projSel);
+    card.appendChild(hdr);
+
+    // Media preview
+    var mediaUrl = item.cloudinary_url || '';
+    if (mediaUrl) {
+      var isAudio = item.file_type === 'audio';
+      var isVideo = item.file_type === 'video';
+      var mediaEl;
+      if (isAudio) {
+        mediaEl = document.createElement('audio');
+        mediaEl.controls = true;
+        mediaEl.style.cssText = 'width:100%;margin:8px 0;display:block;';
+      } else if (isVideo) {
+        mediaEl = document.createElement('video');
+        mediaEl.controls = true;
+        mediaEl.style.cssText = 'width:100%;max-height:160px;border-radius:8px;margin:8px 0;display:block;';
+      } else {
+        var thumb = item.thumbnail_url || mediaUrl;
+        mediaEl = document.createElement('img');
+        mediaEl.style.cssText = 'width:100%;max-height:160px;object-fit:cover;border-radius:8px;margin:8px 0;cursor:zoom-in;display:block;';
+        mediaEl.addEventListener('click', (function(u){ return function(){ openLightbox(u,''); }; })(mediaUrl));
+        mediaEl.onerror = function() {
+          var ph = document.createElement('div');
+          ph.style.cssText = 'background:#242438;border-radius:8px;margin:8px 0;padding:12px;text-align:center;font-size:12px;color:#888;';
+          ph.innerHTML = '🖼️ ' + (item.file_name||'') + '<br><a href="' + mediaUrl + '" target="_blank" style="color:#c9a84c;font-size:11px;">פתח ↗</a>';
+          this.parentNode && this.parentNode.replaceChild(ph, this);
+        };
+        mediaEl.src = thumb;
+      }
+      if (isAudio || isVideo) mediaEl.src = mediaUrl;
+      card.appendChild(mediaEl);
+    }
+
+    // Action buttons
+    var acts = document.createElement('div');
+    acts.style.cssText = 'display:flex;gap:6px;margin-top:8px;';
+    [
+      { label:'✅ אשר ליומן', bg:'rgba(34,197,94,0.2)',   bd:'rgba(34,197,94,0.5)',   col:'#86efac' },
+      { label:'🛡️ בטיחות',   bg:'rgba(239,68,68,0.15)',  bd:'rgba(239,68,68,0.4)',   col:'#fca5a5' },
+      { label:'🗑️ מחק',      bg:'rgba(255,255,255,0.04)',bd:'rgba(255,255,255,0.1)', col:'#666'    }
+    ].forEach(function(b) {
+      var btn = document.createElement('button');
+      btn.textContent = b.label;
+      btn.style.cssText = 'flex:1;background:' + b.bg + ';border:1px solid ' + b.bd + ';color:' + b.col + ';padding:8px 4px;border-radius:8px;cursor:pointer;font-family:Heebo,sans-serif;font-size:11px;font-weight:700;';
+      btn.addEventListener('click', (function(itm, action){
+        return function(){ inboxAction(itm, action); };
+      })(item, b.label));
+      acts.appendChild(btn);
+    });
+    card.appendChild(acts);
+    listEl.appendChild(card);
+  });
+}
+
+async function inboxAction(item, action) {
+  var card = document.getElementById('inbox-card-' + item.id);
+  try {
+    if (action.includes('מחק')) {
+      await fetch(SB_URL + '/rest/v1/asset_inbox?id=eq.' + item.id,
+        { method:'DELETE', headers:{apikey:SB_KEY,Authorization:'Bearer '+SB_KEY} });
+      if (card) { card.style.opacity='0.3'; setTimeout(function(){ card.remove(); },300); }
+      showToast('🗑️ נמחק','success');
+    } else if (action.includes('אשר')) {
+      // Move to beni_notes
+      var noteType = { image:'photo', video:'video', audio:'audio' }[item.file_type] || 'media';
+      await sb.from('beni_notes').insert({
+        note_text: '📥 ' + (item.file_name||'קובץ מבני'),
+        photo_url: item.cloudinary_url,
+        note_type: noteType,
+        color: noteType==='audio' ? 'purple' : noteType==='video' ? 'purple' : 'blue',
+        project_id: item.project_id || null,
+        created_at: new Date().toISOString()
+      });
+      await fetch(SB_URL + '/rest/v1/asset_inbox?id=eq.' + item.id,
+        { method:'PATCH', headers:{apikey:SB_KEY,Authorization:'Bearer '+SB_KEY,'Content-Type':'application/json',Prefer:'return=minimal'},
+          body: JSON.stringify({status:'approved'}) });
+      if (card) { card.style.opacity='0.3'; setTimeout(function(){ card.remove(); },300); }
+      showToast('✅ אושר ועבר ליומן חכם','success');
+    } else if (action.includes('בטיחות')) {
+      await switchTab('safety');
+      showToast('🛡️ עבור לניתוח בטיחות','success');
+    }
+  } catch(e) { showToast('❌ ' + e.message,'error'); }
 }
 
 
