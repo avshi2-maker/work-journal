@@ -1983,10 +1983,10 @@ window.addEventListener('unhandledrejection', function(e) {
       </div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;">
         <label style="display:inline-flex;align-items:center;gap:6px;background:rgba(139,92,246,0.2);border:1.5px solid rgba(139,92,246,0.5);color:#c4b5fd;padding:9px 16px;border-radius:10px;cursor:pointer;font-size:12px;font-weight:700;font-family:Heebo,sans-serif;">
-          🖼️ תמונות<input type="file" id="rag-photo-input" accept="image/*" style="display:none;" onchange="ragHandlePhoto(this)">
+          🖼️ תמונות<input type="file" id="rag-photo-input" accept="image/*" style="display:none;" onchange="_ragSafeCall('ragHandlePhoto',this)">
         </label>
         <label style="display:inline-flex;align-items:center;gap:6px;background:rgba(34,197,94,0.12);border:1.5px solid rgba(34,197,94,0.35);color:#86efac;padding:9px 16px;border-radius:10px;cursor:pointer;font-size:12px;font-weight:700;font-family:Heebo,sans-serif;">
-          🎬 סרטונים<input type="file" id="rag-video-input" accept="video/*" style="display:none;" onchange="ragHandleVideo(this)">
+          🎬 סרטונים<input type="file" id="rag-video-input" accept="video/*" style="display:none;" onchange="_ragSafeCall('ragHandleVideo',this)">
         </label>
       </div>
     </div>
@@ -1996,13 +1996,13 @@ window.addEventListener('unhandledrejection', function(e) {
         <img id="rag-photo-img" style="width:160px;height:120px;object-fit:cover;border-radius:10px;border:2px solid rgba(139,92,246,0.4);flex-shrink:0;" src="">
         <div style="flex:1;min-width:200px;">
           <div id="rag-photo-analysis" style="font-size:12px;color:#ccc;line-height:1.6;background:rgba(0,0,0,0.3);border-radius:8px;padding:10px 14px;direction:rtl;">
-            🔍 מנתח תמונה...
+            📸 לחץ "🤖 הפעל בינה מלאכותית" לניתוח התמונה
           </div>
           <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;" id="rag-photo-actions">
-            <button id="rag-gen-po-btn" onclick="ragGeneratePO()" style="background:linear-gradient(135deg,#9a6f00,#c9a84c);border:none;color:#1a1a2e;padding:10px 20px;border-radius:10px;cursor:pointer;font-family:Heebo,sans-serif;font-size:13px;font-weight:900;">
+            <button id="rag-gen-po-btn" onclick="_ragSafeCall('ragGeneratePO')" style="background:linear-gradient(135deg,#9a6f00,#c9a84c);border:none;color:#1a1a2e;padding:10px 20px;border-radius:10px;cursor:pointer;font-family:Heebo,sans-serif;font-size:13px;font-weight:900;">
               📄 צור הזמנת עבודה מהניתוח
             </button>
-            <button onclick="ragAskAboutPhoto()" style="background:rgba(139,92,246,0.2);border:1.5px solid rgba(139,92,246,0.4);color:#c4b5fd;padding:10px 16px;border-radius:10px;cursor:pointer;font-family:Heebo,sans-serif;font-size:12px;font-weight:700;">
+            <button onclick="_ragSafeCall('ragAskAboutPhoto')" style="background:rgba(139,92,246,0.2);border:1.5px solid rgba(139,92,246,0.4);color:#c4b5fd;padding:10px 16px;border-radius:10px;cursor:pointer;font-family:Heebo,sans-serif;font-size:12px;font-weight:700;">
               🤖 הפעל בינה מלאכותית
             </button>
           </div>
@@ -2022,16 +2022,7 @@ window.addEventListener('unhandledrejection', function(e) {
     </div>
   </div>
 
-  <!-- Quick questions — 6 samples, 4 active / 2 coming soon -->
-  <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px;" id="rag-quick-btns">
-    <div style="font-size:11px;color:#555;width:100%;margin-bottom:2px;">שאלות לדוגמה (לחץ להפעלה):</div>
-    <button onclick="ragQuickAsk('מה דרישות תקן 413 לבניין מגורים רגיל באזור IIB?')" style="background:rgba(139,92,246,0.12);border:1px solid rgba(139,92,246,0.3);color:#c4b5fd;padding:7px 12px;border-radius:20px;cursor:pointer;font-family:Heebo,sans-serif;font-size:11px;">תקן 413 — עמידות רעידות אדמה</button>
-    <button onclick="ragQuickAsk('מה ערך U נדרש לחלון לפי תקן 1045 עדכון 2023?')" style="background:rgba(139,92,246,0.12);border:1px solid rgba(139,92,246,0.3);color:#c4b5fd;padding:7px 12px;border-radius:20px;cursor:pointer;font-family:Heebo,sans-serif;font-size:11px;">תקן 1045 — חלונות וחום</button>
-    <button onclick="ragQuickAsk('מה דרישות הבטיחות לפיגום בגובה 6 מטר?')" style="background:rgba(239,68,68,0.12);border:1px solid rgba(239,68,68,0.3);color:#fca5a5;padding:7px 12px;border-radius:20px;cursor:pointer;font-family:Heebo,sans-serif;font-size:11px;">פיגום 6 מטר — בטיחות</button>
-    <button onclick="ragQuickAsk('מה חוזק בטון מינימום לפלטת רצפה ומה כיסוי הזיון הנדרש?')" style="background:rgba(139,92,246,0.12);border:1px solid rgba(139,92,246,0.3);color:#c4b5fd;padding:7px 12px;border-radius:20px;cursor:pointer;font-family:Heebo,sans-serif;font-size:11px;">בטון — חוזק וכיסוי זיון</button>
-    <button disabled title="בקרוב" style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.1);color:#444;padding:7px 12px;border-radius:20px;cursor:not-allowed;font-family:Heebo,sans-serif;font-size:11px;">איטום גג שטוח — ת"י 1518 🔒</button>
-    <button disabled title="בקרוב" style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.1);color:#444;padding:7px 12px;border-radius:20px;cursor:not-allowed;font-family:Heebo,sans-serif;font-size:11px;">ת"י 5281 — בנייה ירוקה 🔒</button>
-  </div>
+  <!-- Sample queries removed per user request -->
 
   <!-- Chat history -->
   <!-- Sub-tab switcher: Chat | History -->
@@ -2061,9 +2052,9 @@ window.addEventListener('unhandledrejection', function(e) {
   <div style="background:#242438;border-radius:14px;padding:14px;border:1px solid rgba(255,255,255,0.08);">
     <textarea id="rag-input" rows="3" placeholder="שאל כל שאלה הנדסית... (לדוגמה: מה דרישות תקן 413? כיצד לאטום גג שטוח? מה חוזק בטון מינימום?)"
       style="width:100%;background:#1a1a2e;border:1px solid rgba(139,92,246,0.3);color:#fff;padding:12px;border-radius:10px;font-family:Heebo,sans-serif;font-size:14px;resize:none;direction:rtl;outline:none;line-height:1.6;box-sizing:border-box;margin-bottom:10px;"
-      onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();ragSubmit();}"></textarea>
+      onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();_ragSafeCall('ragSubmit');}"></textarea>
     <div style="display:flex;gap:10px;align-items:center;justify-content:flex-start;">
-      <button onclick="ragSubmit()" id="rag-send-btn"
+      <button onclick="_ragSafeCall('ragSubmit')" id="rag-send-btn"
         style="background:linear-gradient(135deg,#7c3aed,#5b21b6);border:none;color:#fff;padding:10px 28px;border-radius:10px;cursor:pointer;font-family:Heebo,sans-serif;font-size:13px;font-weight:800;">
         🏗️ שאל
       </button>
@@ -6387,6 +6378,39 @@ async function _loadSharedModules() {
   }
 }
 _loadSharedModules();
+
+// ══ _ragSafeCall — waits for rag_engine to be ready before calling ══
+// Solves the race condition: user clicks button before Supabase module loads
+// Usage: _ragSafeCall('ragSubmit') or _ragSafeCall('ragHandlePhoto', inputEl)
+function _ragSafeCall(fnName, arg) {
+  var MAX_WAIT = 5000;  // 5 seconds max
+  var INTERVAL = 100;
+  var waited   = 0;
+  function _try() {
+    var fn = window[fnName];
+    if (typeof fn === 'function' && fn !== _ragFallbackStubs[fnName]) {
+      // Real function loaded from rag_engine
+      fn(arg);
+    } else if (waited < MAX_WAIT) {
+      waited += INTERVAL;
+      setTimeout(_try, INTERVAL);
+    } else {
+      // Timeout — use whatever stub exists
+      if (typeof window[fnName] === 'function') window[fnName](arg);
+      else showToast('מנוע הייעוץ ההנדסי עדיין טוען... נסה שוב', 'error');
+    }
+  }
+  _try();
+}
+// Store stub references so _ragSafeCall can detect when real engine loaded
+var _ragFallbackStubs = {};
+(function() {
+  var stubs = ['ragSubmit','ragHandlePhoto','ragHandleVideo','ragAskAboutPhoto','ragGeneratePO','ragQuickAsk'];
+  stubs.forEach(function(name) {
+    // Capture reference after _ragInjectFallback runs (deferred)
+    setTimeout(function() { _ragFallbackStubs[name] = window[name]; }, 50);
+  });
+})();
 
 
 // ══ Global AI Stop / Running state ═══════════════════════════════════
