@@ -6316,17 +6316,9 @@ async function _fetchStandardsModule() {
 async function _fetchRagModule() {
   if (_ragFetched) return;
   _ragFetched = true;
-  // Safety stubs first — overwritten by Supabase rag_engine if loaded
+  // Safety stubs only — full engine comes from Supabase shared_modules (rag_engine)
+  // rag_03042026.js disabled: it overwrites ragHandlePhoto with broken legacy version
   _ragInjectFallback();
-  // Load rag_03042026.js as secondary fallback (Supabase rag_engine takes priority)
-  try {
-    var res = await fetch('rag_03042026.js?v=' + Date.now());
-    if (!res.ok) return;
-    var code = await res.text();
-    if (!code || code.trim().startsWith('<')) return;
-    var ns = document.createElement('script'); ns.textContent = code;
-    document.head.appendChild(ns);
-  } catch(e) { console.warn('rag_03042026.js fallback failed:', e.message); }
 }
 
 function _ragInjectFallback() {
