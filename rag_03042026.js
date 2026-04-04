@@ -118,20 +118,13 @@ async function ragRetrieve(query) {
     }
   } catch(e) {}
 
-  // ── 3. building_standards encyclopedia (838 standards) ───────────
+  // ── 3. building_standards encyclopedia (473 standards) ───────────
   try {
-    var words = query.split(/\s+/).filter(function(w){ return w.length > 2; }).slice(0,5);
+    var words = query.split(/\s+/).filter(function(w){ return w.length > 2; }).slice(0,3);
     var bsFilter = words.map(function(w){
-      return 'scope.ilike.*'+encodeURIComponent(w)+'*,title_he.ilike.*'+encodeURIComponent(w)+'*,notes.ilike.*'+encodeURIComponent(w)+'*,industry_category.ilike.*'+encodeURIComponent(w)+'*';
+      return 'scope.ilike.*'+encodeURIComponent(w)+'*,title_he.ilike.*'+encodeURIComponent(w)+'*,notes.ilike.*'+encodeURIComponent(w)+'*';
     }).join(',');
-    // Also catch standard numbers mentioned in query (e.g. "413", "1045", "5281")
-    var numMatch = query.match(/\b(\d{3,5})\b/g);
-    if (numMatch) {
-      numMatch.slice(0,2).forEach(function(num){
-        bsFilter += ',standard_id.ilike.*'+num+'*,title_he.ilike.*'+num+'*';
-      });
-    }
-    var bsRes = await fetch(SB_URL + '/rest/v1/building_standards?or=('+bsFilter+')&limit=8&select=standard_id,title_he,scope,key_requirements,notes,industry_category',
+    var bsRes = await fetch(SB_URL + '/rest/v1/building_standards?or=('+bsFilter+')&mandatory_in_israel=eq.כן&limit=4&select=standard_id,title_he,scope,key_requirements,notes,industry_category',
       { headers: h });
     results.building_standards = bsRes.ok ? (await bsRes.json() || []) : [];
   } catch(e) { results.building_standards = []; }

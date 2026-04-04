@@ -6325,250 +6325,35 @@ async function _fetchStandardsModule() {
 async function _fetchRagModule() {
   if (_ragFetched) return;
   _ragFetched = true;
-  // Always inject the fallback FIRST so ragSubmit is always available
+  // Safety stubs first — overwritten by Supabase rag_engine if loaded
   _ragInjectFallback();
-  // External module disabled — inline ragSubmit is the active implementation
-  // rag_03042026.js has ragBuildContext bug (results vs retrieved) that overwrites
-  // the working inline version with a broken one. Re-enable after fixing that file.
+  // Load rag_03042026.js as secondary fallback (Supabase rag_engine takes priority)
+  try {
+    var res = await fetch('rag_03042026.js?v=' + Date.now());
+    if (!res.ok) return;
+    var code = await res.text();
+    if (!code || code.trim().startsWith('<')) return;
+    var ns = document.createElement('script'); ns.textContent = code;
+    document.head.appendChild(ns);
+  } catch(e) { console.warn('rag_03042026.js fallback failed:', e.message); }
 }
 
 function _ragInjectFallback() {
-  // Always overwrite — never skip — ensures working version always wins
-  window._ragHistory = window._ragHistory || [];
-  window.ragTabInit = function() { var i=document.getElementById('rag-input'); if(i) i.focus(); };
-  window.ragClearHistory = function() { window._ragHistory=[]; };
-  window.ragClearChat = function() {
-    var h=document.getElementById('rag-chat-history');
-    if(h) h.innerHTML='<div style="text-align:center;padding:40px;color:#333;font-size:13px;"><div style="font-size:32px;">🏗️</div><div>שאל שאלה הנדסית</div></div>';
-  };
-  window.ragQuickAsk = function(q) { var i=document.getElementById('rag-input'); if(i) i.value=q; window.ragSubmit(); };
-  window.ragFollowUpBtn = function(btn) { var q=btn.getAttribute('data-q')||''; if(!q) return; var i=document.getElementById('rag-input'); if(i){i.value=q;window.ragSubmit();} };
-  window.ragFollowUpCustom = function() { var fi=document.getElementById('rag-followup-input'); var q=fi?fi.value.trim():''; if(!q) return; var i=document.getElementById('rag-input'); if(i){i.value=q;window.ragSubmit();} if(fi) fi.value=''; };
-  window.ragHandlePhoto = function(input) {
-    if (!input || !input.files || !input.files[0]) return;
-    var file = input.files[0];
-    var preview = document.getElementById('rag-photo-preview');
-    var img = document.getElementById('rag-photo-img');
-    var vidPreview = document.getElementById('rag-video-preview');
-    if (vidPreview) vidPreview.style.display = 'none';
-    var reader = new FileReader();
-    reader.onload = function(e) {
-      if (img) img.src = e.target.result;
-      if (preview) preview.style.display = 'block';
-      var actions = document.getElementById('rag-photo-actions');
-      if (actions) actions.style.display = 'flex';
-      window._ragCurrentPhoto = e.target.result;
-      // Do NOT auto-analyze — wait for Beni to click button
-    };
-    reader.readAsDataURL(file);
-  };
-
-  window._ragAutoAnalyzePhoto = async function() {
-    var apiKey = APP && APP.config && APP.config.anthropic_key;
-    if (!apiKey) return;
-    var analysisEl = document.getElementById('rag-photo-analysis');
-    if (analysisEl) analysisEl.innerHTML = '🔍 Claude Vision מנתח את התמונה...';
-    var _arcEl = document.getElementById('rag-arc-photo');
-    if (!_arcEl) {
-      _arcEl = document.createElement('div');
-      _arcEl.id = 'rag-arc-photo';
-      if (analysisEl && analysisEl.parentNode) analysisEl.parentNode.insertBefore(_arcEl, analysisEl.nextSibling);
-    }
-    arc.start(_arcEl);
-    var b64 = window._ragCurrentPhoto;
-    if (!b64) return;
-    var mimeMatch = b64.match(/^data:(image\/[a-z]+);base64,/);
-    var mime = mimeMatch ? mimeMatch[1] : 'image/jpeg';
-    var base64Data = b64.replace(/^data:image\/[a-z]+;base64,/, '');
-    try {
-      var resp = await claudeFetch({
-        _apiKey: apiKey,
-        model: 'claude-sonnet-4-20250514',
-        max_tokens: 800,
-        system: 'אתה מהנדס בנייה ישראלי מנוסה. בדוק את התמונה וספק: 1) זיהוי הנזק/הבעיה, 2) חומרה (קל/בינוני/חמור), 3) תקן ישראלי רלוונטי, 4) המלצת תיקון קצרה. ענה בעברית בלבד, תמציתי.',
-        messages: [{ role: 'user', content: [
-          { type: 'image', source: { type: 'base64', media_type: mime, data: base64Data } },
-          { type: 'text', text: 'נתח את הנזק הנראה בתמונה וספק הערכה הנדסית קצרה.' }
-        ]}]
-      }, null);
-      var data = await resp.json();
-      var answer = (data.content && data.content[0] && data.content[0].text) || 'לא ניתן לנתח';
-      var inTok = (data.usage && data.usage.input_tokens) || 0;
-      var outTok = (data.usage && data.usage.output_tokens) || 0;
-      var fmt = answer.replace(/</g,'&lt;').replace(/\*\*([^*]+)\*\*/g,'<strong style="color:#c9a84c;">$1</strong>').replace(/\n/g,'<br>');
-      if (analysisEl) analysisEl.innerHTML = fmt;
-      window._ragPhotoAnalysis = answer;
-      arc.finish(inTok, outTok);
-    } catch(e) {
-      arc.reset();
-      if (analysisEl) analysisEl.innerHTML = '❌ שגיאה בניתוח: ' + e.message;
-    }
-  };
-
-  window.ragAskAboutPhoto = function() {
-    if (!window._ragCurrentPhoto) { showToast('יש להעלות תמונה תחילה', 'error'); return; }
-    // Run the Vision analysis
-    window._ragAutoAnalyzePhoto();
-  };
-
-  window.ragGeneratePO = async function() {
-    if (!window._ragCurrentPhoto) { showToast('יש להעלות תמונה תחילה', 'error'); return; }
-    var apiKey = APP && APP.config && APP.config.anthropic_key;
-    if (!apiKey) { showToast('מפתח API חסר', 'error'); return; }
-    var btn = document.getElementById('rag-gen-po-btn');
-    if (btn) { btn.disabled = true; btn.textContent = '⏳ יוצר...'; }
-    var _arcPO = document.getElementById('rag-arc-po');
-    if (!_arcPO) {
-      _arcPO = document.createElement('div');
-      _arcPO.id = 'rag-arc-po';
-      if (btn && btn.parentNode) btn.parentNode.insertBefore(_arcPO, btn.nextSibling);
-    }
-    arc.start(_arcPO);
-    var b64 = window._ragCurrentPhoto;
-    var mimeMatch = b64.match(/^data:(image\/[a-z]+);base64,/);
-    var mime = mimeMatch ? mimeMatch[1] : 'image/jpeg';
-    var base64Data = b64.replace(/^data:image\/[a-z]+;base64,/, '');
-    var analysis = window._ragPhotoAnalysis || 'נזק נראה בתמונה';
-    try {
-      var resp = await claudeFetch({
-        _apiKey: apiKey,
-        model: 'claude-sonnet-4-20250514',
-        max_tokens: 1000,
-        system: 'אתה מהנדס בנייה ישראלי. צור הזמנת עבודה מפורטת בעברית בפורמט: כותרת, תיאור הנזק, עבודות נדרשות (רשימה), חומרים, אומדן עלות בש"ח, הערות בטיחות.',
-        messages: [{ role: 'user', content: [
-          { type: 'image', source: { type: 'base64', media_type: mime, data: base64Data } },
-          { type: 'text', text: 'ניתוח קודם: ' + analysis + '\n\nצור הזמנת עבודה מפורטת לתיקון הנזק הנראה.' }
-        ]}]
-      }, null);
-      var data = await resp.json();
-      var po = (data.content && data.content[0] && data.content[0].text) || '';
-      var _poInTok = (data.usage && data.usage.input_tokens) || 0;
-      var _poOutTok = (data.usage && data.usage.output_tokens) || 0;
-      arc.finish(_poInTok, _poOutTok);
-      var fmt = po.replace(/</g,'&lt;').replace(/\*\*([^*]+)\*\*/g,'<strong style="color:#c9a84c;">$1</strong>').replace(/\n/g,'<br>');
-      var history = document.getElementById('rag-chat-history');
-      if (history) {
-        var empty = history.querySelector('[style*="text-align:center"]'); if (empty) empty.remove();
-        var div = document.createElement('div');
-        div.innerHTML = '<div style="background:#1e1e35;border:2px solid rgba(201,168,76,0.4);border-radius:14px;padding:16px;font-size:13px;color:#e2e8f0;line-height:1.8;direction:rtl;">'
-          + '<div style="font-size:14px;font-weight:900;color:#c9a84c;margin-bottom:10px;">📄 הזמנת עבודה — מניתוח תמונה</div>'
-          + fmt + '</div>';
-        // Attach ECF footer
-        var proj = (allProjects && allProjects[0]) ? allProjects[0].id : null;
-        var footer = ecf({
-          title: 'הזמנת עבודה — ניתוח תמונה ' + new Date().toLocaleDateString('he-IL'),
-          content: po,
-          htmlContent: fmt,
-          type: 'work_order',
-          projectId: proj
-        });
-        div.appendChild(footer);
-        history.appendChild(div);
-        history.scrollTo(0, history.scrollHeight);
-      }
-    } catch(e) { arc.reset(); showToast('שגיאה: ' + e.message, 'error'); }
-    if (btn) { btn.disabled = false; btn.textContent = '📄 צור הזמנת עבודה מהניתוח'; }
-  };
-  window.ragHandleVideo = function(input) {
-    if (!input || !input.files || !input.files[0]) return;
-    var file = input.files[0];
-    var vidPreview = document.getElementById('rag-video-preview');
-    var vidEl = document.getElementById('rag-video-el');
-    var photoPreview = document.getElementById('rag-photo-preview');
-    if (photoPreview) photoPreview.style.display = 'none';
-    var url = URL.createObjectURL(file);
-    if (vidEl) { vidEl.src = url; vidEl.load(); }
-    if (vidPreview) vidPreview.style.display = 'block';
-    var analysis = document.getElementById('rag-video-analysis');
-    if (analysis) analysis.innerHTML = '🎬 סרטון נטען — שאל שאלה הנדסית על מה שרואים בסרטון';
-    window._ragCurrentVideo = file.name;
-  };
-
-  window.ragSubmit = async function() {
-    var apiKey = APP && APP.config && APP.config.anthropic_key;
-    if (!apiKey) { showToast('מפתח API חסר','error'); return; }
-    var input  = document.getElementById('rag-input');
-    var query  = (input?input.value:'').trim();
-    if (!query) return;
-    var history= document.getElementById('rag-chat-history');
-    var status = document.getElementById('rag-status');
-    var btn    = document.getElementById('rag-send-btn');
-    if (btn){btn.disabled=true;btn.textContent='⏳';}
-    if (input) input.value='';
-    var empty=history&&history.querySelector('[style*="text-align:center"]'); if(empty) empty.remove();
-    var ub=document.createElement('div');
-    ub.style.cssText='display:flex;justify-content:flex-end;margin-bottom:8px;';
-    ub.innerHTML='<div style="background:rgba(139,92,246,0.2);border:1px solid rgba(139,92,246,0.4);color:#fff;padding:12px 16px;border-radius:14px 14px 4px 14px;max-width:75%;font-size:14px;direction:rtl;">'+query.replace(/</g,'&lt;')+'</div>';
-    if(history) history.appendChild(ub);
-    var typing=document.createElement('div');
-    typing.innerHTML='<div style="background:#242438;border:1px solid rgba(255,255,255,0.08);border-radius:14px;padding:12px 16px;font-size:13px;color:#888;display:inline-block;">🧠 מחפש ב-838 תקנים...</div>';
-    if(history) history.appendChild(typing);
-    if(history) history.scrollTo(0,history.scrollHeight);
-    var t0=Date.now();
-    if(status) status.innerHTML='';
-    arc.start(status);
-    var timer=null;
-    try {
-      var bsCtx='';
-      try {
-        var words=query.split(/\s+/).filter(function(w){return w.length>2;}).slice(0,6);
-        var orParts=words.map(function(w){return 'scope.ilike.*'+encodeURIComponent(w)+'*,title_he.ilike.*'+encodeURIComponent(w)+'*,notes.ilike.*'+encodeURIComponent(w)+'*,industry_category.ilike.*'+encodeURIComponent(w)+'*,standard_category.ilike.*'+encodeURIComponent(w)+'*';});
-        var numMatch=query.match(/\b(\d{3,5})\b/g);
-        if(numMatch){numMatch.slice(0,3).forEach(function(n){orParts.push('standard_id.ilike.*'+encodeURIComponent(n)+'*');});}
-        var orF=orParts.join(',');
-        var bsRes=await fetch(SB_URL+'/rest/v1/building_standards?or=('+orF+')&limit=10&select=standard_id,title_he,scope,key_requirements,notes,industry_category',{headers:{apikey:SB_KEY,Authorization:'Bearer '+SB_KEY}});
-        var bsData=bsRes.ok?(await bsRes.json()||[]):[];
-        if(bsData.length){
-          bsCtx='== תקני בנייה רלוונטיים ==\n';
-          bsData.forEach(function(s){
-            bsCtx+=(s.standard_id||'')+': '+(s.title_he||'')+'\n';
-            if(s.scope) bsCtx+=s.scope.substring(0,150)+'\n';
-            var reqs=s.key_requirements||[];
-            if(typeof reqs==='string'){try{reqs=JSON.parse(reqs);}catch(_){reqs=[];}}
-            if(reqs.length) bsCtx+=reqs.slice(0,3).join(' | ')+'\n';
-            bsCtx+='\n';
-          });
-        }
-      } catch(_e){}
-      var msgs=(window._ragHistory||[]).slice(-8).concat([{role:'user',content:(bsCtx?bsCtx+'\n---\n':'')+'שאלה: '+query}]);
-      var resp=await claudeFetch(JSON.stringify({_apiKey:apiKey,model:'claude-sonnet-4-20250514',max_tokens:1500,system:'אתה יועץ הנדסי בנייה ישראלי מקצועי. ענה בעברית בלבד. תשובות ממוקדות ומעשיות עם מספרים. השתמש בתקנים שסופקו.',messages:msgs}),null);
-      var data=await resp.json();
-      if(timer) clearInterval(timer); typing.remove();
-      if(!resp.ok) throw new Error((data.error&&data.error.message)||'API error');
-      var answer=(data.content&&data.content[0]&&data.content[0].text)||'';
-      var inTok=(data.usage&&data.usage.input_tokens)||0;
-      var outTok=(data.usage&&data.usage.output_tokens)||0;
-      var cost=((inTok*3+outTok*15)/1e6).toFixed(4);
-      var elapsed=((Date.now()-t0)/1000).toFixed(1);
-      window._ragHistory.push({role:'user',content:query});
-      window._ragHistory.push({role:'assistant',content:answer});
-      if(window._ragHistory.length>12) window._ragHistory=window._ragHistory.slice(-12);
-      var fmt=answer.replace(/</g,'&lt;').replace(/\*\*([^*]+)\*\*/g,'<strong style="color:#c9a84c;">$1</strong>').replace(/\n/g,'<br>');
-      var ab=document.createElement('div');
-      ab.style.cssText='margin-bottom:12px;';
-      ab.innerHTML='<div style="background:#1e1e35;border:1px solid rgba(139,92,246,0.25);color:#e2e8f0;padding:14px 18px;border-radius:14px 14px 14px 4px;font-size:13px;line-height:1.8;direction:rtl;">'+fmt+'</div>'
-        +'<div style="display:flex;gap:12px;font-size:11px;margin-top:5px;"><span style="color:#7c3aed;font-weight:700;">⏱ '+elapsed+'s</span><span style="color:#3b82f6;">🔢 '+(inTok+outTok).toLocaleString()+' tokens</span><span style="color:#22c55e;">💰 $'+cost+'</span></div>'
-        +'<div style="margin-top:8px;background:#1a1a2e;border:1px solid rgba(139,92,246,0.2);border-radius:10px;padding:10px 12px;">'
-        +'<div style="font-size:10px;color:#7c3aed;font-weight:700;margin-bottom:6px;">💬 שאלות המשך:</div>'
-        +'<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;">'
-        +'<button data-q="האם יש חריגות נפוצות מהתקן?" onclick="ragFollowUpBtn(this)" style="background:rgba(139,92,246,0.1);border:1px solid rgba(139,92,246,0.3);color:#c4b5fd;padding:4px 10px;border-radius:14px;cursor:pointer;font-family:Heebo,sans-serif;font-size:11px;">חריגות נפוצות?</button>'
-        +'<button data-q="מה עלות התיקון לפי מחירון הבינוי?" onclick="ragFollowUpBtn(this)" style="background:rgba(201,168,76,0.1);border:1px solid rgba(201,168,76,0.3);color:#c9a84c;padding:4px 10px;border-radius:14px;cursor:pointer;font-family:Heebo,sans-serif;font-size:11px;">עלות תיקון?</button>'
-        +'<button data-q="מה צעדי הביצוע בשטח?" onclick="ragFollowUpBtn(this)" style="background:rgba(34,197,94,0.1);border:1px solid rgba(34,197,94,0.3);color:#86efac;padding:4px 10px;border-radius:14px;cursor:pointer;font-family:Heebo,sans-serif;font-size:11px;">צעדי ביצוע</button>'
-        +'<button data-q="האם נדרש היתר מיוחד?" onclick="ragFollowUpBtn(this)" style="background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);color:#fca5a5;padding:4px 10px;border-radius:14px;cursor:pointer;font-family:Heebo,sans-serif;font-size:11px;">נדרש היתר?</button>'
-        +'</div><div style="display:flex;gap:8px;"><input id="rag-followup-input" type="text" placeholder="שאל שאלת המשך..." dir="rtl" style="flex:1;background:rgba(255,255,255,0.05);border:1px solid rgba(139,92,246,0.3);color:#fff;padding:7px 12px;border-radius:8px;font-family:Heebo,sans-serif;font-size:12px;"><button onclick="ragFollowUpCustom()" style="background:rgba(139,92,246,0.3);border:none;color:#fff;padding:7px 14px;border-radius:8px;cursor:pointer;font-family:Heebo,sans-serif;font-size:12px;font-weight:700;">שאל ←</button></div></div>';
-      if(history) history.appendChild(ab);
-      arc.finish(inTok, outTok);
-    } catch(err) {
-      if(timer) clearInterval(timer); typing.remove();
-      arc.reset();
-      var eb=document.createElement('div');
-      eb.innerHTML='<div style="background:rgba(239,68,68,0.12);border:1px solid rgba(239,68,68,0.3);color:#fca5a5;padding:12px 16px;border-radius:14px;font-size:13px;direction:rtl;">❌ '+err.message+'</div>';
-      if(history) history.appendChild(eb);
-      if(status) status.textContent='';
-    }
-    if(btn){btn.disabled=false;btn.textContent='🏗️ שאל';}
-    if(history) history.scrollTo(0,history.scrollHeight);
-  };
+  // Minimal stub — full engine loaded from Supabase shared_modules (rag_engine)
+  // These are only safety stubs in case Supabase is temporarily unreachable
+  if (!window.ragSubmit) {
+    window.ragSubmit = function() { showToast('מנוע ה-RAG טוען... נסה שוב בעוד שנייה', 'error'); };
+  }
+  if (!window.ragTabInit)       window.ragTabInit       = function() { var i=document.getElementById('rag-input'); if(i) i.focus(); };
+  if (!window.ragClearHistory)  window.ragClearHistory  = function() { window._ragHistory = []; };
+  if (!window.ragClearChat)     window.ragClearChat     = function() {};
+  if (!window.ragQuickAsk)      window.ragQuickAsk      = function(q) { var i=document.getElementById('rag-input'); if(i) i.value=q; window.ragSubmit(); };
+  if (!window.ragFollowUpBtn)   window.ragFollowUpBtn   = function(btn) { var q=btn.getAttribute('data-q')||''; var i=document.getElementById('rag-input'); if(i&&q){i.value=q;window.ragSubmit();} };
+  if (!window.ragFollowUpCustom)window.ragFollowUpCustom= function() { var fi=document.getElementById('rag-followup-input'); var q=fi?fi.value.trim():''; if(!q)return; var i=document.getElementById('rag-input'); if(i){i.value=q;window.ragSubmit();} if(fi)fi.value=''; };
+  if (!window.ragHandlePhoto)   window.ragHandlePhoto   = function() {};
+  if (!window.ragHandleVideo)   window.ragHandleVideo   = function() {};
+  if (!window.ragAskAboutPhoto) window.ragAskAboutPhoto = function() {};
+  if (!window.ragGeneratePO)    window.ragGeneratePO    = function() {};
 }
 
 
@@ -6577,23 +6362,28 @@ function _ragInjectFallback() {
 // Do NOT paste code here. Source of truth is Supabase.
 // ══════════════════════════════════════════════════════════════════════
 async function _loadSharedModules() {
+  // Load order matters: arc and ecf must be ready before rag_engine uses them
+  var ORDER = ['arc', 'ecf', 'rag_engine'];
   try {
     var res = await fetch(
-      SB_URL + '/rest/v1/shared_modules?name=in.(arc,ecf)&select=name,js_code',
+      SB_URL + '/rest/v1/shared_modules?name=in.(arc,ecf,rag_engine)&select=name,js_code',
       { headers: { apikey: SB_KEY, Authorization: 'Bearer ' + SB_KEY } }
     );
     if (!res.ok) throw new Error('HTTP ' + res.status);
-    var modules = await res.json();
-    modules.forEach(function(m) {
+    var rows = await res.json();
+    // Inject in defined order
+    ORDER.forEach(function(name) {
+      var m = rows.find(function(r){ return r.name === name; });
+      if (!m) { console.warn('shared_module not found:', name); return; }
       try {
         var s = document.createElement('script');
         s.textContent = m.js_code;
         document.head.appendChild(s);
-      } catch(e) { console.error('Failed to inject module:', m.name, e); }
+      } catch(e) { console.error('Failed to inject module:', name, e); }
     });
-    console.log('✅ Shared modules loaded:', modules.map(function(m){ return m.name; }).join(', '));
+    console.log('✅ Shared modules loaded:', rows.map(function(r){ return r.name; }).join(', '));
   } catch(e) {
-    console.error('❌ shared_modules load failed:', e);
+    console.error('❌ shared_modules load failed:', e.message);
   }
 }
 _loadSharedModules();
