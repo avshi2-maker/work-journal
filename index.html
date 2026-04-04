@@ -2003,7 +2003,7 @@ window.addEventListener('unhandledrejection', function(e) {
               📄 צור הזמנת עבודה מהניתוח
             </button>
             <button onclick="ragAskAboutPhoto()" style="background:rgba(139,92,246,0.2);border:1.5px solid rgba(139,92,246,0.4);color:#c4b5fd;padding:10px 16px;border-radius:10px;cursor:pointer;font-family:Heebo,sans-serif;font-size:12px;font-weight:700;">
-              💬 שאל שאלה על הנזק
+              🤖 הפעל בינה מלאכותית
             </button>
           </div>
         </div>
@@ -6358,8 +6358,7 @@ function _ragInjectFallback() {
       var actions = document.getElementById('rag-photo-actions');
       if (actions) actions.style.display = 'flex';
       window._ragCurrentPhoto = e.target.result;
-      // Auto-analyze immediately
-      window._ragAutoAnalyzePhoto();
+      // Do NOT auto-analyze — wait for Beni to click button
     };
     reader.readAsDataURL(file);
   };
@@ -6369,6 +6368,13 @@ function _ragInjectFallback() {
     if (!apiKey) return;
     var analysisEl = document.getElementById('rag-photo-analysis');
     if (analysisEl) analysisEl.innerHTML = '🔍 Claude Vision מנתח את התמונה...';
+    var _arcEl = document.getElementById('rag-arc-photo');
+    if (!_arcEl) {
+      _arcEl = document.createElement('div');
+      _arcEl.id = 'rag-arc-photo';
+      if (analysisEl && analysisEl.parentNode) analysisEl.parentNode.insertBefore(_arcEl, analysisEl.nextSibling);
+    }
+    arc.start(_arcEl);
     var b64 = window._ragCurrentPhoto;
     if (!b64) return;
     var mimeMatch = b64.match(/^data:(image\/[a-z]+);base64,/);
@@ -6387,20 +6393,22 @@ function _ragInjectFallback() {
       }, null);
       var data = await resp.json();
       var answer = (data.content && data.content[0] && data.content[0].text) || 'לא ניתן לנתח';
+      var inTok = (data.usage && data.usage.input_tokens) || 0;
+      var outTok = (data.usage && data.usage.output_tokens) || 0;
       var fmt = answer.replace(/</g,'&lt;').replace(/\*\*([^*]+)\*\*/g,'<strong style="color:#c9a84c;">$1</strong>').replace(/\n/g,'<br>');
       if (analysisEl) analysisEl.innerHTML = fmt;
       window._ragPhotoAnalysis = answer;
+      arc.finish(inTok, outTok);
     } catch(e) {
+      arc.reset();
       if (analysisEl) analysisEl.innerHTML = '❌ שגיאה בניתוח: ' + e.message;
     }
   };
 
   window.ragAskAboutPhoto = function() {
     if (!window._ragCurrentPhoto) { showToast('יש להעלות תמונה תחילה', 'error'); return; }
-    var inp = document.getElementById('rag-input');
-    var context = window._ragPhotoAnalysis ? 'בהתבסס על ניתוח התמונה: ' + window._ragPhotoAnalysis + '\n\n' : '';
-    if (inp) inp.value = context + 'מה תוכנית התיקון המומלצת ומה העלות המשוערת?';
-    inp && inp.focus();
+    // Run the Vision analysis
+    window._ragAutoAnalyzePhoto();
   };
 
   window.ragGeneratePO = async function() {
@@ -6409,6 +6417,13 @@ function _ragInjectFallback() {
     if (!apiKey) { showToast('מפתח API חסר', 'error'); return; }
     var btn = document.getElementById('rag-gen-po-btn');
     if (btn) { btn.disabled = true; btn.textContent = '⏳ יוצר...'; }
+    var _arcPO = document.getElementById('rag-arc-po');
+    if (!_arcPO) {
+      _arcPO = document.createElement('div');
+      _arcPO.id = 'rag-arc-po';
+      if (btn && btn.parentNode) btn.parentNode.insertBefore(_arcPO, btn.nextSibling);
+    }
+    arc.start(_arcPO);
     var b64 = window._ragCurrentPhoto;
     var mimeMatch = b64.match(/^data:(image\/[a-z]+);base64,/);
     var mime = mimeMatch ? mimeMatch[1] : 'image/jpeg';
@@ -6427,6 +6442,9 @@ function _ragInjectFallback() {
       }, null);
       var data = await resp.json();
       var po = (data.content && data.content[0] && data.content[0].text) || '';
+      var _poInTok = (data.usage && data.usage.input_tokens) || 0;
+      var _poOutTok = (data.usage && data.usage.output_tokens) || 0;
+      arc.finish(_poInTok, _poOutTok);
       var fmt = po.replace(/</g,'&lt;').replace(/\*\*([^*]+)\*\*/g,'<strong style="color:#c9a84c;">$1</strong>').replace(/\n/g,'<br>');
       var history = document.getElementById('rag-chat-history');
       if (history) {
@@ -6448,7 +6466,7 @@ function _ragInjectFallback() {
         history.appendChild(div);
         history.scrollTo(0, history.scrollHeight);
       }
-    } catch(e) { showToast('שגיאה: ' + e.message, 'error'); }
+    } catch(e) { arc.reset(); showToast('שגיאה: ' + e.message, 'error'); }
     if (btn) { btn.disabled = false; btn.textContent = '📄 צור הזמנת עבודה מהניתוח'; }
   };
   window.ragHandleVideo = function(input) {
@@ -6487,8 +6505,9 @@ function _ragInjectFallback() {
     if(history) history.appendChild(typing);
     if(history) history.scrollTo(0,history.scrollHeight);
     var t0=Date.now();
-    if(status) status.innerHTML='<span style="color:#7c3aed;font-weight:700;">⏱ 0.0s</span>';
-    var timer=setInterval(function(){var s=((Date.now()-t0)/1000).toFixed(1);if(status) status.innerHTML='<span style="color:#7c3aed;font-weight:700;">⏱ '+s+'s</span>';},200);
+    if(status) status.innerHTML='';
+    arc.start(status);
+    var timer=null;
     try {
       var bsCtx='';
       try {
@@ -6514,7 +6533,7 @@ function _ragInjectFallback() {
       var msgs=(window._ragHistory||[]).slice(-8).concat([{role:'user',content:(bsCtx?bsCtx+'\n---\n':'')+'שאלה: '+query}]);
       var resp=await claudeFetch(JSON.stringify({_apiKey:apiKey,model:'claude-sonnet-4-20250514',max_tokens:1500,system:'אתה יועץ הנדסי בנייה ישראלי מקצועי. ענה בעברית בלבד. תשובות ממוקדות ומעשיות עם מספרים. השתמש בתקנים שסופקו.',messages:msgs}),null);
       var data=await resp.json();
-      clearInterval(timer); typing.remove();
+      if(timer) clearInterval(timer); typing.remove();
       if(!resp.ok) throw new Error((data.error&&data.error.message)||'API error');
       var answer=(data.content&&data.content[0]&&data.content[0].text)||'';
       var inTok=(data.usage&&data.usage.input_tokens)||0;
@@ -6538,9 +6557,10 @@ function _ragInjectFallback() {
         +'<button data-q="האם נדרש היתר מיוחד?" onclick="ragFollowUpBtn(this)" style="background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);color:#fca5a5;padding:4px 10px;border-radius:14px;cursor:pointer;font-family:Heebo,sans-serif;font-size:11px;">נדרש היתר?</button>'
         +'</div><div style="display:flex;gap:8px;"><input id="rag-followup-input" type="text" placeholder="שאל שאלת המשך..." dir="rtl" style="flex:1;background:rgba(255,255,255,0.05);border:1px solid rgba(139,92,246,0.3);color:#fff;padding:7px 12px;border-radius:8px;font-family:Heebo,sans-serif;font-size:12px;"><button onclick="ragFollowUpCustom()" style="background:rgba(139,92,246,0.3);border:none;color:#fff;padding:7px 14px;border-radius:8px;cursor:pointer;font-family:Heebo,sans-serif;font-size:12px;font-weight:700;">שאל ←</button></div></div>';
       if(history) history.appendChild(ab);
-      if(status) status.textContent='';
+      arc.finish(inTok, outTok);
     } catch(err) {
-      clearInterval(timer); typing.remove();
+      if(timer) clearInterval(timer); typing.remove();
+      arc.reset();
       var eb=document.createElement('div');
       eb.innerHTML='<div style="background:rgba(239,68,68,0.12);border:1px solid rgba(239,68,68,0.3);color:#fca5a5;padding:12px 16px;border-radius:14px;font-size:13px;direction:rtl;">❌ '+err.message+'</div>';
       if(history) history.appendChild(eb);
@@ -6553,163 +6573,30 @@ function _ragInjectFallback() {
 
 
 // ══════════════════════════════════════════════════════════════════════
-// ECF — external_communication_footer
-// Universal reusable footer: Save / Print / PDF / Email / WhatsApp / Link
-// Usage: ecf({ title, content, type, projectId, containerEl })
-//   title     — string: document title (e.g. "הזמנת עבודה — סדק בבטון")
-//   content   — string: plain text content to save/share
-//   htmlContent — string (optional): formatted HTML for print window
-//   type      — string: 'work_order' | 'safety_report' | 'engineering_advice' | 'snag_report' | 'quote'
-//   projectId — string|null: link to project
-//   containerEl — DOM element: where to append the footer
+// ECF + ARC — loaded from Supabase shared_modules table
+// Do NOT paste code here. Source of truth is Supabase.
 // ══════════════════════════════════════════════════════════════════════
-
-async function ecfSave(title, content, type, projectId) {
-  var apiKey = APP && APP.config && APP.config.anthropic_key;
-  var managerName = (APP.config && APP.config.manager_name) || 'בני פרסקי';
-  var rec = {
-    title: title,
-    content: content,
-    doc_type: type || 'general',
-    project_id: projectId || null,
-    manager_name: managerName,
-    created_at: new Date().toISOString()
-  };
+async function _loadSharedModules() {
   try {
-    var res = await fetch(SB_URL + '/rest/v1/ecf_documents', {
-      method: 'POST',
-      headers: { apikey: SB_KEY, Authorization: 'Bearer ' + SB_KEY,
-        'Content-Type': 'application/json', Prefer: 'return=representation' },
-      body: JSON.stringify(rec)
+    var res = await fetch(
+      SB_URL + '/rest/v1/shared_modules?name=in.(arc,ecf)&select=name,js_code',
+      { headers: { apikey: SB_KEY, Authorization: 'Bearer ' + SB_KEY } }
+    );
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    var modules = await res.json();
+    modules.forEach(function(m) {
+      try {
+        var s = document.createElement('script');
+        s.textContent = m.js_code;
+        document.head.appendChild(s);
+      } catch(e) { console.error('Failed to inject module:', m.name, e); }
     });
-    var data = res.ok ? await res.json() : null;
-    var savedId = data && data[0] && data[0].id;
-    showToast('✅ נשמר בסופרבייס', 'success');
-    return savedId;
+    console.log('✅ Shared modules loaded:', modules.map(function(m){ return m.name; }).join(', '));
   } catch(e) {
-    showToast('❌ שגיאה בשמירה: ' + e.message, 'error');
-    return null;
+    console.error('❌ shared_modules load failed:', e);
   }
 }
-
-function ecfPrint(title, htmlContent) {
-  var w = window.open('', '_blank');
-  w.document.write(
-    '<!DOCTYPE html><html dir="rtl"><head><meta charset="UTF-8"><title>' + title + '</title>' +
-    '<link href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;700;900&display=swap" rel="stylesheet">' +
-    '<style>body{font-family:Heebo,Arial,sans-serif;padding:32px;direction:rtl;color:#1a1a2e;line-height:1.8;}' +
-    'h1{font-size:22px;font-weight:900;color:#1a3d5c;border-bottom:3px solid #c9a84c;padding-bottom:10px;}' +
-    'strong{color:#1a3d5c;} .meta{font-size:12px;color:#888;margin-bottom:20px;}' +
-    '@media print{.no-print{display:none}}</style></head><body>' +
-    '<div class="no-print" style="margin-bottom:20px;display:flex;gap:10px;">' +
-    '<button onclick="window.print()" style="background:#1a3d5c;color:#fff;border:none;padding:9px 22px;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;">🖨️ הדפס / PDF</button>' +
-    '<button onclick="window.close()" style="background:#374151;color:#fff;border:none;padding:9px 18px;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;">✕ סגור</button></div>' +
-    '<h1>' + title + '</h1>' +
-    '<div class="meta">נוצר: ' + new Date().toLocaleDateString('he-IL') + ' | מנהל: ' + ((APP.config && APP.config.manager_name) || 'בני פרסקי') + '</div>' +
-    htmlContent +
-    '</body></html>'
-  );
-  w.document.close();
-}
-
-function ecfWhatsApp(title, content) {
-  var phone = '972523539239';
-  var date = new Date().toLocaleDateString('he-IL');
-  var msg = '📋 *' + title + '*\n' + date + '\n\n' + content.substring(0, 1500);
-  var a = document.createElement('a');
-  a.href = 'https://wa.me/' + phone + '?text=' + encodeURIComponent(msg);
-  a.target = '_blank'; a.rel = 'noopener';
-  document.body.appendChild(a); a.click(); document.body.removeChild(a);
-}
-
-function ecfEmail(title, content) {
-  var email = (APP.config && APP.config.orderer_email) || '';
-  var subject = encodeURIComponent(title);
-  var body = encodeURIComponent(content.substring(0, 2000));
-  window.location.href = 'mailto:' + email + '?subject=' + subject + '&body=' + body;
-}
-
-function ecfCopyLink(docId) {
-  if (!docId) { showToast('יש לשמור תחילה', 'error'); return; }
-  var url = window.location.origin + window.location.pathname + '?doc=' + docId;
-  navigator.clipboard.writeText(url).then(function() {
-    showToast('🔗 קישור הועתק', 'success');
-  }).catch(function() {
-    showToast('לא ניתן להעתיק', 'error');
-  });
-}
-
-// Main ECF builder — returns DOM element
-// opts: { title, content, htmlContent, type, projectId }
-function ecf(opts) {
-  var title      = opts.title      || 'מסמך';
-  var content    = opts.content    || '';
-  var htmlContent= opts.htmlContent|| content.replace(/\n/g,'<br>');
-  var type       = opts.type       || 'general';
-  var projectId  = opts.projectId  || null;
-
-  var bar = document.createElement('div');
-  bar.className = 'ecf-bar';
-  bar.style.cssText = [
-    'display:flex;gap:8px;flex-wrap:wrap;align-items:center;',
-    'margin-top:14px;padding:12px 16px;',
-    'background:rgba(255,255,255,0.03);',
-    'border:1px solid rgba(255,255,255,0.08);',
-    'border-radius:12px;'
-  ].join('');
-
-  var _savedId = null;
-
-  function _btn(emoji, label, bg, color, border, cb) {
-    var b = document.createElement('button');
-    b.style.cssText = [
-      'display:inline-flex;align-items:center;gap:5px;',
-      'padding:8px 14px;border-radius:10px;border:' + (border||'none') + ';',
-      'background:' + bg + ';color:' + color + ';',
-      'font-family:Heebo,sans-serif;font-size:12px;font-weight:700;',
-      'cursor:pointer;white-space:nowrap;'
-    ].join('');
-    b.innerHTML = emoji + ' ' + label;
-    b.onclick = cb;
-    return b;
-  }
-
-  // 💾 שמור
-  bar.appendChild(_btn('💾','שמור','rgba(34,197,94,0.15)','#86efac','1.5px solid rgba(34,197,94,0.4)',
-    async function() {
-      this.disabled = true; this.textContent = '⏳ שומר...';
-      _savedId = await ecfSave(title, content, type, projectId);
-      this.textContent = '✅ נשמר';
-    }
-  ));
-
-  // 🖨️ הדפס
-  bar.appendChild(_btn('🖨️','הדפס','rgba(59,130,246,0.15)','#93c5fd','1.5px solid rgba(59,130,246,0.4)',
-    function() { ecfPrint(title, htmlContent); }
-  ));
-
-  // 📄 PDF — same as print, browser saves as PDF
-  bar.appendChild(_btn('📄','PDF','rgba(239,68,68,0.12)','#fca5a5','1.5px solid rgba(239,68,68,0.3)',
-    function() { ecfPrint(title, htmlContent); }
-  ));
-
-  // 📧 מייל
-  bar.appendChild(_btn('📧','מייל','rgba(139,92,246,0.12)','#c4b5fd','1.5px solid rgba(139,92,246,0.3)',
-    function() { ecfEmail(title, content); }
-  ));
-
-  // 💬 וואטסאפ
-  bar.appendChild(_btn('💬','וואטסאפ','rgba(37,211,102,0.15)','#25D366','1.5px solid rgba(37,211,102,0.4)',
-    function() { ecfWhatsApp(title, content); }
-  ));
-
-  // 🔗 קישור
-  bar.appendChild(_btn('🔗','קישור לפרויקט','rgba(201,168,76,0.12)','#c9a84c','1.5px solid rgba(201,168,76,0.3)',
-    function() { ecfCopyLink(_savedId); }
-  ));
-
-  return bar;
-}
+_loadSharedModules();
 
 
 // ══ Global AI Stop / Running state ═══════════════════════════════════
