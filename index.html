@@ -6813,7 +6813,7 @@ async function switchTab(tab) {
 
   // Panel-specific post-init
   if (tab === 'notes')   { _fetchSmartJournal().then(function(){ setTimeout(function(){ sjPopulateProjectFilter(); loadNotesWall(); }, 100); }); }
-  if (tab === 'crm')     { _fetchAssetInboxModule().then(function(){ setTimeout(function(){ if(typeof assetInboxInit==='function') assetInboxInit(); },200); }); }
+  if (tab === 'crm')     { setTimeout(function(){ if(typeof assetInboxLoad==='function') assetInboxLoad(); }, 200); }
   if (tab === 'eod')     { Promise.all([_fetchJournalModule(), _fetchSmartJournal()]).then(function(){ setTimeout(loadEODReport, 100); }); }
   if (tab === 'safety')  { _fetchSafetyModule().then(function(){ setTimeout(function(){ safetyTabInit(); if(typeof _switchSafetySubTabReal==='function') _switchSafetySubTabReal('safety'); }, 100); }); }
   if (tab === 'rag')      { _fetchRagModule().then(function(){ setTimeout(ragTabInit, 100); }); }
@@ -6823,7 +6823,7 @@ async function switchTab(tab) {
   if (tab === 'journal') { _fetchJournalModule().then(async function(){ if (!allProjects || !allProjects.length) { try { await loadProjects(); } catch(e){} } if (typeof initializeManagerView === 'function') initializeManagerView(); }).catch(function(e){ console.error('journal load:', e); }); _fetchCallRecordingsModule().then(function(){ setTimeout(function(){ if(typeof callRecordingsInit==='function') callRecordingsInit(); },200); }); }
   if (tab === 'standards') { _fetchStandardsModule().then(function(){ setTimeout(standardsRagInit, 100); }); }
   if (tab === 'smartscan')  { _fetchSmartScanModule().then(function(){ setTimeout(function(){ smartScanInit(); _ssPopulateProjects(); }, 100); }); }
-  if (tab === 'inbox')      { _fetchAssetInboxModule().then(function(){ setTimeout(function(){ assetInboxInit(); }, 100); }); }
+  if (tab === 'inbox')      { setTimeout(function(){ assetInboxLoad(); }, 100); }
   if (tab === 'misc')       { setTimeout(loadMiscTab, 100); }
 }
 
