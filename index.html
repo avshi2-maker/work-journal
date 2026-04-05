@@ -3942,7 +3942,8 @@ async function miscRouteItem(cardId, source, rawId, dest, encodedText, encodedMe
       var videoUrl = media;
       if (!videoUrl) { showToast('❌ אין וידאו', 'error'); return; }
       showToast('📸 מחלץ פריים...', 'success');
-      var frameUrl = videoUrl.replace('/upload/', '/upload/so_auto,w_1200,f_jpg/').replace(/\.(mp4|mov|avi|3gp|m4v|mkv)(\?.*)?$/i, '.jpg');
+      // so_1 = extract frame at 1 second — always available, no processing delay
+      var frameUrl = videoUrl.replace('/upload/', '/upload/so_1,w_1200,f_jpg/').replace(/\.(mp4|mov|avi|3gp|m4v|mkv)(\?.*)?$/i, '.jpg');
       await switchTab('rag');
       setTimeout(async function() {
         var preview = document.getElementById('rag-photo-preview');
@@ -3953,15 +3954,40 @@ async function miscRouteItem(cardId, source, rawId, dest, encodedText, encodedMe
         if (preview) preview.style.display = 'block';
         if (acts)    acts.style.display    = 'flex';
         if (ana)     ana.innerHTML = '🎬 פריים מווידאו — לחץ <strong>🤖 הפעל בינה מלאכותית</strong>';
+        // Fetch the JPG frame (images have CORS headers, unlike video streams)
+        if (img) img.src = frameUrl; // show preview immediately
         try {
           var fr = await fetch(frameUrl);
           if (fr.ok) {
             var blob = await fr.blob();
-            var b64 = await new Promise(function(res){ var rd=new FileReader(); rd.onload=function(e){res(e.target.result);}; rd.readAsDataURL(blob); });
-            window._ragCurrentPhoto = b64; if (img) img.src = b64;
-          } else { window._ragCurrentPhoto = frameUrl; }
-        } catch(fe) { window._ragCurrentPhoto = frameUrl; }
-        showToast('✅ פריים נטען — לחץ הפעל בינה מלאכותית', 'success');
+            var b64 = await new Promise(function(res){
+              var rd = new FileReader(); rd.onload = function(e){ res(e.target.result); }; rd.readAsDataURL(blob);
+            });
+            window._ragCurrentPhoto = b64;
+            if (img) img.src = b64;
+            showToast('✅ פריים נטען — לחץ הפעל בינה מלאכותית', 'success');
+          } else {
+            // 423 = still processing — wait 3s and retry once
+            showToast('⏳ Cloudinary מעבד פריים — מנסה שוב בעוד 3 שניות...', 'success');
+            await new Promise(function(r){ setTimeout(r, 3000); });
+            var fr2 = await fetch(frameUrl);
+            if (fr2.ok) {
+              var blob2 = await fr2.blob();
+              var b64b = await new Promise(function(res){
+                var rd2 = new FileReader(); rd2.onload = function(e){ res(e.target.result); }; rd2.readAsDataURL(blob2);
+              });
+              window._ragCurrentPhoto = b64b;
+              if (img) img.src = b64b;
+              showToast('✅ פריים נטען — לחץ הפעל בינה מלאכותית', 'success');
+            } else {
+              window._ragCurrentPhoto = frameUrl; // use URL as fallback
+              showToast('⚠️ פריים עדיין מעובד — נסה שוב בעוד רגע', 'success');
+            }
+          }
+        } catch(fe) {
+          window._ragCurrentPhoto = frameUrl;
+          showToast('✅ פריים נטען (URL) — לחץ הפעל בינה מלאכותית', 'success');
+        }
       }, 400);
       return;
     }
@@ -4395,7 +4421,8 @@ async function miscRouteItem(cardId, source, rawId, dest, encodedText, encodedMe
       var videoUrl = media;
       if (!videoUrl) { showToast('❌ אין וידאו', 'error'); return; }
       showToast('📸 מחלץ פריים...', 'success');
-      var frameUrl = videoUrl.replace('/upload/', '/upload/so_auto,w_1200,f_jpg/').replace(/\.(mp4|mov|avi|3gp|m4v|mkv)(\?.*)?$/i, '.jpg');
+      // so_1 = extract frame at 1 second — always available, no processing delay
+      var frameUrl = videoUrl.replace('/upload/', '/upload/so_1,w_1200,f_jpg/').replace(/\.(mp4|mov|avi|3gp|m4v|mkv)(\?.*)?$/i, '.jpg');
       await switchTab('rag');
       setTimeout(async function() {
         var preview = document.getElementById('rag-photo-preview');
@@ -4406,15 +4433,40 @@ async function miscRouteItem(cardId, source, rawId, dest, encodedText, encodedMe
         if (preview) preview.style.display = 'block';
         if (acts)    acts.style.display    = 'flex';
         if (ana)     ana.innerHTML = '🎬 פריים מווידאו — לחץ <strong>🤖 הפעל בינה מלאכותית</strong>';
+        // Fetch the JPG frame (images have CORS headers, unlike video streams)
+        if (img) img.src = frameUrl; // show preview immediately
         try {
           var fr = await fetch(frameUrl);
           if (fr.ok) {
             var blob = await fr.blob();
-            var b64 = await new Promise(function(res){ var rd=new FileReader(); rd.onload=function(e){res(e.target.result);}; rd.readAsDataURL(blob); });
-            window._ragCurrentPhoto = b64; if (img) img.src = b64;
-          } else { window._ragCurrentPhoto = frameUrl; }
-        } catch(fe) { window._ragCurrentPhoto = frameUrl; }
-        showToast('✅ פריים נטען — לחץ הפעל בינה מלאכותית', 'success');
+            var b64 = await new Promise(function(res){
+              var rd = new FileReader(); rd.onload = function(e){ res(e.target.result); }; rd.readAsDataURL(blob);
+            });
+            window._ragCurrentPhoto = b64;
+            if (img) img.src = b64;
+            showToast('✅ פריים נטען — לחץ הפעל בינה מלאכותית', 'success');
+          } else {
+            // 423 = still processing — wait 3s and retry once
+            showToast('⏳ Cloudinary מעבד פריים — מנסה שוב בעוד 3 שניות...', 'success');
+            await new Promise(function(r){ setTimeout(r, 3000); });
+            var fr2 = await fetch(frameUrl);
+            if (fr2.ok) {
+              var blob2 = await fr2.blob();
+              var b64b = await new Promise(function(res){
+                var rd2 = new FileReader(); rd2.onload = function(e){ res(e.target.result); }; rd2.readAsDataURL(blob2);
+              });
+              window._ragCurrentPhoto = b64b;
+              if (img) img.src = b64b;
+              showToast('✅ פריים נטען — לחץ הפעל בינה מלאכותית', 'success');
+            } else {
+              window._ragCurrentPhoto = frameUrl; // use URL as fallback
+              showToast('⚠️ פריים עדיין מעובד — נסה שוב בעוד רגע', 'success');
+            }
+          }
+        } catch(fe) {
+          window._ragCurrentPhoto = frameUrl;
+          showToast('✅ פריים נטען (URL) — לחץ הפעל בינה מלאכותית', 'success');
+        }
       }, 400);
       return;
     }
