@@ -4085,19 +4085,20 @@ async function miscRouteItem(cardId, source, rawId, dest, encodedText, encodedMe
       return;
     }
     if (dest === 'ocr') {
-      // Switch to יומן חכם → OCR/AI tab and pre-load image
       await switchTab('notes');
       setTimeout(async function() {
         switchSmartTab('ocr');
         if (media) {
-          var ocrImg = document.getElementById('ocr-preview-img');
-          var ocrSrc = document.getElementById('ocr-image-src');
-          if (ocrImg) { ocrImg.src = media; ocrImg.style.display='block'; }
-          if (ocrSrc) ocrSrc.value = media;
+          // Correct element IDs from the actual OCR panel HTML
+          var preview    = document.getElementById('journal-ocr-preview');
+          var previewImg = document.getElementById('journal-ocr-preview-img');
+          var runBtn     = document.getElementById('journal-ocr-run-btn');
+          var statusEl   = document.getElementById('journal-ocr-status');
           window._ocrImageUrl = media;
-          showToast('📄 תמונה נטענה ל-OCR — לחץ הפעל', 'success');
+          // Load the file and convert to base64 for OCR processing
+          journalOcrLoadFromUrl(media);
         }
-      }, 400);
+      }, 500);
       return;
     }
     if (dest === 'rag') {
@@ -4594,19 +4595,20 @@ async function miscRouteItem(cardId, source, rawId, dest, encodedText, encodedMe
       return;
     }
     if (dest === 'ocr') {
-      // Switch to יומן חכם → OCR/AI tab and pre-load image
       await switchTab('notes');
       setTimeout(async function() {
         switchSmartTab('ocr');
         if (media) {
-          var ocrImg = document.getElementById('ocr-preview-img');
-          var ocrSrc = document.getElementById('ocr-image-src');
-          if (ocrImg) { ocrImg.src = media; ocrImg.style.display='block'; }
-          if (ocrSrc) ocrSrc.value = media;
+          // Correct element IDs from the actual OCR panel HTML
+          var preview    = document.getElementById('journal-ocr-preview');
+          var previewImg = document.getElementById('journal-ocr-preview-img');
+          var runBtn     = document.getElementById('journal-ocr-run-btn');
+          var statusEl   = document.getElementById('journal-ocr-status');
           window._ocrImageUrl = media;
-          showToast('📄 תמונה נטענה ל-OCR — לחץ הפעל', 'success');
+          // Load the file and convert to base64 for OCR processing
+          journalOcrLoadFromUrl(media);
         }
-      }, 400);
+      }, 500);
       return;
     }
     if (dest === 'rag') {
@@ -5170,6 +5172,169 @@ function formatElevenLabsTranscript(data) {
 
 
 // ══ PROJECT CONTENT PANEL ═══════════════════════════════════════════
+// ══ PROJECT FILES PANEL — all linked documents/media ═════════════════
+async function openProjectFiles(projectId, projectName) {
+  var ex = document.getElementById('proj-files-overlay');
+  if (ex) ex.remove();
+
+  var overlay = document.createElement('div');
+  overlay.id = 'proj-files-overlay';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.82);z-index:99999;display:flex;align-items:flex-start;justify-content:center;padding:30px 20px;overflow-y:auto;';
+
+  var box = document.createElement('div');
+  box.style.cssText = 'background:#1a1a2e;border-radius:16px;width:100%;max-width:900px;font-family:Heebo,sans-serif;direction:rtl;margin-bottom:40px;';
+
+  // Header
+  var hdr = document.createElement('div');
+  hdr.style.cssText = 'padding:16px 20px;border-bottom:1px solid rgba(255,255,255,0.08);display:flex;justify-content:space-between;align-items:center;';
+  var hTitle = document.createElement('div');
+  hTitle.innerHTML = '<div style="font-size:16px;font-weight:900;color:#fff;">📎 קבצים משויכים — ' + projectName + '</div>';
+  var hX = document.createElement('button');
+  hX.textContent = '✕';
+  hX.style.cssText = 'background:rgba(255,255,255,0.1);border:none;color:#fff;width:30px;height:30px;border-radius:50%;cursor:pointer;font-size:14px;flex-shrink:0;';
+  hX.onclick = function(){ overlay.remove(); };
+  hdr.appendChild(hTitle); hdr.appendChild(hX);
+  box.appendChild(hdr);
+
+  // Loading
+  var body = document.createElement('div');
+  body.style.cssText = 'padding:16px;';
+  body.innerHTML = '<div style="text-align:center;padding:30px;color:#555;">⏳ טוען קבצים...</div>';
+  box.appendChild(body);
+  overlay.appendChild(box);
+  overlay.addEventListener('click', function(e){ if(e.target===overlay) overlay.remove(); });
+  document.body.appendChild(overlay);
+
+  // Load all beni_notes with photo_url for this project
+  var { data } = await sbQ('beni_notes',
+    'project_id=eq.' + projectId + '&photo_url=not.is.null&order=created_at.desc&limit=100&select=id,note_text,photo_url,note_type,created_at');
+  data = data || [];
+
+  body.innerHTML = '';
+
+  if (!data.length) {
+    body.innerHTML = '<div style="text-align:center;padding:40px;color:#555;direction:rtl;">📎 אין קבצים משויכים לפרויקט זה<br><div style="font-size:12px;margin-top:8px;color:#444;">העלה קבצים מ-Beni Pocket ושייך לפרויקט זה</div></div>';
+    return;
+  }
+
+  // Group by type
+  var groups = { pdf:[], photo:[], video:[], audio:[], other:[] };
+  data.forEach(function(n) {
+    var url = n.photo_url || '';
+    var nt  = n.note_type || '';
+    if (nt==='pdf' || url.endsWith('.pdf') || url.includes('/pdfs/'))          groups.pdf.push(n);
+    else if (nt==='audio' || url.includes('/beni_voice/') || /\.(mp3|m4a|wav|ogg|3gp)/.test(url)) groups.audio.push(n);
+    else if (nt==='video' || url.includes('/video/upload/') || /\.(mp4|mov|3gp|avi)/.test(url)) groups.video.push(n);
+    else if (nt==='photo' || url.includes('/image/upload/') || /\.(jpg|jpeg|png|heic|webp)/.test(url)) groups.photo.push(n);
+    else groups.other.push(n);
+  });
+
+  var typeConfig = {
+    pdf:   { icon:'📄', label:'מסמכי PDF',    color:'#fca5a5', bg:'rgba(239,68,68,0.08)'   },
+    photo: { icon:'📸', label:'תמונות',        color:'#93c5fd', bg:'rgba(59,130,246,0.08)'  },
+    video: { icon:'🎬', label:'סרטונים',       color:'#c4b5fd', bg:'rgba(139,92,246,0.08)'  },
+    audio: { icon:'🎙️', label:'הקלטות קוליות', color:'#fde68a', bg:'rgba(245,158,11,0.08)' },
+    other: { icon:'📎', label:'קבצים אחרים',   color:'#86efac', bg:'rgba(34,197,94,0.08)'  }
+  };
+
+  // Stats bar
+  var stats = document.createElement('div');
+  stats.style.cssText = 'display:flex;gap:10px;flex-wrap:wrap;padding:12px 16px;border-bottom:1px solid rgba(255,255,255,0.06);';
+  Object.keys(groups).forEach(function(type) {
+    if (!groups[type].length) return;
+    var cfg = typeConfig[type];
+    var pill = document.createElement('div');
+    pill.style.cssText = 'background:' + cfg.bg + ';border:1px solid ' + cfg.color.replace(')',',0.3)').replace('rgb','rgba') + ';border-radius:20px;padding:5px 12px;font-size:12px;font-weight:700;color:' + cfg.color + ';cursor:pointer;';
+    pill.textContent = cfg.icon + ' ' + cfg.label + ' (' + groups[type].length + ')';
+    pill.onclick = function(){
+      var sec = document.getElementById('pf-section-' + type);
+      if (sec) sec.scrollIntoView({behavior:'smooth', block:'start'});
+    };
+    stats.appendChild(pill);
+  });
+  body.appendChild(stats);
+
+  // Render each group
+  Object.keys(groups).forEach(function(type) {
+    if (!groups[type].length) return;
+    var cfg = typeConfig[type];
+    var section = document.createElement('div');
+    section.id = 'pf-section-' + type;
+    section.style.cssText = 'padding:14px 16px;border-bottom:1px solid rgba(255,255,255,0.04);';
+
+    var sHdr = document.createElement('div');
+    sHdr.style.cssText = 'font-size:13px;font-weight:800;color:' + cfg.color + ';margin-bottom:12px;';
+    sHdr.textContent = cfg.icon + ' ' + cfg.label + ' — ' + groups[type].length + ' קבצים';
+    section.appendChild(sHdr);
+
+    var grid = document.createElement('div');
+    var isMedia = (type === 'photo');
+    grid.style.cssText = isMedia
+      ? 'display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px;'
+      : 'display:flex;flex-direction:column;gap:8px;';
+
+    groups[type].forEach(function(n) {
+      var url  = n.photo_url;
+      var date = new Date(n.created_at).toLocaleDateString('he-IL') + ' ' +
+                 new Date(n.created_at).toLocaleTimeString('he-IL',{hour:'2-digit',minute:'2-digit'});
+      var title = (n.note_text||'').replace(/^[🎙️📸🎬📄]\s*/,'').substring(0,60) || url.split('/').pop().substring(0,40);
+
+      if (type === 'photo') {
+        var card = document.createElement('div');
+        card.style.cssText = 'border-radius:10px;overflow:hidden;border:1px solid rgba(255,255,255,0.08);background:#1e1e35;cursor:zoom-in;';
+        var img = document.createElement('img');
+        img.src = url; img.style.cssText = 'width:100%;height:90px;object-fit:cover;display:block;';
+        img.onclick = function(){ openLightbox(url, title); };
+        var cap = document.createElement('div');
+        cap.style.cssText = 'padding:4px 6px;font-size:9px;color:#555;direction:rtl;';
+        cap.textContent = date;
+        card.appendChild(img); card.appendChild(cap);
+        grid.appendChild(card);
+      } else if (type === 'audio') {
+        var aCard = document.createElement('div');
+        aCard.style.cssText = 'background:rgba(245,158,11,0.06);border:1px solid rgba(245,158,11,0.15);border-radius:10px;padding:10px;';
+        aCard.innerHTML = '<div style="display:flex;justify-content:space-between;margin-bottom:6px;"><span style="font-size:12px;font-weight:700;color:#fde68a;">🎙️ ' + title.substring(0,40) + '</span><span style="font-size:10px;color:#555;">' + date + '</span></div>';
+        var aud = document.createElement('audio');
+        aud.src = url; aud.controls = true; aud.style.cssText = 'width:100%;border-radius:6px;';
+        aCard.appendChild(aud);
+        grid.appendChild(aCard);
+      } else if (type === 'video') {
+        var vCard = document.createElement('div');
+        vCard.style.cssText = 'background:rgba(139,92,246,0.06);border:1px solid rgba(139,92,246,0.15);border-radius:10px;padding:10px;';
+        vCard.innerHTML = '<div style="display:flex;justify-content:space-between;margin-bottom:6px;"><span style="font-size:12px;font-weight:700;color:#c4b5fd;">🎬 ' + title.substring(0,40) + '</span><span style="font-size:10px;color:#555;">' + date + '</span></div>';
+        var vid = document.createElement('video');
+        vid.src = url; vid.controls = true; vid.style.cssText = 'width:100%;max-height:180px;border-radius:8px;';
+        vCard.appendChild(vid);
+        grid.appendChild(vCard);
+      } else if (type === 'pdf') {
+        var pCard = document.createElement('div');
+        pCard.style.cssText = 'background:rgba(239,68,68,0.06);border:1px solid rgba(239,68,68,0.15);border-radius:10px;padding:12px;display:flex;justify-content:space-between;align-items:center;';
+        pCard.innerHTML = '<div><div style="font-size:13px;font-weight:700;color:#fca5a5;">📄 ' + title.substring(0,50) + '</div><div style="font-size:10px;color:#555;margin-top:3px;">' + date + '</div></div>';
+        var pBtns = document.createElement('div');
+        pBtns.style.cssText = 'display:flex;gap:6px;flex-shrink:0;';
+        var openBtn = document.createElement('button');
+        openBtn.textContent = '↗️ פתח';
+        openBtn.style.cssText = 'background:rgba(239,68,68,0.2);border:1px solid rgba(239,68,68,0.4);color:#fca5a5;padding:6px 10px;border-radius:7px;cursor:pointer;font-family:Heebo,sans-serif;font-size:11px;font-weight:700;';
+        openBtn.onclick = function(){ window.open(url,'_blank'); };
+        var ocrBtn = document.createElement('button');
+        ocrBtn.textContent = '🔬 OCR';
+        ocrBtn.style.cssText = 'background:rgba(201,168,76,0.15);border:1px solid rgba(201,168,76,0.4);color:#c9a84c;padding:6px 10px;border-radius:7px;cursor:pointer;font-family:Heebo,sans-serif;font-size:11px;font-weight:700;';
+        ocrBtn.onclick = function(){
+          overlay.remove();
+          switchTab('notes');
+          setTimeout(function(){ switchSmartTab('ocr'); journalOcrLoadFromUrl(url); }, 500);
+        };
+        pBtns.appendChild(openBtn); pBtns.appendChild(ocrBtn);
+        pCard.appendChild(pBtns);
+        grid.appendChild(pCard);
+      }
+    });
+    section.appendChild(grid);
+    body.appendChild(section);
+  });
+}
+
+
 async function openProjectContent(projectId, projectName, tab) {
   // Remove existing
   var ex = document.getElementById('proj-content-overlay');
@@ -5197,9 +5362,10 @@ async function openProjectContent(projectId, projectName, tab) {
   var tabs = document.createElement('div');
   tabs.style.cssText = 'display:flex;gap:4px;padding:12px 16px;border-bottom:1px solid rgba(255,255,255,0.06);';
   [
-    { id:'notes',      label:'📝 הערות' },
-    { id:'tasks',      label:'✅ משימות' },
-    { id:'recordings', label:'🎙️ הקלטות' }
+    { id:'notes',      label:'📝 הערות'   },
+    { id:'tasks',      label:'✅ משימות'  },
+    { id:'recordings', label:'🎙️ הקלטות' },
+    { id:'files',      label:'📎 קבצים'   }
   ].forEach(function(t) {
     var btn = document.createElement('button');
     btn.textContent = t.label;
@@ -5285,6 +5451,69 @@ async function loadProjectTab(container, projectId, projectName, tab) {
       container.appendChild(card);
     });
 
+  } else if (tab === 'files') {
+    // All files grouped by type — same as openProjectFiles but inline
+    var { data: allFiles } = await sbQ('beni_notes',
+      'project_id=eq.' + projectId + '&photo_url=not.is.null&order=created_at.desc&limit=100&select=id,note_text,photo_url,note_type,created_at');
+    allFiles = allFiles || [];
+    if (!allFiles.length) {
+      container.innerHTML = '<div style="text-align:center;padding:40px;color:#555;">📎 אין קבצים משויכים</div>';
+      return;
+    }
+    container.innerHTML = '';
+    var groups = { pdf:[], photo:[], video:[], audio:[] };
+    allFiles.forEach(function(n) {
+      var url=n.photo_url||'', nt=n.note_type||'';
+      if (nt==='pdf'||url.includes('/pdfs/')) groups.pdf.push(n);
+      else if (nt==='audio'||url.includes('/beni_voice/')||/\.(mp3|m4a|wav|ogg|3gp)/.test(url)) groups.audio.push(n);
+      else if (nt==='video'||url.includes('/video/upload/')||/\.(mp4|mov|3gp|avi)/.test(url)) groups.video.push(n);
+      else groups.photo.push(n);
+    });
+    var typeConf = {
+      pdf:{icon:'📄',label:'PDF',col:'#fca5a5'},
+      photo:{icon:'📸',label:'תמונות',col:'#93c5fd'},
+      video:{icon:'🎬',label:'סרטונים',col:'#c4b5fd'},
+      audio:{icon:'🎙️',label:'הקלטות',col:'#fde68a'}
+    };
+    Object.keys(groups).forEach(function(type) {
+      if (!groups[type].length) return;
+      var cfg = typeConf[type];
+      var sec = document.createElement('div');
+      sec.style.cssText = 'margin-bottom:16px;';
+      var secHdr = document.createElement('div');
+      secHdr.style.cssText = 'font-size:12px;font-weight:800;color:' + cfg.col + ';margin-bottom:8px;';
+      secHdr.textContent = cfg.icon + ' ' + cfg.label + ' (' + groups[type].length + ')';
+      sec.appendChild(secHdr);
+      var grid = document.createElement('div');
+      grid.style.cssText = type==='photo' ? 'display:grid;grid-template-columns:repeat(auto-fill,minmax(100px,1fr));gap:8px;' : 'display:flex;flex-direction:column;gap:6px;';
+      groups[type].forEach(function(n) {
+        var url=n.photo_url, date=new Date(n.created_at).toLocaleDateString('he-IL');
+        var title=(n.note_text||'').replace(/^[🎙️📸🎬📄]\s*/,'').substring(0,50)||url.split('/').pop().substring(0,30);
+        if (type==='photo') {
+          var img=document.createElement('img'); img.src=url; img.style.cssText='width:100%;height:80px;object-fit:cover;border-radius:8px;cursor:zoom-in;';
+          img.onclick=(function(u,t){return function(){openLightbox(u,t);};})(url,title);
+          grid.appendChild(img);
+        } else if (type==='audio') {
+          var ac=document.createElement('div'); ac.style.cssText='background:rgba(245,158,11,0.06);border:1px solid rgba(245,158,11,0.15);border-radius:8px;padding:8px;';
+          ac.innerHTML='<div style="font-size:11px;color:#fde68a;margin-bottom:4px;">🎙️ '+title.substring(0,35)+'</div>';
+          var au=document.createElement('audio'); au.src=url; au.controls=true; au.style.cssText='width:100%;'; ac.appendChild(au); grid.appendChild(ac);
+        } else if (type==='video') {
+          var vc=document.createElement('div'); vc.style.cssText='background:rgba(139,92,246,0.06);border:1px solid rgba(139,92,246,0.15);border-radius:8px;padding:8px;';
+          vc.innerHTML='<div style="font-size:11px;color:#c4b5fd;margin-bottom:4px;">🎬 '+title.substring(0,35)+'</div>';
+          var vi=document.createElement('video'); vi.src=url; vi.controls=true; vi.style.cssText='width:100%;max-height:150px;border-radius:6px;'; vc.appendChild(vi); grid.appendChild(vc);
+        } else if (type==='pdf') {
+          var pc=document.createElement('div'); pc.style.cssText='background:rgba(239,68,68,0.06);border:1px solid rgba(239,68,68,0.15);border-radius:8px;padding:10px;display:flex;justify-content:space-between;align-items:center;';
+          pc.innerHTML='<div><div style="font-size:12px;font-weight:700;color:#fca5a5;">📄 '+title+'</div><div style="font-size:10px;color:#555;">'+date+'</div></div>';
+          var pb=document.createElement('div'); pb.style.cssText='display:flex;gap:5px;';
+          var ob=document.createElement('button'); ob.textContent='↗️'; ob.style.cssText='background:rgba(239,68,68,0.15);border:1px solid rgba(239,68,68,0.3);color:#fca5a5;padding:5px 8px;border-radius:6px;cursor:pointer;font-size:11px;'; ob.onclick=function(){window.open(url,'_blank');};
+          var oc=document.createElement('button'); oc.textContent='🔬 OCR'; oc.style.cssText='background:rgba(201,168,76,0.15);border:1px solid rgba(201,168,76,0.3);color:#c9a84c;padding:5px 8px;border-radius:6px;cursor:pointer;font-family:Heebo,sans-serif;font-size:11px;font-weight:700;';
+          oc.onclick=function(){ document.getElementById('proj-content-overlay') && document.getElementById('proj-content-overlay').remove(); switchTab('notes'); setTimeout(function(){ switchSmartTab('ocr'); journalOcrLoadFromUrl(url); },500); };
+          pb.appendChild(ob); pb.appendChild(oc); pc.appendChild(pb); grid.appendChild(pc);
+        }
+      });
+      sec.appendChild(grid); container.appendChild(sec);
+    });
+    return;
   } else if (tab === 'recordings') {
     var { data } = await sbQ('beni_notes', 'project_id=eq.' + projectId + '&note_type=eq.audio&order=created_at.desc&limit=30&select=id,note_text,photo_url,created_at');
     var notes = (data||[]).filter(function(n){ return n.photo_url; });
@@ -5317,6 +5546,169 @@ async function loadProjectTab(container, projectId, projectName, tab) {
 
 
 // ══ PROJECT CONTENT PANEL ═══════════════════════════════════════════
+// ══ PROJECT FILES PANEL — all linked documents/media ═════════════════
+async function openProjectFiles(projectId, projectName) {
+  var ex = document.getElementById('proj-files-overlay');
+  if (ex) ex.remove();
+
+  var overlay = document.createElement('div');
+  overlay.id = 'proj-files-overlay';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.82);z-index:99999;display:flex;align-items:flex-start;justify-content:center;padding:30px 20px;overflow-y:auto;';
+
+  var box = document.createElement('div');
+  box.style.cssText = 'background:#1a1a2e;border-radius:16px;width:100%;max-width:900px;font-family:Heebo,sans-serif;direction:rtl;margin-bottom:40px;';
+
+  // Header
+  var hdr = document.createElement('div');
+  hdr.style.cssText = 'padding:16px 20px;border-bottom:1px solid rgba(255,255,255,0.08);display:flex;justify-content:space-between;align-items:center;';
+  var hTitle = document.createElement('div');
+  hTitle.innerHTML = '<div style="font-size:16px;font-weight:900;color:#fff;">📎 קבצים משויכים — ' + projectName + '</div>';
+  var hX = document.createElement('button');
+  hX.textContent = '✕';
+  hX.style.cssText = 'background:rgba(255,255,255,0.1);border:none;color:#fff;width:30px;height:30px;border-radius:50%;cursor:pointer;font-size:14px;flex-shrink:0;';
+  hX.onclick = function(){ overlay.remove(); };
+  hdr.appendChild(hTitle); hdr.appendChild(hX);
+  box.appendChild(hdr);
+
+  // Loading
+  var body = document.createElement('div');
+  body.style.cssText = 'padding:16px;';
+  body.innerHTML = '<div style="text-align:center;padding:30px;color:#555;">⏳ טוען קבצים...</div>';
+  box.appendChild(body);
+  overlay.appendChild(box);
+  overlay.addEventListener('click', function(e){ if(e.target===overlay) overlay.remove(); });
+  document.body.appendChild(overlay);
+
+  // Load all beni_notes with photo_url for this project
+  var { data } = await sbQ('beni_notes',
+    'project_id=eq.' + projectId + '&photo_url=not.is.null&order=created_at.desc&limit=100&select=id,note_text,photo_url,note_type,created_at');
+  data = data || [];
+
+  body.innerHTML = '';
+
+  if (!data.length) {
+    body.innerHTML = '<div style="text-align:center;padding:40px;color:#555;direction:rtl;">📎 אין קבצים משויכים לפרויקט זה<br><div style="font-size:12px;margin-top:8px;color:#444;">העלה קבצים מ-Beni Pocket ושייך לפרויקט זה</div></div>';
+    return;
+  }
+
+  // Group by type
+  var groups = { pdf:[], photo:[], video:[], audio:[], other:[] };
+  data.forEach(function(n) {
+    var url = n.photo_url || '';
+    var nt  = n.note_type || '';
+    if (nt==='pdf' || url.endsWith('.pdf') || url.includes('/pdfs/'))          groups.pdf.push(n);
+    else if (nt==='audio' || url.includes('/beni_voice/') || /\.(mp3|m4a|wav|ogg|3gp)/.test(url)) groups.audio.push(n);
+    else if (nt==='video' || url.includes('/video/upload/') || /\.(mp4|mov|3gp|avi)/.test(url)) groups.video.push(n);
+    else if (nt==='photo' || url.includes('/image/upload/') || /\.(jpg|jpeg|png|heic|webp)/.test(url)) groups.photo.push(n);
+    else groups.other.push(n);
+  });
+
+  var typeConfig = {
+    pdf:   { icon:'📄', label:'מסמכי PDF',    color:'#fca5a5', bg:'rgba(239,68,68,0.08)'   },
+    photo: { icon:'📸', label:'תמונות',        color:'#93c5fd', bg:'rgba(59,130,246,0.08)'  },
+    video: { icon:'🎬', label:'סרטונים',       color:'#c4b5fd', bg:'rgba(139,92,246,0.08)'  },
+    audio: { icon:'🎙️', label:'הקלטות קוליות', color:'#fde68a', bg:'rgba(245,158,11,0.08)' },
+    other: { icon:'📎', label:'קבצים אחרים',   color:'#86efac', bg:'rgba(34,197,94,0.08)'  }
+  };
+
+  // Stats bar
+  var stats = document.createElement('div');
+  stats.style.cssText = 'display:flex;gap:10px;flex-wrap:wrap;padding:12px 16px;border-bottom:1px solid rgba(255,255,255,0.06);';
+  Object.keys(groups).forEach(function(type) {
+    if (!groups[type].length) return;
+    var cfg = typeConfig[type];
+    var pill = document.createElement('div');
+    pill.style.cssText = 'background:' + cfg.bg + ';border:1px solid ' + cfg.color.replace(')',',0.3)').replace('rgb','rgba') + ';border-radius:20px;padding:5px 12px;font-size:12px;font-weight:700;color:' + cfg.color + ';cursor:pointer;';
+    pill.textContent = cfg.icon + ' ' + cfg.label + ' (' + groups[type].length + ')';
+    pill.onclick = function(){
+      var sec = document.getElementById('pf-section-' + type);
+      if (sec) sec.scrollIntoView({behavior:'smooth', block:'start'});
+    };
+    stats.appendChild(pill);
+  });
+  body.appendChild(stats);
+
+  // Render each group
+  Object.keys(groups).forEach(function(type) {
+    if (!groups[type].length) return;
+    var cfg = typeConfig[type];
+    var section = document.createElement('div');
+    section.id = 'pf-section-' + type;
+    section.style.cssText = 'padding:14px 16px;border-bottom:1px solid rgba(255,255,255,0.04);';
+
+    var sHdr = document.createElement('div');
+    sHdr.style.cssText = 'font-size:13px;font-weight:800;color:' + cfg.color + ';margin-bottom:12px;';
+    sHdr.textContent = cfg.icon + ' ' + cfg.label + ' — ' + groups[type].length + ' קבצים';
+    section.appendChild(sHdr);
+
+    var grid = document.createElement('div');
+    var isMedia = (type === 'photo');
+    grid.style.cssText = isMedia
+      ? 'display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px;'
+      : 'display:flex;flex-direction:column;gap:8px;';
+
+    groups[type].forEach(function(n) {
+      var url  = n.photo_url;
+      var date = new Date(n.created_at).toLocaleDateString('he-IL') + ' ' +
+                 new Date(n.created_at).toLocaleTimeString('he-IL',{hour:'2-digit',minute:'2-digit'});
+      var title = (n.note_text||'').replace(/^[🎙️📸🎬📄]\s*/,'').substring(0,60) || url.split('/').pop().substring(0,40);
+
+      if (type === 'photo') {
+        var card = document.createElement('div');
+        card.style.cssText = 'border-radius:10px;overflow:hidden;border:1px solid rgba(255,255,255,0.08);background:#1e1e35;cursor:zoom-in;';
+        var img = document.createElement('img');
+        img.src = url; img.style.cssText = 'width:100%;height:90px;object-fit:cover;display:block;';
+        img.onclick = function(){ openLightbox(url, title); };
+        var cap = document.createElement('div');
+        cap.style.cssText = 'padding:4px 6px;font-size:9px;color:#555;direction:rtl;';
+        cap.textContent = date;
+        card.appendChild(img); card.appendChild(cap);
+        grid.appendChild(card);
+      } else if (type === 'audio') {
+        var aCard = document.createElement('div');
+        aCard.style.cssText = 'background:rgba(245,158,11,0.06);border:1px solid rgba(245,158,11,0.15);border-radius:10px;padding:10px;';
+        aCard.innerHTML = '<div style="display:flex;justify-content:space-between;margin-bottom:6px;"><span style="font-size:12px;font-weight:700;color:#fde68a;">🎙️ ' + title.substring(0,40) + '</span><span style="font-size:10px;color:#555;">' + date + '</span></div>';
+        var aud = document.createElement('audio');
+        aud.src = url; aud.controls = true; aud.style.cssText = 'width:100%;border-radius:6px;';
+        aCard.appendChild(aud);
+        grid.appendChild(aCard);
+      } else if (type === 'video') {
+        var vCard = document.createElement('div');
+        vCard.style.cssText = 'background:rgba(139,92,246,0.06);border:1px solid rgba(139,92,246,0.15);border-radius:10px;padding:10px;';
+        vCard.innerHTML = '<div style="display:flex;justify-content:space-between;margin-bottom:6px;"><span style="font-size:12px;font-weight:700;color:#c4b5fd;">🎬 ' + title.substring(0,40) + '</span><span style="font-size:10px;color:#555;">' + date + '</span></div>';
+        var vid = document.createElement('video');
+        vid.src = url; vid.controls = true; vid.style.cssText = 'width:100%;max-height:180px;border-radius:8px;';
+        vCard.appendChild(vid);
+        grid.appendChild(vCard);
+      } else if (type === 'pdf') {
+        var pCard = document.createElement('div');
+        pCard.style.cssText = 'background:rgba(239,68,68,0.06);border:1px solid rgba(239,68,68,0.15);border-radius:10px;padding:12px;display:flex;justify-content:space-between;align-items:center;';
+        pCard.innerHTML = '<div><div style="font-size:13px;font-weight:700;color:#fca5a5;">📄 ' + title.substring(0,50) + '</div><div style="font-size:10px;color:#555;margin-top:3px;">' + date + '</div></div>';
+        var pBtns = document.createElement('div');
+        pBtns.style.cssText = 'display:flex;gap:6px;flex-shrink:0;';
+        var openBtn = document.createElement('button');
+        openBtn.textContent = '↗️ פתח';
+        openBtn.style.cssText = 'background:rgba(239,68,68,0.2);border:1px solid rgba(239,68,68,0.4);color:#fca5a5;padding:6px 10px;border-radius:7px;cursor:pointer;font-family:Heebo,sans-serif;font-size:11px;font-weight:700;';
+        openBtn.onclick = function(){ window.open(url,'_blank'); };
+        var ocrBtn = document.createElement('button');
+        ocrBtn.textContent = '🔬 OCR';
+        ocrBtn.style.cssText = 'background:rgba(201,168,76,0.15);border:1px solid rgba(201,168,76,0.4);color:#c9a84c;padding:6px 10px;border-radius:7px;cursor:pointer;font-family:Heebo,sans-serif;font-size:11px;font-weight:700;';
+        ocrBtn.onclick = function(){
+          overlay.remove();
+          switchTab('notes');
+          setTimeout(function(){ switchSmartTab('ocr'); journalOcrLoadFromUrl(url); }, 500);
+        };
+        pBtns.appendChild(openBtn); pBtns.appendChild(ocrBtn);
+        pCard.appendChild(pBtns);
+        grid.appendChild(pCard);
+      }
+    });
+    section.appendChild(grid);
+    body.appendChild(section);
+  });
+}
+
+
 async function openProjectContent(projectId, projectName, tab) {
   // Remove existing
   var ex = document.getElementById('proj-content-overlay');
@@ -5344,9 +5736,10 @@ async function openProjectContent(projectId, projectName, tab) {
   var tabs = document.createElement('div');
   tabs.style.cssText = 'display:flex;gap:4px;padding:12px 16px;border-bottom:1px solid rgba(255,255,255,0.06);';
   [
-    { id:'notes',      label:'📝 הערות' },
-    { id:'tasks',      label:'✅ משימות' },
-    { id:'recordings', label:'🎙️ הקלטות' }
+    { id:'notes',      label:'📝 הערות'   },
+    { id:'tasks',      label:'✅ משימות'  },
+    { id:'recordings', label:'🎙️ הקלטות' },
+    { id:'files',      label:'📎 קבצים'   }
   ].forEach(function(t) {
     var btn = document.createElement('button');
     btn.textContent = t.label;
@@ -5432,6 +5825,69 @@ async function loadProjectTab(container, projectId, projectName, tab) {
       container.appendChild(card);
     });
 
+  } else if (tab === 'files') {
+    // All files grouped by type — same as openProjectFiles but inline
+    var { data: allFiles } = await sbQ('beni_notes',
+      'project_id=eq.' + projectId + '&photo_url=not.is.null&order=created_at.desc&limit=100&select=id,note_text,photo_url,note_type,created_at');
+    allFiles = allFiles || [];
+    if (!allFiles.length) {
+      container.innerHTML = '<div style="text-align:center;padding:40px;color:#555;">📎 אין קבצים משויכים</div>';
+      return;
+    }
+    container.innerHTML = '';
+    var groups = { pdf:[], photo:[], video:[], audio:[] };
+    allFiles.forEach(function(n) {
+      var url=n.photo_url||'', nt=n.note_type||'';
+      if (nt==='pdf'||url.includes('/pdfs/')) groups.pdf.push(n);
+      else if (nt==='audio'||url.includes('/beni_voice/')||/\.(mp3|m4a|wav|ogg|3gp)/.test(url)) groups.audio.push(n);
+      else if (nt==='video'||url.includes('/video/upload/')||/\.(mp4|mov|3gp|avi)/.test(url)) groups.video.push(n);
+      else groups.photo.push(n);
+    });
+    var typeConf = {
+      pdf:{icon:'📄',label:'PDF',col:'#fca5a5'},
+      photo:{icon:'📸',label:'תמונות',col:'#93c5fd'},
+      video:{icon:'🎬',label:'סרטונים',col:'#c4b5fd'},
+      audio:{icon:'🎙️',label:'הקלטות',col:'#fde68a'}
+    };
+    Object.keys(groups).forEach(function(type) {
+      if (!groups[type].length) return;
+      var cfg = typeConf[type];
+      var sec = document.createElement('div');
+      sec.style.cssText = 'margin-bottom:16px;';
+      var secHdr = document.createElement('div');
+      secHdr.style.cssText = 'font-size:12px;font-weight:800;color:' + cfg.col + ';margin-bottom:8px;';
+      secHdr.textContent = cfg.icon + ' ' + cfg.label + ' (' + groups[type].length + ')';
+      sec.appendChild(secHdr);
+      var grid = document.createElement('div');
+      grid.style.cssText = type==='photo' ? 'display:grid;grid-template-columns:repeat(auto-fill,minmax(100px,1fr));gap:8px;' : 'display:flex;flex-direction:column;gap:6px;';
+      groups[type].forEach(function(n) {
+        var url=n.photo_url, date=new Date(n.created_at).toLocaleDateString('he-IL');
+        var title=(n.note_text||'').replace(/^[🎙️📸🎬📄]\s*/,'').substring(0,50)||url.split('/').pop().substring(0,30);
+        if (type==='photo') {
+          var img=document.createElement('img'); img.src=url; img.style.cssText='width:100%;height:80px;object-fit:cover;border-radius:8px;cursor:zoom-in;';
+          img.onclick=(function(u,t){return function(){openLightbox(u,t);};})(url,title);
+          grid.appendChild(img);
+        } else if (type==='audio') {
+          var ac=document.createElement('div'); ac.style.cssText='background:rgba(245,158,11,0.06);border:1px solid rgba(245,158,11,0.15);border-radius:8px;padding:8px;';
+          ac.innerHTML='<div style="font-size:11px;color:#fde68a;margin-bottom:4px;">🎙️ '+title.substring(0,35)+'</div>';
+          var au=document.createElement('audio'); au.src=url; au.controls=true; au.style.cssText='width:100%;'; ac.appendChild(au); grid.appendChild(ac);
+        } else if (type==='video') {
+          var vc=document.createElement('div'); vc.style.cssText='background:rgba(139,92,246,0.06);border:1px solid rgba(139,92,246,0.15);border-radius:8px;padding:8px;';
+          vc.innerHTML='<div style="font-size:11px;color:#c4b5fd;margin-bottom:4px;">🎬 '+title.substring(0,35)+'</div>';
+          var vi=document.createElement('video'); vi.src=url; vi.controls=true; vi.style.cssText='width:100%;max-height:150px;border-radius:6px;'; vc.appendChild(vi); grid.appendChild(vc);
+        } else if (type==='pdf') {
+          var pc=document.createElement('div'); pc.style.cssText='background:rgba(239,68,68,0.06);border:1px solid rgba(239,68,68,0.15);border-radius:8px;padding:10px;display:flex;justify-content:space-between;align-items:center;';
+          pc.innerHTML='<div><div style="font-size:12px;font-weight:700;color:#fca5a5;">📄 '+title+'</div><div style="font-size:10px;color:#555;">'+date+'</div></div>';
+          var pb=document.createElement('div'); pb.style.cssText='display:flex;gap:5px;';
+          var ob=document.createElement('button'); ob.textContent='↗️'; ob.style.cssText='background:rgba(239,68,68,0.15);border:1px solid rgba(239,68,68,0.3);color:#fca5a5;padding:5px 8px;border-radius:6px;cursor:pointer;font-size:11px;'; ob.onclick=function(){window.open(url,'_blank');};
+          var oc=document.createElement('button'); oc.textContent='🔬 OCR'; oc.style.cssText='background:rgba(201,168,76,0.15);border:1px solid rgba(201,168,76,0.3);color:#c9a84c;padding:5px 8px;border-radius:6px;cursor:pointer;font-family:Heebo,sans-serif;font-size:11px;font-weight:700;';
+          oc.onclick=function(){ document.getElementById('proj-content-overlay') && document.getElementById('proj-content-overlay').remove(); switchTab('notes'); setTimeout(function(){ switchSmartTab('ocr'); journalOcrLoadFromUrl(url); },500); };
+          pb.appendChild(ob); pb.appendChild(oc); pc.appendChild(pb); grid.appendChild(pc);
+        }
+      });
+      sec.appendChild(grid); container.appendChild(sec);
+    });
+    return;
   } else if (tab === 'recordings') {
     var { data } = await sbQ('beni_notes', 'project_id=eq.' + projectId + '&note_type=eq.audio&order=created_at.desc&limit=30&select=id,note_text,photo_url,created_at');
     var notes = (data||[]).filter(function(n){ return n.photo_url; });
@@ -7045,7 +7501,7 @@ function renderProjects(list) {
     const qs=window.quoteSum&&window.quoteSum[p.id]||0;
     const cos=window.coApprovedSum&&window.coApprovedSum[p.id]||0;
     const profit=((p.total_budget||0)-qs-cos);
-    return`<tr><td><strong>${esc(p.project_name)}</strong></td><td>${esc(p.client_name||'—')}</td><td style="font-size:13px;color:var(--text3)">${esc(p.city||p.address||'—')}</td><td style="font-size:13px">${p.start_date?fmtDate(p.start_date):'—'}</td><td>${p.total_budget?'₪'+fmtMoney(p.total_budget):'—'}</td><td class="col-quote-sum">${qs?'₪'+fmtMoney(qs):'—'}</td><td style="color:${profit>=0?'#22c55e':'#ef4444'};font-weight:700">${p.total_budget?'₪'+fmtMoney(profit):'—'}</td><td style="text-align:center"><span class="badge badge-blue">${reportCount[p.id]||0} 📝</span></td><td><span class="badge ${STATUS_BADGE[p.status]||'badge-gray'}">${STATUS_HE[p.status]||p.status}</span></td><td>${(()=>{if(!p.start_date||!p.planned_end_date)return'<span style="color:#aaa;font-size:11px">ללא</span>';const start=new Date(p.start_date),end=new Date(p.planned_end_date),now=new Date();const pct=Math.min(100,Math.max(0,Math.round((now-start)/(end-start)*100)));return'<div style="background:#f0f0f0;border-radius:4px;height:7px;"><div style="width:'+pct+'%;background:#3b82f6;height:7px;border-radius:4px;"></div></div><div style="font-size:10px;color:#666">'+pct+'%</div>';})()}</td><td class="td-actions"><div class="btn-group"><button class="btn btn-ghost btn-sm btn-icon" onclick="openProjectModal('${p.id}')">✏️</button><button class="btn btn-ghost btn-sm btn-icon" onclick="openPhotoGallery('${p.id}','${esc(p.project_name)}')">📸</button><button class="btn btn-ghost btn-sm btn-icon" onclick="sendBriefToBeni('${p.id}')" title="שלח בריפינג לבני">📲</button><button class="btn btn-ghost btn-sm btn-icon" onclick="openProjectContent('${p.id}','${esc(p.project_name)}','notes')" title="הערות">📝</button><button class="btn btn-ghost btn-sm btn-icon" onclick="openProjectContent('${p.id}','${esc(p.project_name)}','tasks')" title="משימות">✅</button><button class="btn btn-ghost btn-sm btn-icon" onclick="openProjectContent('${p.id}','${esc(p.project_name)}','recordings')" title="הקלטות">🎙️</button></div></td></tr>`;
+    return`<tr><td><strong>${esc(p.project_name)}</strong></td><td>${esc(p.client_name||'—')}</td><td style="font-size:13px;color:var(--text3)">${esc(p.city||p.address||'—')}</td><td style="font-size:13px">${p.start_date?fmtDate(p.start_date):'—'}</td><td>${p.total_budget?'₪'+fmtMoney(p.total_budget):'—'}</td><td class="col-quote-sum">${qs?'₪'+fmtMoney(qs):'—'}</td><td style="color:${profit>=0?'#22c55e':'#ef4444'};font-weight:700">${p.total_budget?'₪'+fmtMoney(profit):'—'}</td><td style="text-align:center"><span class="badge badge-blue">${reportCount[p.id]||0} 📝</span></td><td><span class="badge ${STATUS_BADGE[p.status]||'badge-gray'}">${STATUS_HE[p.status]||p.status}</span></td><td>${(()=>{if(!p.start_date||!p.planned_end_date)return'<span style="color:#aaa;font-size:11px">ללא</span>';const start=new Date(p.start_date),end=new Date(p.planned_end_date),now=new Date();const pct=Math.min(100,Math.max(0,Math.round((now-start)/(end-start)*100)));return'<div style="background:#f0f0f0;border-radius:4px;height:7px;"><div style="width:'+pct+'%;background:#3b82f6;height:7px;border-radius:4px;"></div></div><div style="font-size:10px;color:#666">'+pct+'%</div>';})()}</td><td class="td-actions"><div class="btn-group"><button class="btn btn-ghost btn-sm btn-icon" onclick="openProjectModal('${p.id}')">✏️</button><button class="btn btn-ghost btn-sm btn-icon" onclick="openPhotoGallery('${p.id}','${esc(p.project_name)}')">📸</button><button class="btn btn-ghost btn-sm btn-icon" onclick="sendBriefToBeni('${p.id}')" title="שלח בריפינג לבני">📲</button><button class="btn btn-ghost btn-sm btn-icon" onclick="openProjectContent('${p.id}','${esc(p.project_name)}','notes')" title="כל תוכן הפרויקט">📂</button></div></td></tr>`;
   }).join('');
 }
 
@@ -8243,6 +8699,51 @@ var _journalOcrImageBase64 = null;
 var _journalOcrImageType   = 'image/jpeg';
 
 // Load file → show preview only, no AI yet
+// Load a file URL into the OCR system (for routing from מגוון)
+async function journalOcrLoadFromUrl(url) {
+  var statusEl = document.getElementById('journal-ocr-status');
+  var preview  = document.getElementById('journal-ocr-preview');
+  var prevImg  = document.getElementById('journal-ocr-preview-img');
+  if (statusEl) { statusEl.textContent = '⏳ טוען קובץ...'; statusEl.style.color = '#888'; }
+  try {
+    var res = await fetch(url);
+    if (!res.ok) throw new Error('שגיאה בטעינת הקובץ: ' + res.status);
+    var blob = await res.blob();
+    var mtype = blob.type || (url.endsWith('.pdf') ? 'application/pdf' : 'image/jpeg');
+    var b64 = await new Promise(function(resolve, reject) {
+      var reader = new FileReader();
+      reader.onload = function(e) { resolve(e.target.result.split(',')[1]); };
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
+    _journalOcrImageBase64 = b64;
+    _journalOcrImageType   = mtype;
+    if (preview) preview.style.display = 'block';
+    if (prevImg) {
+      if (mtype === 'application/pdf') {
+        prevImg.src = ''; prevImg.style.display = 'none';
+        // Show PDF icon
+        var pdfBadge = document.createElement('div');
+        pdfBadge.style.cssText = 'background:rgba(239,68,68,0.15);border:1px solid rgba(239,68,68,0.3);border-radius:10px;padding:16px;text-align:center;direction:rtl;';
+        pdfBadge.innerHTML = '<div style="font-size:36px;">📄</div><div style="font-size:13px;color:#fca5a5;margin-top:6px;">PDF נטען — ' + url.split('/').pop() + '</div>';
+        if (preview) { preview.innerHTML = ''; preview.appendChild(pdfBadge); preview.style.display = 'block'; }
+      } else {
+        prevImg.src = 'data:' + mtype + ';base64,' + b64;
+        prevImg.style.display = 'block';
+      }
+    }
+    if (statusEl) { statusEl.textContent = '✅ קובץ נטען — לחץ הפעל OCR'; statusEl.style.color = '#86efac'; }
+    // Show run button
+    var runBtn = document.getElementById('ocr-run-btn');
+    if (runBtn) { runBtn.style.display = 'block'; }
+    showToast('✅ קובץ נטען ל-OCR', 'success');
+  } catch(e) {
+    if (statusEl) { statusEl.textContent = '❌ ' + e.message; statusEl.style.color = '#fca5a5'; }
+    showToast('❌ ' + e.message, 'error');
+  }
+}
+
+
 async function journalOcrLoad(input) {
   const file = input?.files?.[0];
   if (!file) return;
