@@ -8581,19 +8581,27 @@ async function transcribeRecording(item) {
   if (arcEl && window.arc) arc.start(arcEl);
 
   try {
-    // Fetch audio via Cloudinary MP3 transformation — converts any format server-side
+    // Fetch original file — ElevenLabs handles all formats natively (m4a, 3gp, mp4, webm)
     showToast('⏳ מוריד קובץ...', 'success');
-    var cldMp3Url = item.audioUrl.replace('/upload/', '/upload/f_mp3,q_auto/');
-    var audioRes = await fetch(cldMp3Url);
-    if (!audioRes.ok) audioRes = await fetch(item.audioUrl);
+    var audioRes = await fetch(item.audioUrl);
     if (!audioRes.ok) throw new Error('שגיאה בהורדת קובץ: ' + audioRes.status);
     var audioBlob = await audioRes.blob();
     if (audioBlob.size < 100) throw new Error('קובץ ריק — ייתכן שנמחק מהענן');
     showToast('✅ הורד ' + Math.round(audioBlob.size/1024) + 'KB — מתמלל עם ElevenLabs...', 'success');
 
     if (!elKey) throw new Error('מפתח ElevenLabs חסר — הוסף elevenlabs_key ב-app_config');
+    // Detect extension from URL for correct filename
+    var audioExt = 'm4a';
+    var urlL = (item.audioUrl||'').toLowerCase();
+    if (urlL.includes('.mp3')) audioExt='mp3';
+    else if (urlL.includes('.wav')) audioExt='wav';
+    else if (urlL.includes('.ogg')) audioExt='ogg';
+    else if (urlL.includes('.webm')) audioExt='webm';
+    else if (urlL.includes('.3gp')) audioExt='3gp';
+    else if (urlL.includes('.mp4')) audioExt='mp4';
+    var mimeMap2 = {mp3:'audio/mpeg',m4a:'audio/mp4',wav:'audio/wav',ogg:'audio/ogg',webm:'audio/webm','3gp':'audio/3gpp',mp4:'audio/mp4'};
     var efd = new FormData();
-    efd.append('file', new File([audioBlob], 'audio.mp3', {type:'audio/mpeg'}));
+    efd.append('file', new File([audioBlob], 'audio.' + audioExt, {type: mimeMap2[audioExt]||'audio/mp4'}));
     efd.append('model_id', 'scribe_v1');
     efd.append('language_code', 'heb');
     efd.append('diarize', 'true');
