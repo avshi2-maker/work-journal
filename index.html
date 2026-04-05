@@ -101,8 +101,8 @@ body{font-family:'Heebo',-apple-system,BlinkMacSystemFont,Arial,sans-serif;direc
 .sidebar-logo{padding:20px 16px 16px;border-bottom:1px solid var(--border);}
 .brand{font-size:18px;font-weight:900;color:var(--accent2);}
 .sub{font-size:11px;color:var(--text3);margin-top:2px;}
-.sidebar-clock{margin-top:10px;}
-.clock-time{font-size:20px;font-weight:900;color:#9a6f00;font-variant-numeric:tabular-nums;}
+.sidebar-clock{margin-top:8px;border-top:1px solid rgba(255,255,255,0.08);padding-top:8px;overflow:hidden;}
+.clock-time{font-size:16px;font-weight:900;color:#9a6f00;font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;}
 .clock-date{font-size:10px;color:var(--text3);margin-top:2px;}
 .nav-item{display:flex;align-items:center;gap:10px;padding:12px 16px;font-size:13px;font-weight:700;color:#4a3010;cursor:pointer;border-right:3px solid transparent;transition:all .15s;position:relative;}
 .nav-item:hover{background:var(--surface2);color:var(--text);}
@@ -363,7 +363,6 @@ window.addEventListener('unhandledrejection', function(e) {
   <div class="top-tab"        id="tab-safety" onclick="switchTab('safety')"><span>🛡️</span><span>בטיחות / ליקויים</span></div>
   <div class="top-tab"        id="tab-notes"  onclick="switchTab('notes')"><span>📝</span><span>מזכרים בני</span></div>
   <div class="top-tab"        id="tab-rag"    onclick="switchTab('rag')"><span>🏗️</span><span>ייעוץ הנדסי</span></div>
-  <div class="top-tab"        id="tab-standards" onclick="switchTab('standards')"><span>📚</span><span>תקני בניה</span></div>
   <div class="top-tab"        id="tab-inbox" onclick="switchTab('inbox')"><span>📥</span><span>תיבת נכנסים</span><span id="tab-inbox-badge" style="display:none;background:#ef4444;color:#fff;border-radius:8px;padding:1px 6px;font-size:9px;font-weight:800;"></span></div>
   <div class="top-tab"        id="tab-smartscan" onclick="switchTab('smartscan')"><span>🚀</span><span>סריקה מקצועית</span></div>
   <div class="top-tab"        id="tab-misc"      onclick="switchTab('misc')"><span>📥</span><span>מגוון</span><span id="misc-badge" style="display:none;background:#ef4444;color:#fff;border-radius:8px;font-size:9px;padding:1px 5px;margin-right:2px;">0</span></div>
@@ -411,6 +410,7 @@ window.addEventListener('unhandledrejection', function(e) {
 
   <!-- GROUP: כלים -->
   <div class="nav-group-label">כלים</div>
+  <div class="nav-item" onclick="switchTab('standards')" id="tab-standards-nav"><span class="nav-icon">📚</span><span>תקני בניה</span></div>
   <div class="nav-item" onclick="switchTab('micharon')" id="tab-micharon-nav"><span class="nav-icon">📋</span><span>מחירון</span></div>
   <div class="nav-item" onclick="switchTab('query')" id="tab-query-nav"><span class="nav-icon">🔍</span><span>שאילתות</span></div>
   <div class="nav-item" onclick="showPage('calc')" id="nav-calc"><span class="nav-icon">🧮</span><span>מחשבון הנדסי</span></div>
