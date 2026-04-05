@@ -8474,12 +8474,19 @@ async function transcribeRecording(item) {
     var whisperKey = APP && APP.config && APP.config.openai_key;
     if (!whisperKey) throw new Error('מפתח OpenAI חסר — הוסף openai_key ב-app_config');
     showToast('⏳ מוריד ושולח ל-Whisper...', 'success');
-    var audioRes = await fetch(item.audioUrl);
-    if (!audioRes.ok) throw new Error('שגיאה בהורדת קובץ: ' + audioRes.status);
+    // Convert to MP3 via Cloudinary URL transformation — works for 3gp, webm, m4a, any format
+    // This avoids browser fetch CORS issues and format detection entirely
+    var cldMp3Url = item.audioUrl.replace('/upload/', '/upload/f_mp3,q_auto/');
+    showToast('⏳ ממיר ושולח ל-Whisper...', 'success');
+    var audioRes = await fetch(cldMp3Url);
+    if (!audioRes.ok) {
+      // Fallback: try original URL
+      audioRes = await fetch(item.audioUrl);
+      if (!audioRes.ok) throw new Error('שגיאה בהורדת קובץ: ' + audioRes.status);
+    }
     var audioBlob = await audioRes.blob();
-    if (audioBlob.size < 100) throw new Error('קובץ ריק (' + audioBlob.size + ' bytes) — ייתכן שנמחק מהענן');
-    // Always use m4a — Whisper accepts it from any audio source
-    var audioFile = new File([audioBlob], 'audio.m4a', { type: 'audio/mp4' });
+    if (audioBlob.size < 100) throw new Error('קובץ ריק — ייתכן שנמחק מהענן');
+    var audioFile = new File([audioBlob], 'audio.mp3', { type: 'audio/mpeg' });
     var whisperFd = new FormData();
     whisperFd.append('file', audioFile);
     whisperFd.append('model', 'whisper-1');
