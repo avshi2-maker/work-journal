@@ -8385,7 +8385,7 @@ function buildRecordingCard(item) {
   var hdr = document.createElement('div');
   hdr.style.cssText = 'display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;';
   hdr.innerHTML = '<div style="font-size:13px;font-weight:700;color:#c4b5fd;">🎙️ ' + (item.title||'הקלטה').replace(/</g,'&lt;') + '</div>' +
-                  '<div style="font-size:10px;color:#555;">' + date + '</div>';
+                  '<div style="font-size:11px;color:#aaa;font-weight:600;margin-top:2px;">📅 ' + date + '</div>';
   card.appendChild(hdr);
 
   // Audio player
@@ -8471,46 +8471,20 @@ async function transcribeRecording(item) {
 
   try {
     // Fetch audio and convert to base64 for Claude
-    var res  = await fetch(item.audioUrl);
-    var blob = await res.blob();
-    var b64  = await new Promise(function(resolve) {
-      var r = new FileReader();
-      r.onload = function(e) { resolve(e.target.result.split(',')[1]); };
-      r.readAsDataURL(blob);
-    });
-    var mtype = blob.type || 'audio/mpeg';
-
-    // Claude API does not support audio transcription directly
-    // Determine format from item title (file_name stored in note_text)
-    // Cloudinary serves audio as application/octet-stream so blob.type is unreliable
-    var audioExt = 'm4a'; // safe default — Whisper accepts m4a well
-    var titleLower = (item.title || '').toLowerCase();
-    var urlLower   = (item.audioUrl || '').toLowerCase();
-    // Check title/filename first (most reliable)
-    if      (titleLower.includes('.mp3')  || urlLower.includes('.mp3'))  audioExt = 'mp3';
-    else if (titleLower.includes('.m4a')  || urlLower.includes('.m4a'))  audioExt = 'm4a';
-    else if (titleLower.includes('.wav')  || urlLower.includes('.wav'))  audioExt = 'wav';
-    else if (titleLower.includes('.ogg')  || urlLower.includes('.ogg'))  audioExt = 'ogg';
-    else if (titleLower.includes('.webm') || urlLower.includes('.webm')) audioExt = 'webm';
-    else if (titleLower.includes('.mp4')  || urlLower.includes('.mp4'))  audioExt = 'mp4';
-    else if (titleLower.includes('.flac') || urlLower.includes('.flac')) audioExt = 'flac';
-    // Also check blob.type if it's not octet-stream
-    else if (blob.type && blob.type !== 'application/octet-stream') {
-      var mimeToExt = {'audio/mpeg':'mp3','audio/mp3':'mp3','audio/mp4':'m4a','audio/x-m4a':'m4a','audio/wav':'wav','audio/ogg':'ogg','audio/webm':'webm','video/webm':'webm','video/mp4':'mp4','audio/flac':'flac'};
-      audioExt = mimeToExt[blob.type] || 'm4a';
-    }
-    var extToMime = {'mp3':'audio/mpeg','m4a':'audio/mp4','wav':'audio/wav','ogg':'audio/ogg','webm':'audio/webm','mp4':'audio/mp4','flac':'audio/flac'};
-    var audioFile = new File([blob], 'recording.' + audioExt, { type: extToMime[audioExt] || 'audio/mp4' });
-
-    // OpenAI Whisper for Hebrew transcription
-    var whisperFd = new FormData();
+    var whisperKey = APP && APP.config && APP.config.openai_key;
+    if (!whisperKey) throw new Error('מפתח OpenAI חסר — הוסף openai_key ב-app_config');
+    showToast('⏳ מוריד ושולח ל-Whisper...', 'success');
+    var audioRes = await fetch(item.audioUrl);
+    if (!audioRes.ok) throw new Error('שגיאה בהורדת קובץ: ' + audioRes.status);
+    var audioBlob = await audioRes.blob();
+    if (audioBlob.size < 100) throw new Error('קובץ ריק (' + audioBlob.size + ' bytes) — ייתכן שנמחק מהענן');
+    // Always use m4a — Whisper accepts it from any audio source
+    var audioFile = new File([audioBlob], 'audio.m4a', { type: 'audio/mp4' });
     var whisperFd = new FormData();
     whisperFd.append('file', audioFile);
     whisperFd.append('model', 'whisper-1');
     whisperFd.append('language', 'he');
     whisperFd.append('response_format', 'text');
-    var whisperKey = APP && APP.config && APP.config.openai_key;
-    if (!whisperKey) throw new Error('מפתח OpenAI חסר ב-app_config — הוסף openai_key');
     var resp = await fetch('https://api.openai.com/v1/audio/transcriptions', {
       method: 'POST',
       headers: { 'Authorization': 'Bearer ' + whisperKey },
