@@ -8613,8 +8613,14 @@ async function transcribeRecording(item) {
       body: efd
     });
     if (!eres.ok) {
-      var eErr = await eres.json().catch(function(){ return {}; });
-      throw new Error('ElevenLabs: ' + (eErr.detail || eErr.message || eres.status));
+      var eErrText = await eres.text().catch(function(){ return ''; });
+      console.error('ElevenLabs raw error:', eErrText);
+      var eErr = {};
+      try { eErr = JSON.parse(eErrText); } catch(e) {}
+      var errMsg = eErr.detail && typeof eErr.detail === 'string' ? eErr.detail :
+                   eErr.detail && eErr.detail.message ? eErr.detail.message :
+                   eErr.message || eErrText.substring(0,100) || eres.status;
+      throw new Error('ElevenLabs ' + eres.status + ': ' + errMsg);
     }
     var edata = await eres.json();
     var text = formatElevenLabsTranscript(edata);
