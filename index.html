@@ -3682,8 +3682,9 @@ async function loadMiscTab() {
     var qs = 'select=id,note_text,photo_url,note_type,color,project_id,created_at&order=created_at.desc&limit=100';
     qs += '&routed=eq.false';  // we add routed column via SQL below
     // Fallback: load all notes without project
-    var { data: notes } = await sbQ('beni_notes', 'project_id=is.null&order=created_at.desc&limit=80&select=id,note_text,photo_url,note_type,color,created_at');
-    notes = notes || [];
+    var { data: notes } = await sbQ('beni_notes', 'order=created_at.desc&limit=100&select=id,note_text,photo_url,note_type,color,created_at,project_id');
+    // Filter client-side: show items with no project_id
+    notes = (notes || []).filter(function(n){ return !n.project_id; });
 
     // Load pending asset_inbox
     var { data: inbox } = await sbQ('asset_inbox', 'status=eq.pending&order=created_at.desc&limit=50&select=id,cloudinary_url,file_name,file_type,thumbnail_url,project_id,created_at');
@@ -4097,8 +4098,9 @@ async function loadMiscTab() {
     var qs = 'select=id,note_text,photo_url,note_type,color,project_id,created_at&order=created_at.desc&limit=100';
     qs += '&routed=eq.false';  // we add routed column via SQL below
     // Fallback: load all notes without project
-    var { data: notes } = await sbQ('beni_notes', 'project_id=is.null&order=created_at.desc&limit=80&select=id,note_text,photo_url,note_type,color,created_at');
-    notes = notes || [];
+    var { data: notes } = await sbQ('beni_notes', 'order=created_at.desc&limit=100&select=id,note_text,photo_url,note_type,color,created_at,project_id');
+    // Filter client-side: show items with no project_id
+    notes = (notes || []).filter(function(n){ return !n.project_id; });
 
     // Load pending asset_inbox
     var { data: inbox } = await sbQ('asset_inbox', 'status=eq.pending&order=created_at.desc&limit=50&select=id,cloudinary_url,file_name,file_type,thumbnail_url,project_id,created_at');
@@ -8243,10 +8245,15 @@ async function loadSmartRecordings() {
   container.innerHTML = '<div style="padding:20px;color:#888;text-align:center;direction:rtl;">⏳ טוען הקלטות...</div>';
   try {
     // Load from beni_notes (audio type) — where Beni Pocket sends voice files
-    var qs = 'note_type=eq.audio&order=created_at.desc&limit=50&select=id,note_text,photo_url,created_at,project_id';
-    if (pid) qs += '&project_id=eq.' + pid;
-    var { data: notes } = await sbQ('beni_notes', qs);
-    notes = notes || [];
+    var qs = 'order=created_at.desc&limit=100&select=id,note_text,photo_url,note_type,created_at,project_id';
+    var { data: allNotes } = await sbQ('beni_notes', qs);
+    // Filter for audio: note_type=audio OR URL contains audio patterns
+    var notes = (allNotes || []).filter(function(n) {
+      if (n.note_type === 'audio') return true;
+      var url = n.photo_url || '';
+      return url.includes('/beni_voice/') || /\.(mp3|m4a|wav|ogg|webm)(\?|$)/i.test(url);
+    });
+    if (pid) notes = notes.filter(function(n){ return n.project_id === pid; });
 
     // Also load from voice_memos (project_id may not exist in table)
     var qs2 = 'order=created_at.desc&limit=50&select=id,transcript,ai_summary,duration_sec,created_at,is_processed';
@@ -8399,23 +8406,29 @@ async function transcribeRecording(item) {
     });
     var mtype = blob.type || 'audio/mpeg';
 
-    var resp = await claudeFetch({
-      _apiKey: apiKey,
-      model: 'claude-sonnet-4-20250514',
-      max_tokens: 2000,
-      system: 'אתה מתמלל שיחות קוליות. תמלל את ההקלטה לעברית בדיוק כפי שנאמר. אחרי התמלול, הוסף שורה: "סיכום: [משפט אחד על תוכן השיחה]".',
-      messages: [{ role: 'user', content: [
-        { type: 'text', text: 'תמלל את ההקלטה הבאה לעברית:' },
-        { type: 'document', source: { type: 'base64', media_type: mtype, data: b64 } }
-      ]}]
-    }, null);
+    // Claude API does not support audio transcription directly
+    // Use OpenAI Whisper via fetch for Hebrew transcription
+    var whisperFd = new FormData();
+    whisperFd.append('file', blob, 'audio.mp3');
+    whisperFd.append('model', 'whisper-1');
+    whisperFd.append('language', 'he');
+    whisperFd.append('response_format', 'text');
+    var whisperKey = APP && APP.config && APP.config.openai_key;
+    if (!whisperKey) throw new Error('מפתח OpenAI חסר ב-app_config — הוסף openai_key');
+    var resp = await fetch('https://api.openai.com/v1/audio/transcriptions', {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + whisperKey },
+      body: whisperFd
+    });
 
-    var data = await resp.json();
-    var text = data.content && data.content[0] ? data.content[0].text : '';
-    var inTok  = (data.usage && data.usage.input_tokens)  || 0;
-    var outTok = (data.usage && data.usage.output_tokens) || 0;
+    if (!resp.ok) {
+      var errJson = await resp.json().catch(function(){ return {}; });
+      throw new Error(errJson.error ? errJson.error.message : 'Whisper error ' + resp.status);
+    }
+    var text = await resp.text();
+    text = text.trim();
 
-    if (arcEl && window.arc) arc.finish(inTok, outTok);
+    if (arcEl && window.arc) arc.finish(0, text.split(' ').length);
 
     // Save transcript
     if (item.source === 'voice_memos') {
