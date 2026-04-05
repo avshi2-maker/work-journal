@@ -4744,7 +4744,7 @@ async function updateMiscBadge() {
 function assetInboxInit() { assetInboxLoad(); }
 
 async function assetInboxLoad() {
-  var listEl = document.getElementById('asset-inbox-list');
+  var listEl = document.getElementById('inbox-panel-list') || document.getElementById('asset-inbox-list');
   if (!listEl) return;
   listEl.innerHTML = '<div style="text-align:center;padding:24px;color:#888;font-family:Heebo,sans-serif;">טוען קבצים...</div>';
 
@@ -8724,7 +8724,7 @@ function generatePOPdf(po) {
     <div style="display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap;" id="inbox-stats-row"></div>
 
     <!-- List -->
-    <div id="asset-inbox-list">
+    <div id="inbox-panel-list">
       <div style="text-align:center;padding:40px;color:#555;font-size:14px;">טוען קבצים...</div>
     </div>
 
@@ -11273,7 +11273,7 @@ function openLinkModal(takeoffId) {
     <div style="display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap;" id="inbox-stats-row"></div>
 
     <!-- List -->
-    <div id="asset-inbox-list">
+    <div id="inbox-panel-list">
       <div style="text-align:center;padding:40px;color:#555;font-size:14px;">טוען קבצים...</div>
     </div>
 
