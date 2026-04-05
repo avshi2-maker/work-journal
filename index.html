@@ -365,7 +365,7 @@ window.addEventListener('unhandledrejection', function(e) {
   <div class="top-tab"        id="tab-rag"    onclick="switchTab('rag')"><span>🏗️</span><span>ייעוץ הנדסי</span></div>
   <div class="top-tab"        id="tab-standards" onclick="switchTab('standards')"><span>📚</span><span>תקני בניה</span></div>
   <div class="top-tab"        id="tab-inbox" onclick="switchTab('inbox')"><span>📥</span><span>תיבת נכנסים</span><span id="tab-inbox-badge" style="display:none;background:#ef4444;color:#fff;border-radius:8px;padding:1px 6px;font-size:9px;font-weight:800;"></span></div>
-  <div class="top-tab"        id="tab-smartscan" onclick="switchTab('smartscan')"><span>🚀</span><span>סריקה מהירה</span></div>
+  <div class="top-tab"        id="tab-smartscan" onclick="switchTab('smartscan')"><span>🚀</span><span>סריקה מקצועית</span></div>
   <div class="top-tab"        id="tab-misc"      onclick="switchTab('misc')"><span>📥</span><span>מגוון</span><span id="misc-badge" style="display:none;background:#ef4444;color:#fff;border-radius:8px;font-size:9px;padding:1px 5px;margin-right:2px;">0</span></div>
 </div>
 
@@ -3909,7 +3909,7 @@ function buildMiscCard(item) {
   var isVideoItem = item.mediaUrl && (item.mediaUrl.includes('/video/upload/') || /\.(mp4|mov|avi|m4v|3gp)(\?|$)/i.test(item.mediaUrl));
   var buttons = [
     { label:'🛡️ בטיחות',   bg:'rgba(239,68,68,0.15)',   bd:'rgba(239,68,68,0.4)',   col:'#fca5a5', dest:'safety'    },
-    { label:'🚀 סריקה',    bg:'rgba(201,168,76,0.15)',  bd:'rgba(201,168,76,0.4)',  col:'#c9a84c', dest:'smartscan' },
+    { label:'🚀 סריקה מקצועית', bg:'rgba(201,168,76,0.15)',  bd:'rgba(201,168,76,0.4)',  col:'#c9a84c', dest:'smartscan' },
     { label:'🏗️ הנדסי',   bg:'rgba(139,92,246,0.15)',  bd:'rgba(139,92,246,0.4)', col:'#c4b5fd', dest:'rag'       },
     { label:'📝 יומן',     bg:'rgba(59,130,246,0.15)',  bd:'rgba(59,130,246,0.4)',  col:'#93c5fd', dest:'notes'     },
     { label:'📐 מדידות',   bg:'rgba(20,184,166,0.15)',  bd:'rgba(20,184,166,0.4)',  col:'#5eead4', dest:'takeoff'   },
@@ -4018,25 +4018,55 @@ async function miscRouteItem(cardId, source, rawId, dest, encodedText, encodedMe
       await fetch(SB_URL+'/rest/v1/safety_analyses',{method:'POST',headers:{apikey:SB_KEY,Authorization:'Bearer '+SB_KEY,'Content-Type':'application/json',Prefer:'return=minimal'},body:JSON.stringify({title:text.substring(0,100)||'ממגוון',file_url:media||null,status:'pending',created_at:new Date().toISOString()})});
     }
     if (dest === 'smartscan') {
-      // Pre-load into סריקה מהירה
       await switchTab('smartscan');
       setTimeout(async function() {
         var thumb = document.getElementById('ss-thumb');
         var btn   = document.getElementById('ss-scan-btn');
         var prog  = document.getElementById('ss-upload-progress');
         var sts   = document.getElementById('ss-upload-status');
+        var isVid = media && (media.includes('/video/upload/') || /\.(mp4|mov|avi|3gp|m4v)(\?|$)/i.test(media));
         if (media) {
-          try {
-            var r = await fetch(media); var blob = await r.blob();
-            var b64 = await new Promise(function(res){ var rd=new FileReader(); rd.onload=function(e){res(e.target.result);}; rd.readAsDataURL(blob); });
-            window._ssSharedPhotoUrl = media; window._ssSharedPhotoB64 = b64;
-            if (thumb) { thumb.src = b64; thumb.style.display='block'; }
-          } catch(e) { if (thumb) { thumb.src=media; thumb.style.display='block'; } }
+          if (isVid) {
+            // Extract frame from video for scanning
+            var frameUrl = media.replace('/upload/', '/upload/so_1,w_1200,f_jpg/').replace(/\.(mp4|mov|avi|3gp|m4v|mkv)(\?.*)?$/i, '.jpg');
+            if (thumb) { thumb.src = frameUrl; thumb.style.display = 'block'; }
+            // Show video badge
+            if (sts) sts.innerHTML = '🎬 פריים מווידאו — ' + (text||'').substring(0,30);
+            try {
+              var r = await fetch(frameUrl);
+              if (r.ok) {
+                var blob = await r.blob();
+                var b64 = await new Promise(function(res){ var rd=new FileReader(); rd.onload=function(e){res(e.target.result);}; rd.readAsDataURL(blob); });
+                window._ssSharedPhotoUrl = frameUrl; window._ssSharedPhotoB64 = b64;
+                if (thumb) { thumb.src = b64; thumb.style.display='block'; }
+              } else {
+                // 423 retry
+                showToast('⏳ Cloudinary מעבד פריים — ממתין...','success');
+                await new Promise(function(r){ setTimeout(r,3000); });
+                var r2 = await fetch(frameUrl);
+                if (r2.ok) {
+                  var blob2 = await r2.blob();
+                  var b64b = await new Promise(function(res){ var rd2=new FileReader(); rd2.onload=function(e){res(e.target.result);}; rd2.readAsDataURL(blob2); });
+                  window._ssSharedPhotoUrl = frameUrl; window._ssSharedPhotoB64 = b64b;
+                  if (thumb) { thumb.src = b64b; }
+                } else {
+                  window._ssSharedPhotoUrl = frameUrl; window._ssSharedPhotoB64 = null;
+                }
+              }
+            } catch(fe) { window._ssSharedPhotoUrl = frameUrl; window._ssSharedPhotoB64 = null; }
+          } else {
+            try {
+              var r = await fetch(media); var blob = await r.blob();
+              var b64 = await new Promise(function(res){ var rd=new FileReader(); rd.onload=function(e){res(e.target.result);}; rd.readAsDataURL(blob); });
+              window._ssSharedPhotoUrl = media; window._ssSharedPhotoB64 = b64;
+              if (thumb) { thumb.src = b64; thumb.style.display='block'; }
+            } catch(e) { window._ssSharedPhotoUrl = media; if (thumb) { thumb.src=media; thumb.style.display='block'; } }
+            if (sts) sts.innerHTML = '✅ מ<strong>מגוון</strong>: ' + (text||'').substring(0,40);
+          }
           if (btn) btn.style.display='block';
           if (prog) prog.style.display='block';
-          if (sts) sts.innerHTML = '✅ מ<strong>מגוון</strong>: ' + (text||'').substring(0,40);
         }
-        showToast('🚀 תמונה נטענה — לחץ הפעל ניתוח חכם', 'success');
+        showToast('🚀 נטען לסריקה מקצועית — לחץ הפעל', 'success');
       }, 400);
       return;
     }
@@ -4388,7 +4418,7 @@ function buildMiscCard(item) {
   var isVideoItem = item.mediaUrl && (item.mediaUrl.includes('/video/upload/') || /\.(mp4|mov|avi|m4v|3gp)(\?|$)/i.test(item.mediaUrl));
   var buttons = [
     { label:'🛡️ בטיחות',   bg:'rgba(239,68,68,0.15)',   bd:'rgba(239,68,68,0.4)',   col:'#fca5a5', dest:'safety'    },
-    { label:'🚀 סריקה',    bg:'rgba(201,168,76,0.15)',  bd:'rgba(201,168,76,0.4)',  col:'#c9a84c', dest:'smartscan' },
+    { label:'🚀 סריקה מקצועית', bg:'rgba(201,168,76,0.15)',  bd:'rgba(201,168,76,0.4)',  col:'#c9a84c', dest:'smartscan' },
     { label:'🏗️ הנדסי',   bg:'rgba(139,92,246,0.15)',  bd:'rgba(139,92,246,0.4)', col:'#c4b5fd', dest:'rag'       },
     { label:'📝 יומן',     bg:'rgba(59,130,246,0.15)',  bd:'rgba(59,130,246,0.4)',  col:'#93c5fd', dest:'notes'     },
     { label:'📐 מדידות',   bg:'rgba(20,184,166,0.15)',  bd:'rgba(20,184,166,0.4)',  col:'#5eead4', dest:'takeoff'   },
@@ -4497,25 +4527,55 @@ async function miscRouteItem(cardId, source, rawId, dest, encodedText, encodedMe
       await fetch(SB_URL+'/rest/v1/safety_analyses',{method:'POST',headers:{apikey:SB_KEY,Authorization:'Bearer '+SB_KEY,'Content-Type':'application/json',Prefer:'return=minimal'},body:JSON.stringify({title:text.substring(0,100)||'ממגוון',file_url:media||null,status:'pending',created_at:new Date().toISOString()})});
     }
     if (dest === 'smartscan') {
-      // Pre-load into סריקה מהירה
       await switchTab('smartscan');
       setTimeout(async function() {
         var thumb = document.getElementById('ss-thumb');
         var btn   = document.getElementById('ss-scan-btn');
         var prog  = document.getElementById('ss-upload-progress');
         var sts   = document.getElementById('ss-upload-status');
+        var isVid = media && (media.includes('/video/upload/') || /\.(mp4|mov|avi|3gp|m4v)(\?|$)/i.test(media));
         if (media) {
-          try {
-            var r = await fetch(media); var blob = await r.blob();
-            var b64 = await new Promise(function(res){ var rd=new FileReader(); rd.onload=function(e){res(e.target.result);}; rd.readAsDataURL(blob); });
-            window._ssSharedPhotoUrl = media; window._ssSharedPhotoB64 = b64;
-            if (thumb) { thumb.src = b64; thumb.style.display='block'; }
-          } catch(e) { if (thumb) { thumb.src=media; thumb.style.display='block'; } }
+          if (isVid) {
+            // Extract frame from video for scanning
+            var frameUrl = media.replace('/upload/', '/upload/so_1,w_1200,f_jpg/').replace(/\.(mp4|mov|avi|3gp|m4v|mkv)(\?.*)?$/i, '.jpg');
+            if (thumb) { thumb.src = frameUrl; thumb.style.display = 'block'; }
+            // Show video badge
+            if (sts) sts.innerHTML = '🎬 פריים מווידאו — ' + (text||'').substring(0,30);
+            try {
+              var r = await fetch(frameUrl);
+              if (r.ok) {
+                var blob = await r.blob();
+                var b64 = await new Promise(function(res){ var rd=new FileReader(); rd.onload=function(e){res(e.target.result);}; rd.readAsDataURL(blob); });
+                window._ssSharedPhotoUrl = frameUrl; window._ssSharedPhotoB64 = b64;
+                if (thumb) { thumb.src = b64; thumb.style.display='block'; }
+              } else {
+                // 423 retry
+                showToast('⏳ Cloudinary מעבד פריים — ממתין...','success');
+                await new Promise(function(r){ setTimeout(r,3000); });
+                var r2 = await fetch(frameUrl);
+                if (r2.ok) {
+                  var blob2 = await r2.blob();
+                  var b64b = await new Promise(function(res){ var rd2=new FileReader(); rd2.onload=function(e){res(e.target.result);}; rd2.readAsDataURL(blob2); });
+                  window._ssSharedPhotoUrl = frameUrl; window._ssSharedPhotoB64 = b64b;
+                  if (thumb) { thumb.src = b64b; }
+                } else {
+                  window._ssSharedPhotoUrl = frameUrl; window._ssSharedPhotoB64 = null;
+                }
+              }
+            } catch(fe) { window._ssSharedPhotoUrl = frameUrl; window._ssSharedPhotoB64 = null; }
+          } else {
+            try {
+              var r = await fetch(media); var blob = await r.blob();
+              var b64 = await new Promise(function(res){ var rd=new FileReader(); rd.onload=function(e){res(e.target.result);}; rd.readAsDataURL(blob); });
+              window._ssSharedPhotoUrl = media; window._ssSharedPhotoB64 = b64;
+              if (thumb) { thumb.src = b64; thumb.style.display='block'; }
+            } catch(e) { window._ssSharedPhotoUrl = media; if (thumb) { thumb.src=media; thumb.style.display='block'; } }
+            if (sts) sts.innerHTML = '✅ מ<strong>מגוון</strong>: ' + (text||'').substring(0,40);
+          }
           if (btn) btn.style.display='block';
           if (prog) prog.style.display='block';
-          if (sts) sts.innerHTML = '✅ מ<strong>מגוון</strong>: ' + (text||'').substring(0,40);
         }
-        showToast('🚀 תמונה נטענה — לחץ הפעל ניתוח חכם', 'success');
+        showToast('🚀 נטען לסריקה מקצועית — לחץ הפעל', 'success');
       }, 400);
       return;
     }
@@ -4924,12 +4984,13 @@ async function smartScanRun() {
   }
 
   // Get selected analyses
-  var doSafety    = document.getElementById('ss-cb-safety')    && document.getElementById('ss-cb-safety').checked;
-  var doSnag      = document.getElementById('ss-cb-snag')      && document.getElementById('ss-cb-snag').checked;
-  var doStandards = document.getElementById('ss-cb-standards') && document.getElementById('ss-cb-standards').checked;
-  var doCosts     = document.getElementById('ss-cb-costs')     && document.getElementById('ss-cb-costs').checked;
+  var doSafety      = document.getElementById('ss-cb-safety')      && document.getElementById('ss-cb-safety').checked;
+  var doSnag        = document.getElementById('ss-cb-snag')        && document.getElementById('ss-cb-snag').checked;
+  var doStandards   = document.getElementById('ss-cb-standards')   && document.getElementById('ss-cb-standards').checked;
+  var doCosts       = document.getElementById('ss-cb-costs')       && document.getElementById('ss-cb-costs').checked;
+  var doEngineering = document.getElementById('ss-cb-engineering') && document.getElementById('ss-cb-engineering').checked;
 
-  if (!doSafety && !doSnag && !doStandards && !doCosts) {
+  if (!doSafety && !doSnag && !doStandards && !doCosts && !doEngineering) {
     showToast('בחר לפחות ניתוח אחד', 'error'); return;
   }
 
@@ -4951,18 +5012,21 @@ async function smartScanRun() {
 
   // Build analysis prompts
   var analyses = [];
-  if (doSafety)    analyses.push('🛡️ בטיחות: סיכוני חיים, הפרות חוק, ציוד מגן חסר, סכנות נפילה');
-  if (doSnag)      analyses.push('🔍 ליקויים: פגמי גמר, בנייה לקויה, רטיבות, סדקים, איכות עבודה');
-  if (doStandards) analyses.push('📚 תקנים: התייחסות לתקני בנייה ישראליים רלוונטיים (תקן 413, ISO, SII)');
-  if (doCosts)     analyses.push('💰 עלויות: הערכת עלות תיקון לפי מחירון הבינוי הממשלתי 2025');
+  if (doSafety)      analyses.push('🛡️ בטיחות: סיכוני חיים, הפרות חוק, ציוד מגן חסר, סכנות נפילה');
+  if (doSnag)        analyses.push('🔍 ליקויים: פגמי גמר, בנייה לקויה, רטיבות, סדקים, איכות עבודה');
+  if (doStandards)   analyses.push('📚 תקנים: התייחסות לתקני בנייה ישראליים רלוונטיים (תקן 413, ISO, SII)');
+  if (doCosts)       analyses.push('💰 עלויות: הערכת עלות תיקון לפי מחירון הבינוי הממשלתי 2025');
+  if (doEngineering) analyses.push('🏗️ ייעוץ הנדסי: ניתוח מעמיק של שיטת הבנייה, חומרים, תקינות מבנית, המלצות לתיקון וסדר עדיפויות');
 
   var prompt = [
-    'אתה מומחה בנייה ישראלי. נתח את התמונה לפי הקטגוריות הבאות:',
+    'אתה יועץ הנדסי ומומחה בנייה ישראלי בכיר עם 30 שנות ניסיון.',
+    'נתח את התמונה/פריים לפי הקטגוריות שנבחרו:',
     '',
     analyses.join('\n'),
     '',
     'לכל קטגוריה: פרט ממצאים ספציפיים, חומרה (גבוה/בינוני/נמוך), המלצות פעולה מיידית.',
-    'כתוב בעברית, מקצועי וממוקד.'
+    'אם זהו פריים מווידאו — נתח מה שרואים בפריים זה.',
+    'כתוב בעברית, מקצועי, ממוקד ועם המלצות ברורות.'
   ].join('\n');
   var arcEl = document.getElementById('ss-arc');
   if (window.arc && arcEl) arc.start(arcEl);
@@ -7975,7 +8039,7 @@ function generatePOPdf(po) {
       <div style="margin-bottom:24px;">
         <div style="font-size:10px;letter-spacing:3px;color:#c9a84c;text-transform:uppercase;margin-bottom:4px;">AI Multi-Analysis</div>
         <h1 style="font-size:24px;font-weight:900;color:#fff;margin:0;">🚀 סריקה מהירה</h1>
-        <div style="font-size:12px;color:#c9a84c;font-weight:700;margin-top:2px;">ניתוח מקדים — 4 ניתוחים במקביל</div>
+        <div style="font-size:12px;color:#c9a84c;font-weight:700;margin-top:2px;">סריקה מקצועית — תמונה · וידאו · 5 ניתוחים</div>
         <div style="font-size:12px;color:#666;margin-top:4px;">העלה תמונה או סרטון → בחר ניתוחים → קבל דוח מיידי → עבור לניתוח מעמיק בטאב בטיחות</div>
       </div>
 
@@ -8029,6 +8093,10 @@ function generatePOPdf(po) {
           <label style="display:flex;align-items:center;gap:10px;background:#1a1a2e;border:1px solid rgba(34,197,94,0.3);border-radius:10px;padding:12px;cursor:pointer;">
             <input type="checkbox" id="ss-cb-costs" checked style="width:16px;height:16px;accent-color:#22c55e;">
             <div><div style="font-size:13px;font-weight:800;color:#86efac;">💰 הערכת עלויות</div><div style="font-size:10px;color:#666;">ממחירון הבינוי 2025</div></div>
+          </label>
+          <label style="display:flex;align-items:center;gap:10px;background:#1a1a2e;border:1px solid rgba(201,168,76,0.3);border-radius:10px;padding:12px;cursor:pointer;">
+            <input type="checkbox" id="ss-cb-engineering" style="width:16px;height:16px;accent-color:#c9a84c;">
+            <div><div style="font-size:13px;font-weight:800;color:#c9a84c;">🏗️ ייעוץ הנדסי</div><div style="font-size:10px;color:#666;">ניתוח מעמיק + המלצות</div></div>
           </label>
         </div>
       </div>
@@ -10468,7 +10536,7 @@ function openLinkModal(takeoffId) {
       <div style="margin-bottom:24px;">
         <div style="font-size:10px;letter-spacing:3px;color:#c9a84c;text-transform:uppercase;margin-bottom:4px;">AI Multi-Analysis</div>
         <h1 style="font-size:24px;font-weight:900;color:#fff;margin:0;">🚀 סריקה מהירה</h1>
-        <div style="font-size:12px;color:#c9a84c;font-weight:700;margin-top:2px;">ניתוח מקדים — 4 ניתוחים במקביל</div>
+        <div style="font-size:12px;color:#c9a84c;font-weight:700;margin-top:2px;">סריקה מקצועית — תמונה · וידאו · 5 ניתוחים</div>
         <div style="font-size:12px;color:#666;margin-top:4px;">העלה תמונה או סרטון → בחר ניתוחים → קבל דוח מיידי → עבור לניתוח מעמיק בטאב בטיחות</div>
       </div>
 
@@ -10522,6 +10590,10 @@ function openLinkModal(takeoffId) {
           <label style="display:flex;align-items:center;gap:10px;background:#1a1a2e;border:1px solid rgba(34,197,94,0.3);border-radius:10px;padding:12px;cursor:pointer;">
             <input type="checkbox" id="ss-cb-costs" checked style="width:16px;height:16px;accent-color:#22c55e;">
             <div><div style="font-size:13px;font-weight:800;color:#86efac;">💰 הערכת עלויות</div><div style="font-size:10px;color:#666;">ממחירון הבינוי 2025</div></div>
+          </label>
+          <label style="display:flex;align-items:center;gap:10px;background:#1a1a2e;border:1px solid rgba(201,168,76,0.3);border-radius:10px;padding:12px;cursor:pointer;">
+            <input type="checkbox" id="ss-cb-engineering" style="width:16px;height:16px;accent-color:#c9a84c;">
+            <div><div style="font-size:13px;font-weight:800;color:#c9a84c;">🏗️ ייעוץ הנדסי</div><div style="font-size:10px;color:#666;">ניתוח מעמיק + המלצות</div></div>
           </label>
         </div>
       </div>
