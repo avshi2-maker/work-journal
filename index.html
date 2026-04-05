@@ -4884,6 +4884,37 @@ function makeDeleteBtn(noteId, cardEl, onSuccess) {
 }
 
 
+function formatElevenLabsTranscript(data) {
+  if (!data) return '';
+  if (data.words && data.words.length) {
+    var lines = [];
+    var currentSpeaker = null;
+    var currentLine = '';
+    var currentStart = 0;
+    data.words.forEach(function(w) {
+      if (w.type === 'spacing') return;
+      var speaker = w.speaker_id || 'speaker_0';
+      var spLabel = speaker === 'speaker_0' ? 'דובר 1' : speaker === 'speaker_1' ? 'דובר 2' : speaker;
+      if (speaker !== currentSpeaker) {
+        if (currentLine.trim()) {
+          var mm = Math.floor(Math.floor(currentStart)/60), ss = Math.floor(currentStart)%60;
+          lines.push('[' + String(mm).padStart(2,'0') + ':' + String(ss).padStart(2,'0') + '] ' + spLabel + ': ' + currentLine.trim());
+        }
+        currentSpeaker = speaker; currentLine = ''; currentStart = w.start || 0;
+      }
+      currentLine += (currentLine ? ' ' : '') + (w.text || '');
+    });
+    if (currentLine.trim()) {
+      var spLabel2 = currentSpeaker === 'speaker_0' ? 'דובר 1' : currentSpeaker === 'speaker_1' ? 'דובר 2' : currentSpeaker || 'דובר';
+      var mm2 = Math.floor(Math.floor(currentStart)/60), ss2 = Math.floor(currentStart)%60;
+      lines.push('[' + String(mm2).padStart(2,'0') + ':' + String(ss2).padStart(2,'0') + '] ' + spLabel2 + ': ' + currentLine.trim());
+    }
+    if (lines.length) return lines.join('\n');
+  }
+  return data.transcript || data.text || '';
+}
+
+
 async function bootstrap() {
   try {
     // 1. Load lookups + config — graceful if tables don't exist yet
@@ -8532,8 +8563,9 @@ function buildRecordingCard(item) {
 }
 
 async function transcribeRecording(item) {
-  var apiKey = APP && APP.config && APP.config.anthropic_key;
-  if (!apiKey) { showToast('מפתח API חסר', 'error'); return; }
+  var elKey     = APP && APP.config && APP.config.elevenlabs_key;
+  var whisperKey = APP && APP.config && APP.config.openai_key;
+  if (!elKey && !whisperKey) { showToast('חסר מפתח ElevenLabs או OpenAI', 'error'); return; }
 
   var btn    = document.getElementById('trans-btn-' + item.id);
   var outDiv = document.getElementById('trans-' + item.id);
@@ -8543,41 +8575,58 @@ async function transcribeRecording(item) {
   if (arcEl && window.arc) arc.start(arcEl);
 
   try {
-    // Fetch audio and convert to base64 for Claude
-    var whisperKey = APP && APP.config && APP.config.openai_key;
-    if (!whisperKey) throw new Error('מפתח OpenAI חסר — הוסף openai_key ב-app_config');
-    showToast('⏳ מוריד ושולח ל-Whisper...', 'success');
-    // Convert to MP3 via Cloudinary URL transformation — works for 3gp, webm, m4a, any format
-    // This avoids browser fetch CORS issues and format detection entirely
+    // Fetch audio via Cloudinary MP3 transformation — converts any format server-side
+    showToast('⏳ מוריד קובץ...', 'success');
     var cldMp3Url = item.audioUrl.replace('/upload/', '/upload/f_mp3,q_auto/');
-    showToast('⏳ ממיר ושולח ל-Whisper...', 'success');
     var audioRes = await fetch(cldMp3Url);
-    if (!audioRes.ok) {
-      // Fallback: try original URL
-      audioRes = await fetch(item.audioUrl);
-      if (!audioRes.ok) throw new Error('שגיאה בהורדת קובץ: ' + audioRes.status);
-    }
+    if (!audioRes.ok) audioRes = await fetch(item.audioUrl);
+    if (!audioRes.ok) throw new Error('שגיאה בהורדת קובץ: ' + audioRes.status);
     var audioBlob = await audioRes.blob();
     if (audioBlob.size < 100) throw new Error('קובץ ריק — ייתכן שנמחק מהענן');
-    var audioFile = new File([audioBlob], 'audio.mp3', { type: 'audio/mpeg' });
-    var whisperFd = new FormData();
-    whisperFd.append('file', audioFile);
-    whisperFd.append('model', 'whisper-1');
-    whisperFd.append('language', 'he');
-    whisperFd.append('response_format', 'text');
-    var resp = await fetch('https://api.openai.com/v1/audio/transcriptions', {
-      method: 'POST',
-      headers: { 'Authorization': 'Bearer ' + whisperKey },
-      body: whisperFd
-    });
+    showToast('✅ הורד ' + Math.round(audioBlob.size/1024) + 'KB — מתמלל עם ElevenLabs...', 'success');
 
-    if (!resp.ok) {
-      var errJson = await resp.json().catch(function(){ return {}; });
-      throw new Error(errJson.error ? errJson.error.message : 'Whisper error ' + resp.status);
+    var text = '';
+    // Try ElevenLabs first — speaker diarization for phone calls
+    if (elKey) {
+      var efd = new FormData();
+      efd.append('file', new File([audioBlob], 'audio.mp3', {type:'audio/mpeg'}));
+      efd.append('model_id', 'scribe_v1');
+      efd.append('language_code', 'heb');
+      efd.append('diarize', 'true');
+      efd.append('timestamps_granularity', 'segment');
+      var eres = await fetch('https://api.elevenlabs.io/v1/speech-to-text', {
+        method: 'POST',
+        headers: { 'xi-api-key': elKey },
+        body: efd
+      });
+      if (eres.ok) {
+        var edata = await eres.json();
+        text = formatElevenLabsTranscript(edata);
+      } else {
+        var eErr = await eres.json().catch(function(){ return {}; });
+        showToast('⚠️ ElevenLabs: ' + (eErr.detail || eres.status) + ' — מנסה Whisper...', 'success');
+      }
     }
-    var text = await resp.text();
-    text = text.trim();
 
+    // Fallback to Whisper if ElevenLabs failed
+    if (!text && whisperKey) {
+      showToast('🔄 Whisper...', 'success');
+      var wfd = new FormData();
+      wfd.append('file', new File([audioBlob], 'audio.mp3', {type:'audio/mpeg'}));
+      wfd.append('model', 'whisper-1');
+      wfd.append('language', 'he');
+      wfd.append('response_format', 'text');
+      var wres = await fetch('https://api.openai.com/v1/audio/transcriptions', {
+        method: 'POST', headers: { 'Authorization': 'Bearer ' + whisperKey }, body: wfd
+      });
+      if (wres.ok) { text = (await wres.text()).trim(); }
+      else {
+        var wErr = await wres.json().catch(function(){ return {}; });
+        throw new Error('Whisper: ' + (wErr.error ? wErr.error.message : wres.status));
+      }
+    }
+
+    if (!text) throw new Error('לא התקבל תמלול');
     if (arcEl && window.arc) arc.finish(0, text.split(' ').length);
 
     // Save transcript
