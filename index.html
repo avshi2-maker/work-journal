@@ -8379,15 +8379,18 @@ async function loadSmartRecordings() {
     // Render beni_notes audio files
     notes.forEach(function(n) {
       if (!n.photo_url) return;
-      // Extract transcript from note_text (Beni Pocket saves transcript there)
+      // Extract transcript from note_text — only if it's real Hebrew text
       var noteTranscript = null;
       var noteTitle = n.note_text || 'הקלטה קולית';
-      if (n.note_text && n.note_text.startsWith('🎙️ ') && n.note_text.length > 10) {
-        var rawText = n.note_text.replace(/^🎙️ /, '');
-        // If it's not just a duration like "0:04", it's a real transcript
-        if (!/^\d+:\d+$/.test(rawText.trim())) {
+      if (n.note_text && n.note_text.startsWith('🎙️ ')) {
+        var rawText = n.note_text.replace(/^🎙️ /, '').trim();
+        // Real transcript = not a filename, not a duration, longer than 15 chars
+        var isFilename = /\.(m4a|mp3|3gp|wav|webm|mp4)$/i.test(rawText) || rawText.includes('Call recording') || rawText.includes('Voice_');
+        var isDuration = /^\d+:\d+$/.test(rawText);
+        var isShort    = rawText.length < 15;
+        if (!isFilename && !isDuration && !isShort) {
           noteTranscript = rawText;
-          noteTitle = rawText.substring(0, 50);
+          noteTitle = rawText.substring(0, 60);
         }
       }
       var card = buildRecordingCard({
@@ -8466,15 +8469,13 @@ function buildRecordingCard(item) {
   var acts = document.createElement('div');
   acts.style.cssText = 'display:flex;gap:6px;flex-wrap:wrap;';
 
-  // Only show transcribe button if no transcript yet
-  if (!item.transcript) {
-    var transBtn = document.createElement('button');
-    transBtn.id = 'trans-btn-' + item.id;
-    transBtn.textContent = '🤖 תמלל עם AI';
-    transBtn.style.cssText = 'background:linear-gradient(135deg,#7c3aed,#5b21b6);border:none;color:#fff;padding:8px 14px;border-radius:8px;cursor:pointer;font-family:Heebo,sans-serif;font-size:12px;font-weight:700;';
-    transBtn.addEventListener('click', (function(itm){ return function(){ transcribeRecording(itm); }; })(item));
-    acts.appendChild(transBtn);
-  }
+  // Always show transcribe button — ElevenLabs with speaker diarization
+  var transBtn = document.createElement('button');
+  transBtn.id = 'trans-btn-' + item.id;
+  transBtn.textContent = item.transcript ? '🔄 תמלל שוב' : '🤖 תמלל עם AI';
+  transBtn.style.cssText = 'background:linear-gradient(135deg,#7c3aed,#5b21b6);border:none;color:#fff;padding:8px 14px;border-radius:8px;cursor:pointer;font-family:Heebo,sans-serif;font-size:12px;font-weight:700;';
+  transBtn.addEventListener('click', (function(itm){ return function(){ transcribeRecording(itm); }; })(item));
+  acts.appendChild(transBtn);
   
   // Transcript actions — copy + project selector + save
   if (item.transcript) {
