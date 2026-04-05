@@ -3889,7 +3889,8 @@ function buildMiscCard(item) {
   var btnsRow = document.createElement('div');
   btnsRow.id = 'misc-btns-' + item.id;
   btnsRow.style.cssText = 'display:flex;gap:5px;margin-top:8px;';
-  [
+  var isVideoItem = item.mediaUrl && (item.mediaUrl.includes('/video/upload/') || /\.(mp4|mov|avi|m4v|3gp)(\?|$)/i.test(item.mediaUrl));
+  var buttons = [
     { label:'🛡️ בטיחות',   bg:'rgba(239,68,68,0.15)',   bd:'rgba(239,68,68,0.4)',   col:'#fca5a5', dest:'safety'    },
     { label:'🚀 סריקה',    bg:'rgba(201,168,76,0.15)',  bd:'rgba(201,168,76,0.4)',  col:'#c9a84c', dest:'smartscan' },
     { label:'🏗️ הנדסי',   bg:'rgba(139,92,246,0.15)',  bd:'rgba(139,92,246,0.4)', col:'#c4b5fd', dest:'rag'       },
@@ -3899,7 +3900,11 @@ function buildMiscCard(item) {
     { label:'📄 OCR/AI',   bg:'rgba(99,102,241,0.15)',  bd:'rgba(99,102,241,0.4)',  col:'#a5b4fc', dest:'ocr'       },
     { label:'✅ משימה',    bg:'rgba(34,197,94,0.15)',   bd:'rgba(34,197,94,0.4)',   col:'#86efac', dest:'task'      },
     { label:'🗑️ מחק',     bg:'rgba(255,255,255,0.04)', bd:'rgba(255,255,255,0.1)', col:'#666',    dest:'delete'    }
-  ].forEach(function(b) {
+  ];
+  if (isVideoItem) {
+    buttons.splice(2, 0, { label:'📸 חלץ פריים', bg:'rgba(16,185,129,0.15)', bd:'rgba(16,185,129,0.4)', col:'#6ee7b7', dest:'extractframe' });
+  }
+  buttons.forEach(function(b) {
     var btn = document.createElement('button');
     btn.textContent = b.label;
     btn.style.cssText = 'flex:1;background:' + b.bg + ';border:1px solid ' + b.bd + ';color:' + b.col + ';padding:6px 2px;border-radius:8px;cursor:pointer;font-family:Heebo,sans-serif;font-size:10px;font-weight:700;';
@@ -3931,6 +3936,33 @@ async function miscRouteItem(cardId, source, rawId, dest, encodedText, encodedMe
       if (source === 'asset_inbox') await fetch(SB_URL+'/rest/v1/asset_inbox?id=eq.'+rawId, {method:'DELETE',headers:{apikey:SB_KEY,Authorization:'Bearer '+SB_KEY}});
       if (card) { card.style.opacity='0.3'; setTimeout(function(){ if(card) card.remove(); }, 400); }
       showToast('🗑️ נמחק', 'success');
+      return;
+    }
+    if (dest === 'extractframe') {
+      var videoUrl = media;
+      if (!videoUrl) { showToast('❌ אין וידאו', 'error'); return; }
+      showToast('📸 מחלץ פריים...', 'success');
+      var frameUrl = videoUrl.replace('/upload/', '/upload/so_auto,w_1200,f_jpg/').replace(/\.(mp4|mov|avi|3gp|m4v|mkv)(\?.*)?$/i, '.jpg');
+      await switchTab('rag');
+      setTimeout(async function() {
+        var preview = document.getElementById('rag-photo-preview');
+        var img     = document.getElementById('rag-photo-img');
+        var ana     = document.getElementById('rag-photo-analysis');
+        var acts    = document.getElementById('rag-photo-actions');
+        if (img)  { img.src = frameUrl; }
+        if (preview) preview.style.display = 'block';
+        if (acts)    acts.style.display    = 'flex';
+        if (ana)     ana.innerHTML = '🎬 פריים מווידאו — לחץ <strong>🤖 הפעל בינה מלאכותית</strong>';
+        try {
+          var fr = await fetch(frameUrl);
+          if (fr.ok) {
+            var blob = await fr.blob();
+            var b64 = await new Promise(function(res){ var rd=new FileReader(); rd.onload=function(e){res(e.target.result);}; rd.readAsDataURL(blob); });
+            window._ragCurrentPhoto = b64; if (img) img.src = b64;
+          } else { window._ragCurrentPhoto = frameUrl; }
+        } catch(fe) { window._ragCurrentPhoto = frameUrl; }
+        showToast('✅ פריים נטען — לחץ הפעל בינה מלאכותית', 'success');
+      }, 400);
       return;
     }
     if (dest === 'task') {
@@ -4310,7 +4342,8 @@ function buildMiscCard(item) {
   var btnsRow = document.createElement('div');
   btnsRow.id = 'misc-btns-' + item.id;
   btnsRow.style.cssText = 'display:flex;gap:5px;margin-top:8px;';
-  [
+  var isVideoItem = item.mediaUrl && (item.mediaUrl.includes('/video/upload/') || /\.(mp4|mov|avi|m4v|3gp)(\?|$)/i.test(item.mediaUrl));
+  var buttons = [
     { label:'🛡️ בטיחות',   bg:'rgba(239,68,68,0.15)',   bd:'rgba(239,68,68,0.4)',   col:'#fca5a5', dest:'safety'    },
     { label:'🚀 סריקה',    bg:'rgba(201,168,76,0.15)',  bd:'rgba(201,168,76,0.4)',  col:'#c9a84c', dest:'smartscan' },
     { label:'🏗️ הנדסי',   bg:'rgba(139,92,246,0.15)',  bd:'rgba(139,92,246,0.4)', col:'#c4b5fd', dest:'rag'       },
@@ -4320,7 +4353,11 @@ function buildMiscCard(item) {
     { label:'📄 OCR/AI',   bg:'rgba(99,102,241,0.15)',  bd:'rgba(99,102,241,0.4)',  col:'#a5b4fc', dest:'ocr'       },
     { label:'✅ משימה',    bg:'rgba(34,197,94,0.15)',   bd:'rgba(34,197,94,0.4)',   col:'#86efac', dest:'task'      },
     { label:'🗑️ מחק',     bg:'rgba(255,255,255,0.04)', bd:'rgba(255,255,255,0.1)', col:'#666',    dest:'delete'    }
-  ].forEach(function(b) {
+  ];
+  if (isVideoItem) {
+    buttons.splice(2, 0, { label:'📸 חלץ פריים', bg:'rgba(16,185,129,0.15)', bd:'rgba(16,185,129,0.4)', col:'#6ee7b7', dest:'extractframe' });
+  }
+  buttons.forEach(function(b) {
     var btn = document.createElement('button');
     btn.textContent = b.label;
     btn.style.cssText = 'flex:1;background:' + b.bg + ';border:1px solid ' + b.bd + ';color:' + b.col + ';padding:6px 2px;border-radius:8px;cursor:pointer;font-family:Heebo,sans-serif;font-size:10px;font-weight:700;';
@@ -4352,6 +4389,33 @@ async function miscRouteItem(cardId, source, rawId, dest, encodedText, encodedMe
       if (source === 'asset_inbox') await fetch(SB_URL+'/rest/v1/asset_inbox?id=eq.'+rawId, {method:'DELETE',headers:{apikey:SB_KEY,Authorization:'Bearer '+SB_KEY}});
       if (card) { card.style.opacity='0.3'; setTimeout(function(){ if(card) card.remove(); }, 400); }
       showToast('🗑️ נמחק', 'success');
+      return;
+    }
+    if (dest === 'extractframe') {
+      var videoUrl = media;
+      if (!videoUrl) { showToast('❌ אין וידאו', 'error'); return; }
+      showToast('📸 מחלץ פריים...', 'success');
+      var frameUrl = videoUrl.replace('/upload/', '/upload/so_auto,w_1200,f_jpg/').replace(/\.(mp4|mov|avi|3gp|m4v|mkv)(\?.*)?$/i, '.jpg');
+      await switchTab('rag');
+      setTimeout(async function() {
+        var preview = document.getElementById('rag-photo-preview');
+        var img     = document.getElementById('rag-photo-img');
+        var ana     = document.getElementById('rag-photo-analysis');
+        var acts    = document.getElementById('rag-photo-actions');
+        if (img)  { img.src = frameUrl; }
+        if (preview) preview.style.display = 'block';
+        if (acts)    acts.style.display    = 'flex';
+        if (ana)     ana.innerHTML = '🎬 פריים מווידאו — לחץ <strong>🤖 הפעל בינה מלאכותית</strong>';
+        try {
+          var fr = await fetch(frameUrl);
+          if (fr.ok) {
+            var blob = await fr.blob();
+            var b64 = await new Promise(function(res){ var rd=new FileReader(); rd.onload=function(e){res(e.target.result);}; rd.readAsDataURL(blob); });
+            window._ragCurrentPhoto = b64; if (img) img.src = b64;
+          } else { window._ragCurrentPhoto = frameUrl; }
+        } catch(fe) { window._ragCurrentPhoto = frameUrl; }
+        showToast('✅ פריים נטען — לחץ הפעל בינה מלאכותית', 'success');
+      }, 400);
       return;
     }
     if (dest === 'task') {
