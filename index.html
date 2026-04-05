@@ -3823,7 +3823,7 @@ function buildMiscCard(item) {
     } else if (isVideo) {
       mediaHtml = '<video controls style="width:100%;max-height:140px;border-radius:8px;margin:8px 0;" src="' + item.mediaUrl + '"></video>';
     } else {
-      mediaHtml = '<img src="' + item.mediaUrl + '" style="width:100%;max-height:140px;object-fit:cover;border-radius:8px;margin:8px 0;cursor:zoom-in;" onclick="if(this.src)openLightbox(this.src,\'\')">';
+      mediaHtml = '<img src="' + item.mediaUrl + '" style="width:120px;height:90px;object-fit:cover;border-radius:8px;float:left;margin:0 0 8px 8px;cursor:zoom-in;" onclick="if(this.src)openLightbox(this.src,\'\')">';
     }
   }
 
@@ -4092,7 +4092,7 @@ async function miscRouteItem(cardId, source, rawId, dest, encodedText, encodedMe
           // Correct element IDs from the actual OCR panel HTML
           var preview    = document.getElementById('journal-ocr-preview');
           var previewImg = document.getElementById('journal-ocr-preview-img');
-          var runBtn     = document.getElementById('journal-ocr-run-btn');
+          var runBtn     = document.getElementById('ocr-run-btn');
           var statusEl   = document.getElementById('journal-ocr-status');
           window._ocrImageUrl = media;
           // Load the file and convert to base64 for OCR processing
@@ -4333,7 +4333,7 @@ function buildMiscCard(item) {
     } else if (isVideo) {
       mediaHtml = '<video controls style="width:100%;max-height:140px;border-radius:8px;margin:8px 0;" src="' + item.mediaUrl + '"></video>';
     } else {
-      mediaHtml = '<img src="' + item.mediaUrl + '" style="width:100%;max-height:140px;object-fit:cover;border-radius:8px;margin:8px 0;cursor:zoom-in;" onclick="if(this.src)openLightbox(this.src,\'\')">';
+      mediaHtml = '<img src="' + item.mediaUrl + '" style="width:120px;height:90px;object-fit:cover;border-radius:8px;float:left;margin:0 0 8px 8px;cursor:zoom-in;" onclick="if(this.src)openLightbox(this.src,\'\')">';
     }
   }
 
@@ -4602,7 +4602,7 @@ async function miscRouteItem(cardId, source, rawId, dest, encodedText, encodedMe
           // Correct element IDs from the actual OCR panel HTML
           var preview    = document.getElementById('journal-ocr-preview');
           var previewImg = document.getElementById('journal-ocr-preview-img');
-          var runBtn     = document.getElementById('journal-ocr-run-btn');
+          var runBtn     = document.getElementById('ocr-run-btn');
           var statusEl   = document.getElementById('journal-ocr-status');
           window._ocrImageUrl = media;
           // Load the file and convert to base64 for OCR processing
@@ -4820,7 +4820,7 @@ async function assetInboxLoad() {
       } else {
         var thumb = item.thumbnail_url || mediaUrl;
         mediaEl = document.createElement('img');
-        mediaEl.style.cssText = 'width:100%;max-height:160px;object-fit:cover;border-radius:8px;margin:8px 0;cursor:zoom-in;display:block;';
+        mediaEl.style.cssText = 'width:120px;height:90px;object-fit:cover;border-radius:8px;float:left;margin:0 8px 8px 0;cursor:zoom-in;display:block;flex-shrink:0;';
         mediaEl.addEventListener('click', (function(u){ return function(){ openLightbox(u,''); }; })(mediaUrl));
         mediaEl.onerror = function() {
           var ph = document.createElement('div');
@@ -8725,8 +8725,15 @@ async function journalOcrLoadFromUrl(url) {
         // Show PDF icon
         var pdfBadge = document.createElement('div');
         pdfBadge.style.cssText = 'background:rgba(239,68,68,0.15);border:1px solid rgba(239,68,68,0.3);border-radius:10px;padding:16px;text-align:center;direction:rtl;';
-        pdfBadge.innerHTML = '<div style="font-size:36px;">📄</div><div style="font-size:13px;color:#fca5a5;margin-top:6px;">PDF נטען — ' + url.split('/').pop() + '</div>';
-        if (preview) { preview.innerHTML = ''; preview.appendChild(pdfBadge); preview.style.display = 'block'; }
+        pdfBadge.innerHTML = '<div style="font-size:36px;">📄</div><div style="font-size:13px;color:#fca5a5;margin-top:6px;">PDF נטען — ' + url.split('/').pop().split('?')[0].replace(/^\d+_/,'') + '</div>';
+        if (preview) {
+          // Don't clear innerHTML — button is inside preview
+          var existBadge = preview.querySelector('.pdf-loaded-badge');
+          if (existBadge) existBadge.remove();
+          pdfBadge.className = 'pdf-loaded-badge';
+          preview.insertBefore(pdfBadge, preview.firstChild);
+          preview.style.display = 'block';
+        }
       } else {
         prevImg.src = 'data:' + mtype + ';base64,' + b64;
         prevImg.style.display = 'block';
