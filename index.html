@@ -2781,6 +2781,23 @@ window.addEventListener('unhandledrejection', function(e) {
 // ══════════════════════════════════════════════════════
 // CORE CONFIG
 // ══════════════════════════════════════════════════════
+
+// ══ ANTHROPIC FETCH INTERCEPTOR ══════════════════════════════════════
+// Adds required browser access header to all Anthropic API calls
+// This fixes CORS for rag_engine and any other module calling Anthropic
+(function() {
+  var origFetch = window.fetch;
+  window.fetch = function(url, opts) {
+    if (typeof url === 'string' && url.includes('api.anthropic.com')) {
+      opts = opts || {};
+      opts.headers = Object.assign({}, opts.headers || {}, {
+        'anthropic-dangerous-direct-browser-access': 'true'
+      });
+    }
+    return origFetch.apply(this, arguments);
+  };
+})();
+
 const SB_URL = 'https://vmcipofovheztbjmhwsl.supabase.co';
 const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZtY2lwb2ZvdmhlenRiam1od3NsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE0NjE2MTcsImV4cCI6MjA4NzAzNzYxN30.LPq5N2Xo8iEqjgz2UhmdzUdh5tpGT3EYzSxJcYBEJ1w';
 const sb = window.supabase.createClient(SB_URL, SB_KEY, {
@@ -4895,6 +4912,12 @@ async function smartScanRun() {
   // Get image — from shared (מגוון/יומן) or from file input
   var imageB64 = window._ssSharedPhotoB64 || null;
   var imageUrl = window._ssSharedPhotoUrl  || null;
+
+  // If URL is a video — extract JPG frame for Claude Vision
+  if (imageUrl && !imageB64 && /\.(mp4|mov|avi|3gp|m4v|mkv|webm)(\?|$)/i.test(imageUrl)) {
+    imageUrl = imageUrl.replace('/upload/', '/upload/so_1,w_1200,f_jpg/').replace(/\.(mp4|mov|avi|3gp|m4v|mkv|webm)(\?.*)?$/i, '.jpg');
+    showToast('📸 מחלץ פריים מווידאו לניתוח...', 'success');
+  }
 
   if (!imageB64 && !imageUrl) {
     showToast('העלה תמונה תחילה', 'error'); return;
