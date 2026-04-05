@@ -3714,11 +3714,16 @@ async function loadMiscTab() {
       filteredNotes = notes.filter(function(n) {
         var url = n.photo_url || '';
         var nt  = n.note_type || '';
-        if (filter === 'audio') return nt === 'audio' || url.includes('/beni_voice/') || /\.(mp3|m4a|wav|ogg|webm)(\?|$)/i.test(url);
-        if (filter === 'video') return nt === 'video' || /\.(mp4|mov|avi|m4v|3gp)(\?|$)/i.test(url);
-        if (filter === 'photo') return nt === 'photo' || nt === 'doc' || (url && !url.includes('/beni_voice/') && !/\.(mp4|mov|avi|m4v|3gp|mp3|m4a|wav|ogg|webm)(\?|$)/i.test(url));
-        if (filter === 'text')  return !url && (nt === 'text' || !nt);
-        return true;
+        // Detect type from note_type OR URL OR filename pattern
+        var isAudio = nt === 'audio' || url.includes('/beni_voice/') || /\.(mp3|m4a|wav|ogg|flac|aac)(\?|$)/i.test(url);
+        var isVideo = nt === 'video' || url.includes('/video/upload/') || /\.(mp4|mov|avi|m4v|3gp|mkv)(\?|$)/i.test(url);
+        var isPhoto = !isAudio && !isVideo && url;
+        var isText  = !url && (nt === 'text' || !nt);
+        if (filter === 'audio') return isAudio;
+        if (filter === 'video') return isVideo;
+        if (filter === 'photo') return isPhoto;
+        if (filter === 'text')  return isText;
+        return true; // 'all' — show everything
       });
       filteredInbox = inbox.filter(function(i) { return i.file_type === filter; });
     }
@@ -4130,11 +4135,16 @@ async function loadMiscTab() {
       filteredNotes = notes.filter(function(n) {
         var url = n.photo_url || '';
         var nt  = n.note_type || '';
-        if (filter === 'audio') return nt === 'audio' || url.includes('/beni_voice/') || /\.(mp3|m4a|wav|ogg|webm)(\?|$)/i.test(url);
-        if (filter === 'video') return nt === 'video' || /\.(mp4|mov|avi|m4v|3gp)(\?|$)/i.test(url);
-        if (filter === 'photo') return nt === 'photo' || nt === 'doc' || (url && !url.includes('/beni_voice/') && !/\.(mp4|mov|avi|m4v|3gp|mp3|m4a|wav|ogg|webm)(\?|$)/i.test(url));
-        if (filter === 'text')  return !url && (nt === 'text' || !nt);
-        return true;
+        // Detect type from note_type OR URL OR filename pattern
+        var isAudio = nt === 'audio' || url.includes('/beni_voice/') || /\.(mp3|m4a|wav|ogg|flac|aac)(\?|$)/i.test(url);
+        var isVideo = nt === 'video' || url.includes('/video/upload/') || /\.(mp4|mov|avi|m4v|3gp|mkv)(\?|$)/i.test(url);
+        var isPhoto = !isAudio && !isVideo && url;
+        var isText  = !url && (nt === 'text' || !nt);
+        if (filter === 'audio') return isAudio;
+        if (filter === 'video') return isVideo;
+        if (filter === 'photo') return isPhoto;
+        if (filter === 'text')  return isText;
+        return true; // 'all' — show everything
       });
       filteredInbox = inbox.filter(function(i) { return i.file_type === filter; });
     }
