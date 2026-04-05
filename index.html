@@ -8248,11 +8248,17 @@ async function loadSmartRecordings() {
     var { data: notes } = await sbQ('beni_notes', qs);
     notes = notes || [];
 
-    // Also load from voice_memos
-    var qs2 = 'order=created_at.desc&limit=50&select=id,transcript,ai_summary,duration_sec,created_at,project_id,is_processed';
-    if (pid) qs2 += '&project_id=eq.' + pid;
+    // Also load from voice_memos (project_id may not exist in table)
+    var qs2 = 'order=created_at.desc&limit=50&select=id,transcript,ai_summary,duration_sec,created_at,is_processed';
     var { data: memos } = await sbQ('voice_memos', qs2);
     memos = memos || [];
+
+    // Also check beni_notes for items with audio URL patterns (fallback)
+    if (!notes.length) {
+      var qs3 = 'photo_url=like.*beni_voice*&order=created_at.desc&limit=30&select=id,note_text,photo_url,created_at,project_id';
+      var { data: audioNotes } = await sbQ('beni_notes', qs3);
+      notes = (audioNotes || []);
+    }
 
     if (!notes.length && !memos.length) {
       container.innerHTML = '<div style="padding:30px;color:#555;text-align:center;direction:rtl;"><div style="font-size:40px;margin-bottom:10px;">🎙️</div><div>אין הקלטות עדיין</div></div>';
