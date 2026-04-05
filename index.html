@@ -8339,15 +8339,27 @@ async function loadSmartRecordings() {
     // Render beni_notes audio files
     notes.forEach(function(n) {
       if (!n.photo_url) return;
+      // Extract transcript from note_text (Beni Pocket saves transcript there)
+      var noteTranscript = null;
+      var noteTitle = n.note_text || 'הקלטה קולית';
+      if (n.note_text && n.note_text.startsWith('🎙️ ') && n.note_text.length > 10) {
+        var rawText = n.note_text.replace(/^🎙️ /, '');
+        // If it's not just a duration like "0:04", it's a real transcript
+        if (!/^\d+:\d+$/.test(rawText.trim())) {
+          noteTranscript = rawText;
+          noteTitle = rawText.substring(0, 50);
+        }
+      }
       var card = buildRecordingCard({
         id:        'note_' + n.id,
         rawId:     n.id,
         source:    'beni_notes',
         audioUrl:  n.photo_url,
-        title:     n.note_text || 'הקלטה קולית',
+        title:     noteTitle,
         date:      n.created_at,
-        transcript: null,
-        processed: false
+        transcript: noteTranscript,
+        projectId: n.project_id,
+        processed: !!noteTranscript
       });
       list.appendChild(card);
     });
@@ -8395,24 +8407,49 @@ function buildRecordingCard(item) {
   audio.src = item.audioUrl;
   card.appendChild(audio);
 
-  // Transcript area
+  // Transcript area — show immediately if exists
   var transDiv = document.createElement('div');
   transDiv.id = 'trans-' + item.id;
-  transDiv.style.cssText = 'font-size:12px;color:#ccc;background:rgba(0,0,0,0.3);border-radius:8px;padding:10px;margin-bottom:10px;direction:rtl;line-height:1.7;display:' + (item.transcript ? 'block' : 'none') + ';';
-  transDiv.textContent = item.transcript || '';
+  transDiv.style.cssText = 'font-size:12px;color:#e2e8f0;background:rgba(0,0,0,0.3);border-radius:8px;padding:12px;margin-bottom:10px;direction:rtl;line-height:1.8;display:' + (item.transcript ? 'block' : 'none') + ';';
+  if (item.transcript) {
+    transDiv.innerHTML = '<div style="font-size:10px;color:#555;margin-bottom:6px;">📝 תמלול:</div>' + item.transcript.replace(/</g,'&lt;').replace(/\n/g,'<br>');
+  }
   card.appendChild(transDiv);
 
   // Action buttons
   var acts = document.createElement('div');
   acts.style.cssText = 'display:flex;gap:6px;flex-wrap:wrap;';
 
-  // Transcribe button
-  var transBtn = document.createElement('button');
-  transBtn.id = 'trans-btn-' + item.id;
-  transBtn.textContent = item.transcript ? '🔄 תמלל שוב' : '🤖 תמלל עם AI';
-  transBtn.style.cssText = 'background:linear-gradient(135deg,#7c3aed,#5b21b6);border:none;color:#fff;padding:8px 14px;border-radius:8px;cursor:pointer;font-family:Heebo,sans-serif;font-size:12px;font-weight:700;';
-  transBtn.addEventListener('click', (function(itm){ return function(){ transcribeRecording(itm); }; })(item));
-  acts.appendChild(transBtn);
+  // Only show transcribe button if no transcript yet
+  if (!item.transcript) {
+    var transBtn = document.createElement('button');
+    transBtn.id = 'trans-btn-' + item.id;
+    transBtn.textContent = '🤖 תמלל עם AI';
+    transBtn.style.cssText = 'background:linear-gradient(135deg,#7c3aed,#5b21b6);border:none;color:#fff;padding:8px 14px;border-radius:8px;cursor:pointer;font-family:Heebo,sans-serif;font-size:12px;font-weight:700;';
+    transBtn.addEventListener('click', (function(itm){ return function(){ transcribeRecording(itm); }; })(item));
+    acts.appendChild(transBtn);
+  }
+  
+  // Copy transcript button — always shown if transcript exists
+  if (item.transcript) {
+    var copyBtn = document.createElement('button');
+    copyBtn.textContent = '📋 העתק';
+    copyBtn.style.cssText = 'background:rgba(99,102,241,0.15);border:1px solid rgba(99,102,241,0.4);color:#a5b4fc;padding:8px 12px;border-radius:8px;cursor:pointer;font-family:Heebo,sans-serif;font-size:12px;font-weight:700;';
+    copyBtn.addEventListener('click', (function(t){ return function(){
+      navigator.clipboard.writeText(t).then(function(){ showToast('✅ הועתק', 'success'); });
+    }; })(item.transcript));
+    acts.appendChild(copyBtn);
+    
+    // Send to notes button
+    var toNotesBtn = document.createElement('button');
+    toNotesBtn.textContent = '📝 שמור להערות';
+    toNotesBtn.style.cssText = 'background:rgba(201,168,76,0.15);border:1px solid rgba(201,168,76,0.4);color:#c9a84c;padding:8px 12px;border-radius:8px;cursor:pointer;font-family:Heebo,sans-serif;font-size:12px;font-weight:700;';
+    toNotesBtn.addEventListener('click', (function(itm){ return function(){
+      sb.from('beni_notes').insert({ note_text: itm.transcript, color:'yellow', note_type:'text', project_id: itm.projectId||null, created_at:new Date().toISOString() })
+        .then(function(){ showToast('✅ נשמר להערות', 'success'); });
+    }; })(item));
+    acts.appendChild(toNotesBtn);
+  }
 
   // Route to task button
   var taskBtn = document.createElement('button');
