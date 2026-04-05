@@ -3647,6 +3647,20 @@ async function ragHistLoad() {
             '<div style="font-size:11px;color:#555;">' + date + '</div></div>' +
           '<div style="font-size:12px;color:#666;direction:rtl;">' + preview + '...</div>';
         card.addEventListener('click', (function(row){ return function(){ ragHistShowDetail(row); }; })(r));
+        // Delete button
+        var hdelBtn = document.createElement('button');
+        hdelBtn.textContent = '🗑️';
+        hdelBtn.title = 'מחק';
+        hdelBtn.style.cssText = 'position:absolute;top:8px;left:8px;background:rgba(239,68,68,0.12);border:1px solid rgba(239,68,68,0.3);color:#fca5a5;padding:3px 7px;border-radius:6px;cursor:pointer;font-size:11px;';
+        card.style.position = 'relative';
+        hdelBtn.addEventListener('click', (function(rid, c){ return function(e) {
+          e.stopPropagation();
+          if (!confirm('מחק רשומה זו?')) return;
+          fetch(SB_URL + '/rest/v1/ecf_documents?id=eq.' + rid, {
+            method:'DELETE', headers:{apikey:SB_KEY,Authorization:'Bearer '+SB_KEY}
+          }).then(function(){ c.style.opacity='0.3'; setTimeout(function(){ c.remove(); },300); showToast('🗑️ נמחק','success'); });
+        }; })(r.id, card));
+        card.appendChild(hdelBtn);
         listEl.appendChild(card);
       });
 
@@ -4845,6 +4859,26 @@ async function smartScanRun() {
   } finally {
     if (btn) { btn.disabled = false; btn.textContent = '🚀 הפעל ניתוח חכם'; }
   }
+}
+
+
+// ── Universal delete from beni_notes ─────────────────────────────────
+function makeDeleteBtn(noteId, cardEl, onSuccess) {
+  var btn = document.createElement('button');
+  btn.textContent = '🗑️';
+  btn.title = 'מחק';
+  btn.style.cssText = 'background:rgba(239,68,68,0.12);border:1px solid rgba(239,68,68,0.3);color:#fca5a5;padding:5px 8px;border-radius:8px;cursor:pointer;font-size:11px;flex-shrink:0;';
+  btn.addEventListener('click', function() {
+    if (!confirm('מחק פריט זה?')) return;
+    fetch(SB_URL + '/rest/v1/beni_notes?id=eq.' + noteId, {
+      method: 'DELETE', headers: { apikey: SB_KEY, Authorization: 'Bearer ' + SB_KEY }
+    }).then(function() {
+      if (cardEl) { cardEl.style.opacity = '0.3'; setTimeout(function(){ cardEl.remove(); }, 300); }
+      showToast('🗑️ נמחק', 'success');
+      if (typeof onSuccess === 'function') onSuccess();
+    }).catch(function(e) { showToast('❌ ' + e.message, 'error'); });
+  });
+  return btn;
 }
 
 
@@ -8164,10 +8198,14 @@ async function loadSmartPhotos() {
   var pid = document.getElementById('smart-project-filter')?.value||'';
   container.innerHTML = '<div style="padding:20px;color:#888;text-align:center;direction:rtl;">⏳ טוען תמונות...</div>';
   try {
-    var url = SB_URL + '/rest/v1/beni_notes?note_type=eq.photo&order=created_at.desc&limit=30';
-    if (pid) url += '&project_id=eq.'+pid;
-    var res = await fetch(url,{headers:{apikey:SB_KEY,Authorization:'Bearer '+SB_KEY}});
-    var data = res.ok?(await res.json()||[]):[];
+    var pqs = 'order=created_at.desc&limit=50&select=id,note_text,photo_url,note_type,created_at,project_id';
+    var { data: allPN } = await sbQ('beni_notes', pqs);
+    var data = (allPN||[]).filter(function(n){
+      if (pid && n.project_id !== pid) return false;
+      if (n.note_type === 'photo' || n.note_type === 'doc') return true;
+      var u = n.photo_url||'';
+      return u && !u.includes('/beni_voice/') && !/\.(mp4|mov|avi|m4v|mp3|m4a|wav|ogg|webm)(\?|$)/i.test(u);
+    });
     if (!data.length) { container.innerHTML='<div style="padding:30px;color:#555;text-align:center;direction:rtl;">📷 אין תמונות עדיין</div>'; return; }
     // Build photo grid with action buttons
     container.innerHTML = '';
@@ -8209,6 +8247,9 @@ async function loadSmartPhotos() {
       safeBtn.title = 'שלח לניתוח בטיחות';
       safeBtn.onclick = (function(u,c){ return function(){ smSendToSafety(u,c); }; })(src, caption);
       acts.appendChild(safeBtn);
+      // Delete button
+      var delBtn = makeDeleteBtn(n.id, card, loadSmartPhotos);
+      acts.appendChild(delBtn);
       card.appendChild(acts);
       grid.appendChild(card);
     });
@@ -8222,19 +8263,38 @@ async function loadSmartVideos() {
   var pid = document.getElementById('smart-project-filter')?.value||'';
   container.innerHTML = '<div style="padding:20px;color:#888;text-align:center;direction:rtl;">⏳ טוען סרטונים...</div>';
   try {
-    var url = SB_URL + '/rest/v1/beni_notes?note_type=eq.video&order=created_at.desc&limit=20';
-    if (pid) url += '&project_id=eq.'+pid;
-    var res = await fetch(url,{headers:{apikey:SB_KEY,Authorization:'Bearer '+SB_KEY}});
-    var data = res.ok?(await res.json()||[]):[];
+    var vqs = 'order=created_at.desc&limit=30&select=id,note_text,photo_url,note_type,created_at,project_id';
+    var { data: allVN } = await sbQ('beni_notes', vqs);
+    var data = (allVN||[]).filter(function(n){
+      if (pid && n.project_id !== pid) return false;
+      if (n.note_type === 'video') return true;
+      var u = n.photo_url||'';
+      return u && /\.(mp4|mov|avi|m4v)(\?|$)/i.test(u);
+    });
     if (!data.length) { container.innerHTML='<div style="padding:30px;color:#555;text-align:center;direction:rtl;">🎬 אין סרטונים עדיין</div>'; return; }
-    container.innerHTML = '<div style="display:flex;flex-direction:column;gap:10px;padding:10px;">'
-      + data.map(function(n){
-          var src = n.photo_url || n.cloudinary_url || '';
-          return src ? '<div style="background:rgba(255,255,255,0.05);border-radius:10px;padding:10px;">'
-            +'<video src="'+src+'" controls style="width:100%;border-radius:8px;max-height:200px;"></video>'
-            +'<div style="font-size:11px;color:#888;margin-top:5px;direction:rtl;">'+((n.note_text||'').substring(0,50))+'</div></div>' : '';
-        }).join('')
-      + '</div>';
+    container.innerHTML = '';
+    var vlist = document.createElement('div');
+    vlist.style.cssText = 'display:flex;flex-direction:column;gap:12px;padding:10px;';
+    data.forEach(function(n) {
+      var src = n.photo_url || n.cloudinary_url || '';
+      if (!src) return;
+      var vcard = document.createElement('div');
+      vcard.style.cssText = 'background:rgba(255,255,255,0.05);border-radius:12px;padding:10px;';
+      var vid = document.createElement('video');
+      vid.src = src; vid.controls = true;
+      vid.style.cssText = 'width:100%;border-radius:8px;max-height:200px;display:block;';
+      vcard.appendChild(vid);
+      var vmeta = document.createElement('div');
+      vmeta.style.cssText = 'display:flex;justify-content:space-between;align-items:center;margin-top:6px;';
+      var vtxt = document.createElement('div');
+      vtxt.style.cssText = 'font-size:11px;color:#888;direction:rtl;';
+      vtxt.textContent = (n.note_text||'').substring(0,50);
+      var vdel = makeDeleteBtn(n.id, vcard, loadSmartVideos);
+      vmeta.appendChild(vtxt); vmeta.appendChild(vdel);
+      vcard.appendChild(vmeta);
+      vlist.appendChild(vcard);
+    });
+    container.appendChild(vlist);
   } catch(e) { container.innerHTML='<div style="color:#ef4444;padding:20px;direction:rtl;">שגיאה: '+e.message+'</div>'; }
 }
 
@@ -8373,6 +8433,20 @@ function buildRecordingCard(item) {
   safeBtn.addEventListener('click', function(){ switchTab('safety'); showToast('🛡️ עבור לניתוח בטיחות', 'success'); });
   acts.appendChild(safeBtn);
 
+  // Delete button
+  var delBtn = document.createElement('button');
+  delBtn.textContent = '🗑️';
+  delBtn.title = 'מחק הקלטה';
+  delBtn.style.cssText = 'background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);color:#666;padding:8px 10px;border-radius:8px;cursor:pointer;font-size:12px;';
+  delBtn.addEventListener('click', (function(itm, c){ return function() {
+    if (!confirm('מחק הקלטה זו?')) return;
+    var table = itm.source === 'voice_memos' ? 'voice_memos' : 'beni_notes';
+    fetch(SB_URL + '/rest/v1/' + table + '?id=eq.' + itm.rawId, {
+      method: 'DELETE', headers: { apikey: SB_KEY, Authorization: 'Bearer ' + SB_KEY }
+    }).then(function(){ c.style.opacity='0.3'; setTimeout(function(){ c.remove(); },300); showToast('🗑️ נמחק','success'); });
+  }; })(item, card));
+  acts.appendChild(delBtn);
+
   card.appendChild(acts);
 
   // ARC timer for transcription
@@ -8407,9 +8481,22 @@ async function transcribeRecording(item) {
     var mtype = blob.type || 'audio/mpeg';
 
     // Claude API does not support audio transcription directly
-    // Use OpenAI Whisper via fetch for Hebrew transcription
+    // Detect correct extension from URL — Whisper rejects wrong extensions
+    var audioExt = 'm4a';
+    var urlLower = (item.audioUrl || '').toLowerCase();
+    if (urlLower.includes('.mp3'))  audioExt = 'mp3';
+    else if (urlLower.includes('.m4a'))  audioExt = 'm4a';
+    else if (urlLower.includes('.wav'))  audioExt = 'wav';
+    else if (urlLower.includes('.ogg'))  audioExt = 'ogg';
+    else if (urlLower.includes('.webm')) audioExt = 'webm';
+    else if (urlLower.includes('.mp4'))  audioExt = 'mp4';
+    var mimeMap = { mp3:'audio/mpeg', m4a:'audio/mp4', wav:'audio/wav', ogg:'audio/ogg', webm:'audio/webm', mp4:'audio/mp4' };
+    var audioFile = new File([blob], 'recording.' + audioExt, { type: mimeMap[audioExt] || 'audio/mpeg' });
+
+    // OpenAI Whisper for Hebrew transcription
     var whisperFd = new FormData();
-    whisperFd.append('file', blob, 'audio.mp3');
+    var whisperFd = new FormData();
+    whisperFd.append('file', audioFile);
     whisperFd.append('model', 'whisper-1');
     whisperFd.append('language', 'he');
     whisperFd.append('response_format', 'text');
