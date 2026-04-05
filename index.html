@@ -3797,10 +3797,10 @@ function buildMiscCard(item) {
   iconSpan.style.fontSize = '18px'; iconSpan.textContent = typeIcon;
   var textDiv = document.createElement('div');
   var titleEl = document.createElement('div');
-  titleEl.style.cssText = 'font-size:12px;font-weight:700;color:#fff;';
+  titleEl.style.cssText = 'font-size:13px;font-weight:800;color:#fff;';
   titleEl.textContent = (item.text || '').substring(0, 60);
   var metaEl = document.createElement('div');
-  metaEl.style.cssText = 'font-size:10px;color:#555;margin-top:1px;';
+  metaEl.style.cssText = 'font-size:11px;color:#888;margin-top:3px;font-weight:600;';
   metaEl.textContent = sourceLabel + ' · ' + date;
   textDiv.appendChild(titleEl); textDiv.appendChild(metaEl);
   leftDiv.appendChild(iconSpan); leftDiv.appendChild(textDiv);
@@ -4062,6 +4062,7 @@ async function miscProcessAll() {
     var inTok  = (data.usage && data.usage.input_tokens)  || 0;
     var outTok = (data.usage && data.usage.output_tokens) || 0;
     if (window.arc && arcEl) arc.finish(inTok, outTok);
+    if (window.arc && arcEl) arc.finish(inTok, outTok);
 
     var text   = (data.content && data.content[0] && data.content[0].text) || '{}';
     var clean  = text.replace(/```json|```/g, '').trim();
@@ -4211,10 +4212,10 @@ function buildMiscCard(item) {
   iconSpan.style.fontSize = '18px'; iconSpan.textContent = typeIcon;
   var textDiv = document.createElement('div');
   var titleEl = document.createElement('div');
-  titleEl.style.cssText = 'font-size:12px;font-weight:700;color:#fff;';
+  titleEl.style.cssText = 'font-size:13px;font-weight:800;color:#fff;';
   titleEl.textContent = (item.text || '').substring(0, 60);
   var metaEl = document.createElement('div');
-  metaEl.style.cssText = 'font-size:10px;color:#555;margin-top:1px;';
+  metaEl.style.cssText = 'font-size:11px;color:#888;margin-top:3px;font-weight:600;';
   metaEl.textContent = sourceLabel + ' · ' + date;
   textDiv.appendChild(titleEl); textDiv.appendChild(metaEl);
   leftDiv.appendChild(iconSpan); leftDiv.appendChild(textDiv);
@@ -4472,6 +4473,7 @@ async function miscProcessAll() {
     var data = await resp.json();
     var inTok  = (data.usage && data.usage.input_tokens)  || 0;
     var outTok = (data.usage && data.usage.output_tokens) || 0;
+    if (window.arc && arcEl) arc.finish(inTok, outTok);
     if (window.arc && arcEl) arc.finish(inTok, outTok);
 
     var text = (data.content && data.content[0] && data.content[0].text) || '{}';
@@ -4794,6 +4796,8 @@ async function smartScanRun() {
     'לכל קטגוריה: פרט ממצאים ספציפיים, חומרה (גבוה/בינוני/נמוך), המלצות פעולה מיידית.',
     'כתוב בעברית, מקצועי וממוקד.'
   ].join('\n');
+  var arcEl = document.getElementById('ss-arc');
+  if (window.arc && arcEl) arc.start(arcEl);
   try {
     var resp = await claudeFetch({
       _apiKey: apiKey,
@@ -4806,6 +4810,7 @@ async function smartScanRun() {
     var text = data.content && data.content[0] ? data.content[0].text : '';
     var inTok  = (data.usage && data.usage.input_tokens)  || 0;
     var outTok = (data.usage && data.usage.output_tokens) || 0;
+    if (window.arc && arcEl) arc.finish(inTok, outTok);
 
     var fmt = text
       .replace(/</g, '&lt;')
@@ -4832,6 +4837,7 @@ async function smartScanRun() {
     showToast('✅ ניתוח הושלם', 'success');
 
   } catch(e) {
+    if (window.arc && arcEl) arc.reset();
     if (resultsEl) resultsEl.innerHTML = '<div style="color:#fca5a5;padding:16px;direction:rtl;">❌ ' + e.message + '</div>';
     showToast('❌ שגיאה: ' + e.message, 'error');
   } finally {
@@ -6816,6 +6822,8 @@ function generatePOPdf(po) {
         </div>
       </div>
 
+      <!-- ARC timer for smart scan -->
+      <div id="ss-arc" style="margin-bottom:10px;"></div>
       <!-- Scan button -->
       <button onclick="smartScanRun()" id="ss-scan-btn" style="display:none;width:100%;padding:16px;background:linear-gradient(135deg,#c9a84c,#9a6f00);border:none;color:#fff;border-radius:12px;font-family:Heebo,sans-serif;font-size:16px;font-weight:900;cursor:pointer;margin-bottom:20px;">🚀 הפעל ניתוח חכם</button>
 
@@ -8231,24 +8239,203 @@ async function loadSmartVideos() {
 async function loadSmartRecordings() {
   var container = document.getElementById('sj-panel-recordings');
   if (!container) return;
-  var pid = document.getElementById('smart-project-filter')?.value||'';
+  var pid = document.getElementById('smart-project-filter') ? document.getElementById('smart-project-filter').value : '';
   container.innerHTML = '<div style="padding:20px;color:#888;text-align:center;direction:rtl;">⏳ טוען הקלטות...</div>';
   try {
-    var url = SB_URL + '/rest/v1/call_log?order=created_at.desc&limit=20&select=*';
-    if (pid) url += '&project_id=eq.'+pid;
-    var res = await fetch(url,{headers:{apikey:SB_KEY,Authorization:'Bearer '+SB_KEY}});
-    var data = res.ok?(await res.json()||[]):[];
-    if (!data.length) { container.innerHTML='<div style="padding:30px;color:#555;text-align:center;direction:rtl;">🎙️ אין הקלטות עדיין</div>'; return; }
-    container.innerHTML = '<div style="display:flex;flex-direction:column;gap:10px;padding:10px;">'
-      + data.map(function(r){
-          return '<div style="background:rgba(255,255,255,0.05);border-radius:10px;padding:12px;direction:rtl;">'
-            +'<div style="font-size:12px;font-weight:700;color:#c4b5fd;margin-bottom:6px;">'+(r.caller_name||r.contractor_name||'שיחה')+' · '+new Date(r.created_at).toLocaleDateString('he-IL')+'</div>'
-            +(r.recording_url?'<audio src="'+r.recording_url+'" controls style="width:100%;margin-bottom:6px;"></audio>':'')
-            +(r.ai_summary?'<div style="font-size:11px;color:#888;">'+r.ai_summary+'</div>':'')
-            +'</div>';
-        }).join('')
-      + '</div>';
-  } catch(e) { container.innerHTML='<div style="color:#ef4444;padding:20px;direction:rtl;">שגיאה: '+e.message+'</div>'; }
+    // Load from beni_notes (audio type) — where Beni Pocket sends voice files
+    var qs = 'note_type=eq.audio&order=created_at.desc&limit=50&select=id,note_text,photo_url,created_at,project_id';
+    if (pid) qs += '&project_id=eq.' + pid;
+    var { data: notes } = await sbQ('beni_notes', qs);
+    notes = notes || [];
+
+    // Also load from voice_memos
+    var qs2 = 'order=created_at.desc&limit=50&select=id,transcript,ai_summary,duration_sec,created_at,project_id,is_processed';
+    if (pid) qs2 += '&project_id=eq.' + pid;
+    var { data: memos } = await sbQ('voice_memos', qs2);
+    memos = memos || [];
+
+    if (!notes.length && !memos.length) {
+      container.innerHTML = '<div style="padding:30px;color:#555;text-align:center;direction:rtl;"><div style="font-size:40px;margin-bottom:10px;">🎙️</div><div>אין הקלטות עדיין</div></div>';
+      return;
+    }
+
+    container.innerHTML = '';
+    var list = document.createElement('div');
+    list.style.cssText = 'display:flex;flex-direction:column;gap:12px;';
+
+    // Render beni_notes audio files
+    notes.forEach(function(n) {
+      if (!n.photo_url) return;
+      var card = buildRecordingCard({
+        id:        'note_' + n.id,
+        rawId:     n.id,
+        source:    'beni_notes',
+        audioUrl:  n.photo_url,
+        title:     n.note_text || 'הקלטה קולית',
+        date:      n.created_at,
+        transcript: null,
+        processed: false
+      });
+      list.appendChild(card);
+    });
+
+    // Render voice_memos
+    memos.forEach(function(m) {
+      var audioUrl = m.transcript && m.transcript.startsWith('http') ? m.transcript : null;
+      if (!audioUrl) return;
+      var card = buildRecordingCard({
+        id:        'memo_' + m.id,
+        rawId:     m.id,
+        source:    'voice_memos',
+        audioUrl:  audioUrl,
+        title:     m.ai_summary || ('הקלטה ' + Math.floor((m.duration_sec||0)/60) + ':' + String((m.duration_sec||0)%60).padStart(2,'0')),
+        date:      m.created_at,
+        transcript: m.is_processed ? m.transcript : null,
+        processed: m.is_processed
+      });
+      list.appendChild(card);
+    });
+
+    container.appendChild(list);
+  } catch(e) { container.innerHTML = '<div style="color:#ef4444;padding:20px;direction:rtl;">שגיאה: ' + e.message + '</div>'; }
+}
+
+function buildRecordingCard(item) {
+  var card = document.createElement('div');
+  card.id = 'rec-card-' + item.id;
+  card.style.cssText = 'background:#1e1e35;border:1px solid rgba(139,92,246,0.2);border-radius:14px;padding:14px;direction:rtl;';
+
+  var date = new Date(item.date).toLocaleDateString('he-IL') + ' ' +
+             new Date(item.date).toLocaleTimeString('he-IL',{hour:'2-digit',minute:'2-digit'});
+
+  // Header
+  var hdr = document.createElement('div');
+  hdr.style.cssText = 'display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;';
+  hdr.innerHTML = '<div style="font-size:13px;font-weight:700;color:#c4b5fd;">🎙️ ' + (item.title||'הקלטה').replace(/</g,'&lt;') + '</div>' +
+                  '<div style="font-size:10px;color:#555;">' + date + '</div>';
+  card.appendChild(hdr);
+
+  // Audio player
+  var audio = document.createElement('audio');
+  audio.controls = true;
+  audio.style.cssText = 'width:100%;margin-bottom:10px;border-radius:8px;';
+  audio.src = item.audioUrl;
+  card.appendChild(audio);
+
+  // Transcript area
+  var transDiv = document.createElement('div');
+  transDiv.id = 'trans-' + item.id;
+  transDiv.style.cssText = 'font-size:12px;color:#ccc;background:rgba(0,0,0,0.3);border-radius:8px;padding:10px;margin-bottom:10px;direction:rtl;line-height:1.7;display:' + (item.transcript ? 'block' : 'none') + ';';
+  transDiv.textContent = item.transcript || '';
+  card.appendChild(transDiv);
+
+  // Action buttons
+  var acts = document.createElement('div');
+  acts.style.cssText = 'display:flex;gap:6px;flex-wrap:wrap;';
+
+  // Transcribe button
+  var transBtn = document.createElement('button');
+  transBtn.id = 'trans-btn-' + item.id;
+  transBtn.textContent = item.transcript ? '🔄 תמלל שוב' : '🤖 תמלל עם AI';
+  transBtn.style.cssText = 'background:linear-gradient(135deg,#7c3aed,#5b21b6);border:none;color:#fff;padding:8px 14px;border-radius:8px;cursor:pointer;font-family:Heebo,sans-serif;font-size:12px;font-weight:700;';
+  transBtn.addEventListener('click', (function(itm){ return function(){ transcribeRecording(itm); }; })(item));
+  acts.appendChild(transBtn);
+
+  // Route to task button
+  var taskBtn = document.createElement('button');
+  taskBtn.textContent = '✅ צור משימה';
+  taskBtn.style.cssText = 'background:rgba(34,197,94,0.15);border:1px solid rgba(34,197,94,0.4);color:#86efac;padding:8px 12px;border-radius:8px;cursor:pointer;font-family:Heebo,sans-serif;font-size:12px;font-weight:700;';
+  taskBtn.addEventListener('click', (function(itm){ return function(){
+    var t = document.getElementById('trans-' + itm.id);
+    var text = (t && t.textContent) || itm.title || 'משימה מהקלטה';
+    sb.from('reminders').insert({ text: text.substring(0,200), priority:'רגיל', is_done:false, created_at:new Date().toISOString() });
+    showToast('✅ משימה נוצרה', 'success');
+  }; })(item));
+  acts.appendChild(taskBtn);
+
+  // Route to safety button
+  var safeBtn = document.createElement('button');
+  safeBtn.textContent = '🛡️ בטיחות';
+  safeBtn.style.cssText = 'background:rgba(239,68,68,0.15);border:1px solid rgba(239,68,68,0.4);color:#fca5a5;padding:8px 12px;border-radius:8px;cursor:pointer;font-family:Heebo,sans-serif;font-size:12px;font-weight:700;';
+  safeBtn.addEventListener('click', function(){ switchTab('safety'); showToast('🛡️ עבור לניתוח בטיחות', 'success'); });
+  acts.appendChild(safeBtn);
+
+  card.appendChild(acts);
+
+  // ARC timer for transcription
+  var arcEl = document.createElement('div');
+  arcEl.id = 'rec-arc-' + item.id;
+  arcEl.style.marginTop = '8px';
+  card.appendChild(arcEl);
+
+  return card;
+}
+
+async function transcribeRecording(item) {
+  var apiKey = APP && APP.config && APP.config.anthropic_key;
+  if (!apiKey) { showToast('מפתח API חסר', 'error'); return; }
+
+  var btn    = document.getElementById('trans-btn-' + item.id);
+  var outDiv = document.getElementById('trans-' + item.id);
+  var arcEl  = document.getElementById('rec-arc-' + item.id);
+
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ מתמלל...'; }
+  if (arcEl && window.arc) arc.start(arcEl);
+
+  try {
+    // Fetch audio and convert to base64 for Claude
+    var res  = await fetch(item.audioUrl);
+    var blob = await res.blob();
+    var b64  = await new Promise(function(resolve) {
+      var r = new FileReader();
+      r.onload = function(e) { resolve(e.target.result.split(',')[1]); };
+      r.readAsDataURL(blob);
+    });
+    var mtype = blob.type || 'audio/mpeg';
+
+    var resp = await claudeFetch({
+      _apiKey: apiKey,
+      model: 'claude-sonnet-4-20250514',
+      max_tokens: 2000,
+      system: 'אתה מתמלל שיחות קוליות. תמלל את ההקלטה לעברית בדיוק כפי שנאמר. אחרי התמלול, הוסף שורה: "סיכום: [משפט אחד על תוכן השיחה]".',
+      messages: [{ role: 'user', content: [
+        { type: 'text', text: 'תמלל את ההקלטה הבאה לעברית:' },
+        { type: 'document', source: { type: 'base64', media_type: mtype, data: b64 } }
+      ]}]
+    }, null);
+
+    var data = await resp.json();
+    var text = data.content && data.content[0] ? data.content[0].text : '';
+    var inTok  = (data.usage && data.usage.input_tokens)  || 0;
+    var outTok = (data.usage && data.usage.output_tokens) || 0;
+
+    if (arcEl && window.arc) arc.finish(inTok, outTok);
+
+    // Save transcript
+    if (item.source === 'voice_memos') {
+      await fetch(SB_URL + '/rest/v1/voice_memos?id=eq.' + item.rawId, {
+        method: 'PATCH',
+        headers: { apikey: SB_KEY, Authorization: 'Bearer ' + SB_KEY, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+        body: JSON.stringify({ transcript: text, is_processed: true, ai_summary: text.substring(0,100) })
+      });
+    } else {
+      await fetch(SB_URL + '/rest/v1/beni_notes?id=eq.' + item.rawId, {
+        method: 'PATCH',
+        headers: { apikey: SB_KEY, Authorization: 'Bearer ' + SB_KEY, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+        body: JSON.stringify({ note_text: '🎙️ ' + text.substring(0,200) })
+      });
+    }
+
+    // Show transcript
+    if (outDiv) { outDiv.style.display = 'block'; outDiv.textContent = text; }
+    if (btn)    { btn.disabled = false; btn.textContent = '🔄 תמלל שוב'; }
+    showToast('✅ תמלול הושלם', 'success');
+
+  } catch(e) {
+    if (arcEl && window.arc) arc.reset();
+    if (btn) { btn.disabled = false; btn.textContent = '🤖 תמלל עם AI'; }
+    showToast('❌ ' + e.message, 'error');
+  }
 }
 // ══ END SMART JOURNAL INLINE ════════════════════════════════════════════
 
@@ -8895,6 +9082,8 @@ function openLinkModal(takeoffId) {
         </div>
       </div>
 
+      <!-- ARC timer for smart scan -->
+      <div id="ss-arc" style="margin-bottom:10px;"></div>
       <!-- Scan button -->
       <button onclick="smartScanRun()" id="ss-scan-btn" style="display:none;width:100%;padding:16px;background:linear-gradient(135deg,#c9a84c,#9a6f00);border:none;color:#fff;border-radius:12px;font-family:Heebo,sans-serif;font-size:16px;font-weight:900;cursor:pointer;margin-bottom:20px;">🚀 הפעל ניתוח חכם</button>
 
