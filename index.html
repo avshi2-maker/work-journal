@@ -4712,6 +4712,134 @@ function miscSendToRAG() {
 }
 
 
+// ══ SMART SCAN — inline (replaces smart_scan.js external module) ══════
+var _ssArcTimer = null;
+
+function smartScanInit() {
+  // Restore shared photo if available
+  if (window._ssSharedPhotoB64 || window._ssSharedPhotoUrl) {
+    var thumb = document.getElementById('ss-thumb');
+    var btn   = document.getElementById('ss-scan-btn');
+    var prog  = document.getElementById('ss-upload-progress');
+    if (thumb && (window._ssSharedPhotoB64 || window._ssSharedPhotoUrl)) {
+      thumb.src = window._ssSharedPhotoB64 || window._ssSharedPhotoUrl;
+      thumb.style.display = 'block';
+    }
+    if (btn)  btn.style.display  = 'block';
+    if (prog) prog.style.display = 'block';
+  }
+}
+
+function _ssPopulateProjects() {
+  var sel = document.getElementById('ss-project-sel');
+  if (!sel || !window.allProjects) return;
+  sel.innerHTML = '<option value="">בחר פרויקט (אופציונלי)</option>';
+  (window.allProjects || []).forEach(function(p) {
+    var opt = document.createElement('option');
+    opt.value = p.id; opt.textContent = p.project_name;
+    sel.appendChild(opt);
+  });
+}
+
+async function smartScanRun() {
+  var apiKey = APP && APP.config && APP.config.anthropic_key;
+  if (!apiKey) { showToast('מפתח API חסר', 'error'); return; }
+
+  // Get image — from shared (מגוון/יומן) or from file input
+  var imageB64 = window._ssSharedPhotoB64 || null;
+  var imageUrl = window._ssSharedPhotoUrl  || null;
+
+  if (!imageB64 && !imageUrl) {
+    showToast('העלה תמונה תחילה', 'error'); return;
+  }
+
+  // Get selected analyses
+  var doSafety    = document.getElementById('ss-cb-safety')    && document.getElementById('ss-cb-safety').checked;
+  var doSnag      = document.getElementById('ss-cb-snag')      && document.getElementById('ss-cb-snag').checked;
+  var doStandards = document.getElementById('ss-cb-standards') && document.getElementById('ss-cb-standards').checked;
+  var doCosts     = document.getElementById('ss-cb-costs')     && document.getElementById('ss-cb-costs').checked;
+
+  if (!doSafety && !doSnag && !doStandards && !doCosts) {
+    showToast('בחר לפחות ניתוח אחד', 'error'); return;
+  }
+
+  var btn = document.getElementById('ss-scan-btn');
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ מנתח...'; }
+
+  var resultsEl = document.getElementById('ss-results');
+  if (resultsEl) { resultsEl.style.display = 'block'; resultsEl.innerHTML = '<div style="text-align:center;padding:20px;color:#888;">🧠 מנתח תמונה...</div>'; }
+
+  // Build image content for Claude
+  var imageContent;
+  if (imageB64) {
+    var b64data = imageB64.includes(',') ? imageB64.split(',')[1] : imageB64;
+    var mtype   = imageB64.includes('data:') ? imageB64.split(';')[0].replace('data:','') : 'image/jpeg';
+    imageContent = { type: 'image', source: { type: 'base64', media_type: mtype, data: b64data } };
+  } else {
+    imageContent = { type: 'image', source: { type: 'url', url: imageUrl } };
+  }
+
+  // Build analysis prompts
+  var analyses = [];
+  if (doSafety)    analyses.push('🛡️ בטיחות: סיכוני חיים, הפרות חוק, ציוד מגן חסר, סכנות נפילה');
+  if (doSnag)      analyses.push('🔍 ליקויים: פגמי גמר, בנייה לקויה, רטיבות, סדקים, איכות עבודה');
+  if (doStandards) analyses.push('📚 תקנים: התייחסות לתקני בנייה ישראליים רלוונטיים (תקן 413, ISO, SII)');
+  if (doCosts)     analyses.push('💰 עלויות: הערכת עלות תיקון לפי מחירון הבינוי הממשלתי 2025');
+
+  var prompt = [
+    'אתה מומחה בנייה ישראלי. נתח את התמונה לפי הקטגוריות הבאות:',
+    '',
+    analyses.join('\n'),
+    '',
+    'לכל קטגוריה: פרט ממצאים ספציפיים, חומרה (גבוה/בינוני/נמוך), המלצות פעולה מיידית.',
+    'כתוב בעברית, מקצועי וממוקד.'
+  ].join('\n');
+  try {
+    var resp = await claudeFetch({
+      _apiKey: apiKey,
+      model: 'claude-sonnet-4-20250514',
+      max_tokens: 2000,
+      messages: [{ role: 'user', content: [imageContent, { type: 'text', text: prompt }] }]
+    }, null);
+
+    var data = await resp.json();
+    var text = data.content && data.content[0] ? data.content[0].text : '';
+    var inTok  = (data.usage && data.usage.input_tokens)  || 0;
+    var outTok = (data.usage && data.usage.output_tokens) || 0;
+
+    var fmt = text
+      .replace(/</g, '&lt;')
+      .replace(/\*\*([^*]+)\*\*/g, '<strong style="color:#c9a84c;">$1</strong>')
+      .replace(/\n/g, '<br>');
+
+    if (resultsEl) {
+      resultsEl.innerHTML =
+        '<div style="background:#1e1e35;border:1.5px solid rgba(201,168,76,0.3);border-radius:14px;padding:18px;direction:rtl;">' +
+        '<div style="font-size:11px;color:#555;margin-bottom:10px;">📊 ' + inTok + ' + ' + outTok + ' טוקנים</div>' +
+        '<div style="font-size:13px;line-height:1.8;color:#e2e8f0;">' + fmt + '</div>' +
+        '</div>';
+
+      // ECF footer
+      if (window.ecf) {
+        resultsEl.appendChild(ecf({
+          title: 'סריקה מהירה — ' + new Date().toLocaleDateString('he-IL'),
+          content: text,
+          type: 'engineering_advice'
+        }));
+      }
+    }
+
+    showToast('✅ ניתוח הושלם', 'success');
+
+  } catch(e) {
+    if (resultsEl) resultsEl.innerHTML = '<div style="color:#fca5a5;padding:16px;direction:rtl;">❌ ' + e.message + '</div>';
+    showToast('❌ שגיאה: ' + e.message, 'error');
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = '🚀 הפעל ניתוח חכם'; }
+  }
+}
+
+
 async function bootstrap() {
   try {
     // 1. Load lookups + config — graceful if tables don't exist yet
@@ -7615,16 +7743,8 @@ async function _fetchCallRecordingsModule() {
 // ══ SMART SCAN MODULE ════════════════════════════════════════════════
 var _smartScanFetched = false;
 async function _fetchSmartScanModule() {
-  if (_smartScanFetched) return;
+  // smart_scan.js is now fully inline — no external fetch needed
   _smartScanFetched = true;
-  try {
-    var res = await fetch('smart_scan.js?v=' + Date.now());
-    if (!res.ok) throw new Error('HTTP ' + res.status);
-    var code = await res.text();
-    if (code.trim().startsWith('<')) throw new Error('Got HTML not JS');
-    var ns = document.createElement('script'); ns.textContent = code;
-    document.head.appendChild(ns);
-  } catch(e) { console.error('smart_scan fetch failed:', e); _smartScanFetched = false; }
 }
 
 // ══ STANDARDS RAG MODULE ═════════════════════════════════════════════
