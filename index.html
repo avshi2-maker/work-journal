@@ -5062,6 +5062,562 @@ async function loadProjectTab(container, projectId, projectName, tab) {
 }
 
 
+// ══ PROJECT CONTENT PANEL ═══════════════════════════════════════════
+async function openProjectContent(projectId, projectName, tab) {
+  // Remove existing
+  var ex = document.getElementById('proj-content-overlay');
+  if (ex) ex.remove();
+
+  var overlay = document.createElement('div');
+  overlay.id = 'proj-content-overlay';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:99999;display:flex;align-items:flex-start;justify-content:center;padding:40px 20px;overflow-y:auto;';
+
+  var box = document.createElement('div');
+  box.style.cssText = 'background:#1a1a2e;border-radius:16px;width:100%;max-width:800px;font-family:Heebo,sans-serif;direction:rtl;min-height:400px;';
+
+  // Header
+  var hdr = document.createElement('div');
+  hdr.style.cssText = 'display:flex;justify-content:space-between;align-items:center;padding:18px 20px;border-bottom:1px solid rgba(255,255,255,0.08);';
+  hdr.innerHTML = '<div style="font-size:16px;font-weight:900;color:#fff;">🏗️ ' + projectName + '</div>';
+  var closeBtn = document.createElement('button');
+  closeBtn.textContent = '✕';
+  closeBtn.style.cssText = 'background:rgba(255,255,255,0.1);border:none;color:#fff;width:32px;height:32px;border-radius:50%;font-size:16px;cursor:pointer;';
+  closeBtn.onclick = function() { overlay.remove(); };
+  hdr.appendChild(closeBtn);
+  box.appendChild(hdr);
+
+  // Tab bar
+  var tabs = document.createElement('div');
+  tabs.style.cssText = 'display:flex;gap:4px;padding:12px 16px;border-bottom:1px solid rgba(255,255,255,0.06);';
+  [
+    { id:'notes',      label:'📝 הערות' },
+    { id:'tasks',      label:'✅ משימות' },
+    { id:'recordings', label:'🎙️ הקלטות' }
+  ].forEach(function(t) {
+    var btn = document.createElement('button');
+    btn.textContent = t.label;
+    btn.dataset.tab = t.id;
+    btn.style.cssText = 'padding:8px 16px;border-radius:8px;border:none;cursor:pointer;font-family:Heebo,sans-serif;font-size:13px;font-weight:700;transition:all .15s;' +
+      (t.id === tab ? 'background:rgba(201,168,76,0.25);color:#c9a84c;' : 'background:rgba(255,255,255,0.04);color:#888;');
+    btn.onclick = function() {
+      box.querySelectorAll('[data-tab]').forEach(function(b){
+        b.style.background = 'rgba(255,255,255,0.04)'; b.style.color = '#888';
+      });
+      btn.style.background = 'rgba(201,168,76,0.25)'; btn.style.color = '#c9a84c';
+      loadProjectTab(contentArea, projectId, projectName, t.id);
+    };
+    tabs.appendChild(btn);
+  });
+  box.appendChild(tabs);
+
+  // Content area
+  var contentArea = document.createElement('div');
+  contentArea.style.cssText = 'padding:16px;min-height:300px;';
+  contentArea.innerHTML = '<div style="text-align:center;padding:40px;color:#555;">⏳ טוען...</div>';
+  box.appendChild(contentArea);
+
+  overlay.appendChild(box);
+  overlay.addEventListener('click', function(e){ if(e.target===overlay) overlay.remove(); });
+  document.body.appendChild(overlay);
+
+  // Load initial tab
+  await loadProjectTab(contentArea, projectId, projectName, tab);
+}
+
+async function loadProjectTab(container, projectId, projectName, tab) {
+  container.innerHTML = '<div style="text-align:center;padding:40px;color:#555;">⏳ טוען...</div>';
+
+  if (tab === 'notes') {
+    var { data } = await sbQ('beni_notes', 'project_id=eq.' + projectId + '&order=created_at.desc&limit=50&select=id,note_text,note_type,photo_url,created_at');
+    data = data || [];
+    if (!data.length) { container.innerHTML = '<div style="text-align:center;padding:40px;color:#555;">📝 אין הערות לפרויקט זה</div>'; return; }
+    container.innerHTML = '';
+    data.forEach(function(n) {
+      var card = document.createElement('div');
+      card.style.cssText = 'background:rgba(255,255,255,0.04);border-radius:10px;padding:12px;margin-bottom:8px;direction:rtl;';
+      var date = new Date(n.created_at).toLocaleDateString('he-IL') + ' ' + new Date(n.created_at).toLocaleTimeString('he-IL',{hour:'2-digit',minute:'2-digit'});
+      var icon = {photo:'📸',video:'🎬',audio:'🎙️',text:'📝'}[n.note_type] || '📝';
+      card.innerHTML = '<div style="display:flex;justify-content:space-between;margin-bottom:6px;">' +
+        '<div style="font-size:12px;font-weight:700;color:#c9a84c;">' + icon + ' ' + (n.note_type||'הערה') + '</div>' +
+        '<div style="font-size:10px;color:#555;">' + date + '</div></div>' +
+        '<div style="font-size:13px;color:#e2e8f0;line-height:1.6;">' + (n.note_text||'').replace(/</g,'&lt;').substring(0,200) + '</div>';
+      if (n.photo_url && n.note_type === 'photo') {
+        var img = document.createElement('img');
+        img.src = n.photo_url; img.style.cssText = 'width:100%;max-height:120px;object-fit:cover;border-radius:8px;margin-top:8px;cursor:zoom-in;';
+        img.onclick = function(){ openLightbox(n.photo_url, n.note_text||''); };
+        card.appendChild(img);
+      }
+      container.appendChild(card);
+    });
+
+  } else if (tab === 'tasks') {
+    var { data } = await sbQ('reminders', 'order=created_at.desc&limit=50&select=id,text,is_done,priority,created_at');
+    // reminders don't have project_id — show all, filter by content mentioning project
+    data = data || [];
+    if (!data.length) { container.innerHTML = '<div style="text-align:center;padding:40px;color:#555;">✅ אין משימות</div>'; return; }
+    container.innerHTML = '';
+    data.forEach(function(r) {
+      var card = document.createElement('div');
+      card.style.cssText = 'background:rgba(255,255,255,0.04);border-radius:10px;padding:12px;margin-bottom:8px;direction:rtl;display:flex;gap:12px;align-items:flex-start;';
+      var date = new Date(r.created_at).toLocaleDateString('he-IL');
+      var priColor = {גבוה:'#ef4444',רגיל:'#c9a84c',נמוך:'#555'}[r.priority] || '#555';
+      card.innerHTML = '<div style="font-size:20px;margin-top:2px;">' + (r.is_done ? '✅' : '⬜') + '</div>' +
+        '<div style="flex:1;"><div style="font-size:13px;color:' + (r.is_done?'#555':'#e2e8f0') + ';text-decoration:' + (r.is_done?'line-through':'none') + ';line-height:1.6;">' + (r.text||'').replace(/</g,'&lt;') + '</div>' +
+        '<div style="font-size:10px;color:#555;margin-top:4px;">' + date + (r.priority?' · <span style="color:'+priColor+';">'+r.priority+'</span>':'') + '</div></div>';
+      // Toggle done button
+      var toggleBtn = document.createElement('button');
+      toggleBtn.textContent = r.is_done ? '↩️' : '✔';
+      toggleBtn.style.cssText = 'background:rgba(34,197,94,0.15);border:1px solid rgba(34,197,94,0.3);color:#86efac;padding:4px 8px;border-radius:6px;cursor:pointer;font-size:11px;flex-shrink:0;';
+      toggleBtn.onclick = (function(id, done, c){
+        return function() {
+          fetch(SB_URL+'/rest/v1/reminders?id=eq.'+id, {method:'PATCH',headers:{apikey:SB_KEY,Authorization:'Bearer '+SB_KEY,'Content-Type':'application/json',Prefer:'return=minimal'},body:JSON.stringify({is_done:!done})})
+            .then(function(){ loadProjectTab(container, projectId, projectName, 'tasks'); });
+        };
+      })(r.id, r.is_done, card);
+      card.appendChild(toggleBtn);
+      container.appendChild(card);
+    });
+
+  } else if (tab === 'recordings') {
+    var { data } = await sbQ('beni_notes', 'project_id=eq.' + projectId + '&note_type=eq.audio&order=created_at.desc&limit=30&select=id,note_text,photo_url,created_at');
+    var notes = (data||[]).filter(function(n){ return n.photo_url; });
+    // Also get voice_memos
+    var { data: memos } = await sbQ('voice_memos', 'project_id=eq.' + projectId + '&order=created_at.desc&limit=30&select=id,transcript,ai_summary,created_at,is_processed');
+    memos = (memos||[]);
+    if (!notes.length && !memos.length) { container.innerHTML = '<div style="text-align:center;padding:40px;color:#555;">🎙️ אין הקלטות לפרויקט זה</div>'; return; }
+    container.innerHTML = '';
+
+    notes.forEach(function(n) {
+      var card = document.createElement('div');
+      card.style.cssText = 'background:rgba(139,92,246,0.08);border:1px solid rgba(139,92,246,0.2);border-radius:10px;padding:12px;margin-bottom:8px;direction:rtl;';
+      var date = new Date(n.created_at).toLocaleDateString('he-IL') + ' ' + new Date(n.created_at).toLocaleTimeString('he-IL',{hour:'2-digit',minute:'2-digit'});
+      var title = (n.note_text||'הקלטה').replace(/^🎙️ /,'');
+      var hasTranscript = title.length > 15 && !title.includes('Call recording') && !title.includes('Voice_') && !/^\d+:\d+$/.test(title.trim());
+      card.innerHTML = '<div style="display:flex;justify-content:space-between;margin-bottom:8px;"><div style="font-size:12px;font-weight:700;color:#c4b5fd;">🎙️ ' + (hasTranscript ? title.substring(0,60) : 'הקלטה קולית') + '</div><div style="font-size:10px;color:#555;">' + date + '</div></div>';
+      var audio = document.createElement('audio');
+      audio.src = n.photo_url; audio.controls = true; audio.style.cssText = 'width:100%;margin-bottom:8px;border-radius:6px;';
+      card.appendChild(audio);
+      if (hasTranscript) {
+        var txt = document.createElement('div');
+        txt.style.cssText = 'font-size:12px;color:#ccc;background:rgba(0,0,0,0.3);border-radius:8px;padding:10px;line-height:1.7;direction:rtl;';
+        txt.textContent = title;
+        card.appendChild(txt);
+      }
+      container.appendChild(card);
+    });
+  }
+}
+
+
+// ══ CALL ANALYSIS MODAL ══════════════════════════════════════════════
+async function openCallAnalysisModal(transcript, projectId, item) {
+  var ex = document.getElementById('call-analysis-overlay');
+  if (ex) ex.remove();
+
+  var overlay = document.createElement('div');
+  overlay.id = 'call-analysis-overlay';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:99999;display:flex;align-items:flex-start;justify-content:center;padding:20px;overflow-y:auto;';
+
+  var box = document.createElement('div');
+  box.style.cssText = 'background:#1a1a2e;border-radius:16px;width:100%;max-width:800px;font-family:Heebo,sans-serif;direction:rtl;margin-bottom:40px;';
+
+  // ── Header ──
+  var hdr = document.createElement('div');
+  hdr.style.cssText = 'padding:18px 20px;border-bottom:1px solid rgba(255,255,255,0.08);display:flex;justify-content:space-between;align-items:center;';
+  var hdrTitle = document.createElement('div');
+  hdrTitle.style.cssText = 'font-size:16px;font-weight:900;color:#fff;';
+  hdrTitle.textContent = '🧠 ניתוח שיחה חכם';
+  var hdrClose = document.createElement('button');
+  hdrClose.textContent = '✕';
+  hdrClose.style.cssText = 'background:rgba(255,255,255,0.1);border:none;color:#fff;width:32px;height:32px;border-radius:50%;font-size:16px;cursor:pointer;';
+  hdrClose.onclick = function() { overlay.remove(); };
+  hdr.appendChild(hdrTitle); hdr.appendChild(hdrClose);
+  box.appendChild(hdr);
+
+  // ── Speaker names ──
+  var nameRow = document.createElement('div');
+  nameRow.style.cssText = 'padding:14px 20px;border-bottom:1px solid rgba(255,255,255,0.06);';
+  var nameLabel = document.createElement('div');
+  nameLabel.style.cssText = 'font-size:12px;color:#888;margin-bottom:8px;font-weight:700;';
+  nameLabel.textContent = '👤 שמות הדוברים (אופציונלי)';
+  nameRow.appendChild(nameLabel);
+  var nameFields = document.createElement('div');
+  nameFields.style.cssText = 'display:flex;gap:10px;flex-wrap:wrap;';
+  var fieldStyle = 'flex:1;min-width:140px;background:#242438;border:1px solid rgba(255,255,255,0.1);color:#fff;padding:8px 10px;border-radius:8px;font-family:Heebo,sans-serif;font-size:13px;direction:rtl;box-sizing:border-box;';
+  var sp1 = document.createElement('input'); sp1.id='ca-s1'; sp1.placeholder='דובר 1 — שם'; sp1.style.cssText=fieldStyle;
+  var sp2 = document.createElement('input'); sp2.id='ca-s2'; sp2.placeholder='דובר 2 — שם'; sp2.style.cssText=fieldStyle;
+  var topicIn = document.createElement('input'); topicIn.id='ca-topic'; topicIn.placeholder='נושא השיחה / שם פגישה'; topicIn.style.cssText=fieldStyle;
+  nameFields.appendChild(sp1); nameFields.appendChild(sp2); nameFields.appendChild(topicIn);
+  nameRow.appendChild(nameFields);
+  box.appendChild(nameRow);
+
+  // ── Checkboxes ──
+  var cbRow = document.createElement('div');
+  cbRow.style.cssText = 'padding:14px 20px;border-bottom:1px solid rgba(255,255,255,0.06);';
+  var cbLabel = document.createElement('div');
+  cbLabel.style.cssText = 'font-size:12px;color:#888;margin-bottom:8px;font-weight:700;';
+  cbLabel.textContent = '📋 מה לייצר מהשיחה';
+  cbRow.appendChild(cbLabel);
+  var cbGrid = document.createElement('div');
+  cbGrid.style.cssText = 'display:flex;gap:6px;flex-wrap:wrap;';
+  var cbItems = ['פרוטוקול שיחה','משימות ומעקב','הסכמות שהושגו','פעולות נדרשות','יומן Google','סיכום מנהלים'];
+  cbItems.forEach(function(t, i) {
+    var lbl = document.createElement('label');
+    lbl.style.cssText = 'display:flex;align-items:center;gap:6px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:7px 12px;cursor:pointer;font-size:12px;color:#ccc;font-family:Heebo,sans-serif;';
+    var cb = document.createElement('input');
+    cb.type = 'checkbox'; cb.id = 'ca-cb-'+i; cb.checked = true;
+    cb.style.cssText = 'accent-color:#c9a84c;';
+    lbl.appendChild(cb);
+    lbl.appendChild(document.createTextNode(' ' + t));
+    cbGrid.appendChild(lbl);
+  });
+  cbRow.appendChild(cbGrid);
+  box.appendChild(cbRow);
+
+  // ── Generate button ──
+  var genBtn = document.createElement('button');
+  genBtn.textContent = '🚀 צור ניתוח מלא';
+  genBtn.style.cssText = 'display:block;width:calc(100% - 40px);margin:16px 20px;padding:14px;background:linear-gradient(135deg,#c9a84c,#9a6f00);border:none;color:#fff;border-radius:12px;font-family:Heebo,sans-serif;font-size:15px;font-weight:900;cursor:pointer;';
+
+  // ── Results area ──
+  var resultsDiv = document.createElement('div');
+  resultsDiv.style.cssText = 'padding:0 20px 20px;';
+
+  genBtn.onclick = async function() {
+    var s1name = document.getElementById('ca-s1').value.trim() || 'דובר 1';
+    var s2name = document.getElementById('ca-s2').value.trim() || 'דובר 2';
+    var topic  = document.getElementById('ca-topic').value.trim() || 'שיחת עבודה';
+    var chosen = cbItems.filter(function(t,i){ var c=document.getElementById('ca-cb-'+i); return c&&c.checked; });
+
+    genBtn.disabled = true; genBtn.textContent = '⏳ Claude מנתח...';
+    resultsDiv.innerHTML = '';
+    var loader = document.createElement('div');
+    loader.style.cssText = 'text-align:center;padding:30px;color:#888;font-family:Heebo,sans-serif;';
+    loader.textContent = '🧠 מנתח שיחה...';
+    resultsDiv.appendChild(loader);
+
+    var apiKey = APP && APP.config && APP.config.anthropic_key;
+    if (!apiKey) { showToast('מפתח Claude חסר','error'); genBtn.disabled=false; genBtn.textContent='🚀 צור ניתוח מלא'; return; }
+
+    var namedTrans = transcript
+      .replace(/דובר 1/g, s1name).replace(/דובר 2/g, s2name)
+      .replace(/speaker_0/g, s1name).replace(/speaker_1/g, s2name);
+
+    var instrMap = {
+      'פרוטוקול שיחה': 'פרוטוקול: תאריך, משתתפים, נושאים שנדונו לפי סדר עם ציטוטים מרכזיים',
+      'משימות ומעקב': 'משימות: טבלה עם עמודות — משימה | אחראי | תאריך יעד | עדיפות',
+      'הסכמות שהושגו': 'הסכמות: כל התחייבות והחלטה שהתקבלה',
+      'פעולות נדרשות': 'פעולות: מה נדרש לפני הפגישה הבאה',
+      'יומן Google': 'יומן: אם הוזכרה פגישה — JSON עם שדות: title, date, description, attendees',
+      'סיכום מנהלים': 'סיכום מנהלים: 3-4 משפטים — מה הושג, מה הוחלט, הצעד הבא'
+    };
+
+    var prompt = 'אתה מנהל פרויקטים מקצועי. קיבלת תמלול שיחה עסקית.\n' +
+      'נושא: ' + topic + '\n\n' +
+      'תמלול:\n---\n' + namedTrans + '\n---\n\n' +
+      'צור את הפלטים הבאים בעברית, כל אחד תחת כותרת ## :\n\n' +
+      chosen.map(function(t){ return instrMap[t] || t; }).join('\n\n');
+
+    try {
+      var resp = await claudeFetch({ _apiKey:apiKey, model:'claude-sonnet-4-20250514', max_tokens:3000,
+        messages:[{role:'user',content:prompt}] }, null);
+      var data = await resp.json();
+      var result = data.content && data.content[0] ? data.content[0].text : '';
+
+      resultsDiv.innerHTML = '';
+
+      // Result text box
+      var resBox = document.createElement('div');
+      resBox.style.cssText = 'background:rgba(0,0,0,0.3);border-radius:12px;padding:16px;font-size:13px;color:#e2e8f0;line-height:1.8;white-space:pre-wrap;direction:rtl;margin-top:12px;';
+      resBox.innerHTML = result.replace(/</g,'&lt;').replace(/## ([^\n]+)/g,'<strong style="color:#c9a84c;font-size:14px;display:block;margin:14px 0 6px;">📌 $1</strong>');
+      resultsDiv.appendChild(resBox);
+
+      // Action buttons row
+      var actRow = document.createElement('div');
+      actRow.style.cssText = 'display:flex;gap:8px;flex-wrap:wrap;margin-top:14px;';
+
+      // Copy
+      var cpBtn = document.createElement('button');
+      cpBtn.textContent = '📋 העתק הכל';
+      cpBtn.style.cssText = 'background:rgba(99,102,241,0.15);border:1px solid rgba(99,102,241,0.4);color:#a5b4fc;padding:10px 16px;border-radius:8px;cursor:pointer;font-family:Heebo,sans-serif;font-size:12px;font-weight:700;';
+      cpBtn.onclick = function(){ navigator.clipboard.writeText(result).then(function(){ showToast('✅ הועתק','success'); }); };
+      actRow.appendChild(cpBtn);
+
+      // Save to project
+      if (projectId) {
+        var saveBtn2 = document.createElement('button');
+        saveBtn2.textContent = '📝 שמור לפרויקט';
+        saveBtn2.style.cssText = 'background:rgba(201,168,76,0.15);border:1px solid rgba(201,168,76,0.4);color:#c9a84c;padding:10px 16px;border-radius:8px;cursor:pointer;font-family:Heebo,sans-serif;font-size:12px;font-weight:700;';
+        saveBtn2.onclick = function(){
+          sb.from('beni_notes').insert({ note_text:'📞 ניתוח שיחה — '+topic+':\n\n'+result.substring(0,2000), color:'blue', note_type:'text', project_id:projectId, created_at:new Date().toISOString() })
+            .then(function(){ showToast('✅ נשמר לפרויקט','success'); saveBtn2.style.borderColor='#22c55e'; saveBtn2.style.color='#86efac'; });
+        };
+        actRow.appendChild(saveBtn2);
+      }
+
+      // Google Calendar — extract JSON if present
+      var calMatch = result.match(/\{[\s\S]*?"title"[\s\S]*?\}/);
+      if (calMatch) {
+        try {
+          var calData = JSON.parse(calMatch[0]);
+          if (calData.title) {
+            var calBtn = document.createElement('button');
+            calBtn.textContent = '📅 צור ב-Google Calendar';
+            calBtn.style.cssText = 'background:rgba(34,197,94,0.15);border:1px solid rgba(34,197,94,0.4);color:#86efac;padding:10px 16px;border-radius:8px;cursor:pointer;font-family:Heebo,sans-serif;font-size:12px;font-weight:700;';
+            calBtn.onclick = function(){ openGoogleCalendar(calData); };
+            actRow.appendChild(calBtn);
+          }
+        } catch(e) {}
+      }
+
+      resultsDiv.appendChild(actRow);
+      genBtn.disabled = false; genBtn.textContent = '🔄 נתח שוב';
+      showToast('✅ ניתוח הושלם','success');
+
+    } catch(e) {
+      resultsDiv.innerHTML = '<div style="color:#fca5a5;padding:16px;direction:rtl;">❌ ' + e.message + '</div>';
+      genBtn.disabled = false; genBtn.textContent = '🚀 צור ניתוח מלא';
+    }
+  };
+
+  box.appendChild(genBtn);
+  box.appendChild(resultsDiv);
+  overlay.appendChild(box);
+  overlay.addEventListener('click', function(e){ if(e.target===overlay) overlay.remove(); });
+  document.body.appendChild(overlay);
+}
+
+
+// ══ CALL ANALYSIS MODAL ══════════════════════════════════════════════
+function openCallAnalysisModal(transcript, projectId, item) {
+  var ex = document.getElementById('call-analysis-overlay');
+  if (ex) ex.remove();
+
+  var overlay = document.createElement('div');
+  overlay.id = 'call-analysis-overlay';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:99999;display:flex;align-items:flex-start;justify-content:center;padding:20px;overflow-y:auto;';
+
+  var box = document.createElement('div');
+  box.style.cssText = 'background:#1a1a2e;border-radius:16px;width:100%;max-width:800px;font-family:Heebo,sans-serif;direction:rtl;margin-bottom:40px;';
+
+  // Header
+  var hdr = document.createElement('div');
+  hdr.style.cssText = 'padding:18px 20px;border-bottom:1px solid rgba(255,255,255,0.08);display:flex;justify-content:space-between;align-items:center;';
+  var hdrTitle = document.createElement('div');
+  hdrTitle.style.cssText = 'font-size:16px;font-weight:900;color:#fff;';
+  hdrTitle.textContent = '🧠 ניתוח שיחה חכם';
+  var hdrX = document.createElement('button');
+  hdrX.textContent = '✕';
+  hdrX.style.cssText = 'background:rgba(255,255,255,0.1);border:none;color:#fff;width:32px;height:32px;border-radius:50%;font-size:16px;cursor:pointer;';
+  hdrX.onclick = function() { overlay.remove(); };
+  hdr.appendChild(hdrTitle); hdr.appendChild(hdrX);
+  box.appendChild(hdr);
+
+  // Speaker names
+  var nameSection = document.createElement('div');
+  nameSection.style.cssText = 'padding:14px 20px;border-bottom:1px solid rgba(255,255,255,0.06);';
+  var nameLabel = document.createElement('div');
+  nameLabel.style.cssText = 'font-size:12px;color:#888;margin-bottom:8px;font-weight:700;';
+  nameLabel.textContent = '👤 שמות הדוברים (אופציונלי)';
+  nameSection.appendChild(nameLabel);
+  var nameRow = document.createElement('div');
+  nameRow.style.cssText = 'display:flex;gap:8px;flex-wrap:wrap;';
+  var inputs = {};
+  [['ca-s1','דובר 1'],['ca-s2','דובר 2'],['ca-topic','נושא השיחה']].forEach(function(pair) {
+    var wrap = document.createElement('div');
+    wrap.style.cssText = 'flex:1;min-width:140px;';
+    var lbl = document.createElement('label');
+    lbl.style.cssText = 'font-size:10px;color:#555;display:block;margin-bottom:3px;';
+    lbl.textContent = pair[1];
+    var inp = document.createElement('input');
+    inp.id = pair[0];
+    inp.placeholder = pair[1];
+    inp.style.cssText = 'width:100%;background:#242438;border:1px solid rgba(255,255,255,0.1);color:#fff;padding:7px 9px;border-radius:8px;font-family:Heebo,sans-serif;font-size:12px;direction:rtl;box-sizing:border-box;';
+    wrap.appendChild(lbl); wrap.appendChild(inp);
+    nameRow.appendChild(wrap);
+    inputs[pair[0]] = inp;
+  });
+  nameSection.appendChild(nameRow);
+  box.appendChild(nameSection);
+
+  // Type checkboxes
+  var typeSection = document.createElement('div');
+  typeSection.style.cssText = 'padding:12px 20px;border-bottom:1px solid rgba(255,255,255,0.06);';
+  var typeLabel = document.createElement('div');
+  typeLabel.style.cssText = 'font-size:12px;color:#888;margin-bottom:8px;font-weight:700;';
+  typeLabel.textContent = '📋 מה לייצר מהשיחה';
+  typeSection.appendChild(typeLabel);
+  var typeRow = document.createElement('div');
+  typeRow.style.cssText = 'display:flex;gap:6px;flex-wrap:wrap;';
+  var typeList = ['פרוטוקול שיחה','משימות ומעקב','הסכמות שהושגו','פעולות נדרשות','יומן Google','סיכום מנהלים'];
+  var cbs = [];
+  typeList.forEach(function(t, idx) {
+    var lbl = document.createElement('label');
+    lbl.style.cssText = 'display:flex;align-items:center;gap:5px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:6px 10px;cursor:pointer;font-size:11px;color:#ccc;';
+    var cb = document.createElement('input');
+    cb.type = 'checkbox'; cb.checked = true; cb.style.accentColor = '#c9a84c';
+    cbs.push(cb);
+    lbl.appendChild(cb);
+    lbl.appendChild(document.createTextNode(' ' + t));
+    typeRow.appendChild(lbl);
+  });
+  typeSection.appendChild(typeRow);
+  box.appendChild(typeSection);
+
+  // Generate button
+  var genBtn = document.createElement('button');
+  genBtn.textContent = '🚀 צור ניתוח מלא';
+  genBtn.style.cssText = 'display:block;width:calc(100% - 40px);margin:14px 20px 0;padding:13px;background:linear-gradient(135deg,#c9a84c,#9a6f00);border:none;color:#fff;border-radius:12px;font-family:Heebo,sans-serif;font-size:14px;font-weight:900;cursor:pointer;';
+  box.appendChild(genBtn);
+
+  var resultsDiv = document.createElement('div');
+  resultsDiv.style.cssText = 'padding:0 20px 20px;';
+  box.appendChild(resultsDiv);
+
+  genBtn.onclick = async function() {
+    var s1 = inputs['ca-s1'].value.trim() || 'דובר 1';
+    var s2 = inputs['ca-s2'].value.trim() || 'דובר 2';
+    var topic = inputs['ca-topic'].value.trim() || 'שיחת עבודה';
+    var chosen = typeList.filter(function(t,i){ return cbs[i].checked; });
+    if (!chosen.length) { showToast('בחר לפחות פריט אחד','error'); return; }
+
+    genBtn.disabled = true; genBtn.textContent = '⏳ Claude מנתח...';
+    resultsDiv.innerHTML = '<div style="text-align:center;padding:30px;color:#888;font-family:Heebo,sans-serif;">🧠 מנתח שיחה...</div>';
+
+    var apiKey = APP && APP.config && APP.config.anthropic_key;
+    if (!apiKey) { showToast('מפתח Claude חסר','error'); genBtn.disabled=false; genBtn.textContent='🚀 צור ניתוח מלא'; return; }
+
+    var namedTrans = transcript
+      .replace(/דובר 1/g, s1).replace(/דובר 2/g, s2)
+      .replace(/speaker_1/g, s1).replace(/speaker_2/g, s2);
+
+    var instructions = {
+      'פרוטוקול שיחה': 'פרוטוקול רשמי: תאריך, משתתפים, נושאים שנדונו לפי סדר כרונולוגי עם ציטוטים מרכזיים',
+      'משימות ומעקב': 'טבלת משימות: | משימה | אחראי | תאריך יעד | עדיפות |',
+      'הסכמות שהושגו': 'רשימת הסכמות, התחייבויות והחלטות שהתקבלו בשיחה',
+      'פעולות נדרשות': 'מה צריך לקרות לפני השיחה/פגישה הבאה — לפי אחריות',
+      'יומן Google': 'אם הוזכרה פגישה — ספק JSON: {"title":"","date":"YYYY-MM-DD HH:MM","attendees":[],"description":""}',
+      'סיכום מנהלים': 'סיכום ב-3 משפטים: מה הושג, מה הוחלט, מה הצעד הבא'
+    };
+
+    var prompt = 'אתה עורך פרוטוקולים עסקי מקצועי. תמלול השיחה:\n\n' + namedTrans + '\n\nנושא: ' + topic + '\n\nצור בעברית:\n\n' +
+      chosen.map(function(t){ return '## ' + t + '\n' + (instructions[t]||t); }).join('\n\n');
+
+    try {
+      var resp = await claudeFetch({ _apiKey:apiKey, model:'claude-sonnet-4-20250514', max_tokens:3000,
+        messages:[{role:'user',content:prompt}] }, null);
+      var data = await resp.json();
+      var result = data.content && data.content[0] ? data.content[0].text : '';
+      var tokens = (data.usage && data.usage.output_tokens) || 0;
+
+      // Extract calendar JSON if present
+      var calData = null;
+      var calMatch = result.match(/\{[^{}]*"title"[^{}]*"date"[^{}]*\}/);
+      if (calMatch) { try { calData = JSON.parse(calMatch[0]); } catch(e){} }
+
+      // Render
+      resultsDiv.innerHTML = '';
+      var resBox = document.createElement('div');
+      resBox.style.cssText = 'background:rgba(0,0,0,0.3);border-radius:12px;padding:16px;margin-top:14px;font-size:13px;color:#e2e8f0;line-height:1.8;white-space:pre-wrap;direction:rtl;';
+      resBox.innerHTML = result.replace(/</g,'&lt;')
+        .replace(/## ([^\n]+)/g,'<strong style="color:#c9a84c;font-size:14px;display:block;margin:14px 0 6px;">📌 $1</strong>');
+      resultsDiv.appendChild(resBox);
+
+      var statsEl = document.createElement('div');
+      statsEl.style.cssText = 'font-size:10px;color:#555;margin-top:6px;direction:rtl;';
+      statsEl.textContent = tokens + ' טוקנים · Claude Sonnet';
+      resultsDiv.appendChild(statsEl);
+
+      // Action buttons
+      var btnRow = document.createElement('div');
+      btnRow.style.cssText = 'display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;';
+
+      var cpyBtn = document.createElement('button');
+      cpyBtn.textContent = '📋 העתק הכל';
+      cpyBtn.style.cssText = 'background:rgba(99,102,241,0.15);border:1px solid rgba(99,102,241,0.4);color:#a5b4fc;padding:10px 14px;border-radius:8px;cursor:pointer;font-family:Heebo,sans-serif;font-size:12px;font-weight:700;';
+      cpyBtn.onclick = function(){ navigator.clipboard.writeText(result).then(function(){ showToast('✅ הועתק','success'); }); };
+      btnRow.appendChild(cpyBtn);
+
+      if (projectId) {
+        var saveBtn2 = document.createElement('button');
+        saveBtn2.textContent = '📝 שמור לפרויקט';
+        saveBtn2.style.cssText = 'background:rgba(201,168,76,0.15);border:1px solid rgba(201,168,76,0.4);color:#c9a84c;padding:10px 14px;border-radius:8px;cursor:pointer;font-family:Heebo,sans-serif;font-size:12px;font-weight:700;';
+        saveBtn2.onclick = function(){
+          sb.from('beni_notes').insert({ note_text: '📞 ניתוח שיחה: ' + result.substring(0,400), color:'blue', note_type:'text', project_id:projectId, created_at:new Date().toISOString() })
+            .then(function(){ showToast('✅ נשמר לפרויקט','success'); saveBtn2.style.borderColor='#22c55e'; saveBtn2.style.color='#86efac'; });
+        };
+        btnRow.appendChild(saveBtn2);
+      }
+
+      if (calData && calData.title) {
+        var calBtn = document.createElement('button');
+        calBtn.textContent = '📅 צור פגישה ב-Google';
+        calBtn.style.cssText = 'background:rgba(34,197,94,0.15);border:1px solid rgba(34,197,94,0.4);color:#86efac;padding:10px 14px;border-radius:8px;cursor:pointer;font-family:Heebo,sans-serif;font-size:12px;font-weight:700;';
+        calBtn.onclick = function(){ openGoogleCalendar(calData); };
+        btnRow.appendChild(calBtn);
+      }
+
+      resultsDiv.appendChild(btnRow);
+      genBtn.disabled = false; genBtn.textContent = '🔄 נתח שוב';
+      showToast('✅ ניתוח הושלם','success');
+    } catch(e) {
+      resultsDiv.innerHTML = '<div style="color:#fca5a5;padding:16px;direction:rtl;">❌ ' + e.message + '</div>';
+      genBtn.disabled = false; genBtn.textContent = '🚀 צור ניתוח מלא';
+    }
+  };
+
+  overlay.appendChild(box);
+  overlay.addEventListener('click', function(e){ if(e.target===overlay) overlay.remove(); });
+  document.body.appendChild(overlay);
+}
+
+
+async function saveCallAnalysis(projectId, summary, noteId) {
+  await sb.from('beni_notes').insert({
+    note_text: '📞 ניתוח שיחה: ' + summary,
+    color: 'blue', note_type: 'text',
+    project_id: projectId,
+    created_at: new Date().toISOString()
+  });
+  showToast('✅ ניתוח נשמר לפרויקט','success');
+}
+
+function openGoogleCalendar(calData) {
+  // Build Google Calendar URL
+  var title = encodeURIComponent(calData.title || 'פגישה');
+  var details = encodeURIComponent(calData.description || calData.details || '');
+  var location = encodeURIComponent(calData.location || '');
+  var guests = encodeURIComponent((calData.attendees||[]).join(','));
+
+  // Parse date — try to extract from calData.date
+  var dateStr = calData.date || calData.datetime || '';
+  var startDate = '', endDate = '';
+  if (dateStr) {
+    try {
+      var d = new Date(dateStr);
+      if (!isNaN(d)) {
+        var fmt = function(dt) {
+          return dt.toISOString().replace(/[-:]/g,'').replace(/\.\d{3}/,'');
+        };
+        startDate = fmt(d);
+        var endD = new Date(d.getTime() + 60*60*1000); // +1 hour
+        endDate = fmt(endD);
+      }
+    } catch(e) {}
+  }
+
+  var url = 'https://calendar.google.com/calendar/render?action=TEMPLATE' +
+    '&text=' + title +
+    '&details=' + details +
+    '&location=' + location +
+    (guests ? '&add=' + guests : '') +
+    (startDate ? '&dates=' + startDate + '/' + endDate : '');
+
+  window.open(url, '_blank');
+  showToast('📅 פותח Google Calendar','success');
+}
+
+
 async function bootstrap() {
   try {
     // 1. Load lookups + config — graceful if tables don't exist yet
@@ -8856,7 +9412,6 @@ async function transcribeRecording(item) {
     saveBtn.textContent = '📝 שמור להערות';
     saveBtn.style.cssText = 'background:rgba(201,168,76,0.15);border:1px solid rgba(201,168,76,0.4);color:#c9a84c;padding:8px 12px;border-radius:8px;cursor:pointer;font-family:Heebo,sans-serif;font-size:11px;font-weight:700;';
     saveBtn.onclick = function(){
-      // Get project from card's project selector
       var cardEl = saveBtn.closest ? saveBtn.closest('[id^="rec-card-"]') : null;
       var sel = cardEl ? cardEl.querySelector('select') : null;
       var pid = sel ? sel.value : null;
@@ -8865,6 +9420,18 @@ async function transcribeRecording(item) {
         .then(function(){ showToast('✅ נשמר להערות','success'); saveBtn.style.borderColor='#22c55e'; saveBtn.style.color='#86efac'; });
     };
     actRow.appendChild(saveBtn);
+
+    // Smart analysis button
+    var analyzeBtn = document.createElement('button');
+    analyzeBtn.textContent = '🧠 נתח שיחה';
+    analyzeBtn.style.cssText = 'background:linear-gradient(135deg,#1e3a5f,#2563eb);border:none;color:#fff;padding:8px 12px;border-radius:8px;cursor:pointer;font-family:Heebo,sans-serif;font-size:11px;font-weight:700;';
+    analyzeBtn.onclick = function(){
+      var cardEl = analyzeBtn.closest ? analyzeBtn.closest('[id^="rec-card-"]') : null;
+      var sel = cardEl ? cardEl.querySelector('select') : null;
+      var pid = sel ? sel.value : null;
+      openCallAnalysisModal(text, pid, item);
+    };
+    actRow.appendChild(analyzeBtn);
 
     if (outDiv && outDiv.parentNode) outDiv.parentNode.insertBefore(actRow, outDiv.nextSibling);
     showToast('✅ תמלול הושלם — ' + text.split(' ').length + ' מילים', 'success');
