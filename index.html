@@ -1507,6 +1507,7 @@ window.addEventListener('unhandledrejection', function(e) {
       <select id="rec-project-filter" onchange="loadSmartRecordings()" style="background:#1a1a2e;border:1px solid rgba(201,168,76,0.3);color:#c9a84c;padding:6px 10px;border-radius:20px;font-family:Heebo,sans-serif;font-size:11px;direction:rtl;cursor:pointer;">
         <option value="">כל הפרויקטים</option>
       </select>
+      <button onclick="showCallAnalysesHistory()" style="background:rgba(59,130,246,0.15);border:1px solid rgba(59,130,246,0.4);color:#93c5fd;padding:6px 12px;border-radius:20px;cursor:pointer;font-family:Heebo,sans-serif;font-size:11px;font-weight:700;">📋 היסטוריית ניתוחים</button>
     </div>
     <div id="sj-recordings-list">
       <div style="text-align:center;padding:40px;color:#444;">
@@ -5371,6 +5372,21 @@ async function openCallAnalysisModal(transcript, projectId, item) {
       }
 
       resultsDiv.appendChild(actRow);
+      // Auto-save to call_analyses table
+      sb.from('call_analyses').insert({
+        project_id:  projectId || null,
+        call_date:   item && item.date ? item.date : new Date().toISOString(),
+        speaker1:    s1,
+        speaker2:    s2,
+        topic:       topic,
+        transcript:  transcript ? transcript.substring(0,3000) : '',
+        analysis:    result,
+        created_at:  new Date().toISOString()
+      }).then(function(res) {
+        if (res.error) console.warn('call_analyses save:', res.error.message);
+        else showToast('💾 ניתוח נשמר אוטומטית','success');
+      });
+
       genBtn.disabled = false; genBtn.textContent = '🔄 נתח שוב';
       showToast('✅ ניתוח הושלם','success');
 
@@ -5535,7 +5551,7 @@ function openCallAnalysisModal(transcript, projectId, item) {
 
       var statsEl = document.createElement('div');
       statsEl.style.cssText = 'font-size:10px;color:#555;margin-top:6px;direction:rtl;';
-      statsEl.textContent = tokens + ' טוקנים · Claude Sonnet';
+      statsEl.textContent = (inTok + outTok) + ' טוקנים · Claude Sonnet';
       resultsDiv.appendChild(statsEl);
 
       // Action buttons
@@ -5581,6 +5597,21 @@ function openCallAnalysisModal(transcript, projectId, item) {
       btnRow.appendChild(manCalBtn);
 
       resultsDiv.appendChild(btnRow);
+      // Auto-save to call_analyses table
+      sb.from('call_analyses').insert({
+        project_id:  projectId || null,
+        call_date:   item && item.date ? item.date : new Date().toISOString(),
+        speaker1:    s1,
+        speaker2:    s2,
+        topic:       topic,
+        transcript:  transcript ? transcript.substring(0,3000) : '',
+        analysis:    result,
+        created_at:  new Date().toISOString()
+      }).then(function(res) {
+        if (res.error) console.warn('call_analyses save:', res.error.message);
+        else showToast('💾 ניתוח נשמר אוטומטית','success');
+      });
+
       genBtn.disabled = false; genBtn.textContent = '🔄 נתח שוב';
       showToast('✅ ניתוח הושלם','success');
     } catch(e) {
@@ -5594,6 +5625,132 @@ function openCallAnalysisModal(transcript, projectId, item) {
   overlay.appendChild(box);
   overlay.addEventListener('click', function(e){ if(e.target===overlay) overlay.remove(); });
   document.body.appendChild(overlay);
+}
+
+
+// ══ CALL ANALYSES HISTORY ════════════════════════════════════════════
+async function showCallAnalysesHistory() {
+  var ex = document.getElementById('call-hist-overlay');
+  if (ex) ex.remove();
+
+  var overlay = document.createElement('div');
+  overlay.id = 'call-hist-overlay';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:99999;display:flex;align-items:flex-start;justify-content:center;padding:20px;overflow-y:auto;';
+
+  var box = document.createElement('div');
+  box.style.cssText = 'background:#1a1a2e;border-radius:16px;width:100%;max-width:800px;font-family:Heebo,sans-serif;direction:rtl;margin-bottom:40px;';
+
+  // Header
+  var hdr = document.createElement('div');
+  hdr.style.cssText = 'padding:16px 20px;border-bottom:1px solid rgba(255,255,255,0.08);display:flex;justify-content:space-between;align-items:center;';
+  var hTitle = document.createElement('div');
+  hTitle.style.cssText = 'font-size:16px;font-weight:900;color:#fff;';
+  hTitle.textContent = '📋 היסטוריית ניתוחי שיחות';
+  var hX = document.createElement('button');
+  hX.textContent = '✕';
+  hX.style.cssText = 'background:rgba(255,255,255,0.1);border:none;color:#fff;width:30px;height:30px;border-radius:50%;cursor:pointer;font-size:14px;';
+  hX.onclick = function(){ overlay.remove(); };
+  hdr.appendChild(hTitle); hdr.appendChild(hX);
+  box.appendChild(hdr);
+
+  // Loading
+  var listDiv = document.createElement('div');
+  listDiv.style.cssText = 'padding:16px;';
+  listDiv.innerHTML = '<div style="text-align:center;padding:30px;color:#555;">⏳ טוען ניתוחים...</div>';
+  box.appendChild(listDiv);
+
+  overlay.appendChild(box);
+  overlay.addEventListener('click', function(e){ if(e.target===overlay) overlay.remove(); });
+  document.body.appendChild(overlay);
+
+  // Load from Supabase
+  var { data } = await sbQ('call_analyses', 'order=created_at.desc&limit=30&select=id,project_id,call_date,speaker1,speaker2,topic,analysis,created_at');
+  data = data || [];
+
+  if (!data.length) {
+    listDiv.innerHTML = '<div style="text-align:center;padding:40px;color:#555;">📋 אין ניתוחים שמורים עדיין</div>';
+    return;
+  }
+
+  listDiv.innerHTML = '';
+  data.forEach(function(a) {
+    var card = document.createElement('div');
+    card.style.cssText = 'background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.07);border-radius:12px;padding:14px;margin-bottom:10px;cursor:pointer;transition:background .15s;';
+    card.onmouseenter = function(){ card.style.background='rgba(255,255,255,0.07)'; };
+    card.onmouseleave = function(){ card.style.background='rgba(255,255,255,0.04)'; };
+
+    var callDate = a.call_date ? new Date(a.call_date).toLocaleDateString('he-IL') + ' ' + new Date(a.call_date).toLocaleTimeString('he-IL',{hour:'2-digit',minute:'2-digit'}) : '—';
+    var proj = a.project_id ? (window.allProjects||[]).find(function(p){ return p.id===a.project_id; }) : null;
+
+    var summary = (a.analysis||'').substring(0,150).replace(/## /g,'').replace(/📌 /g,'').replace(/\n/g,' ');
+
+    card.innerHTML =
+      '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px;">' +
+        '<div>' +
+          '<div style="font-size:13px;font-weight:800;color:#c9a84c;">' + (a.topic||'שיחה') + '</div>' +
+          '<div style="font-size:11px;color:#555;margin-top:2px;">' +
+            (a.speaker1||'דובר 1') + ' ↔ ' + (a.speaker2||'דובר 2') +
+            (proj ? ' · 🏗️ ' + proj.project_name : '') +
+          '</div>' +
+        '</div>' +
+        '<div style="font-size:10px;color:#444;text-align:left;">📅 ' + callDate + '</div>' +
+      '</div>' +
+      '<div style="font-size:12px;color:#888;line-height:1.5;">' + summary + '...</div>';
+
+    // Expand on click
+    var expanded = false;
+    var fullDiv = document.createElement('div');
+    fullDiv.style.cssText = 'display:none;margin-top:12px;';
+
+    var fullText = document.createElement('div');
+    fullText.style.cssText = 'font-size:12px;color:#e2e8f0;line-height:1.8;white-space:pre-wrap;background:rgba(0,0,0,0.3);border-radius:8px;padding:12px;direction:rtl;';
+    fullText.innerHTML = (a.analysis||'').replace(/</g,'&lt;').replace(/## ([^\n]+)/g,'<strong style="color:#c9a84c;">📌 $1</strong>').replace(/\n/g,'<br>');
+    fullDiv.appendChild(fullText);
+
+    // Action buttons
+    var actRow2 = document.createElement('div');
+    actRow2.style.cssText = 'display:flex;gap:6px;flex-wrap:wrap;margin-top:10px;';
+
+    var cpyBtn2 = document.createElement('button');
+    cpyBtn2.textContent = '📋 העתק';
+    cpyBtn2.style.cssText = 'background:rgba(99,102,241,0.15);border:1px solid rgba(99,102,241,0.4);color:#a5b4fc;padding:7px 12px;border-radius:7px;cursor:pointer;font-family:Heebo,sans-serif;font-size:11px;font-weight:700;';
+    cpyBtn2.onclick = function(e){
+      e.stopPropagation();
+      fallbackCopy(a.analysis||'');
+      showToast('✅ הועתק','success');
+    };
+    actRow2.appendChild(cpyBtn2);
+
+    var calBtn2 = document.createElement('button');
+    calBtn2.textContent = '📅 קבע פגישה';
+    calBtn2.style.cssText = 'background:rgba(59,130,246,0.15);border:1px solid rgba(59,130,246,0.4);color:#93c5fd;padding:7px 12px;border-radius:7px;cursor:pointer;font-family:Heebo,sans-serif;font-size:11px;font-weight:700;';
+    calBtn2.onclick = function(e){
+      e.stopPropagation();
+      openManualCalendarModal(a.analysis, a.topic, a.speaker1, a.speaker2);
+    };
+    actRow2.appendChild(calBtn2);
+
+    var delBtn2 = document.createElement('button');
+    delBtn2.textContent = '🗑️ מחק';
+    delBtn2.style.cssText = 'background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);color:#fca5a5;padding:7px 12px;border-radius:7px;cursor:pointer;font-family:Heebo,sans-serif;font-size:11px;font-weight:700;';
+    delBtn2.onclick = function(e){
+      e.stopPropagation();
+      if (!confirm('מחק ניתוח זה?')) return;
+      fetch(SB_URL+'/rest/v1/call_analyses?id=eq.'+a.id,{method:'DELETE',headers:{apikey:SB_KEY,Authorization:'Bearer '+SB_KEY}})
+        .then(function(){ card.style.opacity='0.3'; setTimeout(function(){ card.remove(); },300); showToast('🗑️ נמחק','success'); });
+    };
+    actRow2.appendChild(delBtn2);
+
+    fullDiv.appendChild(actRow2);
+    card.appendChild(fullDiv);
+
+    card.addEventListener('click', function() {
+      expanded = !expanded;
+      fullDiv.style.display = expanded ? 'block' : 'none';
+    });
+
+    listDiv.appendChild(card);
+  });
 }
 
 
