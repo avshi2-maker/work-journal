@@ -5018,6 +5018,9 @@ async function smartScanRun() {
   if (doCosts)       analyses.push('💰 עלויות: הערכת עלות תיקון לפי מחירון הבינוי הממשלתי 2025');
   if (doEngineering) analyses.push('🏗️ ייעוץ הנדסי: ניתוח מעמיק של שיטת הבנייה, חומרים, תקינות מבנית, המלצות לתיקון וסדר עדיפויות');
 
+  // Include user correction if provided
+  var correctionNote = window._ssCorrection ? '\n\n⚠️ הערת המשתמש/תיקון: ' + window._ssCorrection + '\nהתחשב בהבהרה זו בניתוחך.' : '';
+  window._ssCorrection = null; // reset after use
   var prompt = [
     'אתה יועץ הנדסי ומומחה בנייה ישראלי בכיר עם 30 שנות ניסיון.',
     'נתח את התמונה/פריים לפי הקטגוריות שנבחרו:',
@@ -5026,7 +5029,7 @@ async function smartScanRun() {
     '',
     'לכל קטגוריה: פרט ממצאים ספציפיים, חומרה (גבוה/בינוני/נמוך), המלצות פעולה מיידית.',
     'אם זהו פריים מווידאו — נתח מה שרואים בפריים זה.',
-    'כתוב בעברית, מקצועי, ממוקד ועם המלצות ברורות.'
+    'כתוב בעברית, מקצועי, ממוקד ועם המלצות ברורות.' + correctionNote
   ].join('\n');
   var arcEl = document.getElementById('ss-arc');
   if (window.arc && arcEl) arc.start(arcEl);
@@ -5044,26 +5047,63 @@ async function smartScanRun() {
     var outTok = (data.usage && data.usage.output_tokens) || 0;
     if (window.arc && arcEl) arc.finish(inTok, outTok);
 
+    var now = new Date();
+    var dateStr = now.toLocaleDateString('he-IL') + ' · ' + now.toLocaleTimeString('he-IL',{hour:'2-digit',minute:'2-digit'});
+    var costUsd = ((inTok * 0.000003) + (outTok * 0.000015)).toFixed(4);
+    var costIls = (parseFloat(costUsd) * 3.7).toFixed(3);
+
     var fmt = text
       .replace(/</g, '&lt;')
-      .replace(/\*\*([^*]+)\*\*/g, '<strong style="color:#c9a84c;">$1</strong>')
+      .replace(/\*\*([^*]+)\*\*/g, '<strong style="color:#fff;font-weight:900;">$1</strong>')
+      .replace(/^(🛡️|🔍|📚|💰|🏗️)[^\n]+/gm, function(m){ return '<div style="font-size:14px;font-weight:900;color:#c9a84c;margin:12px 0 4px;">' + m + '</div>'; })
       .replace(/\n/g, '<br>');
 
     if (resultsEl) {
       resultsEl.innerHTML =
-        '<div style="background:#1e1e35;border:1.5px solid rgba(201,168,76,0.3);border-radius:14px;padding:18px;direction:rtl;">' +
-        '<div style="font-size:11px;color:#555;margin-bottom:10px;">📊 ' + inTok + ' + ' + outTok + ' טוקנים</div>' +
-        '<div style="font-size:13px;line-height:1.8;color:#e2e8f0;">' + fmt + '</div>' +
+        '<div id="ss-report-block" style="background:#1e1e35;border:1.5px solid rgba(201,168,76,0.3);border-radius:14px;padding:18px;direction:rtl;">' +
+        '<div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:6px;margin-bottom:12px;">' +
+          '<div style="font-size:11px;color:#aaa;font-weight:600;">📅 ' + dateStr + '</div>' +
+          '<div style="font-size:11px;color:#666;">$' + costUsd + ' (~₪' + costIls + ') · ' + (inTok+outTok) + ' טוקנים</div>' +
+        '</div>' +
+        '<div style="font-size:13px;line-height:1.9;color:#e2e8f0;font-weight:500;">' + fmt + '</div>' +
+        '<div style="margin-top:16px;padding-top:10px;border-top:1px solid rgba(255,255,255,0.08);font-size:11px;color:#666;direction:rtl;">' +
+          'הופק על ידי <strong style="color:#aaa;">בני פרסקי — מנהל פרויקטים</strong> · ניהול וביצוע פרוייקטים בישראל · ' + dateStr +
+        '</div>' +
         '</div>';
+
 
       // ECF footer
       if (window.ecf) {
         resultsEl.appendChild(ecf({
-          title: 'סריקה מהירה — ' + new Date().toLocaleDateString('he-IL'),
+          title: 'סריקה מקצועית — ' + new Date().toLocaleDateString('he-IL'),
           content: text,
           type: 'engineering_advice'
         }));
       }
+
+      // Correction/feedback box for rerunning with context
+      var corrBox = document.createElement('div');
+      corrBox.style.cssText = 'margin-top:16px;background:rgba(201,168,76,0.06);border:1px solid rgba(201,168,76,0.25);border-radius:12px;padding:14px;';
+      corrBox.innerHTML = '<div style="font-size:11px;color:#c9a84c;font-weight:700;margin-bottom:8px;direction:rtl;">✏️ הוסף הערה לשגיאה / הבהרה ולחץ הפעל שוב</div>';
+      var corrInp = document.createElement('textarea');
+      corrInp.id = 'ss-correction-input';
+      corrInp.placeholder = 'לדוגמה: מדובר בכביש אספלט ולא בטון, הקיר הוא בלוקים וולקאני, הצינור הוא פוליאתילן...';
+      corrInp.rows = 2;
+      corrInp.style.cssText = 'width:100%;background:#1a1a2e;border:1px solid rgba(255,255,255,0.1);color:#fff;padding:9px 11px;border-radius:8px;font-family:Heebo,sans-serif;font-size:12px;direction:rtl;box-sizing:border-box;resize:vertical;margin-bottom:8px;';
+      corrBox.appendChild(corrInp);
+      var rerunBtn = document.createElement('button');
+      rerunBtn.textContent = '🔄 הפעל שוב עם ההבהרה';
+      rerunBtn.style.cssText = 'background:linear-gradient(135deg,#c9a84c,#9a6f00);border:none;color:#fff;padding:9px 18px;border-radius:8px;cursor:pointer;font-family:Heebo,sans-serif;font-size:12px;font-weight:800;';
+      rerunBtn.onclick = function() {
+        var correction = corrInp.value.trim();
+        if (!correction) { showToast('הוסף הערה תחילה','error'); return; }
+        // Store correction and rerun
+        window._ssCorrection = correction;
+        smartScanRun();
+        corrBox.style.opacity = '0.5';
+      };
+      corrBox.appendChild(rerunBtn);
+      resultsEl.appendChild(corrBox);
     }
 
     showToast('✅ ניתוח הושלם', 'success');
