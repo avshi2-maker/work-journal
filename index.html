@@ -8581,27 +8581,69 @@ async function transcribeRecording(item) {
   if (arcEl && window.arc) arc.start(arcEl);
 
   try {
-    // Fetch original file — ElevenLabs handles all formats natively (m4a, 3gp, mp4, webm)
     showToast('⏳ מוריד קובץ...', 'success');
+    if (!elKey) throw new Error('מפתח ElevenLabs חסר — הוסף elevenlabs_key ב-app_config');
+
+    // Fetch original audio
     var audioRes = await fetch(item.audioUrl);
     if (!audioRes.ok) throw new Error('שגיאה בהורדת קובץ: ' + audioRes.status);
     var audioBlob = await audioRes.blob();
     if (audioBlob.size < 100) throw new Error('קובץ ריק — ייתכן שנמחק מהענן');
-    showToast('✅ הורד ' + Math.round(audioBlob.size/1024) + 'KB — מתמלל עם ElevenLabs...', 'success');
 
-    if (!elKey) throw new Error('מפתח ElevenLabs חסר — הוסף elevenlabs_key ב-app_config');
-    // Detect extension from URL for correct filename
-    var audioExt = 'm4a';
+    // Check if format is supported by ElevenLabs
     var urlL = (item.audioUrl||'').toLowerCase();
-    if (urlL.includes('.mp3')) audioExt='mp3';
-    else if (urlL.includes('.wav')) audioExt='wav';
-    else if (urlL.includes('.ogg')) audioExt='ogg';
-    else if (urlL.includes('.webm')) audioExt='webm';
-    else if (urlL.includes('.3gp')) audioExt='3gp';
-    else if (urlL.includes('.mp4')) audioExt='mp4';
-    var mimeMap2 = {mp3:'audio/mpeg',m4a:'audio/mp4',wav:'audio/wav',ogg:'audio/ogg',webm:'audio/webm','3gp':'audio/3gpp',mp4:'audio/mp4'};
+    var is3gp = urlL.includes('.3gp') || audioBlob.type.includes('3gpp');
+    var elFile;
+
+    if (is3gp) {
+      // Convert 3gp → WAV via Web Audio API (decode then encode PCM)
+      showToast('🔄 ממיר 3gp → WAV...', 'success');
+      try {
+        var arrayBuf = await audioBlob.arrayBuffer();
+        var audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        var decoded  = await audioCtx.decodeAudioData(arrayBuf);
+        audioCtx.close();
+        // Encode as WAV
+        var numCh = decoded.numberOfChannels;
+        var sr    = decoded.sampleRate;
+        var len   = decoded.length;
+        var buf   = new ArrayBuffer(44 + len * numCh * 2);
+        var view  = new DataView(buf);
+        var writeStr = function(o,s){ for(var i=0;i<s.length;i++) view.setUint8(o+i,s.charCodeAt(i)); };
+        writeStr(0,'RIFF'); view.setUint32(4,36+len*numCh*2,true);
+        writeStr(8,'WAVE'); writeStr(12,'fmt '); view.setUint32(16,16,true);
+        view.setUint16(20,1,true); view.setUint16(22,numCh,true);
+        view.setUint32(24,sr,true); view.setUint32(28,sr*numCh*2,true);
+        view.setUint16(32,numCh*2,true); view.setUint16(34,16,true);
+        writeStr(36,'data'); view.setUint32(40,len*numCh*2,true);
+        var offset = 44;
+        for (var i=0;i<len;i++) {
+          for (var ch=0;ch<numCh;ch++) {
+            var s = Math.max(-1,Math.min(1,decoded.getChannelData(ch)[i]));
+            view.setInt16(offset,s<0?s*0x8000:s*0x7FFF,true);
+            offset += 2;
+          }
+        }
+        elFile = new File([buf], 'audio.wav', {type:'audio/wav'});
+        showToast('✅ הומר ל-WAV — ' + Math.round(elFile.size/1024) + 'KB', 'success');
+      } catch(convErr) {
+        throw new Error('המרת 3gp נכשלה: ' + convErr.message + '. העלה קובץ m4a במקום');
+      }
+    } else {
+      // Supported format — send as-is with correct extension
+      var audioExt = 'm4a';
+      if (urlL.includes('.mp3')) audioExt='mp3';
+      else if (urlL.includes('.wav')) audioExt='wav';
+      else if (urlL.includes('.ogg')) audioExt='ogg';
+      else if (urlL.includes('.webm')) audioExt='webm';
+      else if (urlL.includes('.mp4')) audioExt='mp4';
+      var mimeMap2 = {mp3:'audio/mpeg',m4a:'audio/mp4',wav:'audio/wav',ogg:'audio/ogg',webm:'audio/webm',mp4:'audio/mp4'};
+      elFile = new File([audioBlob], 'audio.' + audioExt, {type: mimeMap2[audioExt]||'audio/mp4'});
+    }
+
+    showToast('🎙️ שולח ל-ElevenLabs — ' + Math.round(elFile.size/1024) + 'KB...', 'success');
     var efd = new FormData();
-    efd.append('file', new File([audioBlob], 'audio.' + audioExt, {type: mimeMap2[audioExt]||'audio/mp4'}));
+    efd.append('file', elFile);
     efd.append('model_id', 'scribe_v1');
     efd.append('language_code', 'heb');
     efd.append('diarize', 'true');
