@@ -8647,7 +8647,7 @@ async function transcribeRecording(item) {
     efd.append('model_id', 'scribe_v1');
     efd.append('language_code', 'heb');
     efd.append('diarize', 'true');
-    efd.append('timestamps_granularity', 'segment');
+    efd.append('timestamps_granularity', 'word');
     showToast('🎙️ ElevenLabs מתמלל עם זיהוי דוברים...', 'success');
     var eres = await fetch('https://api.elevenlabs.io/v1/speech-to-text', {
       method: 'POST',
