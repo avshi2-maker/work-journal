@@ -8481,17 +8481,20 @@ async function transcribeRecording(item) {
     var mtype = blob.type || 'audio/mpeg';
 
     // Claude API does not support audio transcription directly
-    // Detect correct extension from URL — Whisper rejects wrong extensions
-    var audioExt = 'm4a';
-    var urlLower = (item.audioUrl || '').toLowerCase();
-    if (urlLower.includes('.mp3'))  audioExt = 'mp3';
-    else if (urlLower.includes('.m4a'))  audioExt = 'm4a';
-    else if (urlLower.includes('.wav'))  audioExt = 'wav';
-    else if (urlLower.includes('.ogg'))  audioExt = 'ogg';
-    else if (urlLower.includes('.webm')) audioExt = 'webm';
-    else if (urlLower.includes('.mp4'))  audioExt = 'mp4';
-    var mimeMap = { mp3:'audio/mpeg', m4a:'audio/mp4', wav:'audio/wav', ogg:'audio/ogg', webm:'audio/webm', mp4:'audio/mp4' };
-    var audioFile = new File([blob], 'recording.' + audioExt, { type: mimeMap[audioExt] || 'audio/mpeg' });
+    // Use blob.type (from HTTP Content-Type) to determine correct format
+    var blobType = blob.type || 'audio/mpeg';
+    // Map MIME type to extension and Whisper-accepted format
+    var mimeToExt = {
+      'audio/mpeg': 'mp3', 'audio/mp3': 'mp3',
+      'audio/mp4': 'm4a',  'audio/x-m4a': 'm4a', 'audio/aac': 'm4a',
+      'audio/wav': 'wav',  'audio/wave': 'wav',
+      'audio/ogg': 'ogg',  'audio/webm': 'webm',
+      'video/webm': 'webm','video/mp4': 'mp4',
+      'audio/flac': 'flac'
+    };
+    var audioExt = mimeToExt[blobType] || 'm4a';
+    // Whisper requires correct extension — create File with proper name
+    var audioFile = new File([blob], 'recording.' + audioExt, { type: blobType });
 
     // OpenAI Whisper for Hebrew transcription
     var whisperFd = new FormData();
