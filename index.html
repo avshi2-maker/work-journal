@@ -363,9 +363,8 @@ window.addEventListener('unhandledrejection', function(e) {
   <div class="top-tab"        id="tab-safety" onclick="switchTab('safety')"><span>🛡️</span><span>בטיחות / ליקויים</span></div>
   <div class="top-tab"        id="tab-notes"  onclick="switchTab('notes')"><span>📝</span><span>מזכרים בני</span></div>
   <div class="top-tab"        id="tab-rag"    onclick="switchTab('rag')"><span>🏗️</span><span>ייעוץ הנדסי</span></div>
-  <div class="top-tab"        id="tab-inbox" onclick="switchTab('inbox')"><span>📥</span><span>תיבת נכנסים</span><span id="tab-inbox-badge" style="display:none;background:#ef4444;color:#fff;border-radius:8px;padding:1px 6px;font-size:9px;font-weight:800;"></span></div>
+  <div class="top-tab"        id="tab-inbox" onclick="switchTab('inbox')"><span>📥</span><span>תיבת נכנסים 📥</span><span id="tab-inbox-badge" style="display:none;background:#ef4444;color:#fff;border-radius:8px;padding:1px 6px;font-size:9px;font-weight:800;"></span></div>
   <div class="top-tab"        id="tab-smartscan" onclick="switchTab('smartscan')"><span>🚀</span><span>סריקה מקצועית</span></div>
-  <div class="top-tab"        id="tab-misc"      onclick="switchTab('misc')"><span>📥</span><span>מגוון</span><span id="misc-badge" style="display:none;background:#ef4444;color:#fff;border-radius:8px;font-size:9px;padding:1px 5px;margin-right:2px;">0</span></div>
 </div>
 
 <!-- ══ PANELS — loaded dynamically from Supabase Storage ══ -->
@@ -376,10 +375,13 @@ window.addEventListener('unhandledrejection', function(e) {
   <div class="sidebar-logo">
     <div class="brand">יומן פעילות</div>
     <div class="sub">מנוהל AI | <span id="app-manager-name">בני פרסקי</span></div>
-    <div class="sidebar-clock">
-      <div class="clock-time" id="sidebar-clock-time">00:00:00</div>
-      <div class="clock-date" id="sidebar-clock-date"></div>
-    </div>
+
+  </div>
+
+  <!-- CLOCK -->
+  <div style="padding:8px 16px 10px;border-bottom:1px solid var(--border);margin-bottom:6px;direction:rtl;">
+    <div style="font-size:17px;font-weight:900;color:#9a6f00;font-variant-numeric:tabular-nums;letter-spacing:1px;" id="sidebar-clock-time">00:00:00</div>
+    <div style="font-size:11px;color:var(--text3);margin-top:2px;" id="sidebar-clock-date"></div>
   </div>
 
   <!-- GROUP: יומי -->
@@ -4834,26 +4836,119 @@ async function assetInboxLoad() {
       card.appendChild(mediaEl);
     }
 
-    // Action buttons
+    // Full routing buttons — same as מגוון
+    var isVidItem = item.file_type === 'video' || (mediaUrl && (mediaUrl.includes('/video/upload/') || /\.(mp4|mov|3gp|avi)(\?|$)/i.test(mediaUrl)));
+    var routeBtns = [
+      { label:'🛡️ בטיחות',       bg:'rgba(239,68,68,0.15)',   bd:'rgba(239,68,68,0.4)',   col:'#fca5a5', dest:'safety'    },
+      { label:'🚀 סריקה',         bg:'rgba(201,168,76,0.15)',  bd:'rgba(201,168,76,0.4)',  col:'#c9a84c', dest:'smartscan' },
+      { label:'🏗️ הנדסי',         bg:'rgba(139,92,246,0.15)',  bd:'rgba(139,92,246,0.4)', col:'#c4b5fd', dest:'rag'       },
+      { label:'📝 יומן',           bg:'rgba(59,130,246,0.15)',  bd:'rgba(59,130,246,0.4)', col:'#93c5fd', dest:'notes'     },
+      { label:'📐 מדידות',         bg:'rgba(20,184,166,0.15)',  bd:'rgba(20,184,166,0.4)', col:'#5eead4', dest:'takeoff'   },
+      { label:'🎙️ הקלטות',        bg:'rgba(245,158,11,0.15)',  bd:'rgba(245,158,11,0.4)', col:'#fde68a', dest:'recordings'},
+      { label:'📄 OCR/AI',         bg:'rgba(99,102,241,0.15)',  bd:'rgba(99,102,241,0.4)', col:'#a5b4fc', dest:'ocr'       },
+      { label:'✅ משימה',          bg:'rgba(34,197,94,0.15)',   bd:'rgba(34,197,94,0.4)',  col:'#86efac', dest:'task'      },
+      { label:'🗑️ מחק',           bg:'rgba(255,255,255,0.04)', bd:'rgba(255,255,255,0.1)',col:'#666',    dest:'delete'    }
+    ];
+    if (isVidItem) routeBtns.splice(2, 0, { label:'📸 חלץ פריים', bg:'rgba(16,185,129,0.15)', bd:'rgba(16,185,129,0.4)', col:'#6ee7b7', dest:'extractframe' });
+
     var acts = document.createElement('div');
-    acts.style.cssText = 'display:flex;gap:6px;margin-top:8px;';
-    [
-      { label:'✅ אשר ליומן', bg:'rgba(34,197,94,0.2)',   bd:'rgba(34,197,94,0.5)',   col:'#86efac' },
-      { label:'🛡️ בטיחות',   bg:'rgba(239,68,68,0.15)',  bd:'rgba(239,68,68,0.4)',   col:'#fca5a5' },
-      { label:'🗑️ מחק',      bg:'rgba(255,255,255,0.04)',bd:'rgba(255,255,255,0.1)', col:'#666'    }
-    ].forEach(function(b) {
+    acts.style.cssText = 'display:flex;gap:5px;margin-top:10px;flex-wrap:wrap;';
+    routeBtns.forEach(function(b) {
       var btn = document.createElement('button');
       btn.textContent = b.label;
-      btn.style.cssText = 'flex:1;background:' + b.bg + ';border:1px solid ' + b.bd + ';color:' + b.col + ';padding:8px 4px;border-radius:8px;cursor:pointer;font-family:Heebo,sans-serif;font-size:11px;font-weight:700;';
-      btn.addEventListener('click', (function(itm, action){
-        return function(){ inboxAction(itm, action); };
-      })(item, b.label));
+      btn.style.cssText = 'background:' + b.bg + ';border:1px solid ' + b.bd + ';color:' + b.col + ';padding:7px 8px;border-radius:8px;cursor:pointer;font-family:Heebo,sans-serif;font-size:11px;font-weight:700;white-space:nowrap;';
+      btn.addEventListener('click', (function(itm, dest){
+        return function(){ inboxRoute(itm, dest); };
+      })(item, b.dest));
       acts.appendChild(btn);
     });
     card.appendChild(acts);
     listEl.appendChild(card);
   });
 }
+
+async function inboxRoute(item, dest) {
+  var card = document.getElementById('inbox-card-' + item.id);
+  var media = item.cloudinary_url || '';
+  var text  = item.file_name || '';
+  var pid   = item.project_id || null;
+
+  try {
+    if (dest === 'delete') {
+      if (!confirm('מחק קובץ זה?')) return;
+      await fetch(SB_URL + '/rest/v1/asset_inbox?id=eq.' + item.id,
+        { method:'DELETE', headers:{apikey:SB_KEY,Authorization:'Bearer '+SB_KEY} });
+      if (card) { card.style.opacity='0.3'; setTimeout(function(){ card.remove(); },300); }
+      showToast('🗑️ נמחק','success'); return;
+    }
+
+    // Mark as approved and save to beni_notes
+    var noteType = { image:'photo', video:'video', audio:'audio', pdf:'pdf' }[item.file_type] || 'media';
+    await sb.from('beni_notes').insert({
+      note_text: '📥 ' + text,
+      photo_url: media,
+      note_type: noteType,
+      color: noteType==='audio'?'purple':noteType==='video'?'purple':'blue',
+      project_id: pid,
+      created_at: new Date().toISOString()
+    });
+    await fetch(SB_URL + '/rest/v1/asset_inbox?id=eq.' + item.id,
+      { method:'PATCH', headers:{apikey:SB_KEY,Authorization:'Bearer '+SB_KEY,'Content-Type':'application/json',Prefer:'return=minimal'},
+        body: JSON.stringify({status:'approved'}) });
+    if (card) { card.style.opacity='0.4'; }
+
+    // Route to destination
+    if (dest === 'safety') {
+      await switchTab('safety');
+      showToast('🛡️ נשלח לבטיחות','success');
+    } else if (dest === 'smartscan') {
+      await switchTab('smartscan');
+      setTimeout(async function(){
+        var thumb=document.getElementById('ss-thumb'), btn=document.getElementById('ss-scan-btn');
+        var isVid = media.includes('/video/upload/') || /\.(mp4|mov|3gp)(\?|$)/i.test(media);
+        var loadUrl = isVid ? media.replace('/upload/','/upload/so_1,w_1200,f_jpg/').replace(/\.(mp4|mov|3gp)(\?.*)?$/i,'.jpg') : media;
+        try {
+          var r=await fetch(loadUrl); if(r.ok){var blob=await r.blob();var b64=await new Promise(function(res){var rd=new FileReader();rd.onload=function(e){res(e.target.result);};rd.readAsDataURL(blob);});window._ssSharedPhotoB64=b64;window._ssSharedPhotoUrl=loadUrl;if(thumb){thumb.src=b64;thumb.style.display='block';}}
+        } catch(e){window._ssSharedPhotoUrl=loadUrl;if(thumb){thumb.src=loadUrl;thumb.style.display='block';}}
+        if(btn)btn.style.display='block';
+        showToast('🚀 נטען לסריקה מקצועית','success');
+      },400);
+    } else if (dest === 'rag') {
+      await switchTab('rag');
+      setTimeout(async function(){
+        var img=document.getElementById('rag-photo-img'),preview=document.getElementById('rag-photo-preview'),acts=document.getElementById('rag-photo-actions'),ana=document.getElementById('rag-photo-analysis');
+        try{var r=await fetch(media);if(r.ok){var blob=await r.blob();var b64=await new Promise(function(res){var rd=new FileReader();rd.onload=function(e){res(e.target.result);};rd.readAsDataURL(blob);});window._ragCurrentPhoto=b64;if(img)img.src=b64;}else{window._ragCurrentPhoto=media;if(img)img.src=media;}}catch(e){window._ragCurrentPhoto=media;if(img)img.src=media;}
+        if(preview)preview.style.display='block';if(acts)acts.style.display='flex';if(ana)ana.innerHTML='📥 מתיבת נכנסים — לחץ הפעל';
+        showToast('🏗️ נטען לייעוץ הנדסי','success');
+      },400);
+    } else if (dest === 'extractframe') {
+      var frameUrl = media.replace('/upload/','/upload/so_1,w_1200,f_jpg/').replace(/\.(mp4|mov|avi|3gp)(\?.*)?$/i,'.jpg');
+      await switchTab('rag');
+      setTimeout(async function(){
+        var img=document.getElementById('rag-photo-img'),preview=document.getElementById('rag-photo-preview'),acts=document.getElementById('rag-photo-actions'),ana=document.getElementById('rag-photo-analysis');
+        if(img)img.src=frameUrl;if(preview)preview.style.display='block';if(acts)acts.style.display='flex';if(ana)ana.innerHTML='🎬 פריים מווידאו';
+        try{var r=await fetch(frameUrl);if(r.ok){var blob=await r.blob();var b64=await new Promise(function(res){var rd=new FileReader();rd.onload=function(e){res(e.target.result);};rd.readAsDataURL(blob);});window._ragCurrentPhoto=b64;if(img)img.src=b64;}else{await new Promise(function(res2){setTimeout(res2,3000)});var r2=await fetch(frameUrl);if(r2.ok){var b2=await r2.blob();var b64b=await new Promise(function(res3){var rd=new FileReader();rd.onload=function(e){res3(e.target.result);};rd.readAsDataURL(b2);});window._ragCurrentPhoto=b64b;if(img)img.src=b64b;}else{window._ragCurrentPhoto=frameUrl;}}}catch(e){window._ragCurrentPhoto=frameUrl;}
+        showToast('✅ פריים נטען — לחץ הפעל','success');
+      },400);
+    } else if (dest === 'notes') {
+      await switchTab('notes'); showToast('📝 נשמר ביומן חכם','success');
+    } else if (dest === 'takeoff') {
+      await switchTab('notes'); setTimeout(function(){switchSmartTab('takeoffs');},300); showToast('📐 מדידות','success');
+    } else if (dest === 'recordings') {
+      await switchTab('notes'); setTimeout(function(){switchSmartTab('recordings');},300); showToast('🎙️ הקלטות','success');
+    } else if (dest === 'ocr') {
+      await switchTab('notes');
+      setTimeout(async function(){ switchSmartTab('ocr'); if(media) journalOcrLoadFromUrl(media); },500);
+    } else if (dest === 'task') {
+      await fetch(SB_URL+'/rest/v1/reminders',{method:'POST',headers:{apikey:SB_KEY,Authorization:'Bearer '+SB_KEY,'Content-Type':'application/json',Prefer:'return=minimal'},body:JSON.stringify({text:text.substring(0,200),priority:'רגיל',is_done:false,created_at:new Date().toISOString()})});
+      showToast('✅ משימה נוצרה','success');
+    }
+
+    if (card) setTimeout(function(){ card.remove(); },800);
+
+  } catch(e) { showToast('❌ ' + e.message,'error'); }
+}
+
 
 async function inboxAction(item, action) {
   var card = document.getElementById('inbox-card-' + item.id);
