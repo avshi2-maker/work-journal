@@ -8408,6 +8408,12 @@ async function loadSmartRecordings() {
     memos.forEach(function(m) {
       var audioUrl = m.transcript && m.transcript.startsWith('http') ? m.transcript : null;
       if (!audioUrl) return;
+      // Real transcript = text that doesn't start with http
+      var realTranscript = (m.transcript && !m.transcript.startsWith('http')) ? m.transcript : null;
+      // Also check ai_summary — if it's a real sentence it IS the transcript
+      if (!realTranscript && m.ai_summary && m.ai_summary.length > 20 && !m.ai_summary.startsWith('הקלטה')) {
+        realTranscript = m.ai_summary;
+      }
       var card = buildRecordingCard({
         id:        'memo_' + m.id,
         rawId:     m.id,
@@ -8415,8 +8421,8 @@ async function loadSmartRecordings() {
         audioUrl:  audioUrl,
         title:     m.ai_summary || ('הקלטה ' + Math.floor((m.duration_sec||0)/60) + ':' + String((m.duration_sec||0)%60).padStart(2,'0')),
         date:      m.created_at,
-        transcript: m.is_processed ? m.transcript : null,
-        processed: m.is_processed
+        transcript: realTranscript,
+        processed: !!realTranscript
       });
       list.appendChild(card);
     });
@@ -8563,9 +8569,8 @@ function buildRecordingCard(item) {
 }
 
 async function transcribeRecording(item) {
-  var elKey     = APP && APP.config && APP.config.elevenlabs_key;
-  var whisperKey = APP && APP.config && APP.config.openai_key;
-  if (!elKey && !whisperKey) { showToast('חסר מפתח ElevenLabs או OpenAI', 'error'); return; }
+  var elKey = APP && APP.config && APP.config.elevenlabs_key;
+  if (!elKey) { showToast('חסר מפתח ElevenLabs — הוסף elevenlabs_key ב-app_config', 'error'); return; }
 
   var btn    = document.getElementById('trans-btn-' + item.id);
   var outDiv = document.getElementById('trans-' + item.id);
@@ -8585,48 +8590,26 @@ async function transcribeRecording(item) {
     if (audioBlob.size < 100) throw new Error('קובץ ריק — ייתכן שנמחק מהענן');
     showToast('✅ הורד ' + Math.round(audioBlob.size/1024) + 'KB — מתמלל עם ElevenLabs...', 'success');
 
-    var text = '';
-    // Try ElevenLabs first — speaker diarization for phone calls
-    if (elKey) {
-      var efd = new FormData();
-      efd.append('file', new File([audioBlob], 'audio.mp3', {type:'audio/mpeg'}));
-      efd.append('model_id', 'scribe_v1');
-      efd.append('language_code', 'heb');
-      efd.append('diarize', 'true');
-      efd.append('timestamps_granularity', 'segment');
-      var eres = await fetch('https://api.elevenlabs.io/v1/speech-to-text', {
-        method: 'POST',
-        headers: { 'xi-api-key': elKey },
-        body: efd
-      });
-      if (eres.ok) {
-        var edata = await eres.json();
-        text = formatElevenLabsTranscript(edata);
-      } else {
-        var eErr = await eres.json().catch(function(){ return {}; });
-        showToast('⚠️ ElevenLabs: ' + (eErr.detail || eres.status) + ' — מנסה Whisper...', 'success');
-      }
+    if (!elKey) throw new Error('מפתח ElevenLabs חסר — הוסף elevenlabs_key ב-app_config');
+    var efd = new FormData();
+    efd.append('file', new File([audioBlob], 'audio.mp3', {type:'audio/mpeg'}));
+    efd.append('model_id', 'scribe_v1');
+    efd.append('language_code', 'heb');
+    efd.append('diarize', 'true');
+    efd.append('timestamps_granularity', 'segment');
+    showToast('🎙️ ElevenLabs מתמלל עם זיהוי דוברים...', 'success');
+    var eres = await fetch('https://api.elevenlabs.io/v1/speech-to-text', {
+      method: 'POST',
+      headers: { 'xi-api-key': elKey },
+      body: efd
+    });
+    if (!eres.ok) {
+      var eErr = await eres.json().catch(function(){ return {}; });
+      throw new Error('ElevenLabs: ' + (eErr.detail || eErr.message || eres.status));
     }
-
-    // Fallback to Whisper if ElevenLabs failed
-    if (!text && whisperKey) {
-      showToast('🔄 Whisper...', 'success');
-      var wfd = new FormData();
-      wfd.append('file', new File([audioBlob], 'audio.mp3', {type:'audio/mpeg'}));
-      wfd.append('model', 'whisper-1');
-      wfd.append('language', 'he');
-      wfd.append('response_format', 'text');
-      var wres = await fetch('https://api.openai.com/v1/audio/transcriptions', {
-        method: 'POST', headers: { 'Authorization': 'Bearer ' + whisperKey }, body: wfd
-      });
-      if (wres.ok) { text = (await wres.text()).trim(); }
-      else {
-        var wErr = await wres.json().catch(function(){ return {}; });
-        throw new Error('Whisper: ' + (wErr.error ? wErr.error.message : wres.status));
-      }
-    }
-
-    if (!text) throw new Error('לא התקבל תמלול');
+    var edata = await eres.json();
+    var text = formatElevenLabsTranscript(edata);
+    if (!text) throw new Error('לא התקבל תמלול מ-ElevenLabs');
     if (arcEl && window.arc) arc.finish(0, text.split(' ').length);
 
     // Save transcript
@@ -8644,10 +8627,43 @@ async function transcribeRecording(item) {
       });
     }
 
-    // Show transcript
-    if (outDiv) { outDiv.style.display = 'block'; outDiv.textContent = text; }
-    if (btn)    { btn.disabled = false; btn.textContent = '🔄 תמלל שוב'; }
-    showToast('✅ תמלול הושלם', 'success');
+    // Show transcript with speaker formatting
+    if (outDiv) {
+      outDiv.style.display = 'block';
+      outDiv.innerHTML = '<div style="font-size:10px;color:#555;margin-bottom:8px;direction:rtl;">📝 תמלול ElevenLabs — זיהוי דוברים:</div>' +
+        text.replace(/</g,'&lt;')
+            .replace(/\[\d{2}:\d{2}\] דובר \d/g, function(m){ return '<strong style="color:#c4b5fd;">' + m + '</strong>'; })
+            .replace(/\n/g,'<br>');
+    }
+    if (btn) btn.remove(); // Remove transcribe button — already done
+
+    // Add copy + save buttons dynamically
+    var actsEl = outDiv ? outDiv.nextSibling : null;
+    var actRow = document.createElement('div');
+    actRow.style.cssText = 'display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;';
+
+    var cpyBtn = document.createElement('button');
+    cpyBtn.textContent = '📋 העתק תמלול';
+    cpyBtn.style.cssText = 'background:rgba(99,102,241,0.15);border:1px solid rgba(99,102,241,0.4);color:#a5b4fc;padding:8px 12px;border-radius:8px;cursor:pointer;font-family:Heebo,sans-serif;font-size:11px;font-weight:700;';
+    cpyBtn.onclick = function(){ navigator.clipboard.writeText(text).then(function(){ showToast('✅ הועתק','success'); }); };
+    actRow.appendChild(cpyBtn);
+
+    var saveBtn = document.createElement('button');
+    saveBtn.textContent = '📝 שמור להערות';
+    saveBtn.style.cssText = 'background:rgba(201,168,76,0.15);border:1px solid rgba(201,168,76,0.4);color:#c9a84c;padding:8px 12px;border-radius:8px;cursor:pointer;font-family:Heebo,sans-serif;font-size:11px;font-weight:700;';
+    saveBtn.onclick = function(){
+      // Get project from card's project selector
+      var cardEl = saveBtn.closest ? saveBtn.closest('[id^="rec-card-"]') : null;
+      var sel = cardEl ? cardEl.querySelector('select') : null;
+      var pid = sel ? sel.value : null;
+      if (!pid) { showToast('בחר פרויקט תחילה','error'); return; }
+      sb.from('beni_notes').insert({ note_text: text, color:'yellow', note_type:'text', project_id:pid, created_at:new Date().toISOString() })
+        .then(function(){ showToast('✅ נשמר להערות','success'); saveBtn.style.borderColor='#22c55e'; saveBtn.style.color='#86efac'; });
+    };
+    actRow.appendChild(saveBtn);
+
+    if (outDiv && outDiv.parentNode) outDiv.parentNode.insertBefore(actRow, outDiv.nextSibling);
+    showToast('✅ תמלול הושלם — ' + text.split(' ').length + ' מילים', 'success');
 
   } catch(e) {
     if (arcEl && window.arc) arc.reset();
