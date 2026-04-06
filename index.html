@@ -6751,11 +6751,11 @@ function fjSetPhase(phase) {
     if (p === phase) {
       btn.style.border = '2px solid #7F77DD';
       btn.style.background = 'rgba(127,119,221,0.15)';
-      btn.querySelector('div:nth-child(2)').style.color = '#c4b5fd';
+      btn.style.color = '#c4b5fd';
     } else {
       btn.style.border = '1px solid rgba(255,255,255,0.1)';
       btn.style.background = 'rgba(255,255,255,0.03)';
-      btn.querySelector('div:nth-child(2)').style.color = '#ccc';
+      btn.style.color = '#ccc';
     }
   });
   var content = document.getElementById('fj-phase-content');
