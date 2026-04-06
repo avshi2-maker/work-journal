@@ -2494,11 +2494,25 @@ window.addEventListener('unhandledrejection', function(e) {
           <div id="jw-briefing-time" style="font-size:10px;color:rgba(255,255,255,0.5);margin-top:6px;"></div>
         </div>
 
+        <!-- No-projects warning — shown if zero projects exist -->
+        <div id="jw-no-projects-warn" style="display:none;background:#fff3e0;border:2px solid #ff9800;border-radius:12px;padding:14px 16px;margin-bottom:16px;direction:rtl;">
+          <div style="font-size:14px;font-weight:900;color:#e65100;margin-bottom:6px;">⚠️ אין פרויקטים פעילים במערכת</div>
+          <div style="font-size:12px;color:#bf360c;line-height:1.8;">
+            כדי להתחיל יומן עבודה יש קודם לפתוח פרויקט חדש:<br>
+            1. עבור ל<strong>לוח בקרה</strong> (הטאב הראשון בחלק העליון)<br>
+            2. פתח את הקטגוריה <strong>פרויקטים</strong> מהתפריט הצדדי<br>
+            3. הוסף פרויקט חדש ושמור<br>
+            4. חזור לכאן ולחץ <strong>רענן</strong>
+          </div>
+          <button onclick="location.reload()" style="margin-top:10px;padding:8px 18px;background:#e65100;color:#fff;border:none;border-radius:8px;font-family:Heebo,sans-serif;font-size:12px;font-weight:800;cursor:pointer;">🔄 רענן עמוד</button>
+        </div>
+
         <div class="jw-field">
           <label>בחר פרויקט</label>
-          <select id="projectName" onchange="onJournalProjectChange(this);mbInit();">
-            <option value="">בחר פרויקט...</option>
+          <select id="projectName" onchange="jwOnProjectChange(this);">
+            <option value="">— בחר פרויקט —</option>
           </select>
+          <div id="jw-proj-err" style="display:none;color:#c62828;font-size:11px;font-weight:700;margin-top:4px;">⚠️ חובה לבחור פרויקט לפני המשך</div>
         </div>
         <div id="project-custom-name-row" style="display:none;" class="jw-field">
           <label>שם פרויקט ידני</label>
@@ -2524,13 +2538,59 @@ window.addEventListener('unhandledrejection', function(e) {
           <div id="mb-proj-tags" style="display:flex;gap:8px;flex-wrap:wrap;"></div>
         </div>
 
-        <!-- Today's tasks -->
+        <!-- ══ משימות היום — TWO OPTIONS ══════════════════════════════ -->
         <div id="mb-tasks-section" style="display:none;margin:14px 0;">
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
-            <div style="font-size:12px;font-weight:900;color:#1a3d5c;text-transform:uppercase;letter-spacing:.5px;">📋 משימות היום</div>
-            <div id="mb-tasks-count" style="font-size:11px;color:#888;font-weight:600;"></div>
+            <div style="font-size:12px;font-weight:900;color:#1b5e20;text-transform:uppercase;letter-spacing:.5px;">📋 משימות היום</div>
+            <div id="mb-tasks-count" style="font-size:11px;color:#558b2f;font-weight:600;"></div>
           </div>
-          <div id="mb-tasks-list"></div>
+
+          <!-- Option toggle -->
+          <div style="display:flex;gap:8px;margin-bottom:14px;">
+            <button id="jw-opt-table-btn" onclick="jwTasksShowOption('table')"
+              style="flex:1;padding:10px;border-radius:10px;border:2px solid #2e7d32;background:#2e7d32;color:#fff;font-family:Heebo,sans-serif;font-size:12px;font-weight:800;cursor:pointer;">
+              📝 מלא טבלת משימות
+            </button>
+            <button id="jw-opt-ocr-btn" onclick="jwTasksShowOption('ocr')"
+              style="flex:1;padding:10px;border-radius:10px;border:2px solid #a5d6a7;background:transparent;color:#2e7d32;font-family:Heebo,sans-serif;font-size:12px;font-weight:800;cursor:pointer;">
+              📷 צלם / העלה כתב יד
+            </button>
+          </div>
+
+          <!-- OPTION A: Table editor -->
+          <div id="jw-tasks-table-section">
+            <div id="jw-tasks-rows" style="display:flex;flex-direction:column;gap:8px;margin-bottom:10px;"></div>
+            <button onclick="jwAddTaskRow()"
+              style="width:100%;padding:9px;border:2px dashed #a5d6a7;border-radius:9px;background:transparent;color:#2e7d32;font-family:Heebo,sans-serif;font-size:12px;font-weight:700;cursor:pointer;">
+              ➕ הוסף משימה
+            </button>
+            <button onclick="jwSaveWizardTasks()"
+              style="width:100%;margin-top:8px;padding:10px;background:linear-gradient(135deg,#1b5e20,#43a047);border:none;color:#fff;border-radius:9px;font-family:Heebo,sans-serif;font-size:13px;font-weight:800;cursor:pointer;">
+              💾 שמור משימות
+            </button>
+          </div>
+
+          <!-- OPTION B: OCR / handwrite upload -->
+          <div id="jw-tasks-ocr-section" style="display:none;">
+            <div onclick="document.getElementById('jw-task-img-input').click()"
+              style="border:2px dashed #a5d6a7;border-radius:12px;padding:28px;text-align:center;cursor:pointer;background:#f1f8e9;">
+              <div style="font-size:36px;margin-bottom:8px;">📷</div>
+              <div style="font-size:13px;color:#2e7d32;font-weight:800;">צלם דף משימות בכתב יד</div>
+              <div style="font-size:11px;color:#558b2f;margin-top:4px;">Claude קורא ומחלץ משימות אוטומטית</div>
+              <input type="file" id="jw-task-img-input" accept="image/*" style="display:none;" onchange="jwHandleTaskOCR(this)">
+            </div>
+            <div id="jw-ocr-preview" style="display:none;margin-top:12px;"></div>
+            <div id="jw-ocr-result" style="display:none;margin-top:10px;background:#fff;border:1.5px solid #c8e6c9;border-radius:10px;padding:12px;">
+              <div style="font-size:11px;font-weight:800;color:#2e7d32;margin-bottom:8px;">✅ משימות שחולצו:</div>
+              <div id="jw-ocr-tasks" style="display:flex;flex-direction:column;gap:6px;"></div>
+              <button onclick="jwApproveOCRTasks()" style="margin-top:10px;width:100%;padding:9px;background:linear-gradient(135deg,#1b5e20,#43a047);border:none;color:#fff;border-radius:8px;font-family:Heebo,sans-serif;font-size:12px;font-weight:800;cursor:pointer;">
+                ✅ אשר משימות ושמור
+              </button>
+            </div>
+          </div>
+
+          <!-- Existing tasks from DB -->
+          <div id="mb-tasks-list" style="margin-top:12px;"></div>
         </div>
 
         <!-- Drawings browser -->
@@ -6965,6 +7025,11 @@ async function fjLoadTasks() {
 
 // Load today's briefing from Avshi into wizard Step 1 banner
 async function jwLoadBriefing() {
+  // Check projects state
+  jwCheckProjects();
+  // Default to table option
+  jwTasksShowOption('table');
+
   var today = new Date().toISOString().split('T')[0];
   var banner = document.getElementById('jw-briefing-banner');
   var textEl = document.getElementById('jw-briefing-text');
@@ -11641,6 +11706,245 @@ function openLinkModal(takeoffId) {
 }
 
 // ===== END INLINED MODULES =====
+
+// ══ WIZARD PROJECT GUARD ══════════════════════════════════════════════
+function jwOnProjectChange(sel) {
+  var errEl = document.getElementById('jw-proj-err');
+  if (!sel.value) {
+    if (errEl) errEl.style.display = 'block';
+    document.getElementById('mb-tasks-section') && (document.getElementById('mb-tasks-section').style.display = 'none');
+    document.getElementById('mb-hero') && (document.getElementById('mb-hero').style.display = 'none');
+    document.getElementById('mb-drawings-section') && (document.getElementById('mb-drawings-section').style.display = 'none');
+    document.getElementById('mb-contractors-section') && (document.getElementById('mb-contractors-section').style.display = 'none');
+    return;
+  }
+  if (errEl) errEl.style.display = 'none';
+  // Delegate to module functions if available
+  if (typeof onJournalProjectChange === 'function') onJournalProjectChange(sel);
+  if (typeof mbInit === 'function') mbInit();
+  // Show tasks section
+  var ts = document.getElementById('mb-tasks-section');
+  if (ts) ts.style.display = 'block';
+  // Load today's tasks from daily_tasks
+  jwLoadWizardTasks(sel.value);
+}
+
+// Called when wizard opens — check no-projects state
+function jwCheckProjects() {
+  var sel = document.getElementById('projectName');
+  var warn = document.getElementById('jw-no-projects-warn');
+  if (!sel || !warn) return;
+  var projects = window.allProjects || [];
+  if (projects.length === 0) {
+    warn.style.display = 'block';
+    sel.disabled = true;
+  } else {
+    warn.style.display = 'none';
+    sel.disabled = false;
+    // Populate select if empty
+    if (sel.options.length <= 1) {
+      projects.forEach(function(p) {
+        var o = document.createElement('option');
+        o.value = p.id; o.textContent = p.project_name;
+        sel.appendChild(o);
+      });
+    }
+    // Do NOT auto-select — leave at blank option
+    sel.value = '';
+  }
+}
+
+// ══ WIZARD TASKS EDITOR ═══════════════════════════════════════════════
+var _jwTaskRows = [];   // {id, text, priority, done}
+var _jwOcrTasks = [];
+
+function jwTasksShowOption(opt) {
+  var tableBtn = document.getElementById('jw-opt-table-btn');
+  var ocrBtn   = document.getElementById('jw-opt-ocr-btn');
+  var tableDiv = document.getElementById('jw-tasks-table-section');
+  var ocrDiv   = document.getElementById('jw-tasks-ocr-section');
+  if (opt === 'table') {
+    tableDiv.style.display = 'block'; ocrDiv.style.display = 'none';
+    tableBtn.style.background = '#2e7d32'; tableBtn.style.color = '#fff'; tableBtn.style.border = '2px solid #2e7d32';
+    ocrBtn.style.background = 'transparent'; ocrBtn.style.color = '#2e7d32'; ocrBtn.style.border = '2px solid #a5d6a7';
+    if (_jwTaskRows.length === 0) jwAddTaskRow();
+  } else {
+    tableDiv.style.display = 'none'; ocrDiv.style.display = 'block';
+    ocrBtn.style.background = '#2e7d32'; ocrBtn.style.color = '#fff'; ocrBtn.style.border = '2px solid #2e7d32';
+    tableBtn.style.background = 'transparent'; tableBtn.style.color = '#2e7d32'; tableBtn.style.border = '2px solid #a5d6a7';
+  }
+}
+
+function jwAddTaskRow(text, priority, done) {
+  text = text || ''; priority = priority || 2; done = done || false;
+  var id = 'jtr-' + Date.now() + '-' + Math.random().toString(36).slice(2,6);
+  _jwTaskRows.push({id: id, text: text, priority: priority, done: done});
+  var container = document.getElementById('jw-tasks-rows');
+  if (!container) return;
+  var row = document.createElement('div');
+  row.id = 'row-' + id;
+  row.style.cssText = 'display:grid;grid-template-columns:24px 1fr 90px 28px;gap:8px;align-items:center;background:#fff;border:1.5px solid #c8e6c9;border-radius:9px;padding:8px 10px;';
+
+  // Checkbox
+  var chk = document.createElement('div');
+  chk.style.cssText = 'width:20px;height:20px;border-radius:6px;border:2px solid ' + (done ? '#43a047' : '#a5d6a7') + ';background:' + (done ? '#43a047' : 'transparent') + ';cursor:pointer;display:flex;align-items:center;justify-content:center;color:#fff;font-size:13px;flex-shrink:0;';
+  if (done) chk.textContent = '✓';
+  chk.onclick = function() {
+    var t = _jwTaskRows.find(function(r){ return r.id === id; });
+    if (!t) return;
+    t.done = !t.done;
+    chk.style.background = t.done ? '#43a047' : 'transparent';
+    chk.style.borderColor = t.done ? '#43a047' : '#a5d6a7';
+    chk.textContent = t.done ? '✓' : '';
+    row.style.opacity = t.done ? '0.6' : '1';
+  };
+
+  // Text input
+  var inp = document.createElement('input');
+  inp.type = 'text'; inp.placeholder = 'תיאור המשימה...'; inp.value = text;
+  inp.style.cssText = 'border:none;outline:none;font-family:Heebo,sans-serif;font-size:13px;color:#1b5e20;background:transparent;direction:rtl;width:100%;';
+  inp.oninput = function() {
+    var t = _jwTaskRows.find(function(r){ return r.id === id; });
+    if (t) t.text = inp.value;
+  };
+
+  // Priority select
+  var pri = document.createElement('select');
+  pri.style.cssText = 'border:1px solid #c8e6c9;border-radius:6px;font-family:Heebo,sans-serif;font-size:11px;background:#f1f8e9;color:#2e7d32;padding:4px;';
+  var priorities = [{v:1,l:'🔴 דחוף'},{v:2,l:'🟡 רגיל'},{v:3,l:'🟢 נמוך'}];
+  priorities.forEach(function(p) {
+    var o = document.createElement('option'); o.value = p.v; o.textContent = p.l;
+    if (p.v === priority) o.selected = true;
+    pri.appendChild(o);
+  });
+  pri.onchange = function() {
+    var t = _jwTaskRows.find(function(r){ return r.id === id; });
+    if (t) t.priority = parseInt(pri.value);
+  };
+
+  // Delete button
+  var del = document.createElement('button');
+  del.textContent = '✕'; del.type = 'button';
+  del.style.cssText = 'background:none;border:none;color:#ef9a9a;font-size:14px;cursor:pointer;font-family:Heebo,sans-serif;';
+  del.onclick = function() {
+    _jwTaskRows = _jwTaskRows.filter(function(r){ return r.id !== id; });
+    row.remove();
+  };
+
+  row.appendChild(chk); row.appendChild(inp); row.appendChild(pri); row.appendChild(del);
+  container.appendChild(row);
+  inp.focus();
+}
+
+async function jwSaveWizardTasks() {
+  var sel = document.getElementById('projectName');
+  var pid = sel ? sel.value : null;
+  var today = new Date().toISOString().split('T')[0];
+  var tasks = _jwTaskRows.filter(function(t){ return t.text.trim(); });
+  if (!tasks.length) return;
+  var tagMap = {1:'urgent', 2:'other', 3:'other'};
+  for (var t of tasks) {
+    await sb.from('daily_tasks').insert({
+      project_id: pid || null,
+      task_date: today,
+      task_text: t.text.trim(),
+      tag: tagMap[t.priority] || 'other',
+      is_done: t.done,
+      created_at: new Date().toISOString()
+    });
+  }
+  showToast('✅ ' + tasks.length + ' משימות נשמרו!', 'success');
+  jwLoadWizardTasks(pid);
+}
+
+async function jwLoadWizardTasks(pid) {
+  var today = new Date().toISOString().split('T')[0];
+  var qs = 'task_date=eq.' + today + '&order=created_at.asc&select=id,task_text,tag,is_done,created_at';
+  if (pid) qs += '&project_id=eq.' + pid;
+  var { data: tasks } = await sbQ('daily_tasks', qs);
+  tasks = tasks || [];
+  var listEl = document.getElementById('mb-tasks-list');
+  var cntEl  = document.getElementById('mb-tasks-count');
+  if (!listEl) return;
+  var done = tasks.filter(function(t){ return t.is_done; }).length;
+  if (cntEl) cntEl.textContent = done + '/' + tasks.length + ' הושלמו';
+  listEl.innerHTML = '';
+  tasks.forEach(function(t) {
+    var row = document.createElement('div');
+    row.style.cssText = 'display:flex;align-items:center;gap:8px;padding:8px 10px;background:#fff;border:1.5px solid #c8e6c9;border-radius:8px;margin-bottom:6px;direction:rtl;' + (t.is_done ? 'opacity:0.6;' : '');
+    var chk = document.createElement('div');
+    chk.style.cssText = 'width:20px;height:20px;border-radius:6px;border:2px solid ' + (t.is_done?'#43a047':'#a5d6a7') + ';background:' + (t.is_done?'#43a047':'transparent') + ';cursor:pointer;display:flex;align-items:center;justify-content:center;color:#fff;font-size:12px;flex-shrink:0;';
+    if (t.is_done) chk.textContent = '✓';
+    chk.onclick = (function(id, isDone){ return function(){
+      fetch(SB_URL+'/rest/v1/daily_tasks?id=eq.'+id,{method:'PATCH',headers:{apikey:SB_KEY,Authorization:'Bearer '+SB_KEY,'Content-Type':'application/json',Prefer:'return=minimal'},body:JSON.stringify({is_done:!isDone,done_at:!isDone?new Date().toISOString():null})}).then(function(){ jwLoadWizardTasks(pid); });
+    }; })(t.id, t.is_done);
+    var txt = document.createElement('div');
+    txt.style.cssText = 'flex:1;font-size:12px;color:#1b5e20;font-weight:600;' + (t.is_done ? 'text-decoration:line-through;color:#888;' : '');
+    txt.textContent = t.task_text;
+    var tagLabel = {urgent:'🔴 דחוף', schedule:'📅 לוח זמנים', site:'🏗️ שטח', safety:'⚠️ בטיחות', other:'✅ רגיל'};
+    var tag = document.createElement('div');
+    tag.style.cssText = 'font-size:10px;padding:2px 8px;border-radius:20px;background:#e8f5e9;color:#2e7d32;border:1px solid #c8e6c9;flex-shrink:0;';
+    tag.textContent = tagLabel[t.tag] || t.tag;
+    row.appendChild(chk); row.appendChild(txt); row.appendChild(tag);
+    listEl.appendChild(row);
+  });
+}
+
+async function jwHandleTaskOCR(input) {
+  var file = input.files[0]; if (!file) return;
+  var preview = document.getElementById('jw-ocr-preview');
+  var resultDiv = document.getElementById('jw-ocr-result');
+  if (preview) { preview.style.display='block'; preview.innerHTML='<div style="font-size:12px;color:#558b2f;padding:10px;">⏳ שולח ל-Claude לקריאה...</div>'; }
+  var b64 = await new Promise(function(res){ var r=new FileReader(); r.onload=function(e){ res(e.target.result); }; r.readAsDataURL(file); });
+  var b64data = b64.split(',')[1];
+  var imgType = file.type || 'image/jpeg';
+  var apiKey = APP && APP.config && APP.config.anthropic_key;
+  if (!apiKey) { showToast('מפתח Claude חסר ב-app_config','error'); return; }
+  var resp = await claudeFetch({_apiKey:apiKey, model:'claude-sonnet-4-20250514', max_tokens:800,
+    system:'אתה עוזר לקריאת כתב יד בעברית. חלץ רשימת משימות מהתמונה. החזר JSON בלבד: {"tasks":[{"text":"...","priority":1}]} כאשר priority: 1=דחוף, 2=רגיל, 3=נמוך. ללא טקסט נוסף.',
+    messages:[{role:'user',content:[{type:'image',source:{type:'base64',media_type:imgType,data:b64data}},{type:'text',text:'חלץ את רשימת המשימות מהכתב יד'}]}]
+  }, null);
+  var data = await resp.json();
+  var raw = (data.content||[]).map(function(c){ return c.text||''; }).join('');
+  try {
+    var clean = raw.replace(/```json|```/g,'').trim();
+    var parsed = JSON.parse(clean);
+    _jwOcrTasks = parsed.tasks || [];
+    var tasksEl = document.getElementById('jw-ocr-tasks');
+    if (tasksEl && resultDiv) {
+      tasksEl.innerHTML = '';
+      _jwOcrTasks.forEach(function(t, i) {
+        var div = document.createElement('div');
+        div.style.cssText = 'display:flex;align-items:center;gap:8px;padding:6px 8px;background:#f1f8e9;border-radius:7px;direction:rtl;';
+        var priLabel = {1:'🔴',2:'🟡',3:'🟢'};
+        div.innerHTML = '<span style="font-size:14px;">'+(priLabel[t.priority]||'🟡')+'</span><span style="font-size:12px;color:#1b5e20;font-weight:600;flex:1;">'+t.text+'</span>';
+        tasksEl.appendChild(div);
+      });
+      resultDiv.style.display = 'block';
+      if (preview) preview.innerHTML = '<img src="'+b64+'" style="max-width:100%;border-radius:8px;border:1px solid #c8e6c9;">';
+    }
+  } catch(e) { showToast('שגיאה בחילוץ משימות','error'); }
+}
+
+async function jwApproveOCRTasks() {
+  var sel = document.getElementById('projectName');
+  var pid = sel ? sel.value : null;
+  var today = new Date().toISOString().split('T')[0];
+  var tagMap = {1:'urgent', 2:'other', 3:'other'};
+  for (var t of _jwOcrTasks) {
+    await sb.from('daily_tasks').insert({
+      project_id: pid || null, task_date: today,
+      task_text: t.text, tag: tagMap[t.priority]||'other',
+      is_done: false, created_at: new Date().toISOString()
+    });
+  }
+  _jwOcrTasks = [];
+  document.getElementById('jw-ocr-result').style.display = 'none';
+  document.getElementById('jw-ocr-preview').style.display = 'none';
+  document.getElementById('jw-task-img-input').value = '';
+  showToast('✅ משימות נשמרו!', 'success');
+  jwLoadWizardTasks(pid);
+}
 
 
 </script>
