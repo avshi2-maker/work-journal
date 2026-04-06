@@ -9426,12 +9426,20 @@ function generatePOPdf(po) {
 
 <div class="app-panel" id="fieldjournal-panel">
   <div style="padding:30px;direction:rtl;font-family:Heebo,sans-serif;">
-    <div style="font-size:24px;font-weight:900;color:#c9a84c;margin-bottom:16px;">📋 יומן שטח יומי</div>
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:16px;">
+      <div style="font-size:24px;font-weight:900;color:#c9a84c;">📋 יומן שטח יומי</div>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+        <select id="fj-project-sel" style="background:#1a1a2e;border:1px solid rgba(201,168,76,0.3);color:#c9a84c;padding:7px 10px;border-radius:8px;font-family:Heebo,sans-serif;font-size:12px;font-weight:700;">
+          <option value="">— בחר פרויקט —</option>
+        </select>
+        <input type="date" id="fj-date-sel" style="background:#1a1a2e;border:1px solid rgba(255,255,255,0.1);color:#fff;padding:7px 10px;border-radius:8px;font-family:Heebo,sans-serif;font-size:12px;">
+      </div>
+    </div>
     <div id="fj-phase-tabs" style="display:flex;gap:8px;margin-bottom:18px;">
-      <button onclick="fjSetPhase('morning')" style="flex:1;padding:12px;border-radius:12px;border:2px solid #7F77DD;background:rgba(127,119,221,0.15);color:#c4b5fd;font-family:Heebo;font-size:12px;font-weight:800;cursor:pointer;">🌅 בוקר</button>
-      <button onclick="fjSetPhase('field')" style="flex:1;padding:12px;border-radius:12px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.03);color:#ccc;font-family:Heebo;font-size:12px;font-weight:800;cursor:pointer;">🏗️ שטח</button>
-      <button onclick="fjSetPhase('takeoff')" style="flex:1;padding:12px;border-radius:12px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.03);color:#ccc;font-family:Heebo;font-size:12px;font-weight:800;cursor:pointer;">📐 כמויות</button>
-      <button onclick="fjSetPhase('eod')" style="flex:1;padding:12px;border-radius:12px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.03);color:#ccc;font-family:Heebo;font-size:12px;font-weight:800;cursor:pointer;">🌆 סוף יום</button>
+      <button id="fj-tab-morning" onclick="fjSetPhase('morning')" style="flex:1;padding:12px;border-radius:12px;border:2px solid #7F77DD;background:rgba(127,119,221,0.15);color:#c4b5fd;font-family:Heebo;font-size:12px;font-weight:800;cursor:pointer;">🌅 בוקר</button>
+      <button id="fj-tab-field" onclick="fjSetPhase('field')" style="flex:1;padding:12px;border-radius:12px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.03);color:#ccc;font-family:Heebo;font-size:12px;font-weight:800;cursor:pointer;">🏗️ שטח</button>
+      <button id="fj-tab-takeoff" onclick="fjSetPhase('takeoff')" style="flex:1;padding:12px;border-radius:12px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.03);color:#ccc;font-family:Heebo;font-size:12px;font-weight:800;cursor:pointer;">📐 כמויות</button>
+      <button id="fj-tab-eod" onclick="fjSetPhase('eod')" style="flex:1;padding:12px;border-radius:12px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.03);color:#ccc;font-family:Heebo;font-size:12px;font-weight:800;cursor:pointer;">🌆 סוף יום</button>
     </div>
     <div id="fj-phase-content"></div>
   </div>
