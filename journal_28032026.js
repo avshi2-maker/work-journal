@@ -83,7 +83,7 @@ function jwBack() {
 function onJournalProjectChange(sel) {
   var opt = sel && sel.options[sel.selectedIndex];
   _mbProjectId   = opt ? (opt.dataset.id || null) : null;
-  _mbProjectName = (sel && sel.value && sel.value !== '__custom__') ? sel.value : '';
+  _mbProjectName = (opt && opt.text && sel.value !== '__custom__') ? opt.text : '';
   var customRow = document.getElementById('project-custom-name-row');
   if (customRow) customRow.style.display = (sel && sel.value === '__custom__') ? 'block' : 'none';
   jwUpdateCTA();
@@ -254,7 +254,7 @@ async function mbInit() {
   // Read selected option's data-id
   var opt = sel.options[sel.selectedIndex];
   _mbProjectId   = opt ? (opt.dataset.id || null) : null;
-  _mbProjectName = (sel.value && sel.value !== '__custom__') ? sel.value : '';
+  _mbProjectName = (opt && opt.text && sel.value !== '__custom__') ? opt.text : '';
 
   // Auto-select first active project if nothing chosen
   if (!_mbProjectId && window.allProjects && window.allProjects.length) {
@@ -364,7 +364,7 @@ var SB_KEY_MB = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsIn
 async function mbLoadFiles() {
   var grid = document.getElementById('mb-drawings-grid');
   try {
-    var folder = 'drawings/' + (_mbProjectName||'general').replace(/[^a-zA-Z0-9֐-׿]/g,'_') + '/';
+    var folder = 'drawings/' + (_mbProjectId||'general') + '/';
     var res = await fetch(SB_URL_MB + '/storage/v1/object/list/app-assets/' + encodeURIComponent(folder),
       { headers: { apikey: SB_KEY_MB, Authorization: 'Bearer ' + SB_KEY_MB } });
     var files = res.ok ? await res.json() : [];
@@ -395,7 +395,7 @@ function mbRenderFiles() {
     if (_mbDrawFilter === 'img') return ['jpg','jpeg','png','gif','webp'].includes(ext);
     return true;
   });
-  var folder = 'drawings/' + (_mbProjectName||'general').replace(/[^a-zA-Z0-9֐-׿]/g,'_') + '/';
+  var folder = 'drawings/' + (_mbProjectId||'general') + '/';
   var html = files.map(function(f) {
     var ext  = (f.name||'').split('.').pop().toLowerCase();
     var icon = ext==='pdf'?'📄':ext==='dwg'?'📐':['jpg','jpeg','png','gif','webp'].includes(ext)?'🖼️':'📎';
@@ -418,7 +418,7 @@ function mbRenderFiles() {
 
 async function mbUploadFiles(input) {
   var files = Array.from(input.files); if (!files.length) return;
-  var folder = 'drawings/' + (_mbProjectName||'general').replace(/[^a-zA-Z0-9֐-׿]/g,'_') + '/';
+  var folder = 'drawings/' + (_mbProjectId||'general') + '/';
   for (var i = 0; i < files.length; i++) {
     var f = files[i];
     try {
