@@ -7674,11 +7674,13 @@ async function switchTab(tab) {
       if (!allProjects || !allProjects.length) { try { await loadProjects(); } catch(e){} }
       if (typeof initializeManagerView === 'function') initializeManagerView();
       if (typeof jwGoto === 'function') jwGoto(1);
-      // Force blank + repopulate with real UUIDs — 600ms to outlast module async ops
+      // Install a value-trap on the select so module can NEVER auto-select
+      // This intercepts ANY programmatic .value = ... assignment
+      jwInstallProjectTrap();
+      // Still run after delay to rebuild options with real UUIDs
       setTimeout(function(){
         var sel = document.getElementById('projectName');
         if (sel) {
-          // Rebuild options with UUID values (module uses project names as values — wrong)
           sel.innerHTML = '<option value="">— בחר פרויקט —</option>';
           (window.allProjects||[]).forEach(function(p){
             var o = document.createElement('option');
@@ -7695,7 +7697,7 @@ async function switchTab(tab) {
         jwLoadBriefing();
         jwCheckProjects();
         jwTasksShowOption('table');
-      }, 600);
+      }, 800);
     }).catch(function(e){ console.error('journal load:', e); });
     _fetchCallRecordingsModule().then(function(){ setTimeout(function(){ if(typeof callRecordingsInit==='function') callRecordingsInit(); },200); });
   }
@@ -11764,6 +11766,42 @@ function openLinkModal(takeoffId) {
 
 // ===== END INLINED MODULES =====
 
+
+// ══ PROJECT SELECT TRAP — blocks module from auto-selecting ══════════
+// Uses Object.defineProperty to intercept .value assignments on the select
+var _jwTrapInstalled = false;
+function jwInstallProjectTrap() {
+  if (_jwTrapInstalled) return;
+  _jwTrapInstalled = true;
+  // Run after DOM is ready
+  setTimeout(function() {
+    var sel = document.getElementById('projectName');
+    if (!sel) return;
+    var nativeSetter = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set;
+    var nativeGetter = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').get;
+    Object.defineProperty(sel, 'value', {
+      get: function() { return nativeGetter.call(sel); },
+      set: function(v) {
+        // Only allow blank value — block any non-empty programmatic assignment
+        // unless it came from jwOnProjectChange (user action)
+        if (v && !sel._allowSet) {
+          // Silently block
+          return;
+        }
+        nativeSetter.call(sel, v);
+      },
+      configurable: true
+    });
+  }, 50);
+}
+
+// Call this before programmatic set is needed
+function jwAllowProjectSet(sel, val) {
+  sel._allowSet = true;
+  sel.value = val;
+  sel._allowSet = false;
+}
+
 // ══ FIELD CARD — AI BRIEFING FOR BENI ════════════════════════════════
 var _jwFieldCard = null; // current generated card
 
@@ -11795,7 +11833,11 @@ async function jwGenerateFieldCard() {
   var dbTasks = [];
   try {
     var today = dateVal || new Date().toISOString().split('T')[0];
-    var {data} = await sbQ('daily_tasks','task_date=eq.'+today+'&project_id=eq.'+sel.value+'&order=created_at.asc&select=task_text,tag,is_done');
+    // UUID guard — use global safe UUID, not sel.value which may be a Hebrew name
+    var safePid = (/^[0-9a-f\-]{10,}$/i.test(sel.value)) ? sel.value : (window._jwCurrentProjectId || null);
+    var {data} = safePid
+      ? await sbQ('daily_tasks','task_date=eq.'+today+'&project_id=eq.'+safePid+'&order=created_at.asc&select=task_text,tag,is_done')
+      : {data:[]};
     dbTasks = (data||[]).filter(function(t){ return !t.is_done; });
   } catch(e){}
   var dbTaskLines = dbTasks.map(function(t){ return '• ' + t.task_text; }).join('\n');
@@ -11988,8 +12030,9 @@ async function jwSaveFieldCardToDB() {
 function jwOnProjectChange(sel) {
   var errEl = document.getElementById('jw-proj-err');
   var pickPrompt = document.getElementById('jw-pick-prompt');
+  var pid = sel.value;
 
-  if (!sel.value) {
+  if (!pid) {
     if (errEl) errEl.style.display = 'block';
     if (pickPrompt) pickPrompt.style.display = 'block';
     ['mb-tasks-section','mb-hero','mb-drawings-section','mb-contractors-section','jw-cta'].forEach(function(id){
@@ -11999,21 +12042,39 @@ function jwOnProjectChange(sel) {
     return;
   }
 
-  // Valid project selected
+  // Valid UUID project selected
   if (errEl) errEl.style.display = 'none';
   if (pickPrompt) pickPrompt.style.display = 'none';
 
-  // Delegate to module functions if available
+  // ── UUID GUARD: reject if value looks like a Hebrew project name not a UUID ──
+  // UUIDs are hex+dashes only. Hebrew names contain non-ASCII chars.
+  var looksLikeUUID = /^[0-9a-f\-]{10,}$/i.test(pid);
+  if (!looksLikeUUID) {
+    console.warn('[jwOnProjectChange] blocked non-UUID project_id:', pid);
+    showToast('שגיאה: מזהה פרויקט לא תקין — אנא רענן את הדף', 'error');
+    jwAllowProjectSet(sel, '');
+    return;
+  }
+
+  // Store UUID globally so mbInit and other modules can read it safely
+  window._jwCurrentProjectId = pid;
+
+  // Allow the module's onJournalProjectChange — but mark select so trap allows it
+  sel._allowSet = true;
   if (typeof onJournalProjectChange === 'function') onJournalProjectChange(sel);
+  sel._allowSet = false;
+
+  // Restore UUID value in case module changed it
+  jwAllowProjectSet(sel, pid);
+
   if (typeof mbInit === 'function') mbInit();
 
   // Show tasks section
   var ts = document.getElementById('mb-tasks-section');
-  if (ts) { ts.style.display = 'block'; }
+  if (ts) ts.style.display = 'block';
 
-  // Default to table option and load existing tasks
   jwTasksShowOption('table');
-  jwLoadWizardTasks(sel.value);
+  jwLoadWizardTasks(pid);
 }
 
 // Called when wizard opens — check no-projects state
@@ -12149,6 +12210,11 @@ async function jwSaveWizardTasks() {
 }
 
 async function jwLoadWizardTasks(pid) {
+  // UUID guard — never send Hebrew name as project_id to Supabase
+  if (pid && !/^[0-9a-f\-]{10,}$/i.test(pid)) {
+    console.warn('[jwLoadWizardTasks] blocked non-UUID pid:', pid);
+    pid = window._jwCurrentProjectId || null;
+  }
   var today = new Date().toISOString().split('T')[0];
   var qs = 'task_date=eq.' + today + '&order=created_at.asc&select=id,task_text,tag,is_done,created_at';
   if (pid) qs += '&project_id=eq.' + pid;
