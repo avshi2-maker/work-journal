@@ -2356,39 +2356,39 @@ window.addEventListener('unhandledrejection', function(e) {
 <div class="app-panel" id="journal-panel">
 <style>
 /* ── JOURNAL WIZARD LAYOUT ─────────────────────────── */
-#journal-wizard{display:flex;flex-direction:column;min-height:100vh;background:#fdf6e3;font-family:Heebo,sans-serif;direction:rtl;}
-#jw-topbar{background:#1a3d5c;color:#fff;padding:12px 20px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
+#journal-wizard{display:flex;flex-direction:column;min-height:100vh;background:linear-gradient(160deg,#e8f5e9 0%,#f1f8e9 60%,#e0f2f1 100%);font-family:Heebo,sans-serif;direction:rtl;}
+#jw-topbar{background:linear-gradient(135deg,#1b5e20,#2e7d32);color:#fff;padding:12px 20px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
 #jw-topbar-title{font-size:15px;font-weight:800;}
 #jw-topbar-sub{font-size:10px;opacity:.6;margin-top:2px;}
-#jw-topbar-num{font-size:11px;background:rgba(201,168,76,.3);border:1px solid rgba(201,168,76,.5);border-radius:12px;padding:3px 10px;color:#fde68a;font-weight:700;}
+#jw-topbar-num{font-size:11px;background:rgba(255,255,255,.2);border:1px solid rgba(255,255,255,.35);border-radius:12px;padding:3px 10px;color:#fff;font-weight:700;}
 #jw-body{display:flex;flex:1;min-height:0;}
 /* STEP SIDEBAR */
-#jw-steps{width:130px;flex-shrink:0;background:#f5e9c4;border-left:2px solid #e2d0a0;padding:10px 0;overflow-y:auto;}
+#jw-steps{width:130px;flex-shrink:0;background:rgba(255,255,255,0.65);border-left:2px solid #c8e6c9;padding:10px 0;overflow-y:auto;}
 .jw-step{display:flex;align-items:flex-start;gap:7px;padding:9px 10px;cursor:pointer;border-right:3px solid transparent;transition:all .15s;}
-.jw-step.active{background:#fffbf0;border-right-color:#c9a84c;}
+.jw-step.active{background:rgba(255,255,255,0.9);border-right-color:#2e7d32;}
 .jw-step.done{opacity:.8;}
 .jw-step-num{width:20px;height:20px;border-radius:50%;border:2px solid #c9a84c;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:800;color:#9a6f00;flex-shrink:0;margin-top:2px;}
-.jw-step.active .jw-step-num{background:#1a3d5c;border-color:#1a3d5c;color:#fff;}
+.jw-step.active .jw-step-num{background:#2e7d32;border-color:#2e7d32;color:#fff;}
 .jw-step.done .jw-step-num{background:#c9a84c;border-color:#c9a84c;color:#fff;}
 .jw-step-label{font-size:10px;font-weight:700;color:#5a4010;line-height:1.4;}
-.jw-step.active .jw-step-label{color:#1a3d5c;font-weight:900;}
+.jw-step.active .jw-step-label{color:#1b5e20;font-weight:900;}
 .jw-conn{width:2px;height:6px;background:#e2d0a0;margin-right:19px;}
 /* MAIN STEP AREA */
 #jw-main{flex:1;overflow-y:auto;padding:20px 24px 16px;}
 .jw-step-panel{display:none;}
 .jw-step-panel.active{display:block;}
 /* STEP HEADER */
-.jw-step-hdr{display:flex;align-items:center;gap:10px;margin-bottom:18px;padding-bottom:12px;border-bottom:2px solid #e2d0a0;}
+.jw-step-hdr{display:flex;align-items:center;gap:10px;margin-bottom:18px;padding-bottom:12px;border-bottom:2px solid #c8e6c9;}
 .jw-step-ico{font-size:24px;}
-.jw-step-title{font-size:17px;font-weight:900;color:#1a3d5c;}
+.jw-step-title{font-size:17px;font-weight:900;color:#1b5e20;}
 .jw-badge{font-size:10px;font-weight:700;padding:3px 9px;border-radius:10px;}
 .jw-badge-law{background:#fef3c7;color:#92400e;}
 .jw-badge-crit{background:#fee2e2;color:#991b1b;}
 .jw-badge-opt{background:#dbeafe;color:#1e40af;}
 /* FOOTER NAV */
-#jw-footer{background:#f5e9c4;border-top:2px solid #e2d0a0;padding:12px 20px;display:flex;align-items:center;gap:12px;flex-shrink:0;}
-#jw-btn-back{background:none;border:1.5px solid #c9a84c;color:#9a6f00;border-radius:9px;padding:10px 18px;font-size:13px;font-weight:700;cursor:pointer;font-family:Heebo,sans-serif;}
-#jw-btn-next{background:#1a3d5c;color:#fff;border:none;border-radius:9px;padding:10px 24px;font-size:13px;font-weight:800;cursor:pointer;font-family:Heebo,sans-serif;}
+#jw-footer{background:rgba(255,255,255,0.75);border-top:2px solid #c8e6c9;padding:12px 20px;display:flex;align-items:center;gap:12px;flex-shrink:0;}
+#jw-btn-back{background:none;border:1.5px solid #a5d6a7;color:#2e7d32;border-radius:9px;padding:10px 18px;font-size:13px;font-weight:700;cursor:pointer;font-family:Heebo,sans-serif;}
+#jw-btn-next{background:linear-gradient(135deg,#1b5e20,#43a047);color:#fff;border:none;border-radius:9px;padding:10px 24px;font-size:13px;font-weight:800;cursor:pointer;font-family:Heebo,sans-serif;}
 #jw-btn-save{background:rgba(22,163,74,.15);border:1.5px solid rgba(22,163,74,.4);color:#15803d;border-radius:9px;padding:10px 16px;font-size:12px;font-weight:700;cursor:pointer;font-family:Heebo,sans-serif;}
 #jw-progress-wrap{flex:1;}
 #jw-progress-lbl{font-size:10px;color:#9a6f00;font-weight:700;margin-bottom:3px;}
@@ -2710,7 +2710,7 @@ window.addEventListener('unhandledrejection', function(e) {
 </div><!-- /journal-wizard -->
 
 <!-- ══ CALL RECORDINGS SECTION (inside journal-panel, after wizard) ══ -->
-<div id="call-recordings-section" style="background:#1a1a2e;font-family:Heebo,sans-serif;direction:rtl;padding:24px;min-height:400px;">
+<div id="call-recordings-section" style="display:none;background:#1a1a2e;font-family:Heebo,sans-serif;direction:rtl;padding:24px;min-height:400px;">
 
   <!-- Header -->
   <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:10px;">
