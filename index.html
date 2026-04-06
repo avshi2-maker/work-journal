@@ -363,6 +363,8 @@ window.addEventListener('unhandledrejection', function(e) {
   <div class="top-tab"        id="tab-safety" onclick="switchTab('safety')"><span>🛡️</span><span>בטיחות / ליקויים</span></div>
   <div class="top-tab"        id="tab-notes"  onclick="switchTab('notes')"><span>📝</span><span>מזכרים בני</span></div>
   <div class="top-tab"        id="tab-rag"    onclick="switchTab('rag')"><span>🏗️</span><span>ייעוץ הנדסי</span></div>
+  <div class="top-tab" id="tab-fieldjournal" onclick="switchTab('fieldjournal')"><span>📋</span><span>יומן שטח</span></div>
+  <div class="top-tab" id="tab-encyclopedia" onclick="switchTab('encyclopedia')"><span>📚</span><span>אנציקלופדיה</span></div>
   <div class="top-tab"        id="tab-inbox" onclick="switchTab('inbox')"><span>📥</span><span>תיבת נכנסים 📥</span><span id="tab-inbox-badge" style="display:none;background:#ef4444;color:#fff;border-radius:8px;padding:1px 6px;font-size:9px;font-weight:800;"></span></div>
   <div class="top-tab"        id="tab-smartscan" onclick="switchTab('smartscan')"><span>🚀</span><span>סריקה מקצועית</span></div>
 </div>
@@ -6712,6 +6714,720 @@ function openGoogleCalendar(calData) {
 }
 
 
+
+// ══════════════════════════════════════════════════════════════════════
+// FIELD JOURNAL — יומן שטח יומי
+// ══════════════════════════════════════════════════════════════════════
+var _fjPhase = 'morning';
+var _fjJournalId = null;
+var _fjTasks = [];
+var _fjObs = [];
+
+async function fjInit() {
+  // Set today's date
+  var today = new Date().toISOString().split('T')[0];
+  var dateSel = document.getElementById('fj-date-sel');
+  if (dateSel && !dateSel.value) dateSel.value = today;
+  var dateDisp = document.getElementById('fj-date-display');
+  if (dateDisp) dateDisp.textContent = new Date().toLocaleDateString('he-IL', {weekday:'long', year:'numeric', month:'long', day:'numeric'});
+
+  // Populate project selector
+  var sel = document.getElementById('fj-project-sel');
+  if (sel && sel.options.length <= 1) {
+    (window.allProjects||[]).forEach(function(p) {
+      var o = document.createElement('option'); o.value=p.id; o.textContent=p.project_name; sel.appendChild(o);
+    });
+  }
+
+  fjSetPhase('morning');
+}
+
+function fjSetPhase(phase) {
+  _fjPhase = phase;
+  var phases = ['morning','field','takeoff','eod'];
+  phases.forEach(function(p) {
+    var btn = document.getElementById('fj-tab-' + p);
+    if (!btn) return;
+    if (p === phase) {
+      btn.style.border = '2px solid #7F77DD';
+      btn.style.background = 'rgba(127,119,221,0.15)';
+      btn.querySelector('div:nth-child(2)').style.color = '#c4b5fd';
+    } else {
+      btn.style.border = '1px solid rgba(255,255,255,0.1)';
+      btn.style.background = 'rgba(255,255,255,0.03)';
+      btn.querySelector('div:nth-child(2)').style.color = '#ccc';
+    }
+  });
+  var content = document.getElementById('fj-phase-content');
+  if (!content) return;
+  if (phase === 'morning')  fjRenderMorning(content);
+  if (phase === 'field')    fjRenderField(content);
+  if (phase === 'takeoff')  fjRenderTakeoff(content);
+  if (phase === 'eod')      fjRenderEOD(content);
+}
+
+function fjRenderMorning(container) {
+  container.innerHTML = '';
+  var grid = document.createElement('div');
+  grid.style.cssText = 'display:grid;grid-template-columns:1fr 1fr;gap:14px;';
+
+  // LEFT: Upload handwriting
+  var left = document.createElement('div');
+  left.style.cssText = 'display:flex;flex-direction:column;gap:12px;';
+
+  var uploadCard = fjCard('📝 דף בוקר — כתב יד', `
+    <div style="border:2px dashed rgba(201,168,76,0.4);border-radius:10px;padding:20px;text-align:center;cursor:pointer;direction:rtl;" onclick="document.getElementById('fj-morning-upload').click()">
+      <div style="font-size:32px;margin-bottom:8px;">📷</div>
+      <div style="font-size:13px;color:#c9a84c;font-weight:800;">צלם את דף המשימות</div>
+      <div style="font-size:11px;color:#555;margin-top:4px;">Claude קורא ומחלץ משימות אוטומטית</div>
+      <input type="file" id="fj-morning-upload" accept="image/*" style="display:none;" onchange="fjHandleMorningUpload(this)">
+    </div>
+    <div id="fj-morning-ocr" style="display:none;margin-top:10px;"></div>
+    <button onclick="fjExtractTasks()" id="fj-extract-btn" style="display:none;width:100%;padding:11px;background:linear-gradient(135deg,#7F77DD,#534AB7);border:none;color:#fff;border-radius:10px;font-family:Heebo,sans-serif;font-size:13px;font-weight:800;cursor:pointer;margin-top:8px;">
+      🤖 חלץ משימות + לוח זמנים
+    </button>
+  `);
+  left.appendChild(uploadCard);
+
+  // Manual task add
+  var addCard = fjCard('➕ הוסף משימה ידנית', `
+    <div style="display:flex;gap:8px;margin-bottom:8px;direction:rtl;">
+      <input id="fj-task-input" type="text" placeholder="תיאור המשימה..."
+        style="flex:1;background:#1a1a2e;border:1px solid rgba(255,255,255,0.1);color:#fff;padding:8px 10px;border-radius:8px;font-family:Heebo,sans-serif;font-size:12px;direction:rtl;">
+      <select id="fj-task-tag" style="background:#1a1a2e;border:1px solid rgba(255,255,255,0.1);color:#fff;padding:8px;border-radius:8px;font-family:Heebo,sans-serif;font-size:12px;">
+        <option value="site">שטח</option>
+        <option value="urgent">דחוף</option>
+        <option value="schedule">לוח זמנים</option>
+        <option value="safety">בטיחות</option>
+        <option value="other">אחר</option>
+      </select>
+    </div>
+    <button onclick="fjAddTaskManual()" style="width:100%;padding:9px;background:rgba(34,197,94,0.2);border:1px solid rgba(34,197,94,0.4);color:#86efac;border-radius:8px;font-family:Heebo,sans-serif;font-size:12px;font-weight:700;cursor:pointer;">
+      ✅ הוסף משימה
+    </button>
+  `);
+  left.appendChild(addCard);
+
+  // RIGHT: Task list
+  var right = document.createElement('div');
+  var taskCard = document.createElement('div');
+  taskCard.style.cssText = 'background:#1e1e35;border:1px solid rgba(255,255,255,0.07);border-radius:14px;padding:16px;height:100%;';
+  taskCard.innerHTML = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;"><div style="font-size:13px;font-weight:800;color:#c9a84c;">✅ משימות היום</div><div id="fj-task-stats" style="font-size:11px;color:#555;"></div></div><div id="fj-task-list" style="display:flex;flex-direction:column;gap:6px;"></div><div style="margin-top:14px;padding-top:12px;border-top:1px solid rgba(255,255,255,0.07);"><button onclick="fjSendBriefing()" style="width:100%;padding:10px;background:linear-gradient(135deg,#1e6b30,#22c55e);border:none;color:#fff;border-radius:10px;font-family:Heebo,sans-serif;font-size:13px;font-weight:800;cursor:pointer;">📲 שלח בריפינג לבני</button></div>';
+  right.appendChild(taskCard);
+
+  grid.appendChild(left);
+  grid.appendChild(right);
+  container.appendChild(grid);
+
+  fjLoadTasks();
+}
+
+async function fjHandleMorningUpload(input) {
+  var file = input.files[0];
+  if (!file) return;
+  var ocrDiv = document.getElementById('fj-morning-ocr');
+  var extractBtn = document.getElementById('fj-extract-btn');
+  if (ocrDiv) { ocrDiv.style.display='block'; ocrDiv.innerHTML='<div style="color:#888;font-size:12px;direction:rtl;">⏳ קורא כתב יד...</div>'; }
+
+  // Upload to Cloudinary first
+  showToast('📤 מעלה תמונה...','success');
+  var fd = new FormData();
+  fd.append('file', file);
+  fd.append('upload_preset', 'beni_field');
+  fd.append('folder', 'daily_journal');
+  var cldRes = await fetch('https://api.cloudinary.com/v1_1/dqdku88vv/image/upload', {method:'POST',body:fd});
+  var cldData = await cldRes.json();
+  var imgUrl = cldData.secure_url;
+
+  // Run OCR via Claude Vision
+  var apiKey = APP && APP.config && APP.config.anthropic_key;
+  if (!apiKey) { showToast('מפתח Claude חסר','error'); return; }
+
+  var b64 = await new Promise(function(res){ var r=new FileReader(); r.onload=function(e){res(e.target.result);}; r.readAsDataURL(file); });
+  var b64data = b64.split(',')[1];
+
+  var resp = await claudeFetch({
+    _apiKey: apiKey, model:'claude-sonnet-4-20250514', max_tokens:1000,
+    system:'אתה קורא כתב יד עברי. קרא את הטקסט בדיוק כפי שכתוב. אחר כך הצג רשימת משימות מספרת.',
+    messages:[{role:'user',content:[{type:'image',source:{type:'base64',media_type:'image/jpeg',data:b64data}},{type:'text',text:'קרא כתב יד זה וחלץ את כל המשימות כרשימה.'}]}]
+  }, null);
+  var data = await resp.json();
+  var text = data.content && data.content[0] ? data.content[0].text : '';
+  window._fjMorningOcrText = text;
+  window._fjMorningImgUrl = imgUrl;
+
+  if (ocrDiv) {
+    ocrDiv.innerHTML = '<div style="background:rgba(0,0,0,0.3);border-radius:8px;padding:10px;font-size:12px;color:#e2e8f0;direction:rtl;line-height:1.7;white-space:pre-wrap;">' + text.replace(/</g,'&lt;') + '</div>';
+  }
+  if (extractBtn) extractBtn.style.display='block';
+  showToast('✅ כתב יד נקרא','success');
+}
+
+async function fjExtractTasks() {
+  var text = window._fjMorningOcrText || '';
+  if (!text) { showToast('העלה תמונה תחילה','error'); return; }
+  var apiKey = APP && APP.config && APP.config.anthropic_key;
+  showToast('🤖 מחלץ משימות...','success');
+
+  var resp = await claudeFetch({
+    _apiKey: apiKey, model:'claude-sonnet-4-20250514', max_tokens:800,
+    system:'חלץ משימות מהטקסט. החזר JSON בלבד: {"tasks":[{"text":"...","tag":"urgent|schedule|site|safety|other"}]}',
+    messages:[{role:'user',content:'חלץ משימות: ' + text}]
+  }, null);
+  var data = await resp.json();
+  var raw = data.content && data.content[0] ? data.content[0].text : '{}';
+  try {
+    var parsed = JSON.parse(raw.replace(/```json|```/g,'').trim());
+    var pid = document.getElementById('fj-project-sel') ? document.getElementById('fj-project-sel').value : null;
+    var today = new Date().toISOString().split('T')[0];
+    for (var t of (parsed.tasks||[])) {
+      await sb.from('daily_tasks').insert({
+        task_text: t.text, tag: t.tag || 'other',
+        task_date: today, project_id: pid || null,
+        is_done: false, created_at: new Date().toISOString()
+      });
+    }
+    showToast('✅ ' + (parsed.tasks||[]).length + ' משימות נוצרו','success');
+    fjLoadTasks();
+  } catch(e) { showToast('❌ ' + e.message,'error'); }
+}
+
+async function fjAddTaskManual() {
+  var inp = document.getElementById('fj-task-input');
+  var tag = document.getElementById('fj-task-tag');
+  if (!inp || !inp.value.trim()) { showToast('הכנס תיאור משימה','error'); return; }
+  var pid = document.getElementById('fj-project-sel') ? document.getElementById('fj-project-sel').value : null;
+  await sb.from('daily_tasks').insert({
+    task_text: inp.value.trim(), tag: tag ? tag.value : 'other',
+    task_date: new Date().toISOString().split('T')[0],
+    project_id: pid || null, is_done: false,
+    created_at: new Date().toISOString()
+  });
+  inp.value = '';
+  showToast('✅ משימה נוספה','success');
+  fjLoadTasks();
+}
+
+async function fjLoadTasks() {
+  var today = document.getElementById('fj-date-sel') ? document.getElementById('fj-date-sel').value : new Date().toISOString().split('T')[0];
+  var pid = document.getElementById('fj-project-sel') ? document.getElementById('fj-project-sel').value : '';
+  var qs = 'task_date=eq.' + today + '&order=created_at.asc&select=id,task_text,tag,is_done,created_at,project_id';
+  if (pid) qs += '&project_id=eq.' + pid;
+  var { data: tasks } = await sbQ('daily_tasks', qs);
+  tasks = tasks || [];
+  _fjTasks = tasks;
+
+  var listEl = document.getElementById('fj-task-list');
+  var statsEl = document.getElementById('fj-task-stats');
+  if (!listEl) return;
+
+  var done = tasks.filter(function(t){ return t.is_done; }).length;
+  if (statsEl) statsEl.textContent = done + '/' + tasks.length + ' הושלמו';
+
+  listEl.innerHTML = '';
+  var tagColors = {urgent:'rgba(239,68,68,0.2)',schedule:'rgba(59,130,246,0.2)',site:'rgba(34,197,94,0.2)',safety:'rgba(245,158,11,0.2)',other:'rgba(255,255,255,0.06)'};
+  var tagText = {urgent:'דחוף',schedule:'לוח זמנים',site:'שטח',safety:'בטיחות',other:'אחר'};
+
+  tasks.forEach(function(t) {
+    var row = document.createElement('div');
+    row.style.cssText = 'display:flex;align-items:center;gap:10px;padding:8px 10px;background:rgba(255,255,255,0.04);border-radius:8px;direction:rtl;';
+    var chk = document.createElement('div');
+    chk.style.cssText = 'width:20px;height:20px;border-radius:6px;border:2px solid ' + (t.is_done?'#22c55e':'rgba(255,255,255,0.2)') + ';background:' + (t.is_done?'#22c55e':'transparent') + ';cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;color:#fff;font-size:12px;';
+    if (t.is_done) chk.textContent = '✓';
+    chk.addEventListener('click', (function(id, done){ return function(){
+      fetch(SB_URL+'/rest/v1/daily_tasks?id=eq.'+id,{method:'PATCH',headers:{apikey:SB_KEY,Authorization:'Bearer '+SB_KEY,'Content-Type':'application/json',Prefer:'return=minimal'},body:JSON.stringify({is_done:!done,done_at:!done?new Date().toISOString():null})}).then(fjLoadTasks);
+    }; })(t.id, t.is_done));
+
+    var txt = document.createElement('div');
+    txt.style.cssText = 'flex:1;font-size:12px;color:' + (t.is_done?'#555':'#e2e8f0') + ';text-decoration:' + (t.is_done?'line-through':'none') + ';';
+    txt.textContent = t.task_text;
+
+    var tag = document.createElement('div');
+    tag.style.cssText = 'font-size:10px;padding:2px 8px;border-radius:20px;background:' + (tagColors[t.tag]||tagColors.other) + ';color:#fff;flex-shrink:0;';
+    tag.textContent = tagText[t.tag] || t.tag;
+
+    var del = document.createElement('button');
+    del.textContent = '🗑️';
+    del.style.cssText = 'background:none;border:none;cursor:pointer;font-size:11px;opacity:0.5;';
+    del.onclick = (function(id){ return function(){ fetch(SB_URL+'/rest/v1/daily_tasks?id=eq.'+id,{method:'DELETE',headers:{apikey:SB_KEY,Authorization:'Bearer '+SB_KEY}}).then(fjLoadTasks); }; })(t.id);
+
+    row.appendChild(chk); row.appendChild(txt); row.appendChild(tag); row.appendChild(del);
+    listEl.appendChild(row);
+  });
+}
+
+async function fjSendBriefing() {
+  var today = new Date().toISOString().split('T')[0];
+  var pid = document.getElementById('fj-project-sel') ? document.getElementById('fj-project-sel').value : null;
+  var pending = _fjTasks.filter(function(t){ return !t.is_done; });
+  var done = _fjTasks.filter(function(t){ return t.is_done; });
+
+  var briefText = '📋 בריפינג לבני — ' + new Date().toLocaleDateString('he-IL') + '\n\n';
+  if (done.length) briefText += '✅ הושלם:\n' + done.map(function(t){ return '• ' + t.task_text; }).join('\n') + '\n\n';
+  if (pending.length) briefText += '⏳ ממתין:\n' + pending.map(function(t){ return '• ' + t.task_text; }).join('\n');
+
+  var { error } = await sb.from('daily_briefings').insert({
+    project_id: pid || null,
+    briefing_date: today,
+    briefing_text: briefText,
+    task_ids: _fjTasks.map(function(t){ return t.id; }),
+    sent_at: new Date().toISOString(),
+    created_at: new Date().toISOString()
+  });
+
+  if (error) { showToast('❌ ' + error.message,'error'); return; }
+  showToast('📲 בריפינג נשלח לבני!','success');
+}
+
+function fjRenderField(container) {
+  container.innerHTML = '';
+  var grid = document.createElement('div');
+  grid.style.cssText = 'display:grid;grid-template-columns:1fr 1fr;gap:14px;';
+
+  // Photos + AI analysis
+  var leftCard = fjCard('📸 תמונות ותצפיות שטח', `
+    <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;">
+      <label style="background:rgba(201,168,76,0.15);border:1px solid rgba(201,168,76,0.4);color:#c9a84c;padding:8px 14px;border-radius:8px;cursor:pointer;font-family:Heebo,sans-serif;font-size:12px;font-weight:700;">
+        📷 צלם / העלה<input type="file" accept="image/*,video/*" style="display:none;" onchange="fjHandleFieldUpload(this,'photo')">
+      </label>
+      <label style="background:rgba(139,92,246,0.15);border:1px solid rgba(139,92,246,0.4);color:#c4b5fd;padding:8px 14px;border-radius:8px;cursor:pointer;font-family:Heebo,sans-serif;font-size:12px;font-weight:700;">
+        🖼️ גלריה<input type="file" accept="image/*,video/*,audio/*" multiple style="display:none;" onchange="fjHandleFieldUpload(this,'gallery')">
+      </label>
+    </div>
+    <div id="fj-field-obs" style="display:flex;flex-direction:column;gap:8px;max-height:350px;overflow-y:auto;"></div>
+  `);
+
+  // Voice memos
+  var rightCard = fjCard('🎙️ הערות קוליות + ממצאים', `
+    <label style="display:block;background:rgba(245,158,11,0.15);border:1px solid rgba(245,158,11,0.4);color:#fde68a;padding:10px;border-radius:8px;cursor:pointer;font-family:Heebo,sans-serif;font-size:12px;font-weight:700;text-align:center;margin-bottom:10px;">
+      🎙️ העלה הקלטה קולית<input type="file" accept="audio/*" multiple style="display:none;" onchange="fjHandleFieldUpload(this,'audio')">
+    </label>
+    <div id="fj-field-audio" style="display:flex;flex-direction:column;gap:8px;max-height:350px;overflow-y:auto;"></div>
+    <div style="margin-top:10px;padding-top:10px;border-top:1px solid rgba(255,255,255,0.07);">
+      <textarea id="fj-field-note" placeholder="הוסף הערה כתובה..." rows="3"
+        style="width:100%;background:#1a1a2e;border:1px solid rgba(255,255,255,0.1);color:#fff;padding:8px;border-radius:8px;font-family:Heebo,sans-serif;font-size:12px;direction:rtl;resize:vertical;"></textarea>
+      <button onclick="fjSaveNote()" style="margin-top:6px;width:100%;padding:8px;background:rgba(59,130,246,0.2);border:1px solid rgba(59,130,246,0.4);color:#93c5fd;border-radius:8px;font-family:Heebo,sans-serif;font-size:12px;font-weight:700;cursor:pointer;">
+        💾 שמור הערה
+      </button>
+    </div>
+  `);
+
+  grid.appendChild(leftCard);
+  grid.appendChild(rightCard);
+  container.appendChild(grid);
+  fjLoadFieldObs();
+}
+
+async function fjHandleFieldUpload(input, type) {
+  var files = Array.from(input.files||[]);
+  if (!files.length) return;
+  var pid = document.getElementById('fj-project-sel') ? document.getElementById('fj-project-sel').value : null;
+  showToast('📤 מעלה ' + files.length + ' קבצים...','success');
+  for (var file of files) {
+    var isAudio = file.type.startsWith('audio/');
+    var isVideo = file.type.startsWith('video/');
+    var endpoint = (isAudio||isVideo) ? 'https://api.cloudinary.com/v1_1/dqdku88vv/video/upload' : 'https://api.cloudinary.com/v1_1/dqdku88vv/image/upload';
+    var fd = new FormData();
+    fd.append('file', file); fd.append('upload_preset','beni_field'); fd.append('folder','field_journal');
+    var res = await fetch(endpoint,{method:'POST',body:fd});
+    var data = await res.json();
+    if (!data.secure_url) continue;
+    var mediaType = isAudio ? 'audio' : isVideo ? 'video' : 'photo';
+    await sb.from('field_observations').insert({
+      project_id: pid||null, obs_date: new Date().toISOString().split('T')[0],
+      media_url: data.secure_url, media_type: mediaType,
+      description: file.name, created_at: new Date().toISOString()
+    });
+  }
+  showToast('✅ נשמר ביומן שטח','success');
+  fjLoadFieldObs();
+}
+
+async function fjSaveNote() {
+  var note = document.getElementById('fj-field-note');
+  if (!note||!note.value.trim()) return;
+  var pid = document.getElementById('fj-project-sel') ? document.getElementById('fj-project-sel').value : null;
+  await sb.from('field_observations').insert({
+    project_id: pid||null, obs_date: new Date().toISOString().split('T')[0],
+    media_type:'note', description: note.value.trim(), created_at: new Date().toISOString()
+  });
+  note.value='';
+  showToast('✅ הערה נשמרה','success');
+  fjLoadFieldObs();
+}
+
+async function fjLoadFieldObs() {
+  var today = document.getElementById('fj-date-sel') ? document.getElementById('fj-date-sel').value : new Date().toISOString().split('T')[0];
+  var pid = document.getElementById('fj-project-sel') ? document.getElementById('fj-project-sel').value : '';
+  var qs = 'obs_date=eq.' + today + '&order=created_at.desc&select=id,media_url,media_type,description,ai_analysis,severity,saved_to_encyclopedia,created_at';
+  if (pid) qs += '&project_id=eq.' + pid;
+  var { data: obs } = await sbQ('field_observations', qs);
+  obs = obs || [];
+
+  var photoEl = document.getElementById('fj-field-obs');
+  var audioEl = document.getElementById('fj-field-audio');
+  if (photoEl) photoEl.innerHTML = '';
+  if (audioEl) audioEl.innerHTML = '';
+
+  obs.forEach(function(o) {
+    var card = document.createElement('div');
+    card.style.cssText = 'background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.07);border-radius:10px;padding:10px;';
+    var date = new Date(o.created_at).toLocaleTimeString('he-IL',{hour:'2-digit',minute:'2-digit'});
+
+    if (o.media_type === 'photo') {
+      card.innerHTML = '<div style="display:flex;gap:8px;align-items:flex-start;"><img src="'+o.media_url+'" style="width:80px;height:60px;object-fit:cover;border-radius:6px;cursor:zoom-in;flex-shrink:0;" onclick="openLightbox(\''+o.media_url+'\',\'\')"><div style="flex:1;"><div style="font-size:11px;color:#888;margin-bottom:4px;">📸 '+date+'</div><div style="font-size:12px;color:#ccc;">'+(o.description||'')+'</div>'+(o.ai_analysis?'<div style="font-size:11px;color:#86efac;margin-top:4px;">✅ '+o.ai_analysis.substring(0,80)+'...</div>':'')+'</div></div><div style="display:flex;gap:4px;margin-top:8px;flex-wrap:wrap;"><button onclick="fjAnalyzeObs(\''+o.id+'\',\''+o.media_url+'\')" style="font-size:10px;padding:3px 8px;border-radius:20px;border:1px solid rgba(139,92,246,0.4);background:rgba(139,92,246,0.15);color:#c4b5fd;cursor:pointer;font-family:Heebo,sans-serif;">🚀 נתח</button><button onclick="fjSaveToEnc(\''+o.id+'\')" style="font-size:10px;padding:3px 8px;border-radius:20px;border:1px solid rgba(201,168,76,0.4);background:rgba(201,168,76,0.15);color:#c9a84c;cursor:pointer;font-family:Heebo,sans-serif;">📚 אנציקלופדיה</button></div>';
+      if (photoEl) photoEl.appendChild(card);
+    } else if (o.media_type === 'audio') {
+      card.innerHTML = '<div style="font-size:11px;color:#888;margin-bottom:4px;">🎙️ '+date+'</div><audio src="'+o.media_url+'" controls style="width:100%;border-radius:6px;"></audio><div style="font-size:12px;color:#ccc;margin-top:4px;">'+(o.description||'')+'</div>';
+      if (audioEl) audioEl.appendChild(card);
+    } else if (o.media_type === 'note') {
+      card.innerHTML = '<div style="font-size:11px;color:#888;margin-bottom:4px;">📝 '+date+'</div><div style="font-size:12px;color:#e2e8f0;">'+o.description+'</div>';
+      if (photoEl) photoEl.appendChild(card);
+    } else if (o.media_type === 'video') {
+      card.innerHTML = '<div style="font-size:11px;color:#888;margin-bottom:4px;">🎬 '+date+'</div><video src="'+o.media_url+'" controls style="width:100%;max-height:150px;border-radius:6px;"></video><div style="display:flex;gap:4px;margin-top:6px;"><button onclick="fjAnalyzeObs(\''+o.id+'\',\''+o.media_url+'\')" style="font-size:10px;padding:3px 8px;border-radius:20px;border:1px solid rgba(139,92,246,0.4);background:rgba(139,92,246,0.15);color:#c4b5fd;cursor:pointer;font-family:Heebo,sans-serif;">📸 חלץ פריים + נתח</button></div>';
+      if (photoEl) photoEl.appendChild(card);
+    }
+  });
+}
+
+async function fjAnalyzeObs(obsId, mediaUrl) {
+  var apiKey = APP && APP.config && APP.config.anthropic_key;
+  if (!apiKey) { showToast('מפתח Claude חסר','error'); return; }
+  showToast('🤖 מנתח...','success');
+  var isVideo = mediaUrl.includes('/video/upload/') && !mediaUrl.includes('/beni_voice/');
+  var analyzeUrl = isVideo ? mediaUrl.replace('/upload/','/upload/so_1,w_1200,f_jpg/').replace(/\.(mp4|mov|3gp)(\?.*)?$/i,'.jpg') : mediaUrl;
+  var imageContent;
+  try {
+    var r = await fetch(analyzeUrl);
+    if (r.ok) {
+      var blob = await r.blob();
+      var b64 = await new Promise(function(res){var rd=new FileReader();rd.onload=function(e){res(e.target.result.split(',')[1]);};rd.readAsDataURL(blob);});
+      imageContent = {type:'image',source:{type:'base64',media_type:'image/jpeg',data:b64}};
+    }
+  } catch(e) {}
+  if (!imageContent) imageContent = {type:'image',source:{type:'url',url:analyzeUrl}};
+
+  var resp = await claudeFetch({
+    _apiKey:apiKey, model:'claude-sonnet-4-20250514', max_tokens:600,
+    system:'אתה מהנדס בנייה ישראלי. נתח בקצרה (3-4 משפטים) מה רואים בתמונה: בעיות בטיחות, ליקויים, ממצאים חשובים.',
+    messages:[{role:'user',content:[imageContent,{type:'text',text:'נתח את הממצאים בתמונה זו.'}]}]
+  }, null);
+  var data = await resp.json();
+  var analysis = data.content && data.content[0] ? data.content[0].text : '';
+  await fetch(SB_URL+'/rest/v1/field_observations?id=eq.'+obsId,{method:'PATCH',headers:{apikey:SB_KEY,Authorization:'Bearer '+SB_KEY,'Content-Type':'application/json',Prefer:'return=minimal'},body:JSON.stringify({ai_analysis:analysis})});
+  showToast('✅ ניתוח הושלם','success');
+  fjLoadFieldObs();
+}
+
+async function fjSaveToEnc(obsId) {
+  var { data: obs } = await sbQ('field_observations','id=eq.'+obsId+'&select=*');
+  if (!obs||!obs[0]) return;
+  var o = obs[0];
+  // Open a quick modal to categorize
+  var category = prompt('קטגוריה (בטיחות/ריצוף/איטום/גמר/מבנה/ביקורת):', 'ביקורת שטח');
+  if (!category) return;
+  var title = prompt('כותרת:', o.description ? o.description.substring(0,60) : 'ממצא שטח');
+  if (!title) return;
+  await sb.from('field_encyclopedia').insert({
+    category: category, title: title,
+    description: o.ai_analysis || o.description,
+    media_url: o.media_url, media_type: o.media_type,
+    source_project_id: o.project_id,
+    source_observation_id: o.id,
+    severity: 'important',
+    tags: ['שטח'],
+    created_at: new Date().toISOString()
+  });
+  await fetch(SB_URL+'/rest/v1/field_observations?id=eq.'+obsId,{method:'PATCH',headers:{apikey:SB_KEY,Authorization:'Bearer '+SB_KEY,'Content-Type':'application/json',Prefer:'return=minimal'},body:JSON.stringify({saved_to_encyclopedia:true})});
+  showToast('📚 נשמר באנציקלופדיה','success');
+}
+
+function fjRenderTakeoff(container) {
+  container.innerHTML = '';
+  var card = document.createElement('div');
+  card.style.cssText = 'background:#1e1e35;border:1px solid rgba(255,255,255,0.07);border-radius:14px;padding:16px;direction:rtl;';
+  card.innerHTML = `
+    <div style="font-size:14px;font-weight:900;color:#c9a84c;margin-bottom:14px;">📐 כמויות שטח — Takeoffs</div>
+    <div id="fj-takeoff-list" style="margin-bottom:14px;"></div>
+    <div style="display:grid;grid-template-columns:2fr 1fr 1fr auto;gap:8px;align-items:center;direction:rtl;margin-bottom:8px;">
+      <input id="fj-tk-desc" placeholder="תיאור עבודה..." style="background:#1a1a2e;border:1px solid rgba(255,255,255,0.1);color:#fff;padding:8px;border-radius:8px;font-family:Heebo,sans-serif;font-size:12px;direction:rtl;">
+      <input id="fj-tk-qty" type="number" placeholder="כמות" style="background:#1a1a2e;border:1px solid rgba(255,255,255,0.1);color:#fff;padding:8px;border-radius:8px;font-family:Heebo,sans-serif;font-size:12px;">
+      <select id="fj-tk-unit" style="background:#1a1a2e;border:1px solid rgba(255,255,255,0.1);color:#fff;padding:8px;border-radius:8px;font-family:Heebo,sans-serif;font-size:12px;">
+        <option>מ"ר</option><option>מ"ל</option><option>יח'</option><option>ק"ג</option><option>טון</option>
+      </select>
+      <button onclick="fjAddTakeoff()" style="padding:8px 14px;background:rgba(34,197,94,0.2);border:1px solid rgba(34,197,94,0.4);color:#86efac;border-radius:8px;font-family:Heebo,sans-serif;font-size:12px;font-weight:700;cursor:pointer;">➕</button>
+    </div>
+    <button onclick="fjExportTakeoffs()" style="width:100%;padding:10px;background:linear-gradient(135deg,#c9a84c,#9a6f00);border:none;color:#fff;border-radius:10px;font-family:Heebo,sans-serif;font-size:13px;font-weight:800;cursor:pointer;margin-top:8px;">
+      📊 ייצא ל-CRM
+    </button>
+  `;
+  container.appendChild(card);
+  fjLoadTakeoffs();
+}
+
+async function fjLoadTakeoffs() {
+  var today = document.getElementById('fj-date-sel') ? document.getElementById('fj-date-sel').value : new Date().toISOString().split('T')[0];
+  var pid = document.getElementById('fj-project-sel') ? document.getElementById('fj-project-sel').value : '';
+  var qs = 'session_date=eq.' + today + '&order=created_at.asc&select=id,description,quantity,unit,created_at';
+  if (pid) qs += '&project_id=eq.' + pid;
+  var { data: items } = await sbQ('site_takeoffs', qs);
+  items = items || [];
+  var listEl = document.getElementById('fj-takeoff-list');
+  if (!listEl) return;
+  var total = items.reduce(function(s,i){ return s + (parseFloat(i.quantity)||0); },0);
+  listEl.innerHTML = items.map(function(i){ return '<div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid rgba(255,255,255,0.05);font-size:12px;"><span style="color:#ccc;">'+(i.description||'')+'</span><span style="color:#c9a84c;font-weight:700;">'+(i.quantity||0)+' '+(i.unit||'מ"ר')+'</span></div>'; }).join('') + '<div style="display:flex;justify-content:space-between;padding:8px 0;font-size:13px;font-weight:800;"><span style="color:#fff;">סה"כ</span><span style="color:#7F77DD;">'+total.toFixed(1)+' מ"ר</span></div>';
+}
+
+async function fjAddTakeoff() {
+  var desc = document.getElementById('fj-tk-desc'); var qty = document.getElementById('fj-tk-qty'); var unit = document.getElementById('fj-tk-unit');
+  if (!desc||!desc.value.trim()||!qty||!qty.value) { showToast('מלא תיאור וכמות','error'); return; }
+  var pid = document.getElementById('fj-project-sel') ? document.getElementById('fj-project-sel').value : null;
+  await sb.from('site_takeoffs').insert({
+    description:desc.value.trim(), quantity:parseFloat(qty.value), unit:unit?unit.value:'מ"ר',
+    project_id:pid||null, session_date:new Date().toISOString().split('T')[0],
+    created_at:new Date().toISOString()
+  });
+  desc.value=''; qty.value='';
+  showToast('✅ כמות נוספה','success');
+  fjLoadTakeoffs();
+}
+
+function fjExportTakeoffs() {
+  showToast('📊 הכמויות זמינות ב-CRM תחת הפרויקט','success');
+  switchTab('crm'); showPage('quotes');
+}
+
+function fjRenderEOD(container) {
+  container.innerHTML = '';
+  var grid = document.createElement('div');
+  grid.style.cssText = 'display:grid;grid-template-columns:1fr 1fr;gap:14px;';
+
+  var leftCard = fjCard('📝 סיכום יום — כתב יד', `
+    <div style="border:2px dashed rgba(201,168,76,0.4);border-radius:10px;padding:20px;text-align:center;cursor:pointer;" onclick="document.getElementById('fj-eod-upload').click()">
+      <div style="font-size:32px;margin-bottom:8px;">📷</div>
+      <div style="font-size:13px;color:#c9a84c;font-weight:800;">צלם דף סיכום</div>
+      <div style="font-size:11px;color:#555;margin-top:4px;">Claude מכין בריפינג לבוקר מחר</div>
+      <input type="file" id="fj-eod-upload" accept="image/*" style="display:none;" onchange="fjHandleEODUpload(this)">
+    </div>
+    <div id="fj-eod-ocr" style="display:none;margin-top:10px;"></div>
+    <textarea id="fj-eod-manual" rows="4" placeholder="או כתוב ישירות סיכום יום..." style="width:100%;margin-top:10px;background:#1a1a2e;border:1px solid rgba(255,255,255,0.1);color:#fff;padding:8px;border-radius:8px;font-family:Heebo,sans-serif;font-size:12px;direction:rtl;resize:vertical;"></textarea>
+  `);
+
+  var rightCard = fjCard('🌅 בריפינג מחר', `
+    <div id="fj-briefing-preview" style="background:rgba(127,119,221,0.08);border:1px solid rgba(127,119,221,0.2);border-radius:10px;padding:12px;font-size:12px;color:#e2e8f0;line-height:1.8;direction:rtl;min-height:120px;">
+      <div style="color:#555;font-size:11px;">לחץ "צור בריפינג" להפקה אוטומטית</div>
+    </div>
+    <button onclick="fjGenerateBriefing()" style="margin-top:10px;width:100%;padding:10px;background:linear-gradient(135deg,#7F77DD,#534AB7);border:none;color:#fff;border-radius:10px;font-family:Heebo,sans-serif;font-size:13px;font-weight:800;cursor:pointer;">
+      🤖 צור בריפינג לבוקר
+    </button>
+    <button onclick="fjSendBriefing()" style="margin-top:6px;width:100%;padding:10px;background:linear-gradient(135deg,#1e6b30,#22c55e);border:none;color:#fff;border-radius:10px;font-family:Heebo,sans-serif;font-size:13px;font-weight:800;cursor:pointer;">
+      📲 שלח לבני לבוקר
+    </button>
+  `);
+
+  grid.appendChild(leftCard);
+  grid.appendChild(rightCard);
+  container.appendChild(grid);
+}
+
+async function fjHandleEODUpload(input) {
+  var file = input.files[0]; if (!file) return;
+  var ocrDiv = document.getElementById('fj-eod-ocr');
+  if (ocrDiv) { ocrDiv.style.display='block'; ocrDiv.innerHTML='<div style="color:#888;font-size:12px;">⏳ קורא כתב יד...</div>'; }
+  var apiKey = APP && APP.config && APP.config.anthropic_key;
+  var b64 = await new Promise(function(res){var r=new FileReader();r.onload=function(e){res(e.target.result.split(',')[1]);};r.readAsDataURL(file);});
+  var resp = await claudeFetch({_apiKey:apiKey,model:'claude-sonnet-4-20250514',max_tokens:600,system:'קרא כתב יד עברי בדיוק.',messages:[{role:'user',content:[{type:'image',source:{type:'base64',media_type:'image/jpeg',data:b64}},{type:'text',text:'קרא את הטקסט.'}]}]},null);
+  var data = await resp.json();
+  var text = data.content&&data.content[0]?data.content[0].text:'';
+  window._fjEodText = text;
+  if (ocrDiv) ocrDiv.innerHTML='<div style="background:rgba(0,0,0,0.3);border-radius:8px;padding:10px;font-size:12px;color:#e2e8f0;direction:rtl;white-space:pre-wrap;">'+text.replace(/</g,'&lt;')+'</div>';
+  document.getElementById('fj-eod-manual').value = text;
+}
+
+async function fjGenerateBriefing() {
+  var eodText = window._fjEodText || document.getElementById('fj-eod-manual').value;
+  var pending = _fjTasks.filter(function(t){ return !t.is_done; });
+  var done = _fjTasks.filter(function(t){ return t.is_done; });
+  var apiKey = APP && APP.config && APP.config.anthropic_key;
+  if (!apiKey) { showToast('מפתח Claude חסר','error'); return; }
+  showToast('🤖 מכין בריפינג...','success');
+
+  var context = 'הושלם היום:\n' + done.map(function(t){ return '• '+t.task_text; }).join('\n') +
+    '\n\nממתין:\n' + pending.map(function(t){ return '• '+t.task_text; }).join('\n') +
+    (eodText ? '\n\nסיכום יום מהשטח:\n' + eodText : '');
+
+  var resp = await claudeFetch({_apiKey:apiKey,model:'claude-sonnet-4-20250514',max_tokens:400,system:'אתה עוזר אישי של מנהל פרויקטים. כתוב בריפינג בוקר קצר וממוקד לבני פרסקי לבוקר מחר. כלול: מה הושלם, מה דחוף, מה לעשות ראשון. קצר וברור.',messages:[{role:'user',content:context}]},null);
+  var data = await resp.json();
+  var briefing = data.content&&data.content[0]?data.content[0].text:'';
+  window._fjGeneratedBriefing = briefing;
+  var prev = document.getElementById('fj-briefing-preview');
+  if (prev) prev.innerHTML = briefing.replace(/</g,'&lt;').replace(/\n/g,'<br>');
+  showToast('✅ בריפינג מוכן','success');
+}
+
+function fjCard(title, html) {
+  var div = document.createElement('div');
+  div.style.cssText = 'background:#1e1e35;border:1px solid rgba(255,255,255,0.07);border-radius:14px;padding:14px;';
+  div.innerHTML = '<div style="font-size:13px;font-weight:800;color:#c9a84c;margin-bottom:12px;">'+title+'</div>' + html;
+  return div;
+}
+
+function fjLoadDate() { fjSetPhase(_fjPhase); }
+
+// ══ ENCYCLOPEDIA ═════════════════════════════════════════════════════
+var _encItems = [];
+var _encCatFilter = '';
+
+async function encInit() {
+  var { data: items } = await sbQ('field_encyclopedia', 'order=created_at.desc&limit=100&select=id,category,title,description,media_url,media_type,severity,tags,created_at,source_project_id');
+  _encItems = items || [];
+  encRenderCats();
+  encRenderGrid(_encItems);
+}
+
+function encRenderCats() {
+  var el = document.getElementById('enc-cat-filters');
+  if (!el) return;
+  var cats = {};
+  _encItems.forEach(function(i){ cats[i.category] = (cats[i.category]||0)+1; });
+  el.innerHTML = '<button onclick="encSetCat(\'\')" style="padding:6px 14px;border-radius:20px;border:1px solid rgba(255,255,255,0.2);background:rgba(255,255,255,0.06);color:#ccc;cursor:pointer;font-family:Heebo,sans-serif;font-size:11px;">הכל ('+_encItems.length+')</button>';
+  Object.keys(cats).forEach(function(cat) {
+    var btn = document.createElement('button');
+    btn.textContent = cat + ' (' + cats[cat] + ')';
+    btn.style.cssText = 'padding:6px 14px;border-radius:20px;border:1px solid rgba(201,168,76,0.3);background:rgba(201,168,76,0.1);color:#c9a84c;cursor:pointer;font-family:Heebo,sans-serif;font-size:11px;';
+    btn.onclick = (function(c){ return function(){ encSetCat(c); }; })(cat);
+    el.appendChild(btn);
+  });
+}
+
+function encSetCat(cat) { _encCatFilter = cat; encFilter(); }
+
+function encFilter() {
+  var search = (document.getElementById('enc-search')||{}).value || '';
+  var filtered = _encItems.filter(function(i) {
+    if (_encCatFilter && i.category !== _encCatFilter) return false;
+    if (search && !(i.title+i.description+i.category).toLowerCase().includes(search.toLowerCase())) return false;
+    return true;
+  });
+  encRenderGrid(filtered);
+}
+
+function encRenderGrid(items) {
+  var grid = document.getElementById('enc-grid');
+  if (!grid) return;
+  if (!items.length) { grid.innerHTML = '<div style="color:#555;padding:40px;text-align:center;direction:rtl;">אין פריטים תואמים</div>'; return; }
+  grid.innerHTML = '';
+  var sevColors = {critical:'rgba(239,68,68,0.15)',important:'rgba(245,158,11,0.15)',guideline:'rgba(34,197,94,0.15)'};
+  var sevBorder = {critical:'rgba(239,68,68,0.4)',important:'rgba(245,158,11,0.4)',guideline:'rgba(34,197,94,0.4)'};
+  var sevText = {critical:'🔴 קריטי',important:'🟡 חשוב',guideline:'🟢 הנחיה'};
+
+  items.forEach(function(item) {
+    var card = document.createElement('div');
+    card.style.cssText = 'background:#1e1e35;border:1px solid '+(sevBorder[item.severity]||'rgba(255,255,255,0.07)')+';border-radius:14px;overflow:hidden;direction:rtl;';
+
+    var media = '';
+    if (item.media_url && item.media_type === 'photo') {
+      media = '<img src="'+item.media_url+'" style="width:100%;height:140px;object-fit:cover;display:block;cursor:zoom-in;" onclick="openLightbox(\''+item.media_url+'\',\''+item.title+'\')">';
+    } else if (item.media_url && item.media_type === 'video') {
+      media = '<video src="'+item.media_url+'" controls style="width:100%;height:140px;object-fit:cover;display:block;"></video>';
+    } else {
+      media = '<div style="height:60px;background:rgba(255,255,255,0.04);display:flex;align-items:center;justify-content:center;font-size:28px;">'+(item.media_type==='audio'?'🎙️':'📄')+'</div>';
+    }
+
+    card.innerHTML = media + '<div style="padding:12px;">' +
+      '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px;">' +
+        '<div style="font-size:13px;font-weight:800;color:#fff;flex:1;">'+item.title+'</div>' +
+        '<div style="font-size:10px;padding:2px 8px;border-radius:20px;background:'+(sevColors[item.severity]||'rgba(255,255,255,0.06)')+';color:#ccc;white-space:nowrap;margin-right:6px;">'+(sevText[item.severity]||item.severity)+'</div>' +
+      '</div>' +
+      '<div style="font-size:11px;color:#c9a84c;margin-bottom:6px;">📁 '+item.category+'</div>' +
+      '<div style="font-size:12px;color:#888;line-height:1.6;">'+((item.description||'').substring(0,100))+(item.description&&item.description.length>100?'...':'')+'</div>' +
+      '<div style="display:flex;gap:6px;margin-top:10px;flex-wrap:wrap;">' +
+        '<button onclick="encSendWithPO(\''+item.id+'\')" style="font-size:10px;padding:4px 10px;border-radius:20px;border:1px solid rgba(201,168,76,0.4);background:rgba(201,168,76,0.1);color:#c9a84c;cursor:pointer;font-family:Heebo,sans-serif;font-weight:700;">📋 שלח עם PO</button>' +
+        '<button onclick="encDelete(\''+item.id+'\')" style="font-size:10px;padding:4px 10px;border-radius:20px;border:1px solid rgba(239,68,68,0.3);background:rgba(239,68,68,0.08);color:#fca5a5;cursor:pointer;font-family:Heebo,sans-serif;">🗑️</button>' +
+      '</div>' +
+    '</div>';
+    grid.appendChild(card);
+  });
+}
+
+function encOpenAdd() {
+  var overlay = document.createElement('div');
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:99999;display:flex;align-items:center;justify-content:center;padding:20px;';
+  var box = document.createElement('div');
+  box.style.cssText = 'background:#1a1a2e;border-radius:16px;width:100%;max-width:500px;padding:20px;direction:rtl;font-family:Heebo,sans-serif;';
+  box.innerHTML = '<div style="font-size:16px;font-weight:900;color:#fff;margin-bottom:14px;">📚 הוסף לאנציקלופדיה</div>' +
+    '<input id="enc-add-title" placeholder="כותרת" style="width:100%;background:#242438;border:1px solid rgba(255,255,255,0.1);color:#fff;padding:9px;border-radius:8px;font-family:Heebo,sans-serif;font-size:13px;direction:rtl;margin-bottom:8px;">' +
+    '<input id="enc-add-cat" placeholder="קטגוריה (בטיחות/ריצוף/איטום/...)" style="width:100%;background:#242438;border:1px solid rgba(255,255,255,0.1);color:#fff;padding:9px;border-radius:8px;font-family:Heebo,sans-serif;font-size:13px;direction:rtl;margin-bottom:8px;">' +
+    '<textarea id="enc-add-desc" rows="3" placeholder="תיאור..." style="width:100%;background:#242438;border:1px solid rgba(255,255,255,0.1);color:#fff;padding:9px;border-radius:8px;font-family:Heebo,sans-serif;font-size:13px;direction:rtl;resize:vertical;margin-bottom:8px;"></textarea>' +
+    '<select id="enc-add-sev" style="width:100%;background:#242438;border:1px solid rgba(255,255,255,0.1);color:#fff;padding:9px;border-radius:8px;font-family:Heebo,sans-serif;font-size:13px;margin-bottom:8px;direction:rtl;">' +
+      '<option value="critical">🔴 קריטי</option><option value="important" selected>🟡 חשוב</option><option value="guideline">🟢 הנחיה</option>' +
+    '</select>' +
+    '<label style="display:block;background:rgba(201,168,76,0.15);border:1px solid rgba(201,168,76,0.3);color:#c9a84c;padding:9px;border-radius:8px;cursor:pointer;text-align:center;margin-bottom:10px;font-size:12px;font-weight:700;">' +
+      '📷 צרף תמונה/וידאו (אופציונלי)<input type="file" id="enc-add-file" accept="image/*,video/*" style="display:none;" onchange="encAddFilePreview(this)">' +
+    '</label>' +
+    '<div id="enc-add-preview" style="display:none;margin-bottom:10px;"></div>' +
+    '<div style="display:flex;gap:8px;">' +
+      '<button onclick="encSaveNew()" style="flex:1;padding:11px;background:linear-gradient(135deg,#c9a84c,#9a6f00);border:none;color:#fff;border-radius:10px;font-family:Heebo,sans-serif;font-size:13px;font-weight:800;cursor:pointer;">💾 שמור</button>' +
+      '<button onclick="this.closest(\'div[style*=fixed]\').remove()" style="padding:11px 16px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);color:#888;border-radius:10px;font-family:Heebo,sans-serif;font-size:13px;cursor:pointer;">ביטול</button>' +
+    '</div>';
+  overlay.appendChild(box);
+  overlay.addEventListener('click', function(e){ if(e.target===overlay) overlay.remove(); });
+  document.body.appendChild(overlay);
+}
+
+async function encAddFilePreview(input) {
+  var file = input.files[0]; if(!file) return;
+  var prev = document.getElementById('enc-add-preview');
+  var isVideo = file.type.startsWith('video/');
+  var b64 = await new Promise(function(res){var r=new FileReader();r.onload=function(e){res(e.target.result);};r.readAsDataURL(file);});
+  if (prev) {
+    prev.style.display='block';
+    prev.innerHTML = isVideo ? '<video src="'+b64+'" controls style="width:100%;max-height:120px;border-radius:8px;"></video>' : '<img src="'+b64+'" style="width:100%;max-height:120px;object-fit:cover;border-radius:8px;">';
+  }
+}
+
+async function encSaveNew() {
+  var title = (document.getElementById('enc-add-title')||{}).value||'';
+  var cat   = (document.getElementById('enc-add-cat')||{}).value||'כללי';
+  var desc  = (document.getElementById('enc-add-desc')||{}).value||'';
+  var sev   = (document.getElementById('enc-add-sev')||{}).value||'important';
+  var file  = document.getElementById('enc-add-file') ? document.getElementById('enc-add-file').files[0] : null;
+  if (!title) { showToast('הכנס כותרת','error'); return; }
+
+  var mediaUrl='', mediaType='';
+  if (file) {
+    var isV = file.type.startsWith('video/');
+    var ep = isV ? 'https://api.cloudinary.com/v1_1/dqdku88vv/video/upload' : 'https://api.cloudinary.com/v1_1/dqdku88vv/image/upload';
+    var fd=new FormData(); fd.append('file',file); fd.append('upload_preset','beni_field'); fd.append('folder','encyclopedia');
+    var r=await fetch(ep,{method:'POST',body:fd}); var d=await r.json();
+    mediaUrl=d.secure_url||''; mediaType=isV?'video':'photo';
+  }
+
+  await sb.from('field_encyclopedia').insert({
+    title,category:cat,description:desc,severity:sev,
+    media_url:mediaUrl||null,media_type:mediaType||null,
+    tags:[],created_at:new Date().toISOString()
+  });
+  document.querySelector('div[style*="position:fixed"]') && document.querySelector('div[style*="position:fixed"]').remove();
+  showToast('📚 נשמר באנציקלופדיה','success');
+  encInit();
+}
+
+async function encDelete(id) {
+  if (!confirm('מחק פריט זה?')) return;
+  await fetch(SB_URL+'/rest/v1/field_encyclopedia?id=eq.'+id,{method:'DELETE',headers:{apikey:SB_KEY,Authorization:'Bearer '+SB_KEY}});
+  showToast('🗑️ נמחק','success');
+  encInit();
+}
+
+function encSendWithPO(id) {
+  var item = _encItems.find(function(i){ return i.id===id; });
+  if (!item) return;
+  var msg = '📚 הנחיות מהאנציקלופדיה:\n\n' + item.title + '\n' + (item.description||'') + '\n\nחומרה: ' + (item.severity==='critical'?'קריטי':item.severity==='important'?'חשוב':'הנחיה');
+  navigator.clipboard.writeText(msg).then(function(){ showToast('✅ הועתק — הוסף ל-PO','success'); });
+}
+
+
 async function bootstrap() {
   try {
     // 1. Load lookups + config — graceful if tables don't exist yet
@@ -6823,6 +7539,8 @@ async function switchTab(tab) {
   if (tab === 'journal') { _fetchJournalModule().then(async function(){ if (!allProjects || !allProjects.length) { try { await loadProjects(); } catch(e){} } if (typeof initializeManagerView === 'function') initializeManagerView(); }).catch(function(e){ console.error('journal load:', e); }); _fetchCallRecordingsModule().then(function(){ setTimeout(function(){ if(typeof callRecordingsInit==='function') callRecordingsInit(); },200); }); }
   if (tab === 'standards') { _fetchStandardsModule().then(function(){ setTimeout(standardsRagInit, 100); }); }
   if (tab === 'smartscan')  { _fetchSmartScanModule().then(function(){ setTimeout(function(){ smartScanInit(); _ssPopulateProjects(); }, 100); }); }
+  if (tab === 'fieldjournal') { setTimeout(function(){ fjInit(); }, 100); }
+  if (tab === 'encyclopedia') { setTimeout(function(){ encInit(); }, 100); }
   if (tab === 'inbox')      { setTimeout(function(){ assetInboxLoad(); }, 100); }
   if (tab === 'misc')       { setTimeout(loadMiscTab, 100); }
 }
@@ -8703,6 +9421,80 @@ function generatePOPdf(po) {
     </div>
   </div>
 </div>
+
+<div class="app-panel" id="fieldjournal-panel" style="display:none;">
+  <div style="padding:20px;direction:rtl;font-family:Heebo,sans-serif;max-width:1200px;">
+
+    <!-- Header -->
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:10px;">
+      <div>
+        <div style="font-size:22px;font-weight:900;color:#fff;">📋 יומן שטח יומי</div>
+        <div style="font-size:13px;color:#888;margin-top:2px;" id="fj-date-display"></div>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <select id="fj-project-sel" style="background:#1a1a2e;border:1px solid rgba(201,168,76,0.4);color:#c9a84c;padding:8px 12px;border-radius:10px;font-family:Heebo,sans-serif;font-size:13px;direction:rtl;cursor:pointer;">
+          <option value="">📁 בחר פרויקט</option>
+        </select>
+        <input type="date" id="fj-date-sel" style="background:#1a1a2e;border:1px solid rgba(255,255,255,0.1);color:#fff;padding:8px;border-radius:10px;font-size:13px;" onchange="fjLoadDate()">
+      </div>
+    </div>
+
+    <!-- Phase tabs -->
+    <div id="fj-phase-tabs" style="display:flex;gap:8px;margin-bottom:18px;overflow-x:auto;padding-bottom:4px;">
+      <button onclick="fjSetPhase('morning')" id="fj-tab-morning" class="fj-ptab fj-active" style="flex:1;min-width:120px;padding:12px 8px;border-radius:12px;border:2px solid #7F77DD;background:rgba(127,119,221,0.15);cursor:pointer;font-family:Heebo,sans-serif;text-align:center;">
+        <div style="font-size:22px;margin-bottom:4px;">🌅</div>
+        <div style="font-size:12px;font-weight:800;color:#c4b5fd;">בוקר</div>
+        <div style="font-size:10px;color:#555;">תכנון יום</div>
+      </button>
+      <button onclick="fjSetPhase('field')" id="fj-tab-field" class="fj-ptab" style="flex:1;min-width:120px;padding:12px 8px;border-radius:12px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.03);cursor:pointer;font-family:Heebo,sans-serif;text-align:center;">
+        <div style="font-size:22px;margin-bottom:4px;">🏗️</div>
+        <div style="font-size:12px;font-weight:800;color:#ccc;">שטח</div>
+        <div style="font-size:10px;color:#555;">תמונות · קול · ממצאים</div>
+      </button>
+      <button onclick="fjSetPhase('takeoff')" id="fj-tab-takeoff" class="fj-ptab" style="flex:1;min-width:120px;padding:12px 8px;border-radius:12px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.03);cursor:pointer;font-family:Heebo,sans-serif;text-align:center;">
+        <div style="font-size:22px;margin-bottom:4px;">📐</div>
+        <div style="font-size:12px;font-weight:800;color:#ccc;">כמויות</div>
+        <div style="font-size:10px;color:#555;">Takeoffs</div>
+      </button>
+      <button onclick="fjSetPhase('eod')" id="fj-tab-eod" class="fj-ptab" style="flex:1;min-width:120px;padding:12px 8px;border-radius:12px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.03);cursor:pointer;font-family:Heebo,sans-serif;text-align:center;">
+        <div style="font-size:22px;margin-bottom:4px;">🌆</div>
+        <div style="font-size:12px;font-weight:800;color:#ccc;">סוף יום</div>
+        <div style="font-size:10px;color:#555;">סיכום · בריפינג</div>
+      </button>
+    </div>
+
+    <!-- Phase content area -->
+    <div id="fj-phase-content"></div>
+
+  </div>
+</div>
+
+<div class="app-panel" id="encyclopedia-panel" style="display:none;">
+  <div style="padding:20px;direction:rtl;font-family:Heebo,sans-serif;max-width:1200px;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:10px;">
+      <div>
+        <div style="font-size:22px;font-weight:900;color:#fff;">📚 אנציקלופדיה שטח</div>
+        <div style="font-size:13px;color:#888;">ידע מהשטח · מקרי בוחן · הנחיות לקבלני משנה</div>
+      </div>
+      <button onclick="encOpenAdd()" style="background:linear-gradient(135deg,#c9a84c,#9a6f00);border:none;color:#fff;padding:10px 18px;border-radius:10px;font-family:Heebo,sans-serif;font-size:13px;font-weight:800;cursor:pointer;">
+        ➕ הוסף ידע חדש
+      </button>
+    </div>
+
+    <!-- Category filters -->
+    <div id="enc-cat-filters" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px;"></div>
+
+    <!-- Search -->
+    <div style="margin-bottom:16px;">
+      <input id="enc-search" type="text" placeholder="חפש באנציקלופדיה..." onkeyup="encFilter()"
+        style="width:100%;background:#1a1a2e;border:1px solid rgba(255,255,255,0.1);color:#fff;padding:10px 14px;border-radius:10px;font-family:Heebo,sans-serif;font-size:13px;direction:rtl;">
+    </div>
+
+    <!-- Grid -->
+    <div id="enc-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px;"></div>
+  </div>
+</div>
+
 
 <!-- ══ INBOX PANEL ════════════════════════════════════════════════════ -->
 <div class="app-panel" id="inbox-panel">
@@ -11252,6 +12044,80 @@ function openLinkModal(takeoffId) {
     </div>
   </div>
 </div>
+
+<div class="app-panel" id="fieldjournal-panel" style="display:none;">
+  <div style="padding:20px;direction:rtl;font-family:Heebo,sans-serif;max-width:1200px;">
+
+    <!-- Header -->
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:10px;">
+      <div>
+        <div style="font-size:22px;font-weight:900;color:#fff;">📋 יומן שטח יומי</div>
+        <div style="font-size:13px;color:#888;margin-top:2px;" id="fj-date-display"></div>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <select id="fj-project-sel" style="background:#1a1a2e;border:1px solid rgba(201,168,76,0.4);color:#c9a84c;padding:8px 12px;border-radius:10px;font-family:Heebo,sans-serif;font-size:13px;direction:rtl;cursor:pointer;">
+          <option value="">📁 בחר פרויקט</option>
+        </select>
+        <input type="date" id="fj-date-sel" style="background:#1a1a2e;border:1px solid rgba(255,255,255,0.1);color:#fff;padding:8px;border-radius:10px;font-size:13px;" onchange="fjLoadDate()">
+      </div>
+    </div>
+
+    <!-- Phase tabs -->
+    <div id="fj-phase-tabs" style="display:flex;gap:8px;margin-bottom:18px;overflow-x:auto;padding-bottom:4px;">
+      <button onclick="fjSetPhase('morning')" id="fj-tab-morning" class="fj-ptab fj-active" style="flex:1;min-width:120px;padding:12px 8px;border-radius:12px;border:2px solid #7F77DD;background:rgba(127,119,221,0.15);cursor:pointer;font-family:Heebo,sans-serif;text-align:center;">
+        <div style="font-size:22px;margin-bottom:4px;">🌅</div>
+        <div style="font-size:12px;font-weight:800;color:#c4b5fd;">בוקר</div>
+        <div style="font-size:10px;color:#555;">תכנון יום</div>
+      </button>
+      <button onclick="fjSetPhase('field')" id="fj-tab-field" class="fj-ptab" style="flex:1;min-width:120px;padding:12px 8px;border-radius:12px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.03);cursor:pointer;font-family:Heebo,sans-serif;text-align:center;">
+        <div style="font-size:22px;margin-bottom:4px;">🏗️</div>
+        <div style="font-size:12px;font-weight:800;color:#ccc;">שטח</div>
+        <div style="font-size:10px;color:#555;">תמונות · קול · ממצאים</div>
+      </button>
+      <button onclick="fjSetPhase('takeoff')" id="fj-tab-takeoff" class="fj-ptab" style="flex:1;min-width:120px;padding:12px 8px;border-radius:12px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.03);cursor:pointer;font-family:Heebo,sans-serif;text-align:center;">
+        <div style="font-size:22px;margin-bottom:4px;">📐</div>
+        <div style="font-size:12px;font-weight:800;color:#ccc;">כמויות</div>
+        <div style="font-size:10px;color:#555;">Takeoffs</div>
+      </button>
+      <button onclick="fjSetPhase('eod')" id="fj-tab-eod" class="fj-ptab" style="flex:1;min-width:120px;padding:12px 8px;border-radius:12px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.03);cursor:pointer;font-family:Heebo,sans-serif;text-align:center;">
+        <div style="font-size:22px;margin-bottom:4px;">🌆</div>
+        <div style="font-size:12px;font-weight:800;color:#ccc;">סוף יום</div>
+        <div style="font-size:10px;color:#555;">סיכום · בריפינג</div>
+      </button>
+    </div>
+
+    <!-- Phase content area -->
+    <div id="fj-phase-content"></div>
+
+  </div>
+</div>
+
+<div class="app-panel" id="encyclopedia-panel" style="display:none;">
+  <div style="padding:20px;direction:rtl;font-family:Heebo,sans-serif;max-width:1200px;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:10px;">
+      <div>
+        <div style="font-size:22px;font-weight:900;color:#fff;">📚 אנציקלופדיה שטח</div>
+        <div style="font-size:13px;color:#888;">ידע מהשטח · מקרי בוחן · הנחיות לקבלני משנה</div>
+      </div>
+      <button onclick="encOpenAdd()" style="background:linear-gradient(135deg,#c9a84c,#9a6f00);border:none;color:#fff;padding:10px 18px;border-radius:10px;font-family:Heebo,sans-serif;font-size:13px;font-weight:800;cursor:pointer;">
+        ➕ הוסף ידע חדש
+      </button>
+    </div>
+
+    <!-- Category filters -->
+    <div id="enc-cat-filters" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px;"></div>
+
+    <!-- Search -->
+    <div style="margin-bottom:16px;">
+      <input id="enc-search" type="text" placeholder="חפש באנציקלופדיה..." onkeyup="encFilter()"
+        style="width:100%;background:#1a1a2e;border:1px solid rgba(255,255,255,0.1);color:#fff;padding:10px 14px;border-radius:10px;font-family:Heebo,sans-serif;font-size:13px;direction:rtl;">
+    </div>
+
+    <!-- Grid -->
+    <div id="enc-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px;"></div>
+  </div>
+</div>
+
 
 <!-- ══ INBOX PANEL ════════════════════════════════════════════════════ -->
 <div class="app-panel" id="inbox-panel">
