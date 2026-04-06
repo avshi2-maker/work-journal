@@ -2494,6 +2494,54 @@ window.addEventListener('unhandledrejection', function(e) {
           <div id="jw-briefing-time" style="font-size:10px;color:rgba(255,255,255,0.5);margin-top:6px;"></div>
         </div>
 
+        <!-- ═══ MORNING TASKS PANEL (OCR + manual tasks + send to Beni) ═══════ -->
+        <div id="fj-morning-panel" style="margin-bottom:16px;">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+            <!-- LEFT: Upload handwriting / OCR -->
+            <div style="display:flex;flex-direction:column;gap:10px;">
+              <div style="background:#fff;border:1.5px solid #c8e6c9;border-radius:14px;padding:14px;box-shadow:0 2px 8px rgba(76,175,80,0.08);">
+                <div style="font-size:12px;font-weight:900;color:#2e7d32;margin-bottom:10px;">📝 דף בוקר — כתב יד</div>
+                <div style="border:2px dashed #a5d6a7;border-radius:10px;padding:16px;text-align:center;cursor:pointer;background:#f1f8e9;" onclick="document.getElementById('fj-morning-upload').click()">
+                  <div style="font-size:28px;margin-bottom:6px;">📷</div>
+                  <div style="font-size:12px;color:#2e7d32;font-weight:800;">צלם את דף המשימות</div>
+                  <div style="font-size:10px;color:#558b2f;margin-top:3px;">Claude קורא ומחלץ משימות</div>
+                  <input type="file" id="fj-morning-upload" accept="image/*" style="display:none;" onchange="fjHandleMorningUpload(this)">
+                </div>
+                <div id="fj-morning-ocr" style="display:none;margin-top:8px;"></div>
+                <button onclick="fjExtractTasks()" id="fj-extract-btn" style="display:none;width:100%;padding:9px;background:linear-gradient(135deg,#388e3c,#66bb6a);border:none;color:#fff;border-radius:8px;font-family:Heebo,sans-serif;font-size:12px;font-weight:800;cursor:pointer;margin-top:8px;">🤖 חלץ משימות + לוח זמנים</button>
+              </div>
+              <div style="background:#fff;border:1.5px solid #c8e6c9;border-radius:14px;padding:14px;box-shadow:0 2px 8px rgba(76,175,80,0.08);">
+                <div style="font-size:12px;font-weight:900;color:#2e7d32;margin-bottom:10px;">➕ הוסף משימה ידנית</div>
+                <div style="display:flex;gap:6px;margin-bottom:8px;direction:rtl;">
+                  <input id="fj-task-input" type="text" placeholder="תיאור המשימה..."
+                    style="flex:1;background:#f1f8e9;border:1.5px solid #a5d6a7;color:#1b5e20;padding:7px 9px;border-radius:8px;font-family:Heebo,sans-serif;font-size:12px;direction:rtl;">
+                  <select id="fj-task-tag" style="background:#f1f8e9;border:1.5px solid #a5d6a7;color:#1b5e20;padding:7px;border-radius:8px;font-family:Heebo,sans-serif;font-size:11px;">
+                    <option value="site">שטח</option>
+                    <option value="urgent">דחוף</option>
+                    <option value="schedule">לוח זמנים</option>
+                    <option value="safety">בטיחות</option>
+                    <option value="other">אחר</option>
+                  </select>
+                </div>
+                <button onclick="fjAddTaskManual()" style="width:100%;padding:8px;background:linear-gradient(135deg,#388e3c,#66bb6a);border:none;color:#fff;border-radius:8px;font-family:Heebo,sans-serif;font-size:12px;font-weight:700;cursor:pointer;">✅ הוסף משימה</button>
+              </div>
+            </div>
+            <!-- RIGHT: Task list + Send to Beni -->
+            <div style="background:#fff;border:1.5px solid #c8e6c9;border-radius:14px;padding:14px;box-shadow:0 2px 8px rgba(76,175,80,0.08);">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+                <div style="font-size:12px;font-weight:900;color:#2e7d32;">✅ משימות היום</div>
+                <div id="fj-task-stats" style="font-size:11px;color:#558b2f;"></div>
+              </div>
+              <!-- Hidden project selector — used by fjLoadTasks/fjSendBriefing -->
+              <select id="fj-project-sel" style="display:none;"></select>
+              <div id="fj-task-list" style="display:flex;flex-direction:column;gap:5px;max-height:200px;overflow-y:auto;"></div>
+              <div style="margin-top:12px;padding-top:10px;border-top:1px solid #c8e6c9;">
+                <button onclick="fjSendBriefing()" style="width:100%;padding:10px;background:linear-gradient(135deg,#1b5e20,#43a047);border:none;color:#fff;border-radius:10px;font-family:Heebo,sans-serif;font-size:12px;font-weight:800;cursor:pointer;">📲 שלח בריפינג לבני</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <!-- No-projects warning — shown if zero projects exist -->
         <div id="jw-no-projects-warn" style="display:none;background:#fff3e0;border:2px solid #ff9800;border-radius:12px;padding:14px 16px;margin-bottom:16px;direction:rtl;">
           <div style="font-size:14px;font-weight:900;color:#e65100;margin-bottom:6px;">⚠️ אין פרויקטים פעילים במערכת</div>
@@ -7673,12 +7721,8 @@ async function switchTab(tab) {
     _fetchJournalModule().then(async function(){
       if (!allProjects || !allProjects.length) { try { await loadProjects(); } catch(e){} }
       if (typeof initializeManagerView === 'function') initializeManagerView();
-      if (typeof jwGoto === 'function') jwGoto(1);
-      // Install a value-trap on the select so module can NEVER auto-select
-      // This intercepts ANY programmatic .value = ... assignment
-      jwInstallProjectTrap();
-      // Still run after delay to rebuild options with real UUIDs
-      setTimeout(function(){
+      // ── IMMEDIATELY rebuild select with real UUIDs after initializeManagerView corrupts it ──
+      (function(){
         var sel = document.getElementById('projectName');
         if (sel) {
           sel.innerHTML = '<option value="">— בחר פרויקט —</option>';
@@ -7690,6 +7734,12 @@ async function switchTab(tab) {
           });
           sel.value = '';
         }
+      })();
+      if (typeof jwGoto === 'function') jwGoto(1);
+      // Install a value-trap on the select so module can NEVER auto-select
+      jwInstallProjectTrap();
+      // Run after short delay to hide sections and load briefing
+      setTimeout(function(){
         ['mb-tasks-section','mb-hero','mb-drawings-section','mb-contractors-section','jw-cta'].forEach(function(id){
           var el = document.getElementById(id);
           if (el) el.style.display = 'none';
@@ -7697,7 +7747,9 @@ async function switchTab(tab) {
         jwLoadBriefing();
         jwCheckProjects();
         jwTasksShowOption('table');
-      }, 800);
+        // Populate morning tasks panel (fj-project-sel + load today's tasks)
+        if (typeof fjInit === 'function') fjInit();
+      }, 100);
     }).catch(function(e){ console.error('journal load:', e); });
     _fetchCallRecordingsModule().then(function(){ setTimeout(function(){ if(typeof callRecordingsInit==='function') callRecordingsInit(); },200); });
   }
@@ -12045,16 +12097,6 @@ function jwOnProjectChange(sel) {
   // Valid UUID project selected
   if (errEl) errEl.style.display = 'none';
   if (pickPrompt) pickPrompt.style.display = 'none';
-
-  // ── UUID GUARD: reject if value looks like a Hebrew project name not a UUID ──
-  // UUIDs are hex+dashes only. Hebrew names contain non-ASCII chars.
-  var looksLikeUUID = /^[0-9a-f\-]{10,}$/i.test(pid);
-  if (!looksLikeUUID) {
-    console.warn('[jwOnProjectChange] blocked non-UUID project_id:', pid);
-    showToast('שגיאה: מזהה פרויקט לא תקין — אנא רענן את הדף', 'error');
-    jwAllowProjectSet(sel, '');
-    return;
-  }
 
   // Store UUID globally so mbInit and other modules can read it safely
   window._jwCurrentProjectId = pid;
