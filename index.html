@@ -7674,21 +7674,28 @@ async function switchTab(tab) {
       if (!allProjects || !allProjects.length) { try { await loadProjects(); } catch(e){} }
       if (typeof initializeManagerView === 'function') initializeManagerView();
       if (typeof jwGoto === 'function') jwGoto(1);
-      // Force blank selection AFTER module auto-selects — must run after module settles
+      // Force blank + repopulate with real UUIDs — 600ms to outlast module async ops
       setTimeout(function(){
         var sel = document.getElementById('projectName');
         if (sel) {
-          sel.value = '';
-          // Hide all project-dependent sections
-          ['mb-tasks-section','mb-hero','mb-drawings-section','mb-contractors-section','jw-cta','mb-tasks-section'].forEach(function(id){
-            var el = document.getElementById(id);
-            if (el) el.style.display = 'none';
+          // Rebuild options with UUID values (module uses project names as values — wrong)
+          sel.innerHTML = '<option value="">— בחר פרויקט —</option>';
+          (window.allProjects||[]).forEach(function(p){
+            var o = document.createElement('option');
+            o.value = p.id;
+            o.textContent = p.project_name;
+            sel.appendChild(o);
           });
+          sel.value = '';
         }
+        ['mb-tasks-section','mb-hero','mb-drawings-section','mb-contractors-section','jw-cta'].forEach(function(id){
+          var el = document.getElementById(id);
+          if (el) el.style.display = 'none';
+        });
         jwLoadBriefing();
         jwCheckProjects();
         jwTasksShowOption('table');
-      }, 300);
+      }, 600);
     }).catch(function(e){ console.error('journal load:', e); });
     _fetchCallRecordingsModule().then(function(){ setTimeout(function(){ if(typeof callRecordingsInit==='function') callRecordingsInit(); },200); });
   }
