@@ -7517,7 +7517,7 @@ async function switchTab(tab) {
     if (ov) ov.style.display = 'none';
   }
 
-  ['crm','notes','eod','safety','rag','micharon','query','gcal','journal','standards','smartscan','inbox','misc'].forEach(t => {
+  ['crm','notes','eod','safety','rag','micharon','query','gcal','journal','standards','smartscan','inbox','misc','fieldjournal','encyclopedia'].forEach(t => {
     document.getElementById(`${t}-panel`)?.classList.toggle('active', t===tab);
     document.getElementById(`tab-${t}`)?.classList.toggle('active', t===tab);
   });
