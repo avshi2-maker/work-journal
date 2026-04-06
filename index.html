@@ -363,7 +363,7 @@ window.addEventListener('unhandledrejection', function(e) {
   <div class="top-tab"        id="tab-safety" onclick="switchTab('safety')"><span>🛡️</span><span>בטיחות / ליקויים</span></div>
   <div class="top-tab"        id="tab-notes"  onclick="switchTab('notes')"><span>📝</span><span>מזכרים בני</span></div>
   <div class="top-tab"        id="tab-rag"    onclick="switchTab('rag')"><span>🏗️</span><span>ייעוץ הנדסי</span></div>
-  <div class="top-tab" id="tab-fieldjournal" onclick="switchTab('fieldjournal')"><span>🌅</span><span>בריפינג בוקר</span></div>
+  <div class="top-tab" id="tab-fieldjournal" onclick="switchTab('journal');jwGoto(1);"><span>🌅</span><span>בריפינג בוקר</span></div>
   <div class="top-tab" id="tab-encyclopedia" onclick="switchTab('encyclopedia')"><span>📚</span><span>אנציקלופדיה</span></div>
   <div class="top-tab"        id="tab-inbox" onclick="switchTab('inbox')"><span>📥</span><span>תיבת נכנסים 📥</span><span id="tab-inbox-badge" style="display:none;background:#ef4444;color:#fff;border-radius:8px;padding:1px 6px;font-size:9px;font-weight:800;"></span></div>
   <div class="top-tab"        id="tab-smartscan" onclick="switchTab('smartscan')"><span>🚀</span><span>סריקה מקצועית</span></div>
@@ -2454,7 +2454,7 @@ window.addEventListener('unhandledrejection', function(e) {
   <!-- TOPBAR -->
   <div id="jw-topbar">
     <div>
-      <div id="jw-topbar-title">📝 יומן עבודה יומי</div>
+      <div id="jw-topbar-title">🌅 בריפינג בוקר — יומן יומי</div>
       <div id="jw-topbar-sub">אישור עבודה — <span id="jw-report-num">טוען...</span></div>
     </div>
     <div id="jw-topbar-num">שלב <span id="jw-step-indicator">1</span> / 8</div>
@@ -2486,6 +2486,13 @@ window.addEventListener('unhandledrejection', function(e) {
       <!-- ═══ STEP 1: MORNING BRIEFING ═══════════════════════════ -->
       <div class="jw-step-panel active" id="jw-panel-1">
         <div class="jw-step-hdr"><span class="jw-step-ico">🌅</span><span class="jw-step-title">בוקר טוב — הכן את היום</span></div>
+
+        <!-- Briefing from Avshi — loads from daily_briefings table -->
+        <div id="jw-briefing-banner" style="display:none;background:linear-gradient(135deg,#1b5e20,#43a047);border-radius:12px;padding:14px 16px;margin-bottom:16px;">
+          <div style="font-size:13px;font-weight:900;color:#fff;margin-bottom:6px;">📨 בריפינג מאבשי</div>
+          <div id="jw-briefing-text" style="font-size:12px;color:rgba(255,255,255,0.92);line-height:1.8;white-space:pre-wrap;direction:rtl;"></div>
+          <div id="jw-briefing-time" style="font-size:10px;color:rgba(255,255,255,0.5);margin-top:6px;"></div>
+        </div>
 
         <div class="jw-field">
           <label>בחר פרויקט</label>
@@ -6925,25 +6932,25 @@ async function fjLoadTasks() {
   if (statsEl) statsEl.textContent = done + '/' + tasks.length + ' הושלמו';
 
   listEl.innerHTML = '';
-  var tagColors = {urgent:'rgba(239,68,68,0.2)',schedule:'rgba(59,130,246,0.2)',site:'rgba(34,197,94,0.2)',safety:'rgba(245,158,11,0.2)',other:'rgba(255,255,255,0.06)'};
+  var tagColors = {urgent:'#ffcdd2',schedule:'#bbdefb',site:'#c8e6c9',safety:'#fff9c4',other:'#f5f5f5'};
   var tagText = {urgent:'דחוף',schedule:'לוח זמנים',site:'שטח',safety:'בטיחות',other:'אחר'};
 
   tasks.forEach(function(t) {
     var row = document.createElement('div');
-    row.style.cssText = 'display:flex;align-items:center;gap:10px;padding:8px 10px;background:rgba(255,255,255,0.04);border-radius:8px;direction:rtl;';
+    row.style.cssText = 'display:flex;align-items:center;gap:10px;padding:8px 10px;background:#f1f8e9;border:1px solid #c8e6c9;border-radius:8px;direction:rtl;';
     var chk = document.createElement('div');
-    chk.style.cssText = 'width:20px;height:20px;border-radius:6px;border:2px solid ' + (t.is_done?'#22c55e':'rgba(255,255,255,0.2)') + ';background:' + (t.is_done?'#22c55e':'transparent') + ';cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;color:#fff;font-size:12px;';
+    chk.style.cssText = 'width:20px;height:20px;border-radius:6px;border:2px solid ' + (t.is_done?'#43a047':'#a5d6a7') + ';background:' + (t.is_done?'#43a047':'transparent') + ';cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;color:#fff;font-size:12px;';
     if (t.is_done) chk.textContent = '✓';
     chk.addEventListener('click', (function(id, done){ return function(){
       fetch(SB_URL+'/rest/v1/daily_tasks?id=eq.'+id,{method:'PATCH',headers:{apikey:SB_KEY,Authorization:'Bearer '+SB_KEY,'Content-Type':'application/json',Prefer:'return=minimal'},body:JSON.stringify({is_done:!done,done_at:!done?new Date().toISOString():null})}).then(fjLoadTasks);
     }; })(t.id, t.is_done));
 
     var txt = document.createElement('div');
-    txt.style.cssText = 'flex:1;font-size:12px;color:' + (t.is_done?'#555':'#e2e8f0') + ';text-decoration:' + (t.is_done?'line-through':'none') + ';';
+    txt.style.cssText = 'flex:1;font-size:12px;color:' + (t.is_done?'#888':'#1b5e20') + ';text-decoration:' + (t.is_done?'line-through':'none') + ';font-weight:600;';
     txt.textContent = t.task_text;
 
     var tag = document.createElement('div');
-    tag.style.cssText = 'font-size:10px;padding:2px 8px;border-radius:20px;background:' + (tagColors[t.tag]||tagColors.other) + ';color:#fff;flex-shrink:0;';
+    tag.style.cssText = 'font-size:10px;padding:2px 8px;border-radius:20px;background:' + (tagColors[t.tag]||tagColors.other) + ';color:#1b5e20;font-weight:700;flex-shrink:0;';
     tag.textContent = tagText[t.tag] || t.tag;
 
     var del = document.createElement('button');
@@ -6954,6 +6961,25 @@ async function fjLoadTasks() {
     row.appendChild(chk); row.appendChild(txt); row.appendChild(tag); row.appendChild(del);
     listEl.appendChild(row);
   });
+}
+
+// Load today's briefing from Avshi into wizard Step 1 banner
+async function jwLoadBriefing() {
+  var today = new Date().toISOString().split('T')[0];
+  var banner = document.getElementById('jw-briefing-banner');
+  var textEl = document.getElementById('jw-briefing-text');
+  var timeEl = document.getElementById('jw-briefing-time');
+  if (!banner || !textEl) return;
+  try {
+    var { data } = await sbQ('daily_briefings', 'briefing_date=eq.' + today + '&order=created_at.desc&limit=1&select=briefing_text,created_at');
+    if (data && data.length > 0) {
+      textEl.textContent = data[0].briefing_text || '';
+      if (timeEl) timeEl.textContent = 'נשלח: ' + new Date(data[0].created_at).toLocaleTimeString('he-IL', {hour:'2-digit',minute:'2-digit'});
+      banner.style.display = 'block';
+    } else {
+      banner.style.display = 'none';
+    }
+  } catch(e) { banner.style.display = 'none'; }
 }
 
 async function fjSendBriefing() {
@@ -6977,6 +7003,7 @@ async function fjSendBriefing() {
 
   if (error) { showToast('❌ ' + error.message,'error'); return; }
   showToast('📲 בריפינג נשלח לבני!','success');
+  jwLoadBriefing(); // refresh banner in wizard
 }
 
 function fjRenderField(container) {
@@ -7517,7 +7544,7 @@ async function switchTab(tab) {
     if (ov) ov.style.display = 'none';
   }
 
-  ['crm','notes','eod','safety','rag','micharon','query','gcal','journal','standards','smartscan','inbox','misc','fieldjournal','encyclopedia'].forEach(t => {
+  ['crm','notes','eod','safety','rag','micharon','query','gcal','journal','standards','smartscan','inbox','misc','encyclopedia'].forEach(t => {
     var panel = document.getElementById(t+'-panel');
     var tabEl  = document.getElementById('tab-'+t);
     if (panel) panel.style.display = (t===tab) ? 'block' : 'none';
@@ -7538,10 +7565,20 @@ async function switchTab(tab) {
   if (tab === 'micharon') { _fetchRagModule().then(function(){ setTimeout(micharonTabInit, 100); }); }
   if (tab === 'query')    { _fetchRagModule().then(function(){ setTimeout(queryTabInit, 100); }); }
   if (tab === 'gcal')    { _fetchSmartJournal().then(function(){ if (typeof initGcal === 'function') initGcal(); }); }
-  if (tab === 'journal') { _fetchJournalModule().then(async function(){ if (!allProjects || !allProjects.length) { try { await loadProjects(); } catch(e){} } if (typeof initializeManagerView === 'function') initializeManagerView(); }).catch(function(e){ console.error('journal load:', e); }); _fetchCallRecordingsModule().then(function(){ setTimeout(function(){ if(typeof callRecordingsInit==='function') callRecordingsInit(); },200); }); }
+  if (tab === 'journal') {
+    // Highlight the בריפינג בוקר top tab
+    var fjTabEl = document.getElementById('tab-fieldjournal');
+    if (fjTabEl) fjTabEl.classList.add('active');
+    _fetchJournalModule().then(async function(){
+      if (!allProjects || !allProjects.length) { try { await loadProjects(); } catch(e){} }
+      if (typeof initializeManagerView === 'function') initializeManagerView();
+      if (typeof jwGoto === 'function') jwGoto(1);
+      jwLoadBriefing();
+    }).catch(function(e){ console.error('journal load:', e); });
+    _fetchCallRecordingsModule().then(function(){ setTimeout(function(){ if(typeof callRecordingsInit==='function') callRecordingsInit(); },200); });
+  }
   if (tab === 'standards') { _fetchStandardsModule().then(function(){ setTimeout(standardsRagInit, 100); }); }
   if (tab === 'smartscan')  { _fetchSmartScanModule().then(function(){ setTimeout(function(){ smartScanInit(); _ssPopulateProjects(); }, 100); }); }
-  if (tab === 'fieldjournal') { setTimeout(function(){ fjInit(); }, 100); }
   if (tab === 'encyclopedia') { setTimeout(function(){ encInit(); }, 100); }
   if (tab === 'inbox')      { setTimeout(function(){ assetInboxLoad(); }, 100); }
   if (tab === 'misc')       { setTimeout(loadMiscTab, 100); }
@@ -11762,23 +11799,6 @@ function openLinkModal(takeoffId) {
   </div>
 </div>
 
-<div class="app-panel" id="fieldjournal-panel">
-  <div style="padding:30px;direction:rtl;font-family:Heebo,sans-serif;min-height:100vh;background:linear-gradient(160deg,#e8f5e9 0%,#f1f8e9 60%,#e0f2f1 100%);">
-    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:16px;">
-      <div style="font-size:24px;font-weight:900;color:#1b5e20;">🌅 בריפינג בוקר — משימות לבני</div>
-      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
-        <select id="fj-project-sel" style="background:#fff;border:1.5px solid #a5d6a7;color:#1b5e20;padding:7px 10px;border-radius:8px;font-family:Heebo,sans-serif;font-size:12px;font-weight:700;">
-          <option value="">— בחר פרויקט —</option>
-        </select>
-        <input type="date" id="fj-date-sel" style="background:#fff;border:1.5px solid #a5d6a7;color:#1b5e20;padding:7px 10px;border-radius:8px;font-family:Heebo,sans-serif;font-size:12px;">
-      </div>
-    </div>
-    <div id="fj-phase-tabs" style="display:none;">
-      <button id="fj-tab-morning" onclick="fjSetPhase('morning')" style="flex:1;padding:12px;border-radius:12px;border:2px solid #7F77DD;background:rgba(127,119,221,0.15);color:#c4b5fd;font-family:Heebo;font-size:12px;font-weight:800;cursor:pointer;">🌅 בוקר</button>
-    </div>
-    <div id="fj-phase-content"></div>
-  </div>
-</div>
 
 <div class="app-panel" id="encyclopedia-panel">
   <div style="padding:30px;direction:rtl;font-family:Heebo,sans-serif;min-height:100vh;background:#1a1a2e;">
