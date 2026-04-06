@@ -7518,8 +7518,10 @@ async function switchTab(tab) {
   }
 
   ['crm','notes','eod','safety','rag','micharon','query','gcal','journal','standards','smartscan','inbox','misc','fieldjournal','encyclopedia'].forEach(t => {
-    document.getElementById(`${t}-panel`)?.classList.toggle('active', t===tab);
-    document.getElementById(`tab-${t}`)?.classList.toggle('active', t===tab);
+    var panel = document.getElementById(t+'-panel');
+    var tabEl  = document.getElementById('tab-'+t);
+    if (panel) panel.style.display = (t===tab) ? 'block' : 'none';
+    if (tabEl)  tabEl.classList.toggle('active', t===tab);
   });
   window.scrollTo(0,0);
   // Scroll active tab into view in the top tabs bar
