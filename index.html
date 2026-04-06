@@ -9269,223 +9269,6 @@ function generatePOPdf(po) {
   </div>
 
 </div>
-<!-- ══ STANDARDS RAG PANEL ═══════════════════════════════════════════ -->
-<div class="app-panel" id="standards-panel">
-  <div id="standards-content">
-    <div style="padding:70px 24px 60px;min-height:100vh;background:#1a1a2e;font-family:Heebo,sans-serif;direction:rtl;">
-
-      <!-- Header -->
-      <div style="margin-bottom:24px;">
-        <div style="font-size:10px;letter-spacing:3px;color:#c9a84c;text-transform:uppercase;margin-bottom:4px;">Encyclopedia</div>
-        <h1 style="font-size:24px;font-weight:900;color:#fff;margin:0;">📚 תקני בניה ישראליים</h1>
-        <div style="font-size:12px;color:#666;margin-top:4px;">חפש, קרא ושתף תקנים ומפרטים לפי קטגוריה</div>
-      </div>
-
-      <!-- Search + Filter row -->
-      <div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;">
-        <div style="flex:2;min-width:200px;display:flex;gap:6px;align-items:center;">
-          <input id="std-search-input" type="text" placeholder="🔍 חפש תקן, מזהה, נושא..."
-            style="flex:1;padding:11px 14px;background:#242438;border:1px solid rgba(255,255,255,0.12);color:#fff;border-radius:12px;font-family:Heebo,sans-serif;font-size:14px;direction:rtl;outline:none;">
-          <button id="std-voice-btn" onclick="voiceSearch('std-search-input','std-voice-btn', function(){var el=document.getElementById('std-search-input');if(el)el.dispatchEvent(new Event('input'));})"
-            style="background:rgba(139,92,246,0.15);border:1.5px solid rgba(139,92,246,0.4);color:#c4b5fd;padding:10px 13px;border-radius:12px;cursor:pointer;font-size:16px;flex-shrink:0;" title="חיפוש קולי">🎤</button>
-        </div>
-        <select id="std-category-filter"
-          style="flex:1;min-width:180px;padding:11px 14px;background:#242438;border:1px solid rgba(255,255,255,0.12);color:#fff;border-radius:12px;font-family:Heebo,sans-serif;font-size:13px;direction:rtl;">
-          <option value="">כל הקטגוריות</option>
-        </select>
-        <select id="std-authority-filter"
-          style="min-width:120px;padding:11px 14px;background:#242438;border:1px solid rgba(255,255,255,0.12);color:#fff;border-radius:12px;font-family:Heebo,sans-serif;font-size:13px;direction:rtl;">
-          <option value="">כל הרשויות</option>
-          <option value="SII">SII — מכון התקנים</option>
-          <option value="EU">EU / CEN</option>
-          <option value="ISO">ISO</option>
-        </select>
-        <select id="std-mandatory-filter"
-          style="min-width:120px;padding:11px 14px;background:#242438;border:1px solid rgba(255,255,255,0.12);color:#fff;border-radius:12px;font-family:Heebo,sans-serif;font-size:13px;direction:rtl;">
-          <option value="">חובה / רשות</option>
-          <option value="כן">✅ מחייב בישראל</option>
-          <option value="חלקי">⚠️ חלקי</option>
-          <option value="לא">❌ לא מחייב</option>
-        </select>
-      </div>
-
-      <!-- AI question box — manual trigger only, never auto-run -->
-      <div style="display:flex;gap:8px;margin-bottom:8px;flex-wrap:wrap;">
-        <input id="std-ai-question" type="text" placeholder="💬 שאל שאלה על תקן מסוים..."
-          style="flex:1;min-width:200px;padding:11px 14px;background:#242438;border:1px solid rgba(124,58,237,0.4);color:#fff;border-radius:12px;font-family:Heebo,sans-serif;font-size:13px;direction:rtl;outline:none;"
-          onkeydown="if(event.key==='Enter'){event.preventDefault();stdAskAI();}">
-        <button id="std-ai-voice-btn" onclick="voiceSearch('std-ai-question','std-ai-voice-btn',null)"
-          style="background:rgba(139,92,246,0.15);border:1.5px solid rgba(139,92,246,0.4);color:#c4b5fd;padding:10px 13px;border-radius:12px;cursor:pointer;font-size:16px;flex-shrink:0;" title="שאל בקול">🎤</button>
-        <button onclick="stdAskAI()"
-          style="background:linear-gradient(135deg,#7c3aed,#5b21b6);border:none;color:#fff;padding:10px 20px;border-radius:12px;cursor:pointer;font-family:Heebo,sans-serif;font-size:13px;font-weight:800;flex-shrink:0;">
-          🤖 הפעל בינה מלאכותית
-        </button>
-      </div>
-      <!-- ARC timer for standards AI -->
-      <div id="std-arc" style="margin-bottom:12px;"></div>
-
-      <!-- Stats bar -->
-      <div id="std-stats-bar" style="font-size:12px;color:#555;margin-bottom:12px;"></div>
-
-      <!-- Results -->
-      <div id="std-results-list">
-        <div style="text-align:center;padding:40px;color:#555;font-size:14px;">
-          🔍 הזן מונח חיפוש או בחר קטגוריה
-        </div>
-      </div>
-
-      <!-- AI Answer box -->
-      <div id="std-ai-answer" style="display:none;background:#1e1e35;border:1.5px solid rgba(124,58,237,0.4);border-radius:14px;padding:18px;margin-top:20px;"></div>
-
-    </div>
-  </div>
-</div>
-
-<!-- ══ SMART SCAN PANEL ═══════════════════════════════════════════════ -->
-<div class="app-panel" id="smartscan-panel">
-  <div id="smartscan-content">
-    <div style="padding:70px 24px 60px;min-height:100vh;background:#1a1a2e;font-family:Heebo,sans-serif;direction:rtl;">
-
-      <!-- Header -->
-      <div style="margin-bottom:24px;">
-        <div style="font-size:10px;letter-spacing:3px;color:#c9a84c;text-transform:uppercase;margin-bottom:4px;">AI Multi-Analysis</div>
-        <h1 style="font-size:24px;font-weight:900;color:#fff;margin:0;">🚀 סריקה מהירה</h1>
-        <div style="font-size:12px;color:#c9a84c;font-weight:700;margin-top:2px;">סריקה מקצועית — תמונה · וידאו · 5 ניתוחים</div>
-        <div style="font-size:12px;color:#666;margin-top:4px;">העלה תמונה או סרטון → בחר ניתוחים → קבל דוח מיידי → עבור לניתוח מעמיק בטאב בטיחות</div>
-      </div>
-
-      <!-- Project selector -->
-      <div style="margin-bottom:16px;">
-        <select id="ss-project-sel" style="width:100%;padding:10px 14px;background:#242438;border:1px solid rgba(255,255,255,0.12);color:#fff;border-radius:12px;font-family:Heebo,sans-serif;font-size:13px;direction:rtl;">
-          <option value="">📁 בחר פרויקט (אופציונלי)</option>
-        </select>
-      </div>
-
-      <!-- Upload zone -->
-      <div style="background:#1e1e35;border:2px dashed rgba(201,168,76,0.4);border-radius:16px;padding:24px;margin-bottom:20px;text-align:center;">
-        <div style="font-size:40px;margin-bottom:8px;">📸</div>
-        <div style="font-size:14px;font-weight:800;color:#fff;margin-bottom:4px;">העלה תמונה, סרטון, PDF</div>
-        <div style="font-size:11px;color:#666;margin-bottom:16px;">JPG · PNG · MP4 · MOV · PDF — עד 8 פריימים מסרטון</div>
-        <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;">
-          <label style="display:inline-flex;align-items:center;gap:8px;background:rgba(201,168,76,0.2);border:1.5px solid rgba(201,168,76,0.5);color:#c9a84c;padding:10px 20px;border-radius:12px;cursor:pointer;font-size:13px;font-weight:700;">
-            📁 בחר קובץ<input type="file" id="ss-file-input" accept="image/*,video/mp4,video/quicktime,video/webm,.pdf" style="display:none;">
-          </label>
-          <label style="display:inline-flex;align-items:center;gap:8px;background:rgba(59,130,246,0.15);border:1.5px solid rgba(59,130,246,0.4);color:#93c5fd;padding:10px 20px;border-radius:12px;cursor:pointer;font-size:13px;font-weight:700;">
-            📸 צלם עכשיו<input type="file" id="ss-camera-input" accept="image/*" capture="environment" style="display:none;">
-          </label>
-        </div>
-        <div id="ss-upload-progress" style="display:none;margin-top:10px;">
-          <div style="font-size:12px;color:#888;" id="ss-upload-status">⏳ טוען...</div>
-        </div>
-        <img id="ss-thumb" style="display:none;max-height:150px;border-radius:8px;margin-top:12px;border:1px solid rgba(255,255,255,0.1);cursor:zoom-in;" onclick="if(this.src)openLightbox(this.src,'תמונה לסריקה')">
-        <!-- Journal photo indicator — shown when photo arrives from יומן חכם -->
-        <div id="ss-journal-badge" style="display:none;margin-top:8px;background:rgba(201,168,76,0.12);border:1px solid rgba(201,168,76,0.3);border-radius:8px;padding:7px 12px;font-size:11px;color:#c9a84c;direction:rtl;">
-          📋 תמונה מיומן חכם — <span id="ss-journal-caption"></span>
-          <button onclick="switchTab('notes');setTimeout(function(){switchSmartTab('photos');},300);" style="background:none;border:none;color:#c9a84c;cursor:pointer;font-size:11px;text-decoration:underline;font-family:Heebo,sans-serif;">חזור ליומן</button>
-        </div>
-      </div>
-
-      <!-- Analysis checkboxes -->
-      <div style="background:#242438;border-radius:14px;padding:16px;margin-bottom:20px;border:1px solid rgba(255,255,255,0.06);">
-        <div style="font-size:12px;font-weight:800;color:#c9a84c;text-transform:uppercase;letter-spacing:.5px;margin-bottom:14px;">בחר ניתוחים להפעלה:</div>
-        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(min(180px,100%),1fr));gap:10px;">
-          <label style="display:flex;align-items:center;gap:10px;background:#1a1a2e;border:1px solid rgba(239,68,68,0.3);border-radius:10px;padding:12px;cursor:pointer;">
-            <input type="checkbox" id="ss-cb-safety" checked style="width:16px;height:16px;accent-color:#ef4444;">
-            <div><div style="font-size:13px;font-weight:800;color:#fca5a5;">🛡️ ניתוח בטיחות</div><div style="font-size:10px;color:#666;">סיכוני חיים, הפרות חוק</div></div>
-          </label>
-          <label style="display:flex;align-items:center;gap:10px;background:#1a1a2e;border:1px solid rgba(59,130,246,0.3);border-radius:10px;padding:12px;cursor:pointer;">
-            <input type="checkbox" id="ss-cb-snag" checked style="width:16px;height:16px;accent-color:#3b82f6;">
-            <div><div style="font-size:13px;font-weight:800;color:#93c5fd;">🔍 ניתוח ליקויים</div><div style="font-size:10px;color:#666;">גמר, בנייה, איכות</div></div>
-          </label>
-          <label style="display:flex;align-items:center;gap:10px;background:#1a1a2e;border:1px solid rgba(139,92,246,0.3);border-radius:10px;padding:12px;cursor:pointer;">
-            <input type="checkbox" id="ss-cb-standards" checked style="width:16px;height:16px;accent-color:#8b5cf6;">
-            <div><div style="font-size:13px;font-weight:800;color:#c4b5fd;">📚 תקנים רלוונטיים</div><div style="font-size:10px;color:#666;">מהאנציקלופדיה שלנו</div></div>
-          </label>
-          <label style="display:flex;align-items:center;gap:10px;background:#1a1a2e;border:1px solid rgba(34,197,94,0.3);border-radius:10px;padding:12px;cursor:pointer;">
-            <input type="checkbox" id="ss-cb-costs" checked style="width:16px;height:16px;accent-color:#22c55e;">
-            <div><div style="font-size:13px;font-weight:800;color:#86efac;">💰 הערכת עלויות</div><div style="font-size:10px;color:#666;">ממחירון הבינוי 2025</div></div>
-          </label>
-          <label style="display:flex;align-items:center;gap:10px;background:#1a1a2e;border:1px solid rgba(201,168,76,0.3);border-radius:10px;padding:12px;cursor:pointer;">
-            <input type="checkbox" id="ss-cb-engineering" style="width:16px;height:16px;accent-color:#c9a84c;">
-            <div><div style="font-size:13px;font-weight:800;color:#c9a84c;">🏗️ ייעוץ הנדסי</div><div style="font-size:10px;color:#666;">ניתוח מעמיק + המלצות</div></div>
-          </label>
-        </div>
-      </div>
-
-      <!-- ARC timer for smart scan -->
-      <div id="ss-arc" style="margin-bottom:10px;"></div>
-      <!-- Scan button -->
-      <button onclick="smartScanRun()" id="ss-scan-btn" style="display:none;width:100%;padding:16px;background:linear-gradient(135deg,#c9a84c,#9a6f00);border:none;color:#fff;border-radius:12px;font-family:Heebo,sans-serif;font-size:16px;font-weight:900;cursor:pointer;margin-bottom:20px;">🚀 הפעל ניתוח חכם</button>
-
-      <!-- Results -->
-      <div id="ss-results" style="display:none;"></div>
-
-    </div>
-  </div>
-</div>
-
-<div class="app-panel" id="fieldjournal-panel">
-  <div style="padding:30px;direction:rtl;font-family:Heebo,sans-serif;min-height:100vh;background:#1a1a2e;">
-    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:16px;">
-      <div style="font-size:24px;font-weight:900;color:#c9a84c;">📋 יומן שטח יומי</div>
-      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
-        <select id="fj-project-sel" style="background:#1a1a2e;border:1px solid rgba(201,168,76,0.3);color:#c9a84c;padding:7px 10px;border-radius:8px;font-family:Heebo,sans-serif;font-size:12px;font-weight:700;">
-          <option value="">— בחר פרויקט —</option>
-        </select>
-        <input type="date" id="fj-date-sel" style="background:#1a1a2e;border:1px solid rgba(255,255,255,0.1);color:#fff;padding:7px 10px;border-radius:8px;font-family:Heebo,sans-serif;font-size:12px;">
-      </div>
-    </div>
-    <div id="fj-phase-tabs" style="display:flex;gap:8px;margin-bottom:18px;">
-      <button id="fj-tab-morning" onclick="fjSetPhase('morning')" style="flex:1;padding:12px;border-radius:12px;border:2px solid #7F77DD;background:rgba(127,119,221,0.15);color:#c4b5fd;font-family:Heebo;font-size:12px;font-weight:800;cursor:pointer;">🌅 בוקר</button>
-      <button id="fj-tab-field" onclick="fjSetPhase('field')" style="flex:1;padding:12px;border-radius:12px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.03);color:#ccc;font-family:Heebo;font-size:12px;font-weight:800;cursor:pointer;">🏗️ שטח</button>
-      <button id="fj-tab-takeoff" onclick="fjSetPhase('takeoff')" style="flex:1;padding:12px;border-radius:12px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.03);color:#ccc;font-family:Heebo;font-size:12px;font-weight:800;cursor:pointer;">📐 כמויות</button>
-      <button id="fj-tab-eod" onclick="fjSetPhase('eod')" style="flex:1;padding:12px;border-radius:12px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.03);color:#ccc;font-family:Heebo;font-size:12px;font-weight:800;cursor:pointer;">🌆 סוף יום</button>
-    </div>
-    <div id="fj-phase-content"></div>
-  </div>
-</div>
-
-<div class="app-panel" id="encyclopedia-panel">
-  <div style="padding:30px;direction:rtl;font-family:Heebo,sans-serif;min-height:100vh;background:#1a1a2e;">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
-      <div>
-        <div style="font-size:24px;font-weight:900;color:#c9a84c;">📚 אנציקלופדיה שטח</div>
-        <div style="font-size:13px;color:#888;margin-top:4px;">ידע מהשטח · מקרי בוחן · הנחיות לקבלני משנה</div>
-      </div>
-      <button onclick="encOpenAdd()" style="background:linear-gradient(135deg,#c9a84c,#9a6f00);border:none;color:#fff;padding:10px 18px;border-radius:10px;font-family:Heebo;font-size:13px;font-weight:800;cursor:pointer;">➕ הוסף ידע חדש</button>
-    </div>
-    <input id="enc-search" type="text" placeholder="חפש..." oninput="encFilter()" style="width:100%;background:#1a1a2e;border:1px solid rgba(255,255,255,0.1);color:#fff;padding:10px 14px;border-radius:10px;font-family:Heebo;font-size:13px;direction:rtl;margin-bottom:14px;">
-    <div id="enc-cat-filters" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px;"></div>
-    <div id="enc-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px;"></div>
-  </div>
-</div>
-
-<div class="app-panel" id="inbox-panel">
-  <div style="padding:70px 24px 60px;min-height:100vh;background:#1a1a2e;font-family:Heebo,sans-serif;direction:rtl;">
-
-    <!-- Header -->
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;flex-wrap:wrap;gap:10px;">
-      <div>
-        <div style="font-size:10px;letter-spacing:3px;color:#c9a84c;text-transform:uppercase;margin-bottom:4px;">Asset Inbox</div>
-        <h1 style="font-size:24px;font-weight:900;color:#fff;margin:0;">📥 תיבת נכנסים — קבצי בני</h1>
-        <div style="font-size:12px;color:#666;margin-top:4px;">כל הקבצים שבני העלה מהאנדרואיד — בחר יעד לכל קובץ ולחץ אישור</div>
-      </div>
-      <div style="display:flex;gap:8px;">
-        <button onclick="assetInboxLoad()" style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);color:#aaa;border-radius:10px;padding:9px 16px;font-size:12px;cursor:pointer;font-family:Heebo,sans-serif;">🔄 רענן</button>
-      </div>
-    </div>
-
-    <!-- Stats row -->
-    <div style="display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap;" id="inbox-stats-row"></div>
-
-    <!-- List -->
-    <div id="inbox-panel-list">
-      <div style="text-align:center;padding:40px;color:#555;font-size:14px;">טוען קבצים...</div>
-    </div>
-
-  </div>
-</div>
-
 <!-- ══ QUOTE BUILDER MODAL ══════════════════════════════════════════ -->
 <div id="qb-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:1000;overflow-y:auto;padding:20px;box-sizing:border-box;">
   <div style="background:#fff;border-radius:20px;max-width:1000px;margin:0 auto;overflow:hidden;font-family:Heebo,sans-serif;direction:rtl;">
@@ -11824,6 +11607,223 @@ function openLinkModal(takeoffId) {
 
 
 </script>
+<!-- ══ STANDARDS RAG PANEL ═══════════════════════════════════════════ -->
+<div class="app-panel" id="standards-panel">
+  <div id="standards-content">
+    <div style="padding:70px 24px 60px;min-height:100vh;background:#1a1a2e;font-family:Heebo,sans-serif;direction:rtl;">
+
+      <!-- Header -->
+      <div style="margin-bottom:24px;">
+        <div style="font-size:10px;letter-spacing:3px;color:#c9a84c;text-transform:uppercase;margin-bottom:4px;">Encyclopedia</div>
+        <h1 style="font-size:24px;font-weight:900;color:#fff;margin:0;">📚 תקני בניה ישראליים</h1>
+        <div style="font-size:12px;color:#666;margin-top:4px;">חפש, קרא ושתף תקנים ומפרטים לפי קטגוריה</div>
+      </div>
+
+      <!-- Search + Filter row -->
+      <div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;">
+        <div style="flex:2;min-width:200px;display:flex;gap:6px;align-items:center;">
+          <input id="std-search-input" type="text" placeholder="🔍 חפש תקן, מזהה, נושא..."
+            style="flex:1;padding:11px 14px;background:#242438;border:1px solid rgba(255,255,255,0.12);color:#fff;border-radius:12px;font-family:Heebo,sans-serif;font-size:14px;direction:rtl;outline:none;">
+          <button id="std-voice-btn" onclick="voiceSearch('std-search-input','std-voice-btn', function(){var el=document.getElementById('std-search-input');if(el)el.dispatchEvent(new Event('input'));})"
+            style="background:rgba(139,92,246,0.15);border:1.5px solid rgba(139,92,246,0.4);color:#c4b5fd;padding:10px 13px;border-radius:12px;cursor:pointer;font-size:16px;flex-shrink:0;" title="חיפוש קולי">🎤</button>
+        </div>
+        <select id="std-category-filter"
+          style="flex:1;min-width:180px;padding:11px 14px;background:#242438;border:1px solid rgba(255,255,255,0.12);color:#fff;border-radius:12px;font-family:Heebo,sans-serif;font-size:13px;direction:rtl;">
+          <option value="">כל הקטגוריות</option>
+        </select>
+        <select id="std-authority-filter"
+          style="min-width:120px;padding:11px 14px;background:#242438;border:1px solid rgba(255,255,255,0.12);color:#fff;border-radius:12px;font-family:Heebo,sans-serif;font-size:13px;direction:rtl;">
+          <option value="">כל הרשויות</option>
+          <option value="SII">SII — מכון התקנים</option>
+          <option value="EU">EU / CEN</option>
+          <option value="ISO">ISO</option>
+        </select>
+        <select id="std-mandatory-filter"
+          style="min-width:120px;padding:11px 14px;background:#242438;border:1px solid rgba(255,255,255,0.12);color:#fff;border-radius:12px;font-family:Heebo,sans-serif;font-size:13px;direction:rtl;">
+          <option value="">חובה / רשות</option>
+          <option value="כן">✅ מחייב בישראל</option>
+          <option value="חלקי">⚠️ חלקי</option>
+          <option value="לא">❌ לא מחייב</option>
+        </select>
+      </div>
+
+      <!-- AI question box — manual trigger only, never auto-run -->
+      <div style="display:flex;gap:8px;margin-bottom:8px;flex-wrap:wrap;">
+        <input id="std-ai-question" type="text" placeholder="💬 שאל שאלה על תקן מסוים..."
+          style="flex:1;min-width:200px;padding:11px 14px;background:#242438;border:1px solid rgba(124,58,237,0.4);color:#fff;border-radius:12px;font-family:Heebo,sans-serif;font-size:13px;direction:rtl;outline:none;"
+          onkeydown="if(event.key==='Enter'){event.preventDefault();stdAskAI();}">
+        <button id="std-ai-voice-btn" onclick="voiceSearch('std-ai-question','std-ai-voice-btn',null)"
+          style="background:rgba(139,92,246,0.15);border:1.5px solid rgba(139,92,246,0.4);color:#c4b5fd;padding:10px 13px;border-radius:12px;cursor:pointer;font-size:16px;flex-shrink:0;" title="שאל בקול">🎤</button>
+        <button onclick="stdAskAI()"
+          style="background:linear-gradient(135deg,#7c3aed,#5b21b6);border:none;color:#fff;padding:10px 20px;border-radius:12px;cursor:pointer;font-family:Heebo,sans-serif;font-size:13px;font-weight:800;flex-shrink:0;">
+          🤖 הפעל בינה מלאכותית
+        </button>
+      </div>
+      <!-- ARC timer for standards AI -->
+      <div id="std-arc" style="margin-bottom:12px;"></div>
+
+      <!-- Stats bar -->
+      <div id="std-stats-bar" style="font-size:12px;color:#555;margin-bottom:12px;"></div>
+
+      <!-- Results -->
+      <div id="std-results-list">
+        <div style="text-align:center;padding:40px;color:#555;font-size:14px;">
+          🔍 הזן מונח חיפוש או בחר קטגוריה
+        </div>
+      </div>
+
+      <!-- AI Answer box -->
+      <div id="std-ai-answer" style="display:none;background:#1e1e35;border:1.5px solid rgba(124,58,237,0.4);border-radius:14px;padding:18px;margin-top:20px;"></div>
+
+    </div>
+  </div>
+</div>
+
+<!-- ══ SMART SCAN PANEL ═══════════════════════════════════════════════ -->
+<div class="app-panel" id="smartscan-panel">
+  <div id="smartscan-content">
+    <div style="padding:70px 24px 60px;min-height:100vh;background:#1a1a2e;font-family:Heebo,sans-serif;direction:rtl;">
+
+      <!-- Header -->
+      <div style="margin-bottom:24px;">
+        <div style="font-size:10px;letter-spacing:3px;color:#c9a84c;text-transform:uppercase;margin-bottom:4px;">AI Multi-Analysis</div>
+        <h1 style="font-size:24px;font-weight:900;color:#fff;margin:0;">🚀 סריקה מהירה</h1>
+        <div style="font-size:12px;color:#c9a84c;font-weight:700;margin-top:2px;">סריקה מקצועית — תמונה · וידאו · 5 ניתוחים</div>
+        <div style="font-size:12px;color:#666;margin-top:4px;">העלה תמונה או סרטון → בחר ניתוחים → קבל דוח מיידי → עבור לניתוח מעמיק בטאב בטיחות</div>
+      </div>
+
+      <!-- Project selector -->
+      <div style="margin-bottom:16px;">
+        <select id="ss-project-sel" style="width:100%;padding:10px 14px;background:#242438;border:1px solid rgba(255,255,255,0.12);color:#fff;border-radius:12px;font-family:Heebo,sans-serif;font-size:13px;direction:rtl;">
+          <option value="">📁 בחר פרויקט (אופציונלי)</option>
+        </select>
+      </div>
+
+      <!-- Upload zone -->
+      <div style="background:#1e1e35;border:2px dashed rgba(201,168,76,0.4);border-radius:16px;padding:24px;margin-bottom:20px;text-align:center;">
+        <div style="font-size:40px;margin-bottom:8px;">📸</div>
+        <div style="font-size:14px;font-weight:800;color:#fff;margin-bottom:4px;">העלה תמונה, סרטון, PDF</div>
+        <div style="font-size:11px;color:#666;margin-bottom:16px;">JPG · PNG · MP4 · MOV · PDF — עד 8 פריימים מסרטון</div>
+        <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;">
+          <label style="display:inline-flex;align-items:center;gap:8px;background:rgba(201,168,76,0.2);border:1.5px solid rgba(201,168,76,0.5);color:#c9a84c;padding:10px 20px;border-radius:12px;cursor:pointer;font-size:13px;font-weight:700;">
+            📁 בחר קובץ<input type="file" id="ss-file-input" accept="image/*,video/mp4,video/quicktime,video/webm,.pdf" style="display:none;">
+          </label>
+          <label style="display:inline-flex;align-items:center;gap:8px;background:rgba(59,130,246,0.15);border:1.5px solid rgba(59,130,246,0.4);color:#93c5fd;padding:10px 20px;border-radius:12px;cursor:pointer;font-size:13px;font-weight:700;">
+            📸 צלם עכשיו<input type="file" id="ss-camera-input" accept="image/*" capture="environment" style="display:none;">
+          </label>
+        </div>
+        <div id="ss-upload-progress" style="display:none;margin-top:10px;">
+          <div style="font-size:12px;color:#888;" id="ss-upload-status">⏳ טוען...</div>
+        </div>
+        <img id="ss-thumb" style="display:none;max-height:150px;border-radius:8px;margin-top:12px;border:1px solid rgba(255,255,255,0.1);cursor:zoom-in;" onclick="if(this.src)openLightbox(this.src,'תמונה לסריקה')">
+        <!-- Journal photo indicator — shown when photo arrives from יומן חכם -->
+        <div id="ss-journal-badge" style="display:none;margin-top:8px;background:rgba(201,168,76,0.12);border:1px solid rgba(201,168,76,0.3);border-radius:8px;padding:7px 12px;font-size:11px;color:#c9a84c;direction:rtl;">
+          📋 תמונה מיומן חכם — <span id="ss-journal-caption"></span>
+          <button onclick="switchTab('notes');setTimeout(function(){switchSmartTab('photos');},300);" style="background:none;border:none;color:#c9a84c;cursor:pointer;font-size:11px;text-decoration:underline;font-family:Heebo,sans-serif;">חזור ליומן</button>
+        </div>
+      </div>
+
+      <!-- Analysis checkboxes -->
+      <div style="background:#242438;border-radius:14px;padding:16px;margin-bottom:20px;border:1px solid rgba(255,255,255,0.06);">
+        <div style="font-size:12px;font-weight:800;color:#c9a84c;text-transform:uppercase;letter-spacing:.5px;margin-bottom:14px;">בחר ניתוחים להפעלה:</div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(min(180px,100%),1fr));gap:10px;">
+          <label style="display:flex;align-items:center;gap:10px;background:#1a1a2e;border:1px solid rgba(239,68,68,0.3);border-radius:10px;padding:12px;cursor:pointer;">
+            <input type="checkbox" id="ss-cb-safety" checked style="width:16px;height:16px;accent-color:#ef4444;">
+            <div><div style="font-size:13px;font-weight:800;color:#fca5a5;">🛡️ ניתוח בטיחות</div><div style="font-size:10px;color:#666;">סיכוני חיים, הפרות חוק</div></div>
+          </label>
+          <label style="display:flex;align-items:center;gap:10px;background:#1a1a2e;border:1px solid rgba(59,130,246,0.3);border-radius:10px;padding:12px;cursor:pointer;">
+            <input type="checkbox" id="ss-cb-snag" checked style="width:16px;height:16px;accent-color:#3b82f6;">
+            <div><div style="font-size:13px;font-weight:800;color:#93c5fd;">🔍 ניתוח ליקויים</div><div style="font-size:10px;color:#666;">גמר, בנייה, איכות</div></div>
+          </label>
+          <label style="display:flex;align-items:center;gap:10px;background:#1a1a2e;border:1px solid rgba(139,92,246,0.3);border-radius:10px;padding:12px;cursor:pointer;">
+            <input type="checkbox" id="ss-cb-standards" checked style="width:16px;height:16px;accent-color:#8b5cf6;">
+            <div><div style="font-size:13px;font-weight:800;color:#c4b5fd;">📚 תקנים רלוונטיים</div><div style="font-size:10px;color:#666;">מהאנציקלופדיה שלנו</div></div>
+          </label>
+          <label style="display:flex;align-items:center;gap:10px;background:#1a1a2e;border:1px solid rgba(34,197,94,0.3);border-radius:10px;padding:12px;cursor:pointer;">
+            <input type="checkbox" id="ss-cb-costs" checked style="width:16px;height:16px;accent-color:#22c55e;">
+            <div><div style="font-size:13px;font-weight:800;color:#86efac;">💰 הערכת עלויות</div><div style="font-size:10px;color:#666;">ממחירון הבינוי 2025</div></div>
+          </label>
+          <label style="display:flex;align-items:center;gap:10px;background:#1a1a2e;border:1px solid rgba(201,168,76,0.3);border-radius:10px;padding:12px;cursor:pointer;">
+            <input type="checkbox" id="ss-cb-engineering" style="width:16px;height:16px;accent-color:#c9a84c;">
+            <div><div style="font-size:13px;font-weight:800;color:#c9a84c;">🏗️ ייעוץ הנדסי</div><div style="font-size:10px;color:#666;">ניתוח מעמיק + המלצות</div></div>
+          </label>
+        </div>
+      </div>
+
+      <!-- ARC timer for smart scan -->
+      <div id="ss-arc" style="margin-bottom:10px;"></div>
+      <!-- Scan button -->
+      <button onclick="smartScanRun()" id="ss-scan-btn" style="display:none;width:100%;padding:16px;background:linear-gradient(135deg,#c9a84c,#9a6f00);border:none;color:#fff;border-radius:12px;font-family:Heebo,sans-serif;font-size:16px;font-weight:900;cursor:pointer;margin-bottom:20px;">🚀 הפעל ניתוח חכם</button>
+
+      <!-- Results -->
+      <div id="ss-results" style="display:none;"></div>
+
+    </div>
+  </div>
+</div>
+
+<div class="app-panel" id="fieldjournal-panel">
+  <div style="padding:30px;direction:rtl;font-family:Heebo,sans-serif;min-height:100vh;background:#1a1a2e;">
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:16px;">
+      <div style="font-size:24px;font-weight:900;color:#c9a84c;">📋 יומן שטח יומי</div>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+        <select id="fj-project-sel" style="background:#1a1a2e;border:1px solid rgba(201,168,76,0.3);color:#c9a84c;padding:7px 10px;border-radius:8px;font-family:Heebo,sans-serif;font-size:12px;font-weight:700;">
+          <option value="">— בחר פרויקט —</option>
+        </select>
+        <input type="date" id="fj-date-sel" style="background:#1a1a2e;border:1px solid rgba(255,255,255,0.1);color:#fff;padding:7px 10px;border-radius:8px;font-family:Heebo,sans-serif;font-size:12px;">
+      </div>
+    </div>
+    <div id="fj-phase-tabs" style="display:flex;gap:8px;margin-bottom:18px;">
+      <button id="fj-tab-morning" onclick="fjSetPhase('morning')" style="flex:1;padding:12px;border-radius:12px;border:2px solid #7F77DD;background:rgba(127,119,221,0.15);color:#c4b5fd;font-family:Heebo;font-size:12px;font-weight:800;cursor:pointer;">🌅 בוקר</button>
+      <button id="fj-tab-field" onclick="fjSetPhase('field')" style="flex:1;padding:12px;border-radius:12px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.03);color:#ccc;font-family:Heebo;font-size:12px;font-weight:800;cursor:pointer;">🏗️ שטח</button>
+      <button id="fj-tab-takeoff" onclick="fjSetPhase('takeoff')" style="flex:1;padding:12px;border-radius:12px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.03);color:#ccc;font-family:Heebo;font-size:12px;font-weight:800;cursor:pointer;">📐 כמויות</button>
+      <button id="fj-tab-eod" onclick="fjSetPhase('eod')" style="flex:1;padding:12px;border-radius:12px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.03);color:#ccc;font-family:Heebo;font-size:12px;font-weight:800;cursor:pointer;">🌆 סוף יום</button>
+    </div>
+    <div id="fj-phase-content"></div>
+  </div>
+</div>
+
+<div class="app-panel" id="encyclopedia-panel">
+  <div style="padding:30px;direction:rtl;font-family:Heebo,sans-serif;min-height:100vh;background:#1a1a2e;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+      <div>
+        <div style="font-size:24px;font-weight:900;color:#c9a84c;">📚 אנציקלופדיה שטח</div>
+        <div style="font-size:13px;color:#888;margin-top:4px;">ידע מהשטח · מקרי בוחן · הנחיות לקבלני משנה</div>
+      </div>
+      <button onclick="encOpenAdd()" style="background:linear-gradient(135deg,#c9a84c,#9a6f00);border:none;color:#fff;padding:10px 18px;border-radius:10px;font-family:Heebo;font-size:13px;font-weight:800;cursor:pointer;">➕ הוסף ידע חדש</button>
+    </div>
+    <input id="enc-search" type="text" placeholder="חפש..." oninput="encFilter()" style="width:100%;background:#1a1a2e;border:1px solid rgba(255,255,255,0.1);color:#fff;padding:10px 14px;border-radius:10px;font-family:Heebo;font-size:13px;direction:rtl;margin-bottom:14px;">
+    <div id="enc-cat-filters" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px;"></div>
+    <div id="enc-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px;"></div>
+  </div>
+</div>
+
+<div class="app-panel" id="inbox-panel">
+  <div style="padding:70px 24px 60px;min-height:100vh;background:#1a1a2e;font-family:Heebo,sans-serif;direction:rtl;">
+
+    <!-- Header -->
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;flex-wrap:wrap;gap:10px;">
+      <div>
+        <div style="font-size:10px;letter-spacing:3px;color:#c9a84c;text-transform:uppercase;margin-bottom:4px;">Asset Inbox</div>
+        <h1 style="font-size:24px;font-weight:900;color:#fff;margin:0;">📥 תיבת נכנסים — קבצי בני</h1>
+        <div style="font-size:12px;color:#666;margin-top:4px;">כל הקבצים שבני העלה מהאנדרואיד — בחר יעד לכל קובץ ולחץ אישור</div>
+      </div>
+      <div style="display:flex;gap:8px;">
+        <button onclick="assetInboxLoad()" style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);color:#aaa;border-radius:10px;padding:9px 16px;font-size:12px;cursor:pointer;font-family:Heebo,sans-serif;">🔄 רענן</button>
+      </div>
+    </div>
+
+    <!-- Stats row -->
+    <div style="display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap;" id="inbox-stats-row"></div>
+
+    <!-- List -->
+    <div id="inbox-panel-list">
+      <div style="text-align:center;padding:40px;color:#555;font-size:14px;">טוען קבצים...</div>
+    </div>
+
+  </div>
+</div>
+
 
 <!-- ── SITE PULSE REJECT MODAL ──────────────────────────── -->
 <div id="modal-sp-reject" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:4000;align-items:center;justify-content:center;">
