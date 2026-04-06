@@ -1,0 +1,643 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>יומן שטח יומי</title>
+<link href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;700;800;900&display=swap" rel="stylesheet">
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: Heebo, sans-serif; background: #0f0f1a; color: #e2e8f0; direction: rtl; }
+.wrap { max-width: 1100px; margin: 0 auto; padding: 16px; }
+.hdr { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 10px; }
+.hdr-title { font-size: 22px; font-weight: 900; color: #fff; }
+.hdr-sub { font-size: 12px; color: #888; margin-top: 2px; }
+.controls { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+select, input[type=date] { background: #1a1a2e; border: 1px solid rgba(201,168,76,0.4); color: #c9a84c; padding: 8px 12px; border-radius: 10px; font-family: Heebo; font-size: 13px; direction: rtl; cursor: pointer; }
+.phase-row { display: flex; gap: 8px; margin-bottom: 18px; overflow-x: auto; padding-bottom: 4px; }
+.ptab { flex: 1; min-width: 110px; padding: 12px 8px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.03); cursor: pointer; text-align: center; font-family: Heebo; transition: all 0.2s; }
+.ptab.active { border: 2px solid #7F77DD; background: rgba(127,119,221,0.15); }
+.ptab-icon { font-size: 22px; margin-bottom: 4px; }
+.ptab-label { font-size: 12px; font-weight: 800; color: #ccc; }
+.ptab.active .ptab-label { color: #c4b5fd; }
+.ptab-sub { font-size: 10px; color: #555; margin-top: 2px; }
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+@media(max-width:700px) { .grid2 { grid-template-columns: 1fr; } }
+.card { background: #1e1e35; border: 1px solid rgba(255,255,255,0.07); border-radius: 14px; padding: 14px; }
+.card-title { font-size: 13px; font-weight: 800; color: #c9a84c; margin-bottom: 12px; }
+.upload-zone { border: 2px dashed rgba(201,168,76,0.4); border-radius: 10px; padding: 20px; text-align: center; cursor: pointer; transition: border-color 0.2s; }
+.upload-zone:hover { border-color: #c9a84c; }
+.upload-zone-icon { font-size: 32px; margin-bottom: 8px; }
+.upload-zone-label { font-size: 13px; color: #c9a84c; font-weight: 800; }
+.upload-zone-sub { font-size: 11px; color: #555; margin-top: 4px; }
+.btn { padding: 10px 16px; border-radius: 10px; border: none; cursor: pointer; font-family: Heebo; font-size: 13px; font-weight: 800; width: 100%; margin-top: 8px; transition: opacity 0.2s; }
+.btn:hover { opacity: 0.85; }
+.btn-purple { background: linear-gradient(135deg,#7F77DD,#534AB7); color: #fff; }
+.btn-green { background: linear-gradient(135deg,#1e6b30,#22c55e); color: #fff; }
+.btn-gold { background: linear-gradient(135deg,#c9a84c,#9a6f00); color: #fff; }
+.btn-outline { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: #888; }
+.ocr-box { background: rgba(0,0,0,0.3); border-radius: 8px; padding: 10px; font-size: 12px; color: #e2e8f0; direction: rtl; line-height: 1.7; white-space: pre-wrap; margin-top: 10px; display: none; }
+.task-row { display: flex; align-items: center; gap: 10px; padding: 8px 10px; background: rgba(255,255,255,0.04); border-radius: 8px; direction: rtl; }
+.task-chk { width: 22px; height: 22px; border-radius: 6px; border: 2px solid rgba(255,255,255,0.2); background: transparent; cursor: pointer; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 13px; flex-shrink: 0; transition: all 0.15s; }
+.task-chk.done { background: #22c55e; border-color: #22c55e; }
+.task-txt { flex: 1; font-size: 13px; }
+.task-txt.done { color: #555; text-decoration: line-through; }
+.tag { font-size: 10px; padding: 2px 8px; border-radius: 20px; flex-shrink: 0; }
+.tag-urgent { background: rgba(239,68,68,0.2); color: #fca5a5; }
+.tag-schedule { background: rgba(59,130,246,0.2); color: #93c5fd; }
+.tag-site { background: rgba(34,197,94,0.2); color: #86efac; }
+.tag-safety { background: rgba(245,158,11,0.2); color: #fde68a; }
+.tag-other { background: rgba(255,255,255,0.06); color: #888; }
+.inp { background: #1a1a2e; border: 1px solid rgba(255,255,255,0.1); color: #fff; padding: 9px 11px; border-radius: 8px; font-family: Heebo; font-size: 13px; direction: rtl; width: 100%; }
+.inp:focus { outline: none; border-color: rgba(201,168,76,0.5); }
+.obs-card { background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.07); border-radius: 10px; padding: 10px; margin-bottom: 8px; }
+.toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: #22c55e; color: #fff; padding: 10px 20px; border-radius: 10px; font-size: 13px; font-weight: 700; z-index: 9999; display: none; }
+.measure-row { display: flex; justify-content: space-between; align-items: center; padding: 7px 0; border-bottom: 1px solid rgba(255,255,255,0.05); font-size: 12px; }
+.measure-row:last-child { border-bottom: none; }
+.stats-bar { font-size: 11px; color: #555; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- Header -->
+  <div class="hdr">
+    <div>
+      <div class="hdr-title">📋 יומן שטח יומי</div>
+      <div class="hdr-sub" id="date-display"></div>
+    </div>
+    <div class="controls">
+      <select id="proj-sel" onchange="onProjChange()">
+        <option value="">📁 בחר פרויקט</option>
+      </select>
+      <input type="date" id="date-sel" onchange="onDateChange()">
+    </div>
+  </div>
+
+  <!-- Phase tabs -->
+  <div class="phase-row">
+    <div class="ptab active" id="ptab-morning" onclick="setPhase('morning')">
+      <div class="ptab-icon">🌅</div>
+      <div class="ptab-label">בוקר</div>
+      <div class="ptab-sub">תכנון יום</div>
+    </div>
+    <div class="ptab" id="ptab-field" onclick="setPhase('field')">
+      <div class="ptab-icon">🏗️</div>
+      <div class="ptab-label">שטח</div>
+      <div class="ptab-sub">תמונות · קול · ממצאים</div>
+    </div>
+    <div class="ptab" id="ptab-takeoff" onclick="setPhase('takeoff')">
+      <div class="ptab-icon">📐</div>
+      <div class="ptab-label">כמויות</div>
+      <div class="ptab-sub">Takeoffs</div>
+    </div>
+    <div class="ptab" id="ptab-eod" onclick="setPhase('eod')">
+      <div class="ptab-icon">🌆</div>
+      <div class="ptab-label">סוף יום</div>
+      <div class="ptab-sub">סיכום · בריפינג</div>
+    </div>
+  </div>
+
+  <!-- Phase content -->
+  <div id="phase-content"></div>
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ── CONFIG ───────────────────────────────────────────────────────────
+const SB_URL = 'https://vmcipofovheztbjmhwsl.supabase.co';
+const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZtY2lwb2ZvdmhlenRiam1od3NsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE0NjE2MTcsImV4cCI6MjA4NzAzNzYxN30.LPq5N2Xo8iEqjgz2UhmdzUdh5tpGT3EYzSxJcYBEJ1w';
+const CLD   = 'https://api.cloudinary.com/v1_1/dqdku88vv';
+var PHASE = 'morning';
+var ALL_PROJECTS = [];
+var ALL_TASKS = [];
+var OCR_TEXT = '';
+var ANTHROPIC_KEY = '';
+
+// ── HELPERS ──────────────────────────────────────────────────────────
+function toast(msg, type) {
+  var el = document.getElementById('toast');
+  el.textContent = msg;
+  el.style.background = type === 'error' ? '#ef4444' : '#22c55e';
+  el.style.display = 'block';
+  clearTimeout(el._t);
+  el._t = setTimeout(function(){ el.style.display = 'none'; }, 3000);
+}
+
+async function sbQ(table, qs) {
+  var url = SB_URL + '/rest/v1/' + table + (qs ? '?' + qs : '');
+  var r = await fetch(url, { headers: { apikey: SB_KEY, Authorization: 'Bearer ' + SB_KEY } });
+  return r.json();
+}
+
+async function claudeCall(prompt, imageB64, imageType) {
+  if (!ANTHROPIC_KEY) {
+    var cfg = await sbQ('app_config', 'key=eq.anthropic_key&select=value');
+    ANTHROPIC_KEY = (cfg[0] || cfg.data && cfg.data[0]) ? (cfg[0] || cfg.data[0]).value : '';
+    if (!ANTHROPIC_KEY) { toast('מפתח Claude חסר', 'error'); return ''; }
+  }
+  var msgs = [];
+  if (imageB64) {
+    msgs.push({ role: 'user', content: [
+      { type: 'image', source: { type: 'base64', media_type: imageType || 'image/jpeg', data: imageB64 } },
+      { type: 'text', text: prompt }
+    ]});
+  } else {
+    msgs.push({ role: 'user', content: prompt });
+  }
+  var resp = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': ANTHROPIC_KEY,
+      'anthropic-version': '2023-06-01',
+      'anthropic-dangerous-direct-browser-access': 'true'
+    },
+    body: JSON.stringify({ model: 'claude-sonnet-4-20250514', max_tokens: 1000, messages: msgs })
+  });
+  var data = await resp.json();
+  return data.content && data.content[0] ? data.content[0].text : '';
+}
+
+async function uploadCloudinary(file) {
+  var isVideo = file.type.startsWith('video/') || /\.(mp4|mov|3gp|avi)$/i.test(file.name);
+  var isAudio = file.type.startsWith('audio/') || /\.(mp3|m4a|wav|ogg)$/i.test(file.name);
+  var ep = (isVideo || isAudio) ? CLD + '/video/upload' : CLD + '/image/upload';
+  var fd = new FormData();
+  fd.append('file', file); fd.append('upload_preset', 'beni_field'); fd.append('folder', 'daily_journal');
+  var r = await fetch(ep, { method: 'POST', body: fd });
+  var d = await r.json();
+  return d.secure_url || '';
+}
+
+function fileToB64(file) {
+  return new Promise(function(res, rej) {
+    var rd = new FileReader();
+    rd.onload = function(e) { res(e.target.result.split(',')[1]); };
+    rd.onerror = rej;
+    rd.readAsDataURL(file);
+  });
+}
+
+function today() {
+  return document.getElementById('date-sel').value || new Date().toISOString().split('T')[0];
+}
+function projId() {
+  return document.getElementById('proj-sel').value || null;
+}
+
+// ── INIT ─────────────────────────────────────────────────────────────
+async function init() {
+  var todayStr = new Date().toISOString().split('T')[0];
+  document.getElementById('date-sel').value = todayStr;
+  document.getElementById('date-display').textContent = new Date().toLocaleDateString('he-IL', {weekday:'long',year:'numeric',month:'long',day:'numeric'});
+
+  // Load projects
+  var data = await sbQ('projects', 'select=id,project_name&order=created_at.desc&limit=50');
+  ALL_PROJECTS = Array.isArray(data) ? data : (data.data || []);
+  var sel = document.getElementById('proj-sel');
+  ALL_PROJECTS.forEach(function(p) {
+    var o = document.createElement('option'); o.value = p.id; o.textContent = p.project_name; sel.appendChild(o);
+  });
+
+  // Load anthropic key
+  var cfg = await sbQ('app_config', 'key=eq.anthropic_key&select=value');
+  var row = Array.isArray(cfg) ? cfg[0] : (cfg.data && cfg.data[0]);
+  if (row) ANTHROPIC_KEY = row.value;
+
+  setPhase('morning');
+}
+
+function onProjChange() { setPhase(PHASE); }
+function onDateChange() {
+  var d = new Date(document.getElementById('date-sel').value);
+  document.getElementById('date-display').textContent = d.toLocaleDateString('he-IL', {weekday:'long',year:'numeric',month:'long',day:'numeric'});
+  setPhase(PHASE);
+}
+
+// ── PHASE SWITCHING ───────────────────────────────────────────────────
+function setPhase(phase) {
+  PHASE = phase;
+  ['morning','field','takeoff','eod'].forEach(function(p) {
+    var btn = document.getElementById('ptab-' + p);
+    if (btn) btn.className = 'ptab' + (p === phase ? ' active' : '');
+  });
+  var el = document.getElementById('phase-content');
+  if (phase === 'morning')  renderMorning(el);
+  if (phase === 'field')    renderField(el);
+  if (phase === 'takeoff')  renderTakeoff(el);
+  if (phase === 'eod')      renderEOD(el);
+}
+
+// ── MORNING PHASE ─────────────────────────────────────────────────────
+function renderMorning(el) {
+  el.innerHTML = '';
+  var grid = document.createElement('div');
+  grid.className = 'grid2';
+
+  // Left col
+  var left = document.createElement('div');
+  left.style.cssText = 'display:flex;flex-direction:column;gap:12px;';
+
+  var uploadCard = document.createElement('div');
+  uploadCard.className = 'card';
+  uploadCard.innerHTML = '<div class="card-title">📝 דף בוקר — כתב יד</div>' +
+    '<div class="upload-zone" onclick="document.getElementById(\'morning-file\').click()">' +
+    '<div class="upload-zone-icon">📷</div>' +
+    '<div class="upload-zone-label">צלם את דף המשימות</div>' +
+    '<div class="upload-zone-sub">Claude קורא ומחלץ משימות אוטומטית</div>' +
+    '<input type="file" id="morning-file" accept="image/*" style="display:none;" onchange="handleMorningUpload(this)">' +
+    '</div>' +
+    '<div class="ocr-box" id="morning-ocr"></div>' +
+    '<button class="btn btn-purple" id="extract-btn" style="display:none;" onclick="extractTasks()">🤖 חלץ משימות</button>';
+  left.appendChild(uploadCard);
+
+  var addCard = document.createElement('div');
+  addCard.className = 'card';
+  addCard.innerHTML = '<div class="card-title">➕ הוסף משימה ידנית</div>' +
+    '<div style="display:flex;gap:8px;margin-bottom:8px;">' +
+    '<input class="inp" id="task-inp" type="text" placeholder="תיאור המשימה..." style="flex:1;">' +
+    '<select class="inp" id="task-tag" style="width:auto;padding:8px;">' +
+    '<option value="site">שטח</option><option value="urgent">דחוף</option>' +
+    '<option value="schedule">לוח זמנים</option><option value="safety">בטיחות</option><option value="other">אחר</option>' +
+    '</select></div>' +
+    '<button class="btn btn-green" onclick="addTaskManual()">✅ הוסף משימה</button>';
+  left.appendChild(addCard);
+
+  // Right col — task list
+  var right = document.createElement('div');
+  right.className = 'card';
+  right.style.height = 'fit-content';
+  right.innerHTML = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">' +
+    '<div class="card-title" style="margin:0;">✅ משימות היום</div>' +
+    '<div class="stats-bar" id="task-stats"></div>' +
+    '</div>' +
+    '<div id="task-list" style="display:flex;flex-direction:column;gap:6px;min-height:60px;"></div>' +
+    '<div style="margin-top:14px;padding-top:12px;border-top:1px solid rgba(255,255,255,0.07);">' +
+    '<button class="btn btn-green" onclick="sendBriefing()">📲 שלח בריפינג לבני</button></div>';
+
+  grid.appendChild(left);
+  grid.appendChild(right);
+  el.appendChild(grid);
+  loadTasks();
+}
+
+async function handleMorningUpload(input) {
+  var file = input.files[0]; if (!file) return;
+  var ocrEl = document.getElementById('morning-ocr');
+  var btnEl = document.getElementById('extract-btn');
+  ocrEl.style.display = 'block';
+  ocrEl.textContent = '⏳ קורא כתב יד...';
+  toast('📤 מעלה ומנתח...', 'success');
+  try {
+    var b64 = await fileToB64(file);
+    var text = await claudeCall('קרא את כתב היד בדיוק כפי שכתוב. הצג כל שורה בנפרד.', b64, file.type || 'image/jpeg');
+    OCR_TEXT = text;
+    ocrEl.textContent = text;
+    btnEl.style.display = 'block';
+    toast('✅ כתב יד נקרא', 'success');
+  } catch(e) { ocrEl.textContent = '❌ ' + e.message; }
+}
+
+async function extractTasks() {
+  if (!OCR_TEXT) { toast('העלה תמונה תחילה', 'error'); return; }
+  toast('🤖 מחלץ משימות...', 'success');
+  try {
+    var raw = await claudeCall('חלץ משימות מהטקסט. החזר JSON בלבד ללא שום טקסט אחר: {"tasks":[{"text":"...","tag":"urgent|schedule|site|safety|other"}]}\n\nטקסט:\n' + OCR_TEXT);
+    var parsed = JSON.parse(raw.replace(/```json|```/g,'').trim());
+    var pid = projId(); var t = today();
+    for (var task of (parsed.tasks || [])) {
+      await fetch(SB_URL + '/rest/v1/daily_tasks', {
+        method: 'POST',
+        headers: { apikey: SB_KEY, Authorization: 'Bearer ' + SB_KEY, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+        body: JSON.stringify({ task_text: task.text, tag: task.tag || 'other', task_date: t, project_id: pid, is_done: false, created_at: new Date().toISOString() })
+      });
+    }
+    toast('✅ ' + (parsed.tasks||[]).length + ' משימות נוצרו', 'success');
+    loadTasks();
+  } catch(e) { toast('❌ ' + e.message, 'error'); }
+}
+
+async function addTaskManual() {
+  var inp = document.getElementById('task-inp');
+  var tag = document.getElementById('task-tag');
+  if (!inp || !inp.value.trim()) { toast('הכנס תיאור', 'error'); return; }
+  await fetch(SB_URL + '/rest/v1/daily_tasks', {
+    method: 'POST',
+    headers: { apikey: SB_KEY, Authorization: 'Bearer ' + SB_KEY, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+    body: JSON.stringify({ task_text: inp.value.trim(), tag: tag.value, task_date: today(), project_id: projId(), is_done: false, created_at: new Date().toISOString() })
+  });
+  inp.value = '';
+  toast('✅ משימה נוספה', 'success');
+  loadTasks();
+}
+
+async function loadTasks() {
+  var qs = 'task_date=eq.' + today() + '&order=created_at.asc&select=id,task_text,tag,is_done';
+  var pid = projId();
+  if (pid) qs += '&project_id=eq.' + pid;
+  var data = await sbQ('daily_tasks', qs);
+  ALL_TASKS = Array.isArray(data) ? data : (data.data || []);
+
+  var listEl = document.getElementById('task-list');
+  var statsEl = document.getElementById('task-stats');
+  if (!listEl) return;
+
+  var done = ALL_TASKS.filter(function(t){ return t.is_done; }).length;
+  if (statsEl) statsEl.textContent = done + '/' + ALL_TASKS.length + ' הושלמו';
+
+  listEl.innerHTML = '';
+  var tagCls = { urgent:'tag-urgent', schedule:'tag-schedule', site:'tag-site', safety:'tag-safety', other:'tag-other' };
+  var tagHe  = { urgent:'דחוף', schedule:'לוח זמנים', site:'שטח', safety:'בטיחות', other:'אחר' };
+
+  ALL_TASKS.forEach(function(t) {
+    var row = document.createElement('div');
+    row.className = 'task-row';
+    var chk = document.createElement('div');
+    chk.className = 'task-chk' + (t.is_done ? ' done' : '');
+    if (t.is_done) chk.textContent = '✓';
+    chk.addEventListener('click', (function(id, isDone){ return function() {
+      fetch(SB_URL + '/rest/v1/daily_tasks?id=eq.' + id, {
+        method: 'PATCH',
+        headers: { apikey: SB_KEY, Authorization: 'Bearer ' + SB_KEY, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+        body: JSON.stringify({ is_done: !isDone, done_at: !isDone ? new Date().toISOString() : null, done_by: 'avshi' })
+      }).then(loadTasks);
+    }; })(t.id, t.is_done));
+    var txt = document.createElement('div');
+    txt.className = 'task-txt' + (t.is_done ? ' done' : '');
+    txt.textContent = t.task_text;
+    var tag = document.createElement('div');
+    tag.className = 'tag ' + (tagCls[t.tag] || tagCls.other);
+    tag.textContent = tagHe[t.tag] || t.tag;
+    var del = document.createElement('button');
+    del.textContent = '🗑️';
+    del.style.cssText = 'background:none;border:none;cursor:pointer;font-size:11px;opacity:0.5;';
+    del.onclick = (function(id){ return function(){
+      fetch(SB_URL + '/rest/v1/daily_tasks?id=eq.' + id, { method: 'DELETE', headers: { apikey: SB_KEY, Authorization: 'Bearer ' + SB_KEY } }).then(loadTasks);
+    }; })(t.id);
+    row.appendChild(chk); row.appendChild(txt); row.appendChild(tag); row.appendChild(del);
+    listEl.appendChild(row);
+  });
+}
+
+async function sendBriefing() {
+  var pending = ALL_TASKS.filter(function(t){ return !t.is_done; });
+  var done    = ALL_TASKS.filter(function(t){ return t.is_done; });
+  var text = '📋 בריפינג לבני — ' + new Date().toLocaleDateString('he-IL') + '\n\n';
+  if (done.length)    text += '✅ הושלם:\n' + done.map(function(t){ return '• ' + t.task_text; }).join('\n') + '\n\n';
+  if (pending.length) text += '⏳ ממתין:\n' + pending.map(function(t){ return '• ' + t.task_text; }).join('\n');
+  await fetch(SB_URL + '/rest/v1/daily_briefings', {
+    method: 'POST',
+    headers: { apikey: SB_KEY, Authorization: 'Bearer ' + SB_KEY, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+    body: JSON.stringify({ project_id: projId(), briefing_date: today(), briefing_text: text, sent_at: new Date().toISOString(), created_at: new Date().toISOString() })
+  });
+  toast('📲 בריפינג נשלח לבני!', 'success');
+}
+
+// ── FIELD PHASE ───────────────────────────────────────────────────────
+function renderField(el) {
+  el.innerHTML = '';
+  var grid = document.createElement('div');
+  grid.className = 'grid2';
+
+  var left = document.createElement('div');
+  left.className = 'card';
+  left.innerHTML = '<div class="card-title">📸 תמונות ותצפיות שטח</div>' +
+    '<div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;">' +
+    '<label style="background:rgba(201,168,76,0.15);border:1px solid rgba(201,168,76,0.4);color:#c9a84c;padding:8px 14px;border-radius:8px;cursor:pointer;font-size:12px;font-weight:700;">' +
+    '📷 העלה תמונה / וידאו<input type="file" accept="image/*,video/*" multiple style="display:none;" onchange="handleFieldUpload(this)"></label></div>' +
+    '<div id="field-obs" style="display:flex;flex-direction:column;gap:8px;max-height:400px;overflow-y:auto;"></div>';
+
+  var right = document.createElement('div');
+  right.className = 'card';
+  right.innerHTML = '<div class="card-title">🎙️ הערות קוליות</div>' +
+    '<label style="display:block;background:rgba(245,158,11,0.15);border:1px solid rgba(245,158,11,0.4);color:#fde68a;padding:10px;border-radius:8px;cursor:pointer;text-align:center;margin-bottom:10px;font-size:12px;font-weight:700;">' +
+    '🎙️ העלה הקלטה קולית<input type="file" accept="audio/*" multiple style="display:none;" onchange="handleFieldUpload(this)"></label>' +
+    '<div id="field-audio" style="display:flex;flex-direction:column;gap:8px;max-height:200px;overflow-y:auto;"></div>' +
+    '<div style="margin-top:12px;">' +
+    '<textarea id="field-note" class="inp" rows="3" placeholder="הוסף הערה כתובה..."></textarea>' +
+    '<button class="btn btn-outline" onclick="saveNote()" style="margin-top:6px;">💾 שמור הערה</button></div>';
+
+  grid.appendChild(left); grid.appendChild(right);
+  el.appendChild(grid);
+  loadFieldObs();
+}
+
+async function handleFieldUpload(input) {
+  var files = Array.from(input.files || []);
+  if (!files.length) return;
+  toast('📤 מעלה ' + files.length + ' קבצים...', 'success');
+  for (var file of files) {
+    var url = await uploadCloudinary(file);
+    if (!url) continue;
+    var isAudio = file.type.startsWith('audio/');
+    var isVideo = file.type.startsWith('video/');
+    var mtype = isAudio ? 'audio' : isVideo ? 'video' : 'photo';
+    await fetch(SB_URL + '/rest/v1/field_observations', {
+      method: 'POST',
+      headers: { apikey: SB_KEY, Authorization: 'Bearer ' + SB_KEY, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+      body: JSON.stringify({ project_id: projId(), obs_date: today(), media_url: url, media_type: mtype, description: file.name, created_at: new Date().toISOString() })
+    });
+  }
+  toast('✅ נשמר ביומן שטח', 'success');
+  loadFieldObs();
+}
+
+async function saveNote() {
+  var note = document.getElementById('field-note');
+  if (!note || !note.value.trim()) return;
+  await fetch(SB_URL + '/rest/v1/field_observations', {
+    method: 'POST',
+    headers: { apikey: SB_KEY, Authorization: 'Bearer ' + SB_KEY, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+    body: JSON.stringify({ project_id: projId(), obs_date: today(), media_type: 'note', description: note.value.trim(), created_at: new Date().toISOString() })
+  });
+  note.value = '';
+  toast('✅ הערה נשמרה', 'success');
+  loadFieldObs();
+}
+
+async function loadFieldObs() {
+  var qs = 'obs_date=eq.' + today() + '&order=created_at.desc&select=id,media_url,media_type,description,ai_analysis,severity,saved_to_encyclopedia,created_at';
+  var pid = projId();
+  if (pid) qs += '&project_id=eq.' + pid;
+  var data = await sbQ('field_observations', qs);
+  var obs = Array.isArray(data) ? data : (data.data || []);
+
+  var photoEl = document.getElementById('field-obs');
+  var audioEl = document.getElementById('field-audio');
+  if (photoEl) photoEl.innerHTML = '';
+  if (audioEl) audioEl.innerHTML = '';
+
+  obs.forEach(function(o) {
+    var card = document.createElement('div');
+    card.className = 'obs-card';
+    var time = new Date(o.created_at).toLocaleTimeString('he-IL', {hour:'2-digit',minute:'2-digit'});
+    if (o.media_type === 'photo') {
+      card.innerHTML = '<div style="display:flex;gap:8px;"><img src="'+o.media_url+'" style="width:80px;height:60px;object-fit:cover;border-radius:6px;cursor:zoom-in;" onclick="window.open(\''+o.media_url+'\',\'_blank\')"><div style="flex:1;"><div style="font-size:10px;color:#888;">📸 '+time+'</div><div style="font-size:12px;color:#ccc;margin-top:4px;">'+(o.description||'')+'</div>'+(o.ai_analysis?'<div style="font-size:11px;color:#86efac;margin-top:4px;">✅ '+o.ai_analysis.substring(0,60)+'...</div>':'')+'</div></div>' +
+        '<div style="display:flex;gap:4px;margin-top:8px;flex-wrap:wrap;">' +
+        '<button onclick="analyzeObs(\''+o.id+'\',\''+o.media_url+'\')" style="font-size:10px;padding:3px 8px;border-radius:20px;border:1px solid rgba(139,92,246,0.4);background:rgba(139,92,246,0.15);color:#c4b5fd;cursor:pointer;font-family:Heebo;">🚀 נתח</button>' +
+        '<button onclick="saveToEnc(\''+o.id+'\')" style="font-size:10px;padding:3px 8px;border-radius:20px;border:1px solid rgba(201,168,76,0.4);background:rgba(201,168,76,0.15);color:#c9a84c;cursor:pointer;font-family:Heebo;">📚 אנציקלופדיה</button></div>';
+      if (photoEl) photoEl.appendChild(card);
+    } else if (o.media_type === 'audio') {
+      card.innerHTML = '<div style="font-size:10px;color:#888;margin-bottom:4px;">🎙️ '+time+'</div><audio src="'+o.media_url+'" controls style="width:100%;"></audio>';
+      if (audioEl) audioEl.appendChild(card);
+    } else if (o.media_type === 'note') {
+      card.innerHTML = '<div style="font-size:10px;color:#888;margin-bottom:4px;">📝 '+time+'</div><div style="font-size:12px;color:#e2e8f0;">'+o.description+'</div>';
+      if (photoEl) photoEl.appendChild(card);
+    } else if (o.media_type === 'video') {
+      card.innerHTML = '<div style="font-size:10px;color:#888;margin-bottom:6px;">🎬 '+time+'</div><video src="'+o.media_url+'" controls style="width:100%;max-height:150px;border-radius:6px;"></video>';
+      if (photoEl) photoEl.appendChild(card);
+    }
+  });
+}
+
+async function analyzeObs(obsId, mediaUrl) {
+  if (!ANTHROPIC_KEY) { toast('מפתח Claude חסר','error'); return; }
+  toast('🤖 מנתח...','success');
+  var isVideo = mediaUrl.includes('/video/upload/');
+  var analyzeUrl = isVideo ? mediaUrl.replace('/upload/','/upload/so_1,w_1200,f_jpg/').replace(/\.(mp4|mov|3gp)(\?.*)?$/i,'.jpg') : mediaUrl;
+  try {
+    var r = await fetch(analyzeUrl);
+    var blob = await r.blob();
+    var b64 = await fileToB64(new File([blob], 'img.jpg', {type:'image/jpeg'}));
+    var analysis = await claudeCall('נתח בקצרה (3 משפטים): בעיות בטיחות, ליקויים, ממצאים חשובים.', b64, 'image/jpeg');
+    await fetch(SB_URL+'/rest/v1/field_observations?id=eq.'+obsId, {
+      method:'PATCH', headers:{apikey:SB_KEY,Authorization:'Bearer '+SB_KEY,'Content-Type':'application/json',Prefer:'return=minimal'},
+      body:JSON.stringify({ai_analysis:analysis})
+    });
+    toast('✅ ניתוח הושלם','success');
+    loadFieldObs();
+  } catch(e) { toast('❌ '+e.message,'error'); }
+}
+
+async function saveToEnc(obsId) {
+  var category = prompt('קטגוריה:', 'ביקורת שטח');
+  if (!category) return;
+  var title = prompt('כותרת:', 'ממצא שטח');
+  if (!title) return;
+  var data = await sbQ('field_observations','id=eq.'+obsId+'&select=*');
+  var o = (Array.isArray(data) ? data : data.data||[])[0];
+  if (!o) return;
+  await fetch(SB_URL+'/rest/v1/field_encyclopedia', {
+    method:'POST', headers:{apikey:SB_KEY,Authorization:'Bearer '+SB_KEY,'Content-Type':'application/json',Prefer:'return=minimal'},
+    body:JSON.stringify({category:category,title:title,description:o.ai_analysis||o.description,media_url:o.media_url,media_type:o.media_type,source_project_id:o.project_id,source_observation_id:o.id,severity:'important',tags:['שטח'],created_at:new Date().toISOString()})
+  });
+  await fetch(SB_URL+'/rest/v1/field_observations?id=eq.'+obsId, {
+    method:'PATCH', headers:{apikey:SB_KEY,Authorization:'Bearer '+SB_KEY,'Content-Type':'application/json',Prefer:'return=minimal'},
+    body:JSON.stringify({saved_to_encyclopedia:true})
+  });
+  toast('📚 נשמר באנציקלופדיה','success');
+  loadFieldObs();
+}
+
+// ── TAKEOFF PHASE ─────────────────────────────────────────────────────
+function renderTakeoff(el) {
+  el.innerHTML = '';
+  var card = document.createElement('div');
+  card.className = 'card';
+  card.style.maxWidth = '600px';
+  card.innerHTML = '<div class="card-title">📐 כמויות שטח — Takeoffs</div>' +
+    '<div id="takeoff-list" style="margin-bottom:14px;"></div>' +
+    '<div style="display:grid;grid-template-columns:2fr 1fr 1fr auto;gap:8px;align-items:center;margin-bottom:10px;">' +
+    '<input class="inp" id="tk-desc" placeholder="תיאור עבודה...">' +
+    '<input class="inp" id="tk-qty" type="number" placeholder="כמות">' +
+    '<select class="inp" id="tk-unit"><option>מ"ר</option><option>מ"ל</option><option>יח\'</option><option>ק"ג</option><option>טון</option></select>' +
+    '<button onclick="addTakeoff()" class="btn btn-green" style="width:auto;padding:9px 14px;margin:0;">➕</button>' +
+    '</div>' +
+    '<button class="btn btn-gold" onclick="exportTakeoffs()">📊 ייצא ל-CRM</button>';
+  el.appendChild(card);
+  loadTakeoffs();
+}
+
+async function loadTakeoffs() {
+  var qs = 'obs_date=eq.'+today()+'&order=created_at.asc&select=id,description,quantity,unit,created_at';
+  var pid = projId(); if (pid) qs += '&project_id=eq.'+pid;
+  // Use field_observations with media_type='takeoff' — or site_takeoffs if exists
+  var data = await sbQ('site_takeoffs', 'session_date=eq.'+today()+'&order=created_at.asc&select=id,description,quantity,unit'+(pid?'&project_id=eq.'+pid:''));
+  var items = Array.isArray(data) ? data : (data.data || []);
+  var listEl = document.getElementById('takeoff-list');
+  if (!listEl) return;
+  if (!items.length) { listEl.innerHTML = '<div style="color:#555;font-size:12px;padding:10px 0;">אין כמויות להיום</div>'; return; }
+  var total = items.reduce(function(s,i){ return s+(parseFloat(i.quantity)||0); },0);
+  listEl.innerHTML = items.map(function(i){
+    return '<div class="measure-row"><span style="color:#ccc;">'+(i.description||'')+'</span><span style="color:#c9a84c;font-weight:700;">'+(i.quantity||0)+' '+(i.unit||'מ"ר')+'</span></div>';
+  }).join('') + '<div class="measure-row" style="font-weight:800;"><span style="color:#fff;">סה"כ</span><span style="color:#7F77DD;">'+total.toFixed(1)+' מ"ר</span></div>';
+}
+
+async function addTakeoff() {
+  var desc = document.getElementById('tk-desc');
+  var qty  = document.getElementById('tk-qty');
+  var unit = document.getElementById('tk-unit');
+  if (!desc.value.trim() || !qty.value) { toast('מלא תיאור וכמות','error'); return; }
+  await fetch(SB_URL+'/rest/v1/site_takeoffs', {
+    method:'POST', headers:{apikey:SB_KEY,Authorization:'Bearer '+SB_KEY,'Content-Type':'application/json',Prefer:'return=minimal'},
+    body:JSON.stringify({description:desc.value.trim(),quantity:parseFloat(qty.value),unit:unit.value,project_id:projId()||null,session_date:today(),created_at:new Date().toISOString()})
+  });
+  desc.value=''; qty.value='';
+  toast('✅ כמות נוספה','success');
+  loadTakeoffs();
+}
+
+function exportTakeoffs() { toast('📊 הכמויות זמינות ב-CRM','success'); }
+
+// ── EOD PHASE ─────────────────────────────────────────────────────────
+function renderEOD(el) {
+  el.innerHTML = '';
+  var grid = document.createElement('div');
+  grid.className = 'grid2';
+
+  var left = document.createElement('div');
+  left.className = 'card';
+  left.innerHTML = '<div class="card-title">📝 סיכום יום — כתב יד</div>' +
+    '<div class="upload-zone" onclick="document.getElementById(\'eod-file\').click()">' +
+    '<div class="upload-zone-icon">📷</div>' +
+    '<div class="upload-zone-label">צלם דף סיכום</div>' +
+    '<div class="upload-zone-sub">Claude מכין בריפינג לבוקר מחר</div>' +
+    '<input type="file" id="eod-file" accept="image/*" style="display:none;" onchange="handleEODUpload(this)"></div>' +
+    '<div class="ocr-box" id="eod-ocr"></div>' +
+    '<textarea class="inp" id="eod-manual" rows="4" placeholder="או כתוב ישירות סיכום יום..." style="margin-top:10px;"></textarea>';
+
+  var right = document.createElement('div');
+  right.className = 'card';
+  right.innerHTML = '<div class="card-title">🌅 בריפינג מחר</div>' +
+    '<div id="briefing-preview" style="background:rgba(127,119,221,0.08);border:1px solid rgba(127,119,221,0.2);border-radius:10px;padding:12px;font-size:12px;color:#e2e8f0;line-height:1.8;direction:rtl;min-height:120px;">' +
+    '<span style="color:#555;font-size:11px;">לחץ "צור בריפינג" להפקה אוטומטית</span></div>' +
+    '<button class="btn btn-purple" onclick="generateBriefing()" style="margin-top:10px;">🤖 צור בריפינג לבוקר</button>' +
+    '<button class="btn btn-green" onclick="sendBriefing()" style="margin-top:6px;">📲 שלח לבני</button>';
+
+  grid.appendChild(left); grid.appendChild(right);
+  el.appendChild(grid);
+}
+
+async function handleEODUpload(input) {
+  var file = input.files[0]; if (!file) return;
+  var ocrEl = document.getElementById('eod-ocr');
+  ocrEl.style.display = 'block';
+  ocrEl.textContent = '⏳ קורא כתב יד...';
+  var b64 = await fileToB64(file);
+  var text = await claudeCall('קרא את כתב היד.', b64, file.type||'image/jpeg');
+  OCR_TEXT = text;
+  ocrEl.textContent = text;
+  document.getElementById('eod-manual').value = text;
+  toast('✅ כתב יד נקרא','success');
+}
+
+async function generateBriefing() {
+  var eodText = document.getElementById('eod-manual').value;
+  var pending = ALL_TASKS.filter(function(t){ return !t.is_done; });
+  var done    = ALL_TASKS.filter(function(t){ return t.is_done; });
+  var context = 'הושלם: '+done.map(function(t){return t.task_text;}).join(', ')+'\nממתין: '+pending.map(function(t){return t.task_text;}).join(', ')+(eodText?'\nסיכום יום: '+eodText:'');
+  toast('🤖 מכין בריפינג...','success');
+  var briefing = await claudeCall('כתוב בריפינג בוקר קצר לבני פרסקי למחר. כלול: מה הושלם, מה דחוף, מה ראשון. קצר וברור בעברית.\n\n'+context);
+  var prev = document.getElementById('briefing-preview');
+  if (prev) prev.innerHTML = briefing.replace(/\n/g,'<br>');
+  toast('✅ בריפינג מוכן','success');
+}
+
+// ── START ─────────────────────────────────────────────────────────────
+init();
+</script>
+</body>
+</html>

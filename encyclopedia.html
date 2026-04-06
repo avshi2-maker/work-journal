@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>אנציקלופדיה שטח</title>
+<link href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;700;800;900&display=swap" rel="stylesheet">
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: Heebo, sans-serif; background: #0f0f1a; color: #e2e8f0; direction: rtl; }
+.wrap { max-width: 1100px; margin: 0 auto; padding: 16px; }
+.hdr { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 10px; }
+.hdr-title { font-size: 22px; font-weight: 900; color: #fff; }
+.hdr-sub { font-size: 13px; color: #888; margin-top: 2px; }
+.btn-add { background: linear-gradient(135deg,#c9a84c,#9a6f00); border: none; color: #fff; padding: 10px 18px; border-radius: 10px; font-family: Heebo; font-size: 13px; font-weight: 800; cursor: pointer; }
+.search-bar { margin-bottom: 14px; }
+.inp { background: #1a1a2e; border: 1px solid rgba(255,255,255,0.1); color: #fff; padding: 10px 14px; border-radius: 10px; font-family: Heebo; font-size: 13px; direction: rtl; width: 100%; }
+.inp:focus { outline: none; border-color: rgba(201,168,76,0.5); }
+.cats { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 16px; }
+.cat-btn { padding: 6px 14px; border-radius: 20px; border: 1px solid rgba(201,168,76,0.3); background: rgba(201,168,76,0.08); color: #c9a84c; cursor: pointer; font-family: Heebo; font-size: 11px; font-weight: 700; }
+.cat-btn.active, .cat-btn:hover { background: rgba(201,168,76,0.2); border-color: rgba(201,168,76,0.6); }
+.cat-all { border-color: rgba(255,255,255,0.2); background: rgba(255,255,255,0.05); color: #ccc; }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 14px; }
+.enc-card { background: #1e1e35; border-radius: 14px; overflow: hidden; }
+.enc-card.critical { border: 1px solid rgba(239,68,68,0.4); }
+.enc-card.important { border: 1px solid rgba(245,158,11,0.3); }
+.enc-card.guideline { border: 1px solid rgba(34,197,94,0.3); }
+.enc-media { width: 100%; height: 140px; object-fit: cover; display: block; cursor: zoom-in; }
+.enc-media-placeholder { height: 60px; background: rgba(255,255,255,0.04); display: flex; align-items: center; justify-content: center; font-size: 28px; }
+.enc-body { padding: 12px; }
+.enc-row { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 6px; }
+.enc-title { font-size: 13px; font-weight: 800; color: #fff; flex: 1; line-height: 1.4; }
+.sev-badge { font-size: 10px; padding: 2px 8px; border-radius: 20px; white-space: nowrap; margin-right: 6px; flex-shrink: 0; }
+.sev-critical { background: rgba(239,68,68,0.2); color: #fca5a5; }
+.sev-important { background: rgba(245,158,11,0.2); color: #fde68a; }
+.sev-guideline { background: rgba(34,197,94,0.2); color: #86efac; }
+.enc-cat { font-size: 11px; color: #c9a84c; margin-bottom: 6px; }
+.enc-desc { font-size: 12px; color: #888; line-height: 1.6; }
+.enc-actions { display: flex; gap: 6px; margin-top: 10px; flex-wrap: wrap; }
+.enc-btn { font-size: 10px; padding: 4px 10px; border-radius: 20px; cursor: pointer; font-family: Heebo; font-weight: 700; }
+.enc-btn-po { border: 1px solid rgba(201,168,76,0.4); background: rgba(201,168,76,0.1); color: #c9a84c; }
+.enc-btn-del { border: 1px solid rgba(239,68,68,0.3); background: rgba(239,68,68,0.08); color: #fca5a5; }
+.empty { text-align: center; padding: 60px 20px; color: #555; }
+.toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: #22c55e; color: #fff; padding: 10px 20px; border-radius: 10px; font-size: 13px; font-weight: 700; z-index: 9999; display: none; }
+/* Add modal */
+.overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 99999; display: flex; align-items: center; justify-content: center; padding: 20px; }
+.modal { background: #1a1a2e; border-radius: 16px; width: 100%; max-width: 500px; padding: 20px; direction: rtl; }
+.modal-title { font-size: 16px; font-weight: 900; color: #fff; margin-bottom: 14px; }
+.modal-inp { background: #242438; border: 1px solid rgba(255,255,255,0.1); color: #fff; padding: 9px 11px; border-radius: 8px; font-family: Heebo; font-size: 13px; direction: rtl; width: 100%; margin-bottom: 8px; }
+.modal-row { display: flex; gap: 8px; margin-top: 10px; }
+.modal-btn { flex: 1; padding: 11px; border-radius: 10px; border: none; font-family: Heebo; font-size: 13px; font-weight: 800; cursor: pointer; }
+.modal-save { background: linear-gradient(135deg,#c9a84c,#9a6f00); color: #fff; }
+.modal-cancel { background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1); color: #888; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="hdr">
+    <div>
+      <div class="hdr-title">📚 אנציקלופדיה שטח</div>
+      <div class="hdr-sub">ידע מהשטח · מקרי בוחן · הנחיות לקבלני משנה</div>
+    </div>
+    <button class="btn-add" onclick="openAdd()">➕ הוסף ידע חדש</button>
+  </div>
+
+  <div class="search-bar">
+    <input class="inp" id="search" type="text" placeholder="חפש באנציקלופדיה..." oninput="filterItems()">
+  </div>
+
+  <div class="cats" id="cats"></div>
+  <div class="grid" id="grid"></div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const SB_URL = 'https://vmcipofovheztbjmhwsl.supabase.co';
+const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZtY2lwb2ZvdmhlenRiam1od3NsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE0NjE2MTcsImV4cCI6MjA4NzAzNzYxN30.LPq5N2Xo8iEqjgz2UhmdzUdh5tpGT3EYzSxJcYBEJ1w';
+const CLD = 'https://api.cloudinary.com/v1_1/dqdku88vv';
+
+var ALL_ITEMS = [];
+var CAT_FILTER = '';
+
+function toast(msg, type) {
+  var el = document.getElementById('toast');
+  el.textContent = msg;
+  el.style.background = type === 'error' ? '#ef4444' : '#22c55e';
+  el.style.display = 'block';
+  clearTimeout(el._t);
+  el._t = setTimeout(function(){ el.style.display = 'none'; }, 3000);
+}
+
+async function sbQ(table, qs) {
+  var url = SB_URL + '/rest/v1/' + table + (qs ? '?' + qs : '');
+  var r = await fetch(url, { headers: { apikey: SB_KEY, Authorization: 'Bearer ' + SB_KEY } });
+  return r.json();
+}
+
+async function init() {
+  var data = await sbQ('field_encyclopedia', 'order=created_at.desc&limit=200&select=id,category,title,description,media_url,media_type,severity,tags,created_at');
+  ALL_ITEMS = Array.isArray(data) ? data : (data.data || []);
+  renderCats();
+  renderGrid(ALL_ITEMS);
+}
+
+function renderCats() {
+  var el = document.getElementById('cats');
+  var cats = {};
+  ALL_ITEMS.forEach(function(i){ cats[i.category] = (cats[i.category]||0)+1; });
+  el.innerHTML = '<button class="cat-btn cat-all active" id="cat-all" onclick="setCat(\'\')">הכל ('+ALL_ITEMS.length+')</button>';
+  Object.keys(cats).forEach(function(cat) {
+    var btn = document.createElement('button');
+    btn.className = 'cat-btn';
+    btn.id = 'cat-' + cat;
+    btn.textContent = cat + ' (' + cats[cat] + ')';
+    btn.onclick = (function(c){ return function(){ setCat(c); }; })(cat);
+    el.appendChild(btn);
+  });
+}
+
+function setCat(cat) {
+  CAT_FILTER = cat;
+  document.querySelectorAll('.cat-btn').forEach(function(b){ b.classList.remove('active'); });
+  var activeBtn = document.getElementById('cat-' + (cat || 'all'));
+  if (activeBtn) activeBtn.classList.add('active');
+  filterItems();
+}
+
+function filterItems() {
+  var search = (document.getElementById('search').value || '').toLowerCase();
+  var filtered = ALL_ITEMS.filter(function(i) {
+    if (CAT_FILTER && i.category !== CAT_FILTER) return false;
+    if (search && !(i.title+' '+i.description+' '+i.category).toLowerCase().includes(search)) return false;
+    return true;
+  });
+  renderGrid(filtered);
+}
+
+function renderGrid(items) {
+  var grid = document.getElementById('grid');
+  if (!items.length) { grid.innerHTML = '<div class="empty">📭 אין פריטים תואמים</div>'; return; }
+  grid.innerHTML = '';
+  var sevText = { critical:'🔴 קריטי', important:'🟡 חשוב', guideline:'🟢 הנחיה' };
+  items.forEach(function(item) {
+    var card = document.createElement('div');
+    card.className = 'enc-card ' + (item.severity || 'important');
+
+    var media = '';
+    if (item.media_url && item.media_type === 'photo') {
+      media = '<img class="enc-media" src="'+item.media_url+'" onclick="window.open(\''+item.media_url+'\',\'_blank\')" alt="'+item.title+'">';
+    } else if (item.media_url && item.media_type === 'video') {
+      media = '<video class="enc-media" src="'+item.media_url+'" controls></video>';
+    } else {
+      media = '<div class="enc-media-placeholder">'+(item.media_type==='audio'?'🎙️':'📄')+'</div>';
+    }
+
+    card.innerHTML = media +
+      '<div class="enc-body">' +
+        '<div class="enc-row">' +
+          '<div class="enc-title">'+item.title+'</div>' +
+          '<div class="sev-badge sev-'+(item.severity||'important')+'">'+(sevText[item.severity]||item.severity||'חשוב')+'</div>' +
+        '</div>' +
+        '<div class="enc-cat">📁 '+item.category+'</div>' +
+        '<div class="enc-desc">'+((item.description||'').substring(0,120))+(item.description&&item.description.length>120?'...':'')+'</div>' +
+        '<div class="enc-actions">' +
+          '<button class="enc-btn enc-btn-po" onclick="sendWithPO(\''+item.id+'\')">📋 שלח עם PO</button>' +
+          '<button class="enc-btn enc-btn-del" onclick="deleteItem(\''+item.id+'\')">🗑️ מחק</button>' +
+        '</div>' +
+      '</div>';
+    grid.appendChild(card);
+  });
+}
+
+function sendWithPO(id) {
+  var item = ALL_ITEMS.find(function(i){ return i.id === id; });
+  if (!item) return;
+  var msg = '📚 הנחיות מהאנציקלופדיה:\n\n'+item.title+'\n'+(item.description||'')+'\n\nחומרה: '+(item.severity==='critical'?'קריטי':item.severity==='important'?'חשוב':'הנחיה');
+  navigator.clipboard.writeText(msg).then(function(){ toast('✅ הועתק — הוסף ל-PO','success'); });
+}
+
+async function deleteItem(id) {
+  if (!confirm('מחק פריט זה?')) return;
+  await fetch(SB_URL+'/rest/v1/field_encyclopedia?id=eq.'+id, { method:'DELETE', headers:{apikey:SB_KEY,Authorization:'Bearer '+SB_KEY} });
+  toast('🗑️ נמחק','success');
+  ALL_ITEMS = ALL_ITEMS.filter(function(i){ return i.id !== id; });
+  renderCats(); filterItems();
+}
+
+function openAdd() {
+  var overlay = document.createElement('div');
+  overlay.className = 'overlay';
+  overlay.id = 'add-overlay';
+  overlay.innerHTML = '<div class="modal">' +
+    '<div class="modal-title">📚 הוסף לאנציקלופדיה</div>' +
+    '<input class="modal-inp" id="add-title" placeholder="כותרת">' +
+    '<input class="modal-inp" id="add-cat" placeholder="קטגוריה (בטיחות/ריצוף/איטום/...)">' +
+    '<textarea class="modal-inp" id="add-desc" rows="3" placeholder="תיאור..."></textarea>' +
+    '<select class="modal-inp" id="add-sev">' +
+      '<option value="critical">🔴 קריטי</option>' +
+      '<option value="important" selected>🟡 חשוב</option>' +
+      '<option value="guideline">🟢 הנחיה</option>' +
+    '</select>' +
+    '<label style="display:block;background:rgba(201,168,76,0.15);border:1px solid rgba(201,168,76,0.3);color:#c9a84c;padding:9px;border-radius:8px;cursor:pointer;text-align:center;margin-bottom:8px;font-size:12px;font-weight:700;margin-top:8px;">' +
+      '📷 צרף תמונה/וידאו (אופציונלי)<input type="file" id="add-file" accept="image/*,video/*" style="display:none;" onchange="previewAddFile(this)">' +
+    '</label>' +
+    '<div id="add-preview" style="display:none;margin-bottom:8px;"></div>' +
+    '<div class="modal-row">' +
+      '<button class="modal-btn modal-save" onclick="saveNew()">💾 שמור</button>' +
+      '<button class="modal-btn modal-cancel" onclick="document.getElementById(\'add-overlay\').remove()">ביטול</button>' +
+    '</div>' +
+  '</div>';
+  overlay.addEventListener('click', function(e){ if(e.target===overlay) overlay.remove(); });
+  document.body.appendChild(overlay);
+}
+
+function previewAddFile(input) {
+  var file = input.files[0]; if(!file) return;
+  var prev = document.getElementById('add-preview');
+  var isVideo = file.type.startsWith('video/');
+  var url = URL.createObjectURL(file);
+  prev.style.display = 'block';
+  prev.innerHTML = isVideo
+    ? '<video src="'+url+'" controls style="width:100%;max-height:120px;border-radius:8px;"></video>'
+    : '<img src="'+url+'" style="width:100%;max-height:120px;object-fit:cover;border-radius:8px;">';
+}
+
+async function saveNew() {
+  var title = document.getElementById('add-title').value.trim();
+  var cat   = document.getElementById('add-cat').value.trim() || 'כללי';
+  var desc  = document.getElementById('add-desc').value.trim();
+  var sev   = document.getElementById('add-sev').value;
+  var fileEl = document.getElementById('add-file');
+  var file  = fileEl && fileEl.files[0];
+  if (!title) { toast('הכנס כותרת','error'); return; }
+  toast('💾 שומר...','success');
+
+  var mediaUrl = '', mediaType = '';
+  if (file) {
+    var isV = file.type.startsWith('video/');
+    var ep = isV ? CLD+'/video/upload' : CLD+'/image/upload';
+    var fd = new FormData();
+    fd.append('file',file); fd.append('upload_preset','beni_field'); fd.append('folder','encyclopedia');
+    var r = await fetch(ep,{method:'POST',body:fd}); var d = await r.json();
+    mediaUrl = d.secure_url || ''; mediaType = isV ? 'video' : 'photo';
+  }
+
+  await fetch(SB_URL+'/rest/v1/field_encyclopedia', {
+    method:'POST',
+    headers:{apikey:SB_KEY,Authorization:'Bearer '+SB_KEY,'Content-Type':'application/json',Prefer:'return=minimal'},
+    body:JSON.stringify({title,category:cat,description:desc,severity:sev,media_url:mediaUrl||null,media_type:mediaType||null,tags:[],created_at:new Date().toISOString()})
+  });
+
+  document.getElementById('add-overlay').remove();
+  toast('📚 נשמר!','success');
+  init();
+}
+
+init();
+</script>
+</body>
+</html>

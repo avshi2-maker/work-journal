@@ -9425,80 +9425,17 @@ function generatePOPdf(po) {
 </div>
 
 <div class="app-panel" id="fieldjournal-panel">
-  <div style="padding:20px;direction:rtl;font-family:Heebo,sans-serif;max-width:1200px;">
-
-    <!-- Header -->
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:10px;">
-      <div>
-        <div style="font-size:22px;font-weight:900;color:#fff;">📋 יומן שטח יומי</div>
-        <div style="font-size:13px;color:#888;margin-top:2px;" id="fj-date-display"></div>
-      </div>
-      <div style="display:flex;gap:8px;align-items:center;">
-        <select id="fj-project-sel" style="background:#1a1a2e;border:1px solid rgba(201,168,76,0.4);color:#c9a84c;padding:8px 12px;border-radius:10px;font-family:Heebo,sans-serif;font-size:13px;direction:rtl;cursor:pointer;">
-          <option value="">📁 בחר פרויקט</option>
-        </select>
-        <input type="date" id="fj-date-sel" style="background:#1a1a2e;border:1px solid rgba(255,255,255,0.1);color:#fff;padding:8px;border-radius:10px;font-size:13px;" onchange="fjLoadDate()">
-      </div>
-    </div>
-
-    <!-- Phase tabs -->
-    <div id="fj-phase-tabs" style="display:flex;gap:8px;margin-bottom:18px;overflow-x:auto;padding-bottom:4px;">
-      <button onclick="fjSetPhase('morning')" id="fj-tab-morning" class="fj-ptab fj-active" style="flex:1;min-width:120px;padding:12px 8px;border-radius:12px;border:2px solid #7F77DD;background:rgba(127,119,221,0.15);cursor:pointer;font-family:Heebo,sans-serif;text-align:center;">
-        <div style="font-size:22px;margin-bottom:4px;">🌅</div>
-        <div style="font-size:12px;font-weight:800;color:#c4b5fd;">בוקר</div>
-        <div style="font-size:10px;color:#555;">תכנון יום</div>
-      </button>
-      <button onclick="fjSetPhase('field')" id="fj-tab-field" class="fj-ptab" style="flex:1;min-width:120px;padding:12px 8px;border-radius:12px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.03);cursor:pointer;font-family:Heebo,sans-serif;text-align:center;">
-        <div style="font-size:22px;margin-bottom:4px;">🏗️</div>
-        <div style="font-size:12px;font-weight:800;color:#ccc;">שטח</div>
-        <div style="font-size:10px;color:#555;">תמונות · קול · ממצאים</div>
-      </button>
-      <button onclick="fjSetPhase('takeoff')" id="fj-tab-takeoff" class="fj-ptab" style="flex:1;min-width:120px;padding:12px 8px;border-radius:12px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.03);cursor:pointer;font-family:Heebo,sans-serif;text-align:center;">
-        <div style="font-size:22px;margin-bottom:4px;">📐</div>
-        <div style="font-size:12px;font-weight:800;color:#ccc;">כמויות</div>
-        <div style="font-size:10px;color:#555;">Takeoffs</div>
-      </button>
-      <button onclick="fjSetPhase('eod')" id="fj-tab-eod" class="fj-ptab" style="flex:1;min-width:120px;padding:12px 8px;border-radius:12px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.03);cursor:pointer;font-family:Heebo,sans-serif;text-align:center;">
-        <div style="font-size:22px;margin-bottom:4px;">🌆</div>
-        <div style="font-size:12px;font-weight:800;color:#ccc;">סוף יום</div>
-        <div style="font-size:10px;color:#555;">סיכום · בריפינג</div>
-      </button>
-    </div>
-
-    <!-- Phase content area -->
-    <div id="fj-phase-content"></div>
-
-  </div>
+  <iframe id="fj-iframe" src="https://avshi2-maker.github.io/work-journal/fieldjournal.html"
+    style="width:100%;height:100vh;border:none;display:block;"
+    onload="this.style.opacity=1" ></iframe>
 </div>
 
 <div class="app-panel" id="encyclopedia-panel">
-  <div style="padding:20px;direction:rtl;font-family:Heebo,sans-serif;max-width:1200px;">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:10px;">
-      <div>
-        <div style="font-size:22px;font-weight:900;color:#fff;">📚 אנציקלופדיה שטח</div>
-        <div style="font-size:13px;color:#888;">ידע מהשטח · מקרי בוחן · הנחיות לקבלני משנה</div>
-      </div>
-      <button onclick="encOpenAdd()" style="background:linear-gradient(135deg,#c9a84c,#9a6f00);border:none;color:#fff;padding:10px 18px;border-radius:10px;font-family:Heebo,sans-serif;font-size:13px;font-weight:800;cursor:pointer;">
-        ➕ הוסף ידע חדש
-      </button>
-    </div>
-
-    <!-- Category filters -->
-    <div id="enc-cat-filters" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px;"></div>
-
-    <!-- Search -->
-    <div style="margin-bottom:16px;">
-      <input id="enc-search" type="text" placeholder="חפש באנציקלופדיה..." onkeyup="encFilter()"
-        style="width:100%;background:#1a1a2e;border:1px solid rgba(255,255,255,0.1);color:#fff;padding:10px 14px;border-radius:10px;font-family:Heebo,sans-serif;font-size:13px;direction:rtl;">
-    </div>
-
-    <!-- Grid -->
-    <div id="enc-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px;"></div>
-  </div>
+  <iframe id="enc-iframe" src="https://avshi2-maker.github.io/work-journal/encyclopedia.html"
+    style="width:100%;height:100vh;border:none;display:block;"
+    onload="this.style.opacity=1"></iframe>
 </div>
 
-
-<!-- ══ INBOX PANEL ════════════════════════════════════════════════════ -->
 <div class="app-panel" id="inbox-panel">
   <div style="padding:70px 24px 60px;min-height:100vh;background:#1a1a2e;font-family:Heebo,sans-serif;direction:rtl;">
 
