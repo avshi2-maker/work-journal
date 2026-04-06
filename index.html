@@ -2512,6 +2512,9 @@ window.addEventListener('unhandledrejection', function(e) {
           <select id="projectName" onchange="jwOnProjectChange(this);">
             <option value="">— בחר פרויקט —</option>
           </select>
+          <div id="jw-pick-prompt" style="display:none;background:#e8f5e9;border:1.5px solid #a5d6a7;border-radius:8px;padding:8px 12px;margin-top:6px;font-size:12px;color:#1b5e20;font-weight:700;">
+            👆 בחר פרויקט מהרשימה כדי להתחיל את היום
+          </div>
           <div id="jw-proj-err" style="display:none;color:#c62828;font-size:11px;font-weight:700;margin-top:4px;">⚠️ חובה לבחור פרויקט לפני המשך</div>
         </div>
         <div id="project-custom-name-row" style="display:none;" class="jw-field">
@@ -2765,9 +2768,42 @@ window.addEventListener('unhandledrejection', function(e) {
       <div id="jw-progress-bar"><div id="jw-progress-fill" style="width:12%;"></div></div>
     </div>
     <button id="jw-btn-save" onclick="saveDraft()">💾 שמור</button>
+    <button id="jw-btn-fieldcard" onclick="jwGenerateFieldCard()" style="background:linear-gradient(135deg,#1b5e20,#43a047);color:#fff;border:none;border-radius:9px;padding:10px 16px;font-size:12px;font-weight:800;cursor:pointer;font-family:Heebo,sans-serif;display:flex;align-items:center;gap:6px;">
+      🚀 שלח לבני
+    </button>
     <button id="jw-btn-next" onclick="jwNext()">הבא ←</button>
   </div>
 </div><!-- /journal-wizard -->
+
+<!-- ══ FIELD CARD PREVIEW MODAL ═══════════════════════════════════════ -->
+<div id="jw-fieldcard-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:8000;align-items:center;justify-content:center;padding:16px;">
+  <div style="background:#1a1a2e;border-radius:20px;width:100%;max-width:420px;max-height:88vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,0.5);">
+    <!-- Phone-style header -->
+    <div style="background:linear-gradient(135deg,#1b5e20,#2e7d32);border-radius:20px 20px 0 0;padding:16px 20px;">
+      <div style="font-size:10px;color:rgba(255,255,255,0.6);letter-spacing:2px;margin-bottom:4px;">BENI FIELD CARD</div>
+      <div style="font-size:17px;font-weight:900;color:#fff;" id="fc-project-name">—</div>
+      <div style="font-size:12px;color:rgba(255,255,255,0.75);margin-top:2px;" id="fc-date-weather">—</div>
+    </div>
+
+    <!-- Content -->
+    <div style="padding:16px;display:flex;flex-direction:column;gap:12px;" id="fc-content">
+      <div style="text-align:center;color:#555;font-size:13px;padding:20px;">⏳ מייצר כרטיס שטח...</div>
+    </div>
+
+    <!-- Actions -->
+    <div style="padding:12px 16px 20px;display:flex;gap:8px;flex-direction:column;">
+      <button onclick="jwSendFieldCardWhatsApp()" style="width:100%;padding:14px;background:#25d366;border:none;color:#fff;border-radius:12px;font-family:Heebo,sans-serif;font-size:14px;font-weight:900;cursor:pointer;">
+        💬 שלח ל-WhatsApp של בני
+      </button>
+      <button onclick="jwSaveFieldCardToDB()" style="width:100%;padding:12px;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.15);color:#ccc;border-radius:12px;font-family:Heebo,sans-serif;font-size:13px;font-weight:700;cursor:pointer;">
+        💾 שמור לבניי פוקט
+      </button>
+      <button onclick="document.getElementById('jw-fieldcard-modal').style.display='none'" style="width:100%;padding:10px;background:none;border:none;color:#555;font-family:Heebo,sans-serif;font-size:12px;cursor:pointer;">
+        סגור
+      </button>
+    </div>
+  </div>
+</div>
 
 <!-- ══ CALL RECORDINGS SECTION (inside journal-panel, after wizard) ══ -->
 <div id="call-recordings-section" style="display:none;background:#1a1a2e;font-family:Heebo,sans-serif;direction:rtl;padding:24px;min-height:400px;">
@@ -7638,7 +7674,21 @@ async function switchTab(tab) {
       if (!allProjects || !allProjects.length) { try { await loadProjects(); } catch(e){} }
       if (typeof initializeManagerView === 'function') initializeManagerView();
       if (typeof jwGoto === 'function') jwGoto(1);
-      jwLoadBriefing();
+      // Force blank selection AFTER module auto-selects — must run after module settles
+      setTimeout(function(){
+        var sel = document.getElementById('projectName');
+        if (sel) {
+          sel.value = '';
+          // Hide all project-dependent sections
+          ['mb-tasks-section','mb-hero','mb-drawings-section','mb-contractors-section','jw-cta','mb-tasks-section'].forEach(function(id){
+            var el = document.getElementById(id);
+            if (el) el.style.display = 'none';
+          });
+        }
+        jwLoadBriefing();
+        jwCheckProjects();
+        jwTasksShowOption('table');
+      }, 300);
     }).catch(function(e){ console.error('journal load:', e); });
     _fetchCallRecordingsModule().then(function(){ setTimeout(function(){ if(typeof callRecordingsInit==='function') callRecordingsInit(); },200); });
   }
@@ -11707,25 +11757,255 @@ function openLinkModal(takeoffId) {
 
 // ===== END INLINED MODULES =====
 
-// ══ WIZARD PROJECT GUARD ══════════════════════════════════════════════
+// ══ FIELD CARD — AI BRIEFING FOR BENI ════════════════════════════════
+var _jwFieldCard = null; // current generated card
+
+async function jwGenerateFieldCard() {
+  var modal = document.getElementById('jw-fieldcard-modal');
+  var content = document.getElementById('fc-content');
+  if (!modal || !content) return;
+
+  // Validate project selected
+  var sel = document.getElementById('projectName');
+  if (!sel || !sel.value) {
+    showToast('בחר פרויקט קודם','error'); return;
+  }
+  var projName = sel.options[sel.selectedIndex].text;
+  var dateVal  = document.getElementById('reportDate') ? document.getElementById('reportDate').value : new Date().toISOString().split('T')[0];
+  var weather  = document.getElementById('weather') ? document.getElementById('weather').value : '';
+
+  // Show modal with loading state
+  modal.style.display = 'flex';
+  document.getElementById('fc-project-name').textContent = projName;
+  document.getElementById('fc-date-weather').textContent = new Date(dateVal).toLocaleDateString('he-IL', {weekday:'long',day:'numeric',month:'long'}) + (weather ? ' · ' + weather : '');
+  content.innerHTML = '<div style="text-align:center;color:#888;font-size:13px;padding:30px;"><div style="font-size:32px;margin-bottom:12px;">⏳</div>Claude מנתח את היומן ומכין כרטיס שטח...</div>';
+
+  // Collect data from all wizard steps
+  var tasks = _jwTaskRows.filter(function(t){ return t.text.trim(); });
+  var taskLines = tasks.map(function(t){ return (t.priority===1?'🔴':t.priority===3?'🟢':'🟡') + ' ' + t.text; }).join('\n');
+
+  // Also grab tasks from DB if table was used
+  var dbTasks = [];
+  try {
+    var today = dateVal || new Date().toISOString().split('T')[0];
+    var {data} = await sbQ('daily_tasks','task_date=eq.'+today+'&project_id=eq.'+sel.value+'&order=created_at.asc&select=task_text,tag,is_done');
+    dbTasks = (data||[]).filter(function(t){ return !t.is_done; });
+  } catch(e){}
+  var dbTaskLines = dbTasks.map(function(t){ return '• ' + t.task_text; }).join('\n');
+
+  // Collect contractors from table
+  var contractors = [];
+  document.querySelectorAll('#contractorsBody tr').forEach(function(tr){
+    var cells = tr.querySelectorAll('input,select');
+    if (cells[0] && cells[0].value) contractors.push(cells[0].value + (cells[1]&&cells[1].value?' ('+cells[1].value+')':'') + (cells[2]&&cells[2].value?' — '+cells[2].value+' עובדים':''));
+  });
+
+  // Collect activities
+  var activities = [];
+  document.querySelectorAll('#activitiesContainer input[type=text]').forEach(function(inp){ if(inp.value) activities.push(inp.value); });
+
+  // Collect materials
+  var materials = [];
+  document.querySelectorAll('#materialsContainer input[type=text]').forEach(function(inp){ if(inp.value) materials.push(inp.value); });
+
+  // Collect safety
+  var safety = [];
+  document.querySelectorAll('#safetyContainer input[type=text], #safetyContainer textarea').forEach(function(inp){ if(inp.value) safety.push(inp.value); });
+
+  // Collect delays/inspections
+  var delays = [];
+  document.querySelectorAll('#delaysContainer input[type=text], #inspectionsContainer input[type=text]').forEach(function(inp){ if(inp.value) delays.push(inp.value); });
+
+  // General notes
+  var notes = document.getElementById('generalNotes') ? document.getElementById('generalNotes').value : '';
+  var tomorrowPlan = document.getElementById('tomorrowPlan') ? document.getElementById('tomorrowPlan').value : '';
+
+  // Build context for Claude
+  var context = [
+    'פרויקט: ' + projName,
+    'תאריך: ' + dateVal + (weather ? ' | מזג אוויר: ' + weather : ''),
+    '',
+    'משימות היום (מהיומן):',
+    taskLines || dbTaskLines || 'לא הוזנו משימות',
+    '',
+    'קבלנים באתר:',
+    contractors.length ? contractors.join('\n') : 'לא צוינו',
+    '',
+    'פעילויות מתוכננות:',
+    activities.length ? activities.join('\n') : 'לא צוינו',
+    '',
+    'חומרים וציוד:',
+    materials.length ? materials.join('\n') : 'לא צוינו',
+    '',
+    'בטיחות:',
+    safety.length ? safety.join('\n') : 'אין',
+    '',
+    'עיכובים/ביקורות:',
+    delays.length ? delays.join('\n') : 'אין',
+    '',
+    'הערות מנהל:',
+    notes || 'אין',
+    '',
+    'תוכנית למחר:',
+    tomorrowPlan || 'לא צוין',
+  ].join('\n');
+
+  var apiKey = APP && APP.config && APP.config.anthropic_key;
+  if (!apiKey) { content.innerHTML = '<div style="color:#ef4444;padding:20px;text-align:center;">מפתח Claude חסר ב-app_config</div>'; return; }
+
+  try {
+    var resp = await claudeFetch({
+      _apiKey: apiKey,
+      model: 'claude-sonnet-4-20250514',
+      max_tokens: 800,
+      system: `אתה עוזר של מנהל פרויקטים בנייה. קרא את נתוני היומן וצור כרטיס שטח קצר ועוצמתי לבני — הנדסאי שטח שעובד בתנאי שטח קשים.
+הכרטיס חייב:
+- להיות קצר ולעניין — מקסימום 5 שורות עיקריות
+- להשתמש באמוג'י לזיהוי מהיר
+- לסדר לפי עדיפות: מה לעשות ראשון, מי בא לאתר, מה חשוב לבדוק, אזהרות
+- לא לכלול מידע מיותר
+- שפה: עברית פשוטה, פסקאות קצרות
+
+החזר JSON בדיוק בפורמט הזה, ללא טקסט נוסף:
+{
+  "headline": "משפט אחד — הכי חשוב להיום",
+  "tasks": [{"emoji":"🔴","text":"...","priority":1}, ...],
+  "onsite": "מי בא לאתר — שורה קצרה",
+  "materials": "חומרים/ציוד חשוב — שורה קצרה או null",
+  "safety_alert": "אזהרת בטיחות אם יש — שורה קצרה או null",
+  "note_from_avshi": "הערה אישית מאבשי אם יש — או null",
+  "whatsapp_text": "טקסט מוכן לשליחה בווצאפ — קצר, עם שורות חדשות"
+}`,
+      messages: [{ role: 'user', content: context }]
+    }, null);
+
+    var data = await resp.json();
+    var raw = (data.content||[]).map(function(c){ return c.text||''; }).join('');
+    var clean = raw.replace(/```json|```/g,'').trim();
+    _jwFieldCard = JSON.parse(clean);
+    _jwFieldCard._projectName = projName;
+    _jwFieldCard._date = dateVal;
+    _jwFieldCard._projectId = sel.value;
+
+    // Render the field card
+    jwRenderFieldCard(_jwFieldCard, content);
+
+  } catch(e) {
+    content.innerHTML = '<div style="color:#ef4444;padding:20px;text-align:center;">שגיאה: ' + e.message + '</div>';
+    console.error('Field card error:', e);
+  }
+}
+
+function jwRenderFieldCard(card, container) {
+  var tasksHtml = (card.tasks||[]).map(function(t){
+    return '<div style="display:flex;align-items:flex-start;gap:10px;padding:8px 10px;background:rgba(255,255,255,0.06);border-radius:8px;">' +
+      '<span style="font-size:16px;flex-shrink:0;">' + (t.emoji||'•') + '</span>' +
+      '<span style="font-size:13px;color:#e2e8f0;font-weight:600;line-height:1.5;">' + t.text + '</span>' +
+      '</div>';
+  }).join('');
+
+  container.innerHTML =
+    // Headline
+    '<div style="background:rgba(255,255,255,0.08);border-right:4px solid #43a047;border-radius:0 10px 10px 0;padding:12px 14px;direction:rtl;">' +
+      '<div style="font-size:10px;color:#86efac;font-weight:700;margin-bottom:4px;letter-spacing:1px;">ההנחיה החשובה</div>' +
+      '<div style="font-size:14px;font-weight:900;color:#fff;line-height:1.5;">' + (card.headline||'') + '</div>' +
+    '</div>' +
+
+    // Tasks
+    (tasksHtml ? '<div>' +
+      '<div style="font-size:10px;color:#86efac;font-weight:700;margin-bottom:8px;letter-spacing:1px;">משימות</div>' +
+      '<div style="display:flex;flex-direction:column;gap:6px;">' + tasksHtml + '</div>' +
+    '</div>' : '') +
+
+    // On-site
+    (card.onsite ? '<div style="background:rgba(59,130,246,0.12);border-radius:10px;padding:10px 12px;direction:rtl;">' +
+      '<div style="font-size:10px;color:#93c5fd;font-weight:700;margin-bottom:4px;">👷 באתר היום</div>' +
+      '<div style="font-size:13px;color:#e2e8f0;">' + card.onsite + '</div>' +
+    '</div>' : '') +
+
+    // Materials
+    (card.materials ? '<div style="background:rgba(245,158,11,0.1);border-radius:10px;padding:10px 12px;direction:rtl;">' +
+      '<div style="font-size:10px;color:#fde68a;font-weight:700;margin-bottom:4px;">📦 חומרים וציוד</div>' +
+      '<div style="font-size:13px;color:#e2e8f0;">' + card.materials + '</div>' +
+    '</div>' : '') +
+
+    // Safety alert
+    (card.safety_alert ? '<div style="background:rgba(239,68,68,0.15);border:1px solid rgba(239,68,68,0.3);border-radius:10px;padding:10px 12px;direction:rtl;">' +
+      '<div style="font-size:10px;color:#fca5a5;font-weight:700;margin-bottom:4px;">⚠️ אזהרת בטיחות</div>' +
+      '<div style="font-size:13px;color:#fecaca;font-weight:700;">' + card.safety_alert + '</div>' +
+    '</div>' : '') +
+
+    // Note from Avshi
+    (card.note_from_avshi ? '<div style="background:rgba(139,92,246,0.12);border-radius:10px;padding:10px 12px;direction:rtl;">' +
+      '<div style="font-size:10px;color:#c4b5fd;font-weight:700;margin-bottom:4px;">📨 מאבשי</div>' +
+      '<div style="font-size:13px;color:#e2e8f0;font-style:italic;">' + card.note_from_avshi + '</div>' +
+    '</div>' : '');
+}
+
+function jwSendFieldCardWhatsApp() {
+  if (!_jwFieldCard || !_jwFieldCard.whatsapp_text) { showToast('צור כרטיס שטח קודם','error'); return; }
+  var text = encodeURIComponent(_jwFieldCard.whatsapp_text);
+  // Open WhatsApp — works on mobile and desktop
+  window.open('https://wa.me/?text=' + text, '_blank');
+}
+
+async function jwSaveFieldCardToDB() {
+  if (!_jwFieldCard) { showToast('צור כרטיס שטח קודם','error'); return; }
+  var btn = event && event.target;
+  if (btn) { btn.textContent = '⏳ שומר...'; btn.disabled = true; }
+
+  var today = _jwFieldCard._date || new Date().toISOString().split('T')[0];
+  try {
+    // Delete today's existing briefing for this project first (upsert logic)
+    await fetch(SB_URL + '/rest/v1/daily_briefings?briefing_date=eq.' + today + '&project_id=eq.' + _jwFieldCard._projectId,
+      {method:'DELETE', headers:{apikey:SB_KEY, Authorization:'Bearer '+SB_KEY}});
+
+    var briefText = _jwFieldCard.whatsapp_text || '';
+    var { error } = await sb.from('daily_briefings').insert({
+      project_id: _jwFieldCard._projectId,
+      briefing_date: today,
+      briefing_text: briefText,
+      field_card_json: JSON.stringify(_jwFieldCard),
+      sent_at: new Date().toISOString(),
+      created_at: new Date().toISOString()
+    });
+
+    if (error) throw error;
+    showToast('✅ כרטיס שטח נשמר — בני יראה אותו בפוקט!', 'success');
+    document.getElementById('jw-fieldcard-modal').style.display = 'none';
+  } catch(e) {
+    showToast('שגיאה: ' + e.message, 'error');
+    if (btn) { btn.textContent = '💾 שמור לבני פוקט'; btn.disabled = false; }
+  }
+}
 function jwOnProjectChange(sel) {
   var errEl = document.getElementById('jw-proj-err');
+  var pickPrompt = document.getElementById('jw-pick-prompt');
+
   if (!sel.value) {
     if (errEl) errEl.style.display = 'block';
-    document.getElementById('mb-tasks-section') && (document.getElementById('mb-tasks-section').style.display = 'none');
-    document.getElementById('mb-hero') && (document.getElementById('mb-hero').style.display = 'none');
-    document.getElementById('mb-drawings-section') && (document.getElementById('mb-drawings-section').style.display = 'none');
-    document.getElementById('mb-contractors-section') && (document.getElementById('mb-contractors-section').style.display = 'none');
+    if (pickPrompt) pickPrompt.style.display = 'block';
+    ['mb-tasks-section','mb-hero','mb-drawings-section','mb-contractors-section','jw-cta'].forEach(function(id){
+      var el = document.getElementById(id);
+      if (el) el.style.display = 'none';
+    });
     return;
   }
+
+  // Valid project selected
   if (errEl) errEl.style.display = 'none';
+  if (pickPrompt) pickPrompt.style.display = 'none';
+
   // Delegate to module functions if available
   if (typeof onJournalProjectChange === 'function') onJournalProjectChange(sel);
   if (typeof mbInit === 'function') mbInit();
+
   // Show tasks section
   var ts = document.getElementById('mb-tasks-section');
-  if (ts) ts.style.display = 'block';
-  // Load today's tasks from daily_tasks
+  if (ts) { ts.style.display = 'block'; }
+
+  // Default to table option and load existing tasks
+  jwTasksShowOption('table');
   jwLoadWizardTasks(sel.value);
 }
 
@@ -11733,13 +12013,16 @@ function jwOnProjectChange(sel) {
 function jwCheckProjects() {
   var sel = document.getElementById('projectName');
   var warn = document.getElementById('jw-no-projects-warn');
-  if (!sel || !warn) return;
+  var pickPrompt = document.getElementById('jw-pick-prompt');
+  if (!sel) return;
   var projects = window.allProjects || [];
+
   if (projects.length === 0) {
-    warn.style.display = 'block';
+    if (warn) warn.style.display = 'block';
+    if (pickPrompt) pickPrompt.style.display = 'none';
     sel.disabled = true;
   } else {
-    warn.style.display = 'none';
+    if (warn) warn.style.display = 'none';
     sel.disabled = false;
     // Populate select if empty
     if (sel.options.length <= 1) {
@@ -11749,8 +12032,9 @@ function jwCheckProjects() {
         sel.appendChild(o);
       });
     }
-    // Do NOT auto-select — leave at blank option
+    // Force blank — never auto-select
     sel.value = '';
+    if (pickPrompt) pickPrompt.style.display = 'block';
   }
 }
 
