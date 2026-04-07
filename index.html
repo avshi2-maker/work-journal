@@ -451,24 +451,7 @@ window.addEventListener('unhandledrejection', function(e) {
       </div>
     </div>
 
-    <!-- 3 BIG ACTION BUTTONS -->
-    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-bottom:24px;">
-      <div onclick="switchTab('journal')" style="background:linear-gradient(135deg,#1a3d5c,#2d6a9f);border-radius:14px;padding:22px 16px;text-align:center;cursor:pointer;box-shadow:0 4px 16px rgba(26,61,92,0.3);">
-        <div style="font-size:32px;margin-bottom:8px;">📋</div>
-        <div style="font-size:15px;font-weight:900;color:#fff;">יומן עבודה יומי</div>
-        <div style="font-size:11px;color:rgba(255,255,255,0.6);margin-top:4px;">תיעוד · חתימות · PDF</div>
-      </div>
-      <div onclick="switchTab('safety')" style="background:linear-gradient(135deg,#7f1d1d,#dc2626);border-radius:14px;padding:22px 16px;text-align:center;cursor:pointer;box-shadow:0 4px 16px rgba(220,38,38,0.3);">
-        <div style="font-size:32px;margin-bottom:8px;">🛡️</div>
-        <div style="font-size:15px;font-weight:900;color:#fff;">בטיחות וליקויים</div>
-        <div style="font-size:11px;color:rgba(255,255,255,0.6);margin-top:4px;">ניתוח · סקר · דוח</div>
-      </div>
-      <div onclick="switchTab('notes')" style="background:linear-gradient(135deg,#1a1a2e,#4c1d95);border-radius:14px;padding:22px 16px;text-align:center;cursor:pointer;box-shadow:0 4px 16px rgba(76,29,149,0.3);">
-        <div style="font-size:32px;margin-bottom:8px;">📝</div>
-        <div style="font-size:15px;font-weight:900;color:#fff;">מזכרים בני</div>
-        <div style="font-size:11px;color:rgba(255,255,255,0.6);margin-top:4px;">שיחות · מזכרים · משימות</div>
-      </div>
-    </div>
+
 
     <!-- 4 STAT CARDS -->
     <div class="stats-grid">
@@ -528,43 +511,6 @@ window.addEventListener('unhandledrejection', function(e) {
       <div id="beni-tasks-list"><div style="text-align:center;padding:18px;color:var(--text3);font-size:13px;">טוען משימות...</div></div>
     </div>
 
-    <!-- DAILY CALLS WIDGET -->
-    <!-- FIELD INTELLIGENCE WIDGET -->
-    <div class="card" id="field-intel-widget" style="margin-bottom:20px;">
-      <div class="card-title" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
-        <div style="display:flex;align-items:center;gap:10px;">
-          <div style="width:34px;height:34px;border-radius:9px;background:linear-gradient(135deg,#7c3aed,#a855f7);display:flex;align-items:center;justify-content:center;font-size:17px;">🎙️</div>
-          <div>
-            <div style="font-size:15px;font-weight:800;">הקלטות שדה — בני פרסקי</div>
-            <div style="font-size:10px;font-weight:400;color:var(--text3);">מהקלטה לפעולה — לחץ לטיפול</div>
-          </div>
-        </div>
-        <div style="display:flex;align-items:center;gap:8px;">
-          <span id="fi-badge" style="display:none;background:#7c3aed;color:white;border-radius:10px;padding:2px 8px;font-size:11px;font-weight:800;">0</span>
-          <button onclick="loadFieldIntel()" style="background:none;border:1px solid var(--border);color:var(--text3);padding:5px 10px;border-radius:7px;font-size:11px;cursor:pointer;font-family:'Heebo',sans-serif;">🔄</button>
-        </div>
-      </div>
-      <div id="fi-list">
-        <div style="text-align:center;padding:18px;color:var(--text3);font-size:13px;">טוען הקלטות...</div>
-      </div>
-    </div>
-
-    <!-- ══ ASSET INBOX WIDGET ═════════════════════════════════════ -->
-    <div class="card" id="asset-inbox-widget" style="display:none;margin-bottom:20px;border:2px solid rgba(201,168,76,0.4);background:linear-gradient(135deg,rgba(201,168,76,0.05),transparent);">
-      <div class="card-title" style="display:flex;align-items:center;justify-content:space-between;">
-        <div style="display:flex;align-items:center;gap:10px;">
-          <span style="font-size:20px;">📥</span>
-          <div>
-            <div style="font-weight:900;color:#9a6f00;">תיבת נכנסים — קבצים מבני</div>
-            <div style="font-size:11px;color:#888;font-weight:400;">בחר יעד לכל קובץ ולחץ אישור</div>
-          </div>
-          <span id="asset-inbox-badge" style="display:none;background:#ef4444;color:#fff;border-radius:10px;padding:2px 8px;font-size:11px;font-weight:800;"></span>
-        </div>
-        <button onclick="assetInboxLoad()" style="background:none;border:1px solid var(--border);color:var(--text3);padding:5px 10px;border-radius:7px;font-size:11px;cursor:pointer;font-family:Heebo,sans-serif;">🔄</button>
-      </div>
-      <div id="asset-inbox-list"></div>
-    </div>
-
     <div class="card" id="daily-calls-widget">
       <div class="card-title" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
         <div style="display:flex;align-items:center;gap:10px;"><div class="dc-avatar">📞</div><div><div>שיחות יומיות — בני פרסקי</div><div style="font-size:10px;font-weight:400;color:var(--text3);" id="dc-date-label">היום</div></div></div>
@@ -579,7 +525,7 @@ window.addEventListener('unhandledrejection', function(e) {
       <div id="dc-calls-list"><div style="text-align:center;padding:16px;color:var(--text3);font-size:13px;">טוען שיחות...</div></div>
     </div>
 
-    <div class="card" style="margin-bottom:20px;"><div class="card-title">פרויקטים פעילים</div><div id="dashboard-projects-list"><div class="empty-state"><div class="empty-icon">🏗️</div><h3>אין פרויקטים עדיין</h3></div></div></div>
+    <div class="card" style="margin-bottom:20px;"><div class="card-title" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;"><span>🏗️ פרויקטים פעילים</span><button onclick="showPage('projects')" style="font-size:11px;padding:4px 10px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;cursor:pointer;font-family:Heebo,sans-serif;color:var(--text2);">כל הפרויקטים ←</button></div><div id="dashboard-projects-list"><div class="empty-state"><div class="empty-icon">🏗️</div><h3>אין פרויקטים עדיין</h3></div></div></div>
     <div class="card"><div class="card-title">תנועות אחרונות</div><div id="dashboard-transactions"><div class="empty-state"><div class="empty-icon">💰</div><h3>אין תנועות עדיין</h3></div></div></div>
   </div>
 
@@ -8086,6 +8032,9 @@ async function _fetchSmartJournal() {
     document.head.appendChild(ns);
   } catch(e) { console.error('smartjournal.js fetch failed:', e); _sjFetched = false; }
 }
+// Safety stubs — prevent ReferenceError if module not yet loaded
+if (typeof loadNotesWall === 'undefined') window.loadNotesWall = function(){ _fetchSmartJournal().then(function(){ if(typeof loadNotesWall==='function') setTimeout(loadNotesWall,100); }); };
+if (typeof sjPopulateProjectFilter === 'undefined') window.sjPopulateProjectFilter = function(){};
 
 var _ocrFetched = false;
 async function _fetchJournalOCR() {
