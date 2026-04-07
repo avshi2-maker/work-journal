@@ -5905,7 +5905,7 @@ async function loadRecentInspections() {
   if (!el) return;
   try {
     var sevenDaysAgo = new Date(Date.now() - 7*24*60*60*1000).toISOString().split('T')[0];
-    var res = await sbQ('inspections', 'select=id,inspection_date,status,notes,project_id,projects(project_name)&inspection_date=gte.' + sevenDaysAgo + '&order=inspection_date.desc&limit=10');
+    var res = await sbQ('inspections', 'select=id,inspection_date,status,notes,project_id&inspection_date=gte.' + sevenDaysAgo + '&order=inspection_date.desc&limit=10');
     var rows = (res && res.data) || [];
     if (!rows.length) {
       el.innerHTML = '<div style="text-align:center;padding:18px;color:var(--text3);font-size:13px;">אין ביקורות ב-7 ימים האחרונים</div>';
@@ -5915,13 +5915,14 @@ async function loadRecentInspections() {
     var hasSafety = rows.some(function(r){ return r.status === 'failed' || r.status === 'unsafe'; });
     if (badge) badge.style.display = hasSafety ? 'inline' : 'none';
     el.innerHTML = rows.map(function(r) {
-      var proj = (r.projects && r.projects.project_name) || '';
+      var proj = (allProjects && allProjects.find(function(p){ return p.id === r.project_id; })) || null;
+      var projName = proj ? proj.project_name : '';
       var statusColor = r.status === 'passed' ? '#22c55e' : r.status === 'failed' ? '#ef4444' : '#f59e0b';
       var statusLabel = r.status === 'passed' ? '✅ עבר' : r.status === 'failed' ? '❌ נכשל' : r.status || '—';
       return '<div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--border);">' +
         '<div style="width:8px;height:8px;border-radius:50%;background:' + statusColor + ';flex-shrink:0;"></div>' +
         '<div style="flex:1;">' +
-          '<div style="font-size:13px;font-weight:700;">' + (proj ? esc(proj) + ' — ' : '') + statusLabel + '</div>' +
+          '<div style="font-size:13px;font-weight:700;">' + (projName ? esc(projName) + ' — ' : '') + statusLabel + '</div>' +
           '<div style="font-size:11px;color:var(--text3);">' + (r.inspection_date || '') + (r.notes ? ' · ' + esc(r.notes).substring(0,60) : '') + '</div>' +
         '</div>' +
       '</div>';
@@ -7662,9 +7663,8 @@ function inboxClearErrors() {
 }
 // assetInboxLoad = alias that loads inbox.js then calls sibInit
 async function assetInboxLoad() {
-  if (typeof sibInit === 'function') { sibInit(); return; }
   await _fetchInboxModule();
-  setTimeout(function(){ if (typeof sibInit === 'function') sibInit(); }, 300);
+  setTimeout(function(){ if (typeof sibInit === 'function') sibInit(); }, 150);
 }
 
 // ══ CALL RECORDINGS MODULE ═══════════════════════════════════════════

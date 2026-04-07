@@ -90,7 +90,7 @@ async function sibLoad() {
 
   try {
     var { data, error } = await sbQ('asset_inbox',
-      'status=eq.pending&order=created_at.desc&limit=100&select=id,cloudinary_url,file_name,file_type,thumbnail_url,project_id,created_at,notes');
+      'status=eq.pending&order=created_at.desc&limit=100&select=id,cloudinary_url,file_name,file_type,thumbnail_url,project_id,created_at');
     _sibItems = data || [];
   } catch(e) {
     listEl.innerHTML = '<div style="color:#ef4444;padding:20px;font-size:12px;">שגיאה בטעינה</div>';
