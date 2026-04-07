@@ -6189,7 +6189,7 @@ async function switchTab(tab) {
   if (tab === 'micharon')    { _fetchRagModule().then(function(){ setTimeout(micharonTabInit, 100); }); }
   if (tab === 'query')       { _fetchRagModule().then(function(){ setTimeout(queryTabInit, 100); }); }
   if (tab === 'gcal')        { _fetchSmartJournal().then(function(){ if (typeof initGcal === 'function') initGcal(); }); }
-  if (tab === 'encyclopedia'){ _fetchEncyclopedia().then(function(){ setTimeout(function(){ if (typeof encInit === 'function') encInit(); }, 100); }); }
+  if (tab === 'encyclopedia'){ Promise.all([_fetchEncyclopedia(), _fetchEncMgmt()]).then(function(){ setTimeout(function(){ if (typeof emInit === 'function') emInit(); else if (typeof encInit === 'function') encInit(); }, 100); }); }
   if (tab === 'journal') {
     var fjTabEl = document.getElementById('tab-fieldjournal');
     if (fjTabEl) fjTabEl.classList.add('active');
@@ -7253,6 +7253,21 @@ async function _fetchJournalModule() {
     var ns = document.createElement('script'); ns.textContent = code;
     document.head.appendChild(ns);
   } catch(e) { console.error('journal fetch failed:', e); _journalFetched = false; }
+}
+
+// ══ ENC MGMT MODULE LOADER ═════════════════════════════════════════════
+var _encMgmtFetched = false;
+async function _fetchEncMgmt() {
+  if (_encMgmtFetched) return;
+  _encMgmtFetched = true;
+  try {
+    var res = await fetch('enc_mgmt.js?v=' + Date.now());
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    var code = await res.text();
+    if (code.trim().startsWith('<')) throw new Error('Got HTML not JS');
+    var ns = document.createElement('script'); ns.textContent = code;
+    document.head.appendChild(ns);
+  } catch(e) { console.error('enc_mgmt.js fetch failed:', e); _encMgmtFetched = false; }
 }
 
 // ══ FIELD JOURNAL MODULE LOADER ═══════════════════════════════════════
