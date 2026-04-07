@@ -5293,7 +5293,7 @@ async function switchTab(tab) {
   // Panel-specific post-init
   if (tab === 'notes')   { _fetchSmartJournal().then(function(){ setTimeout(function(){ sjPopulateProjectFilter(); loadNotesWall(); }, 100); }); }
   if (tab === 'crm')     { setTimeout(function(){ if(typeof assetInboxLoad==='function') assetInboxLoad(); }, 200); }
-  if (tab === 'eod')     { Promise.all([_fetchJournalModule(), _fetchSmartJournal()]).then(function(){ setTimeout(loadEODReport, 100); }); }
+  if (tab === 'eod')     { _fetchFieldJournal().then(function(){ setTimeout(function(){ if(typeof fjsInit==='function') fjsInit(); else loadEODReport(); }, 100); }); }
   if (tab === 'safety')  { _fetchSafetyModule().then(function(){ setTimeout(function(){ safetyTabInit(); if(typeof _switchSafetySubTabReal==='function') _switchSafetySubTabReal('safety'); }, 100); }); }
   if (tab === 'rag')      { _fetchRagModule().then(function(){ setTimeout(ragTabInit, 100); }); }
   if (tab === 'micharon') { _fetchRagModule().then(function(){ setTimeout(micharonTabInit, 100); }); }
@@ -6183,7 +6183,7 @@ async function switchTab(tab) {
 
   if (tab === 'notes')       { _fetchSmartJournal().then(function(){ setTimeout(function(){ sjPopulateProjectFilter(); loadNotesWall(); }, 100); }); }
   if (tab === 'crm')         { setTimeout(function(){ if(typeof assetInboxLoad==='function') assetInboxLoad(); }, 200); }
-  if (tab === 'eod')         { Promise.all([_fetchJournalModule(), _fetchSmartJournal()]).then(function(){ setTimeout(loadEODReport, 100); }); }
+  if (tab === 'eod')         { _fetchFieldJournal().then(function(){ setTimeout(function(){ if(typeof fjsInit==='function') fjsInit(); else loadEODReport(); }, 100); }); }
   if (tab === 'safety')      { _fetchSafetyModule().then(function(){ setTimeout(function(){ safetyTabInit(); if(typeof _switchSafetySubTabReal==='function') _switchSafetySubTabReal('safety'); }, 100); }); }
   if (tab === 'rag')         { _fetchRagModule().then(function(){ setTimeout(ragTabInit, 100); }); }
   if (tab === 'micharon')    { _fetchRagModule().then(function(){ setTimeout(micharonTabInit, 100); }); }
@@ -7253,6 +7253,21 @@ async function _fetchJournalModule() {
     var ns = document.createElement('script'); ns.textContent = code;
     document.head.appendChild(ns);
   } catch(e) { console.error('journal fetch failed:', e); _journalFetched = false; }
+}
+
+// ══ FIELD JOURNAL MODULE LOADER ═══════════════════════════════════════
+var _fieldJournalFetched = false;
+async function _fetchFieldJournal() {
+  if (_fieldJournalFetched) return;
+  _fieldJournalFetched = true;
+  try {
+    var res = await fetch('field_journal.js?v=' + Date.now());
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    var code = await res.text();
+    if (code.trim().startsWith('<')) throw new Error('Got HTML not JS');
+    var ns = document.createElement('script'); ns.textContent = code;
+    document.head.appendChild(ns);
+  } catch(e) { console.error('field_journal.js fetch failed:', e); _fieldJournalFetched = false; }
 }
 
 // ══ INBOX MODULE LOADER — fetches inbox.js from GitHub ════════════════
