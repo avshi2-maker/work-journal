@@ -169,6 +169,7 @@ function sibFileCard(item) {
         '<input type="checkbox" ' + (chk.standards?'checked':'') + ' onchange="_sibChecked[&quot;' + item.id + '&quot;].standards=this.checked;event.stopPropagation();" style="accent-color:#9a6f00;"> 📋 תקנים</label>' +
     '</div>' : '';
 
+  card.innerHTML =
     '<div style="display:flex;align-items:flex-start;gap:10px;">' +
       '<div style="width:36px;height:36px;border-radius:8px;background:' + typeBg + ';display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;">' + typeIcon + '</div>' +
       '<div style="flex:1;min-width:0;">' +
