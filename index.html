@@ -363,7 +363,7 @@ window.addEventListener('unhandledrejection', function(e) {
   <div class="top-tab"        id="tab-safety" onclick="switchTab('safety')"><span>🛡️</span><span>בטיחות / ליקויים</span></div>
   <div class="top-tab"        id="tab-notes"  onclick="switchTab('notes')"><span>📝</span><span>מזכרים בני</span></div>
   <div class="top-tab"        id="tab-rag"    onclick="switchTab('rag')"><span>🏗️</span><span>ייעוץ הנדסי</span></div>
-  <div class="top-tab" id="tab-fieldjournal" onclick="switchTab('journal');jwGoto(1);"><span>🌅</span><span>בריפינג בוקר</span></div>
+  <div class="top-tab" id="tab-fieldjournal" onclick="switchTab('journal');if(typeof jwGoto==='function')jwGoto(1);"><span>🌅</span><span>בריפינג בוקר</span></div>
   <div class="top-tab" id="tab-encyclopedia" onclick="switchTab('encyclopedia')"><span>📚</span><span>אנציקלופדיה</span></div>
   <div class="top-tab"        id="tab-inbox" onclick="switchTab('inbox')"><span>📥</span><span>תיבת נכנסים 📥</span><span id="tab-inbox-badge" style="display:none;background:#ef4444;color:#fff;border-radius:8px;padding:1px 6px;font-size:9px;font-weight:800;"></span></div>
   <div class="top-tab"        id="tab-smartscan" onclick="switchTab('smartscan')"><span>🚀</span><span>סריקה מקצועית</span></div>
@@ -389,7 +389,7 @@ window.addEventListener('unhandledrejection', function(e) {
   <!-- GROUP: יומי -->
   <div class="nav-group-label">יומי</div>
   <div class="nav-item active" onclick="switchTab('crm');showPage('dashboard')" id="nav-dashboard"><span class="nav-icon">📊</span><span>לוח בקרה</span></div>
-  <div class="nav-item" onclick="switchTab('journal')" id="nav-journal-link"><span class="nav-icon">📋</span><span>יומן עבודה יומי</span></div>
+
   <div class="nav-item" onclick="switchTab('eod')" id="tab-eod-nav"><span class="nav-icon">🧠</span><span>יומן שטח</span></div>
   <div class="nav-item" onclick="switchTab('gcal')" id="tab-gcal-nav"><span class="nav-icon">📅</span><span>יומן Google</span></div>
 
@@ -5210,84 +5210,6 @@ async function bootstrap() {
   }
 }
 
-// ══════════════════════════════════════════════════════
-
-// ══════════════════════════════════════════════════════
-// TAB SWITCHER
-// ══════════════════════════════════════════════════════
-async function switchTab(tab) {
-  // Close mobile sidebar
-  const sidebar = document.querySelector('#crm-panel .sidebar');
-  if (sidebar?.classList.contains('mobile-open')) {
-    sidebar.classList.remove('mobile-open');
-    const ov = document.getElementById('crm-overlay');
-    if (ov) ov.style.display = 'none';
-  }
-
-  ['crm','notes','eod','safety','rag','micharon','query','gcal','journal','standards','smartscan','inbox','misc','encyclopedia'].forEach(t => {
-    var panel = document.getElementById(t+'-panel');
-    var tabEl  = document.getElementById('tab-'+t);
-    if (panel) panel.style.display = (t===tab) ? 'block' : 'none';
-    if (tabEl)  tabEl.classList.toggle('active', t===tab);
-  });
-  window.scrollTo(0,0);
-  // Scroll active tab into view in the top tabs bar
-  const activeTab = document.getElementById('tab-' + tab);
-  if (activeTab) activeTab.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
-  try { localStorage.setItem('beni_active_tab', tab); } catch(e){}
-
-  // Panel-specific post-init
-  if (tab === 'notes')   { _fetchSmartJournal().then(function(){ setTimeout(function(){ sjPopulateProjectFilter(); loadNotesWall(); }, 100); }); }
-  if (tab === 'crm')     { setTimeout(function(){ if(typeof assetInboxLoad==='function') assetInboxLoad(); }, 200); }
-  if (tab === 'eod')     { _fetchFieldJournal().then(function(){ setTimeout(function(){ if(typeof fjsInit==='function') fjsInit(); else loadEODReport(); }, 100); }); }
-  if (tab === 'safety')  { _fetchSafetyModule().then(function(){ setTimeout(function(){ safetyTabInit(); if(typeof _switchSafetySubTabReal==='function') _switchSafetySubTabReal('safety'); }, 100); }); }
-  if (tab === 'rag')      { _fetchRagModule().then(function(){ setTimeout(ragTabInit, 100); }); }
-  if (tab === 'micharon') { _fetchRagModule().then(function(){ setTimeout(micharonTabInit, 100); }); }
-  if (tab === 'query')    { _fetchRagModule().then(function(){ setTimeout(queryTabInit, 100); }); }
-  if (tab === 'gcal')    { _fetchSmartJournal().then(function(){ if (typeof initGcal === 'function') initGcal(); }); }
-  if (tab === 'journal') {
-    // Highlight the בריפינג בוקר top tab
-    var fjTabEl = document.getElementById('tab-fieldjournal');
-    if (fjTabEl) fjTabEl.classList.add('active');
-    // Load wizard.js (HTML + fj/jw logic) then journal module (jwGoto etc.)
-    Promise.all([_fetchWizardModule(), _fetchJournalModule()]).then(async function(){
-      if (!allProjects || !allProjects.length) { try { await loadProjects(); } catch(e){} }
-      if (typeof initializeManagerView === 'function') initializeManagerView();
-      // Rebuild select with real UUIDs immediately after initializeManagerView
-      (function(){
-        var sel = document.getElementById('projectName');
-        if (sel) {
-          sel.innerHTML = '<option value="">— בחר פרויקט —</option>';
-          (window.allProjects||[]).forEach(function(p){
-            var o = document.createElement('option');
-            o.value = p.id;
-            o.textContent = p.project_name;
-            sel.appendChild(o);
-          });
-          sel.value = '';
-        }
-      })();
-      if (typeof jwGoto === 'function') jwGoto(1);
-      jwInstallProjectTrap();
-      setTimeout(function(){
-        ['mb-tasks-section','mb-hero','mb-drawings-section','mb-contractors-section','jw-cta'].forEach(function(id){
-          var el = document.getElementById(id);
-          if (el) el.style.display = 'none';
-        });
-        jwLoadBriefing();
-        jwCheckProjects();
-        jwTasksShowOption('table');
-        if (typeof fjInit === 'function') fjInit();
-      }, 100);
-    }).catch(function(e){ console.error('wizard/journal load:', e); });
-    _fetchCallRecordingsModule().then(function(){ setTimeout(function(){ if(typeof callRecordingsInit==='function') callRecordingsInit(); },200); });
-  }
-  if (tab === 'standards') { _fetchStandardsModule().then(function(){ setTimeout(standardsRagInit, 100); }); }
-  if (tab === 'smartscan')  { _fetchSmartScanModule().then(function(){ setTimeout(function(){ smartScanInit(); _ssPopulateProjects(); }, 100); }); }
-  if (tab === 'encyclopedia') { setTimeout(function(){ encInit(); }, 100); }
-  if (tab === 'inbox')      { setTimeout(function(){ assetInboxLoad(); }, 100); }
-  if (tab === 'misc')       { setTimeout(loadMiscTab, 100); }
-}
 
 // ══════════════════════════════════════════════════════
 // CRM DATA LOADER (shared across panels)
@@ -6132,7 +6054,7 @@ async function switchTab(tab) {
   if (tab === 'eod')         { _fetchFieldJournal().then(function(){ setTimeout(function(){ if(typeof fjsInit==='function') fjsInit(); else loadEODReport(); }, 100); }); }
   if (tab === 'safety')      { _fetchSafetyModule().then(function(){ setTimeout(function(){ safetyTabInit(); if(typeof _switchSafetySubTabReal==='function') _switchSafetySubTabReal('safety'); }, 100); }); }
   if (tab === 'rag')         { _fetchRagModule().then(function(){ setTimeout(ragTabInit, 100); }); }
-  if (tab === 'micharon')    { _fetchRagModule().then(function(){ setTimeout(micharonTabInit, 100); }); }
+  if (tab === 'micharon')    { _fetchRagModule().then(function(){ setTimeout(function(){ if(typeof micharonTabInit==='function') micharonTabInit(); }, 100); }); }
   if (tab === 'query')       { _fetchRagModule().then(function(){ setTimeout(queryTabInit, 100); }); }
   if (tab === 'gcal')        { _fetchSmartJournal().then(function(){ if (typeof initGcal === 'function') initGcal(); }); }
   if (tab === 'encyclopedia'){ Promise.all([_fetchEncyclopedia(), _fetchEncMgmt()]).then(function(){ setTimeout(function(){ if (typeof emInit === 'function') emInit(); else if (typeof encInit === 'function') encInit(); }, 100); }); }
