@@ -365,7 +365,7 @@ async function mbLoadFiles() {
   var grid = document.getElementById('mb-drawings-grid');
   try {
     var folder = 'drawings/' + (_mbProjectId||'general') + '/';
-    var res = await fetch(SB_URL_MB + '/storage/v1/object/list/app-assets/' + encodeURIComponent(folder),
+    var res = await fetch(SB_URL_MB + '/storage/v1/object/list/app-assets/' + folder,
       { headers: { apikey: SB_KEY_MB, Authorization: 'Bearer ' + SB_KEY_MB } });
     var files = res.ok ? await res.json() : [];
     _mbAllFiles = (files||[]).filter(function(f){ return f.name && !f.name.startsWith('.'); });

@@ -403,8 +403,15 @@ async function sibTranscribe(id) {
 
   var elevenlabsKey = null;
   try {
-    var cfg = await sbQ('app_config', 'key=eq.elevenlabs_key&select=value');
-    if (cfg.data && cfg.data[0]) elevenlabsKey = cfg.data[0].value;
+    // Try global APP config first (already loaded by CRM)
+    if (window.APP && window.APP.config && window.APP.config.elevenlabs_key) {
+      elevenlabsKey = window.APP.config.elevenlabs_key;
+    } else {
+      var cfg = await sbQ('app_config', 'select=key,value');
+      var rows = (cfg.data || []);
+      var row = rows.find(function(r){ return r.key === 'elevenlabs_key'; });
+      if (row) elevenlabsKey = row.value;
+    }
   } catch(e) {}
 
   if (!elevenlabsKey) {
