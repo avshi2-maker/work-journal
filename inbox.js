@@ -416,7 +416,8 @@ async function sibTranscribe(id) {
     var formData = new FormData();
     formData.append('audio', audioBlob, item.file_name || 'audio.m4a');
     formData.append('model_id', 'scribe_v1');
-    formData.append('diarization', 'true');
+    formData.append('language_code', 'he');
+    formData.append('diarize', 'true');
 
     var transcResp = await fetch('https://api.elevenlabs.io/v1/speech-to-text', {
       method: 'POST',
@@ -596,7 +597,7 @@ async function sibApproveWithProject(id) {
 
 async function sibApprove(id, projectId) {
   try {
-    var patch = { status: 'approved', approved_at: new Date().toISOString() };
+    var patch = { status: 'approved' };
     if (projectId) patch.project_id = projectId;
 
     await fetch(SB_URL + '/rest/v1/asset_inbox?id=eq.' + id, {
