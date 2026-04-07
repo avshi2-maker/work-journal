@@ -360,13 +360,8 @@ window.addEventListener('unhandledrejection', function(e) {
 <!-- ══ TOP TAB BAR ══ -->
 <div id="top-tabs">
   <div class="top-tab active" id="tab-crm"    onclick="switchTab('crm')"><span>📊</span><span>לוח בקרה</span></div>
-  <div class="top-tab"        id="tab-safety" onclick="switchTab('safety')"><span>🛡️</span><span>בטיחות / ליקויים</span></div>
-  <div class="top-tab"        id="tab-notes"  onclick="switchTab('notes')"><span>📝</span><span>מזכרים בני</span></div>
-  <div class="top-tab"        id="tab-rag"    onclick="switchTab('rag')"><span>🏗️</span><span>ייעוץ הנדסי</span></div>
   <div class="top-tab" id="tab-fieldjournal" onclick="switchTab('journal');if(typeof jwGoto==='function')jwGoto(1);"><span>🌅</span><span>בריפינג בוקר</span></div>
-  <div class="top-tab" id="tab-encyclopedia" onclick="switchTab('encyclopedia')"><span>📚</span><span>אנציקלופדיה</span></div>
   <div class="top-tab"        id="tab-inbox" onclick="switchTab('inbox')"><span>📥</span><span>תיבת נכנסים 📥</span><span id="tab-inbox-badge" style="display:none;background:#ef4444;color:#fff;border-radius:8px;padding:1px 6px;font-size:9px;font-weight:800;"></span></div>
-  <div class="top-tab"        id="tab-smartscan" onclick="switchTab('smartscan')"><span>🚀</span><span>סריקה מקצועית</span></div>
 </div>
 
 <!-- ══ PANELS — loaded dynamically from Supabase Storage ══ -->
@@ -388,8 +383,6 @@ window.addEventListener('unhandledrejection', function(e) {
 
   <!-- GROUP: יומי -->
   <div class="nav-group-label">יומי</div>
-  <div class="nav-item active" onclick="switchTab('crm');showPage('dashboard')" id="nav-dashboard"><span class="nav-icon">📊</span><span>לוח בקרה</span></div>
-
   <div class="nav-item" onclick="switchTab('eod')" id="tab-eod-nav"><span class="nav-icon">🧠</span><span>יומן שטח</span></div>
   <div class="nav-item" onclick="switchTab('gcal')" id="tab-gcal-nav"><span class="nav-icon">📅</span><span>יומן Google</span></div>
 
@@ -414,6 +407,11 @@ window.addEventListener('unhandledrejection', function(e) {
 
   <!-- GROUP: כלים -->
   <div class="nav-group-label">כלים</div>
+  <div class="nav-item" onclick="switchTab('safety')" id="tab-safety-nav"><span class="nav-icon">🛡️</span><span>בטיחות / ליקויים</span></div>
+  <div class="nav-item" onclick="switchTab('notes')" id="tab-notes-nav"><span class="nav-icon">📝</span><span>מזכרים בני</span></div>
+  <div class="nav-item" onclick="switchTab('rag')" id="tab-rag-nav"><span class="nav-icon">🏗️</span><span>ייעוץ הנדסי</span></div>
+  <div class="nav-item" onclick="switchTab('encyclopedia')" id="tab-encyclopedia-nav"><span class="nav-icon">📚</span><span>אנציקלופדיה</span></div>
+  <div class="nav-item" onclick="switchTab('smartscan')" id="tab-smartscan-nav"><span class="nav-icon">🚀</span><span>סריקה מקצועית</span></div>
   <div class="nav-item" onclick="switchTab('standards')" id="tab-standards-nav"><span class="nav-icon">📚</span><span>תקני בניה</span></div>
   <div class="nav-item" onclick="switchTab('micharon')" id="tab-micharon-nav"><span class="nav-icon">📋</span><span>מחירון</span></div>
   <div class="nav-item" onclick="switchTab('query')" id="tab-query-nav"><span class="nav-icon">🔍</span><span>שאילתות</span></div>
