@@ -146,6 +146,8 @@ function sibFileCard(item) {
   var typeIcon = type === 'video' ? '🎥' : type === 'audio' ? '🎙' : type === 'pdf' ? '📄' : '📸';
   var typeBg   = type === 'video' ? '#fff8e8' : type === 'audio' ? '#e8f8f0' : type === 'pdf' ? '#fdf0f0' : '#e8f0fd';
   var typeColor= type === 'video' ? '#f59e0b' : type === 'audio' ? '#10b981' : type === 'pdf' ? '#ef4444' : '#3b82f6';
+  var hasThumb = (type === 'image' || type === 'photo' || type === 'video') && (item.thumbnail_url || item.cloudinary_url);
+  var thumbUrl = item.thumbnail_url || (item.cloudinary_url ? item.cloudinary_url.replace('/upload/', '/upload/w_80,h_80,c_fill,f_jpg/') : '');
 
   var fname = item.file_name || 'קובץ ללא שם';
   var proj = (window.allProjects||[]).find(function(p){ return p.id === item.project_id; });
@@ -158,7 +160,7 @@ function sibFileCard(item) {
   // Init checkbox state
   if (!_sibChecked[item.id]) _sibChecked[item.id] = {safety:true, engineering:false, standards:false};
   var chk = _sibChecked[item.id];
-  var hasVisual = (type === 'image' || type === 'photo' || type === 'video');
+  var hasVisual = (type === 'image' || type === 'photo' || type === 'video' || type === 'audio');
   var checkboxRow = hasVisual ?
     '<div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;margin:8px 0 6px;padding:7px 10px;background:#fffbf0;border-radius:8px;border:1px solid rgba(180,140,60,0.15);">' +
       '<label style="display:flex;align-items:center;gap:5px;cursor:pointer;font-size:11px;font-weight:700;color:#c62828;">' +
@@ -171,7 +173,7 @@ function sibFileCard(item) {
 
   card.innerHTML =
     '<div style="display:flex;align-items:flex-start;gap:10px;">' +
-      '<div style="width:36px;height:36px;border-radius:8px;background:' + typeBg + ';display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;">' + typeIcon + '</div>' +
+      (hasThumb ? '<img src="' + thumbUrl + '" style="width:52px;height:52px;border-radius:8px;object-fit:cover;flex-shrink:0;" onerror="this.outerHTML=\'<div style=\\"width:36px;height:36px;border-radius:8px;background:' + typeBg + ';display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;\\">'+typeIcon+'</div>\'">' : '<div style="width:36px;height:36px;border-radius:8px;background:' + typeBg + ';display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;">' + typeIcon + '</div>') +
       '<div style="flex:1;min-width:0;">' +
         '<div style="font-size:12px;font-weight:700;color:#1a3d5c;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + sibEsc(fname) + '</div>' +
         '<div style="display:flex;gap:6px;align-items:center;margin-top:3px;">' +
