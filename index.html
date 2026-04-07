@@ -5801,6 +5801,8 @@ async function loadProjects() {
   rebuildCoApprovedSum();
   renderProjects();
   populateProjectSelects();
+  if(typeof renderDashboard === 'function') renderDashboard();
+  if(typeof _spFillSelects === 'function') _spFillSelects();
   if(typeof journalInitialized !== 'undefined' && journalInitialized) {
     populateJournalProjectDropdown();
   }
@@ -5874,6 +5876,85 @@ function showFinanceTab(tab) {
     document.getElementById('ftab-'+t).classList.toggle('active',t===tab);
   });
   if(tab==='pnl') renderPnL();
+}
+
+// ── DASHBOARD WIDGET LOADERS ─────────────────────────────
+async function loadRecentInspections() {
+  var el = document.getElementById('inspections-list');
+  var badge = document.getElementById('inspect-safety-badge');
+  if (!el) return;
+  try {
+    var sevenDaysAgo = new Date(Date.now() - 7*24*60*60*1000).toISOString().split('T')[0];
+    var res = await sbQ('inspections', 'select=id,inspection_date,status,notes,project_id,projects(project_name)&inspection_date=gte.' + sevenDaysAgo + '&order=inspection_date.desc&limit=10');
+    var rows = (res && res.data) || [];
+    if (!rows.length) {
+      el.innerHTML = '<div style="text-align:center;padding:18px;color:var(--text3);font-size:13px;">אין ביקורות ב-7 ימים האחרונים</div>';
+      if (badge) badge.style.display = 'none';
+      return;
+    }
+    var hasSafety = rows.some(function(r){ return r.status === 'failed' || r.status === 'unsafe'; });
+    if (badge) badge.style.display = hasSafety ? 'inline' : 'none';
+    el.innerHTML = rows.map(function(r) {
+      var proj = (r.projects && r.projects.project_name) || '';
+      var statusColor = r.status === 'passed' ? '#22c55e' : r.status === 'failed' ? '#ef4444' : '#f59e0b';
+      var statusLabel = r.status === 'passed' ? '✅ עבר' : r.status === 'failed' ? '❌ נכשל' : r.status || '—';
+      return '<div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--border);">' +
+        '<div style="width:8px;height:8px;border-radius:50%;background:' + statusColor + ';flex-shrink:0;"></div>' +
+        '<div style="flex:1;">' +
+          '<div style="font-size:13px;font-weight:700;">' + (proj ? esc(proj) + ' — ' : '') + statusLabel + '</div>' +
+          '<div style="font-size:11px;color:var(--text3);">' + (r.inspection_date || '') + (r.notes ? ' · ' + esc(r.notes).substring(0,60) : '') + '</div>' +
+        '</div>' +
+      '</div>';
+    }).join('');
+  } catch(e) {
+    console.error('loadRecentInspections:', e);
+    el.innerHTML = '<div style="text-align:center;padding:18px;color:var(--text3);font-size:13px;">שגיאה בטעינת ביקורות</div>';
+  }
+}
+
+async function loadBeniTasks() {
+  var el = document.getElementById('beni-tasks-list');
+  var countBadge = document.getElementById('beni-count');
+  if (!el) return;
+  try {
+    var today = new Date().toISOString().split('T')[0];
+    var res = await sbQ('daily_tasks', 'select=id,task_text,tag,is_done,created_at,task_date&task_date=eq.' + today + '&order=created_at.asc');
+    var tasks = (res && res.data) || [];
+    var pending = tasks.filter(function(t){ return !t.is_done; });
+    if (countBadge) {
+      countBadge.textContent = pending.length;
+      countBadge.style.display = pending.length ? 'inline' : 'none';
+    }
+    if (!tasks.length) {
+      el.innerHTML = '<div style="text-align:center;padding:18px;color:var(--text3);font-size:13px;">אין משימות להיום</div>';
+      return;
+    }
+    el.innerHTML = tasks.map(function(t) {
+      var tagColors = { urgent:'#ef4444', safety:'#7c3aed', followup:'#f59e0b', other:'#6b7280' };
+      var tagColor = tagColors[t.tag] || '#6b7280';
+      return '<div class="beni-task-row">' +
+        '<div onclick="toggleBeniTask(\'' + t.id + '\',' + (t.is_done?'true':'false') + ')" style="width:20px;height:20px;border-radius:50%;border:2px solid ' + (t.is_done?'#22c55e':'var(--border)') + ';background:' + (t.is_done?'#22c55e':'transparent') + ';cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:11px;color:#fff;">' + (t.is_done?'✓':'') + '</div>' +
+        '<div style="flex:1;">' +
+          '<div class="beni-task-txt' + (t.is_done?' done':'') + '">' + esc(t.task_text||'') + '</div>' +
+          '<div class="beni-task-ago"><span style="background:' + tagColor + ';color:#fff;border-radius:4px;padding:1px 5px;font-size:9px;font-weight:800;">' + (t.tag||'other') + '</span></div>' +
+        '</div>' +
+      '</div>';
+    }).join('');
+  } catch(e) {
+    console.error('loadBeniTasks:', e);
+    el.innerHTML = '<div style="text-align:center;padding:18px;color:var(--text3);font-size:13px;">שגיאה בטעינת משימות</div>';
+  }
+}
+
+async function toggleBeniTask(id, isDone) {
+  try {
+    await fetch(SB_URL + '/rest/v1/daily_tasks?id=eq.' + id, {
+      method: 'PATCH',
+      headers: { apikey: SB_KEY, Authorization: 'Bearer ' + SB_KEY, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+      body: JSON.stringify({ is_done: !isDone, done_at: !isDone ? new Date().toISOString() : null })
+    });
+    loadBeniTasks();
+  } catch(e) { console.error('toggleBeniTask:', e); }
 }
 
 // ── DASHBOARD ────────────────────────────────────────────
@@ -6048,7 +6129,7 @@ async function switchTab(tab) {
   try { localStorage.setItem('beni_active_tab', tab); } catch(e){}
 
   if (tab === 'notes')       { _fetchSmartJournal().then(function(){ setTimeout(function(){ sjPopulateProjectFilter(); loadNotesWall(); }, 100); }); }
-  if (tab === 'crm')         { setTimeout(function(){ if(typeof assetInboxLoad==='function') assetInboxLoad(); }, 200); }
+  if (tab === 'crm')         { setTimeout(function(){ showPage('dashboard'); }, 50); }
   if (tab === 'eod')         { _fetchFieldJournal().then(function(){ setTimeout(function(){ if(typeof fjsInit==='function') fjsInit(); else loadEODReport(); }, 100); }); }
   if (tab === 'safety')      { _fetchSafetyModule().then(function(){ setTimeout(function(){ safetyTabInit(); if(typeof _switchSafetySubTabReal==='function') _switchSafetySubTabReal('safety'); }, 100); }); }
   if (tab === 'rag')         { _fetchRagModule().then(function(){ setTimeout(ragTabInit, 100); }); }
@@ -7538,9 +7619,13 @@ async function _fetchQuoteBuilder() {
 // ══ ASSET INBOX MODULE ═══════════════════════════════════════════════
 var _assetInboxFetched = false;
 async function _fetchAssetInboxModule() {
-  // asset_inbox.js is now fully inline — no external fetch needed
   _assetInboxFetched = true;
-  // assetInboxInit and assetInboxLoad are defined inline above
+}
+// assetInboxLoad = alias that loads inbox.js then calls sibInit
+async function assetInboxLoad() {
+  if (typeof sibInit === 'function') { sibInit(); return; }
+  await _fetchInboxModule();
+  setTimeout(function(){ if (typeof sibInit === 'function') sibInit(); }, 300);
 }
 
 // ══ CALL RECORDINGS MODULE ═══════════════════════════════════════════
