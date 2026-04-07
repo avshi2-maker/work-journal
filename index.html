@@ -5906,6 +5906,11 @@ async function loadRecentInspections() {
   try {
     var sevenDaysAgo = new Date(Date.now() - 7*24*60*60*1000).toISOString().split('T')[0];
     var res = await sbQ('inspections', 'select=id,status,project_id&order=created_at.desc&limit=10');
+    if (res && res.error) {
+      el.innerHTML = '<div style="text-align:center;padding:18px;color:var(--text3);font-size:12px;">טבלת ביקורות לא הוגדרה עדיין</div>';
+      if (badge) badge.style.display = 'none';
+      return;
+    }
     var rows = (res && res.data) || [];
     if (!rows.length) {
       el.innerHTML = '<div style="text-align:center;padding:18px;color:var(--text3);font-size:13px;">אין ביקורות ב-7 ימים האחרונים</div>';
@@ -8078,6 +8083,29 @@ async function _fetchSmartJournal() {
 // Safety stubs — prevent ReferenceError if module not yet loaded
 if (typeof loadNotesWall === 'undefined') window.loadNotesWall = function(){ _fetchSmartJournal().then(function(){ if(typeof loadNotesWall==='function') setTimeout(loadNotesWall,100); }); };
 if (typeof sjPopulateProjectFilter === 'undefined') window.sjPopulateProjectFilter = function(){};
+
+// makeDeleteBtn — used by smartjournal.js photo/video grid cards
+// signature: makeDeleteBtn(id, cardEl, reloadFn)
+if (typeof makeDeleteBtn === 'undefined') {
+  window.makeDeleteBtn = function(id, card, reloadFn) {
+    var btn = document.createElement('button');
+    btn.textContent = '\u05DE\u05D7\u05E7 \uD83D\uDDD1\uFE0F';
+    btn.title = '\u05DE\u05D7\u05E7';
+    btn.style.cssText = 'background:rgba(220,38,38,0.15);border:1px solid rgba(220,38,38,0.3);color:#ef4444;border-radius:6px;padding:4px 8px;font-size:11px;cursor:pointer;font-family:Heebo,sans-serif;';
+    btn.onclick = function(e) {
+      e.stopPropagation();
+      if (!confirm('\u05DC\u05DE\u05D7\u05D5\u05E7 \u05E7\u05D5\u05D1\u05E5 \u05D6\u05D4?')) return;
+      var headers = { apikey: SB_KEY, Authorization: 'Bearer ' + SB_KEY };
+      fetch(SB_URL + '/rest/v1/beni_notes?id=eq.' + id, { method: 'DELETE', headers: headers })
+        .then(function() {
+          if (card && card.parentNode) card.parentNode.removeChild(card);
+          if (typeof reloadFn === 'function') setTimeout(reloadFn, 300);
+        })
+        .catch(function(err) { console.error('delete error:', err); });
+    };
+    return btn;
+  };
+}
 
 var _ocrFetched = false;
 async function _fetchJournalOCR() {
