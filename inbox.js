@@ -372,7 +372,14 @@ function sibShowAnalysis(id, result) {
       '<div style="font-size:12px;color:#2c4a6e;line-height:1.8;white-space:pre-wrap;direction:rtl;">' + sibEsc(result.text) + '</div>' +
     '</div>' +
     '<div style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap;">' +
-      '<button onclick="sibSaveAnalysisAsNote(\'' + id + '\')" style="flex:1;padding:8px;background:#f5e9c4;border:1px solid rgba(180,140,60,0.4);color:#9a6f00;border-radius:7px;font-family:Heebo,sans-serif;font-size:11px;font-weight:700;cursor:pointer;">💾 שמור כדוח</button>' +
+      '<div style="background:#fffbf0;border:1px solid rgba(180,140,60,0.3);border-radius:8px;padding:8px;margin-bottom:4px;width:100%;">' +
+        '<div style="font-size:10px;color:#9a6f00;font-weight:800;margin-bottom:5px;">💾 שמור כדוח ביומן</div>' +
+        '<select id="sib-save-proj-' + id + '" style="width:100%;background:#fff;border:1px solid rgba(180,140,60,0.3);color:#2c4a6e;border-radius:6px;padding:5px 8px;font-family:Heebo,sans-serif;font-size:11px;direction:rtl;margin-bottom:5px;">' +
+          '<option value="">— בחר פרויקט (אופציונלי) —</option>' +
+          (window.allProjects||[]).map(function(p){ return '<option value="' + p.id + '"' + (p.id === item.project_id ? ' selected' : '') + '>' + sibEsc(p.project_name) + '</option>'; }).join('') +
+        '</select>' +
+        '<button onclick="sibSaveAnalysisAsNote(\'' + id + '\')" style="width:100%;padding:7px;background:#f5e9c4;border:1px solid rgba(180,140,60,0.4);color:#9a6f00;border-radius:6px;font-family:Heebo,sans-serif;font-size:11px;font-weight:800;cursor:pointer;">💾 שמור ביומן מזכרים</button>' +
+      '</div>' +
       '<button onclick="sibSaveToEnc(\'' + id + '\')" style="flex:1;padding:8px;background:#ede7f6;border:1px solid #9c6fdd;color:#4527a0;border-radius:7px;font-family:Heebo,sans-serif;font-size:11px;font-weight:700;cursor:pointer;">📚 לאנציקלופדיה</button>' +
       '<button onclick="sibCopyAnalysis(\'' + id + '\')" style="padding:8px 12px;background:#f5f0e8;border:1px solid rgba(180,140,60,0.25);color:#7a8a95;border-radius:7px;font-family:Heebo,sans-serif;font-size:11px;cursor:pointer;">📋 העתק</button>' +
       '<button onclick="switchTab(\'rag\')" style="padding:8px 12px;background:#e8f0fd;border:1px solid rgba(26,61,92,0.2);color:#1a3d5c;border-radius:7px;font-family:Heebo,sans-serif;font-size:11px;font-weight:700;cursor:pointer;">🏗️ ייעוץ</button>' +
@@ -521,16 +528,32 @@ async function sibSaveAnalysisAsNote(id) {
   var analysis = _sibAnalysis[id];
   if (!item || !analysis) return;
 
+  // Read project from selector if present
+  var sel = document.getElementById('sib-save-proj-' + id);
+  var projectId = (sel && sel.value) ? sel.value : (item.project_id || null);
+  var modeLabel = { general: 'כללי', engineering: 'הנדסי', safety: 'בטיחות', pdf: 'PDF', transcription: 'תמלול' }[analysis.mode] || analysis.mode;
+  var proj = (window.allProjects||[]).find(function(p){ return p.id === projectId; });
+  var projName = proj ? proj.project_name : '';
+
   try {
     await sb.from('beni_notes').insert({
-      note_text: '[ניתוח AI — ' + analysis.mode + ']\n' + analysis.text,
+      note_text: '📊 דוח AI — ' + modeLabel + (projName ? ' | ' + projName : '') + '\n\n' + analysis.text,
       note_type: 'text',
       photo_url: item.cloudinary_url || null,
-      project_id: item.project_id || null,
+      project_id: projectId,
       color: 'blue',
       created_at: new Date().toISOString()
     });
-    showToast('✅ נשמר ביומן','success');
+    showToast('✅ נשמר ביומן מזכרים' + (projName ? ' — ' + projName : ''), 'success');
+    // Also update item project if selected
+    if (projectId && projectId !== item.project_id) {
+      await fetch(SB_URL + '/rest/v1/asset_inbox?id=eq.' + id, {
+        method: 'PATCH',
+        headers: { apikey: SB_KEY, Authorization: 'Bearer ' + SB_KEY, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+        body: JSON.stringify({ project_id: projectId })
+      });
+      item.project_id = projectId;
+    }
   } catch(e) {
     showToast('שגיאה: ' + e.message, 'error');
   }
