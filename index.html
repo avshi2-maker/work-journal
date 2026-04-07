@@ -6225,7 +6225,7 @@ async function switchTab(tab) {
   }
   if (tab === 'standards')   { _fetchStandardsModule().then(function(){ setTimeout(standardsRagInit, 100); }); }
   if (tab === 'smartscan')   { _fetchSmartScanModule().then(function(){ setTimeout(function(){ smartScanInit(); _ssPopulateProjects(); }, 100); }); }
-  if (tab === 'inbox')       { setTimeout(function(){ assetInboxLoad(); }, 100); }
+  if (tab === 'inbox')       { _fetchInboxModule().then(function(){ setTimeout(function(){ if(typeof sibInit==='function') sibInit(); }, 100); }); }
   if (tab === 'misc')        { setTimeout(loadMiscTab, 100); }
 }
 
@@ -7253,6 +7253,21 @@ async function _fetchJournalModule() {
     var ns = document.createElement('script'); ns.textContent = code;
     document.head.appendChild(ns);
   } catch(e) { console.error('journal fetch failed:', e); _journalFetched = false; }
+}
+
+// ══ INBOX MODULE LOADER — fetches inbox.js from GitHub ════════════════
+var _inboxFetched = false;
+async function _fetchInboxModule() {
+  if (_inboxFetched) return;
+  _inboxFetched = true;
+  try {
+    var res = await fetch('inbox.js?v=' + Date.now());
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    var code = await res.text();
+    if (code.trim().startsWith('<')) throw new Error('Got HTML not JS');
+    var ns = document.createElement('script'); ns.textContent = code;
+    document.head.appendChild(ns);
+  } catch(e) { console.error('inbox.js fetch failed:', e); _inboxFetched = false; }
 }
 
 // ══ WIZARD MODULE LOADER — fetches wizard.js from GitHub ══════════════
