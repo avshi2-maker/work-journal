@@ -7,6 +7,7 @@ var _sibItems      = [];   // all pending inbox items
 var _sibSelected   = null; // currently selected item id
 var _sibAnalysis   = {};   // analysis results keyed by item id
 var _sibApiKey     = null; // Claude API key from app_config
+var _sibChecked    = {};   // {itemId: {safety:bool, engineering:bool, standards:bool}}
 
 // ── INIT ─────────────────────────────────────────────────────────────
 async function sibInit() {
@@ -56,7 +57,10 @@ function sibHTML() {
 
     <!-- RIGHT PANEL: Incoming files -->
     <div style="border-left:2px solid rgba(180,140,60,0.3);background:#fdf6e3;padding:16px;overflow-y:auto;max-height:calc(100vh - 120px);">
-      <div style="font-size:10px;font-weight:700;color:#7a8a95;letter-spacing:1px;text-transform:uppercase;margin-bottom:12px;">קבצים נכנסים — בני פרסקי</div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+        <div style="font-size:10px;font-weight:700;color:#9a6f00;letter-spacing:1px;text-transform:uppercase;">קבצים נכנסים — בני פרסקי</div>
+        <button onclick="sibBatchAnalyze()" style="background:linear-gradient(135deg,#1a3d5c,#2d6a9f);border:none;color:#fff;border-radius:8px;padding:6px 12px;font-family:Heebo,sans-serif;font-size:10px;font-weight:800;cursor:pointer;">🚀 הפעל ניתוח חכם</button>
+      </div>
       <div id="sib-file-list" style="display:flex;flex-direction:column;gap:8px;">
         <div style="text-align:center;padding:40px;color:#9aabb5;font-size:13px;">טוען קבצים...</div>
       </div>
@@ -151,7 +155,20 @@ function sibFileCard(item) {
   // Action buttons per type
   var actions = sibActionButtons(item);
 
-  card.innerHTML =
+  // Init checkbox state
+  if (!_sibChecked[item.id]) _sibChecked[item.id] = {safety:true, engineering:false, standards:false};
+  var chk = _sibChecked[item.id];
+  var hasVisual = (type === 'image' || type === 'photo' || type === 'video');
+  var checkboxRow = hasVisual ?
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;margin:8px 0 6px;padding:7px 10px;background:#fffbf0;border-radius:8px;border:1px solid rgba(180,140,60,0.15);">' +
+      '<label style="display:flex;align-items:center;gap:5px;cursor:pointer;font-size:11px;font-weight:700;color:#c62828;">' +
+        '<input type="checkbox" ' + (chk.safety?'checked':'') + ' onchange="_sibChecked[&quot;' + item.id + '&quot;].safety=this.checked;event.stopPropagation();" style="accent-color:#c62828;"> ⚠️ בטיחות</label>' +
+      '<label style="display:flex;align-items:center;gap:5px;cursor:pointer;font-size:11px;font-weight:700;color:#1a3d5c;">' +
+        '<input type="checkbox" ' + (chk.engineering?'checked':'') + ' onchange="_sibChecked[&quot;' + item.id + '&quot;].engineering=this.checked;event.stopPropagation();" style="accent-color:#1a3d5c;"> 🏗️ הנדסי</label>' +
+      '<label style="display:flex;align-items:center;gap:5px;cursor:pointer;font-size:11px;font-weight:700;color:#9a6f00;">' +
+        '<input type="checkbox" ' + (chk.standards?'checked':'') + ' onchange="_sibChecked[&quot;' + item.id + '&quot;].standards=this.checked;event.stopPropagation();" style="accent-color:#9a6f00;"> 📋 תקנים</label>' +
+    '</div>' : '';
+
     '<div style="display:flex;align-items:flex-start;gap:10px;">' +
       '<div style="width:36px;height:36px;border-radius:8px;background:' + typeBg + ';display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;">' + typeIcon + '</div>' +
       '<div style="flex:1;min-width:0;">' +
@@ -164,7 +181,7 @@ function sibFileCard(item) {
       '</div>' +
       '<button onclick="sibDeleteItem(\'' + item.id + '\')" style="background:none;border:none;color:#b0bec5;cursor:pointer;font-size:14px;padding:2px;flex-shrink:0;" title="מחק">🗑️</button>' +
     '</div>' +
-    '<div style="display:flex;gap:5px;flex-wrap:wrap;margin-top:10px;">' + actions + '</div>';
+    '<div style="display:flex;gap:5px;flex-wrap:wrap;margin-top:6px;">' + checkboxRow + actions + '</div>';
 
   card.onclick = function(e) {
     if (e.target.closest('button')) return;
@@ -355,6 +372,7 @@ function sibShowAnalysis(id, result) {
       '<button onclick="sibSaveAnalysisAsNote(\'' + id + '\')" style="flex:1;padding:8px;background:#f5e9c4;border:1px solid rgba(180,140,60,0.4);color:#9a6f00;border-radius:7px;font-family:Heebo,sans-serif;font-size:11px;font-weight:700;cursor:pointer;">💾 שמור כדוח</button>' +
       '<button onclick="sibSaveToEnc(\'' + id + '\')" style="flex:1;padding:8px;background:#ede7f6;border:1px solid #9c6fdd;color:#4527a0;border-radius:7px;font-family:Heebo,sans-serif;font-size:11px;font-weight:700;cursor:pointer;">📚 לאנציקלופדיה</button>' +
       '<button onclick="sibCopyAnalysis(\'' + id + '\')" style="padding:8px 12px;background:#f5f0e8;border:1px solid rgba(180,140,60,0.25);color:#7a8a95;border-radius:7px;font-family:Heebo,sans-serif;font-size:11px;cursor:pointer;">📋 העתק</button>' +
+      '<button onclick="switchTab(\'rag\')" style="padding:8px 12px;background:#e8f0fd;border:1px solid rgba(26,61,92,0.2);color:#1a3d5c;border-radius:7px;font-family:Heebo,sans-serif;font-size:11px;font-weight:700;cursor:pointer;">🏗️ ייעוץ</button>' +
     '</div>' +
     sibApprovePanel(item);
 }
@@ -674,6 +692,27 @@ async function sibAnalyzeTranscript(id) {
   } catch(e) {
     sibShowError('שגיאה: ' + e.message);
   }
+}
+
+// ── BATCH ANALYZE ────────────────────────────────────────────────────
+async function sibBatchAnalyze() {
+  var toAnalyze = _sibItems.filter(function(i){
+    var chk = _sibChecked[i.id] || {};
+    return chk.safety || chk.engineering || chk.standards;
+  });
+  if (!toAnalyze.length) {
+    showToast('בחר לפחות קובץ אחד עם סוג ניתוח','error'); return;
+  }
+  showToast('🚀 מנתח ' + toAnalyze.length + ' קבצים...','success');
+  for (var i = 0; i < toAnalyze.length; i++) {
+    var item = toAnalyze[i];
+    var chk = _sibChecked[item.id] || {};
+    var mode = chk.safety ? 'safety' : chk.engineering ? 'engineering' : 'general';
+    sibSelectItem(item.id);
+    await sibAnalyze(item.id, mode);
+    await new Promise(function(r){ setTimeout(r, 800); }); // brief pause between calls
+  }
+  showToast('✅ ניתוח הושלם','success');
 }
 
 // ── UTILS ─────────────────────────────────────────────────────────────
