@@ -360,8 +360,8 @@ window.addEventListener('unhandledrejection', function(e) {
 <!-- ══ TOP TAB BAR ══ -->
 <div id="top-tabs">
   <div class="top-tab active" id="tab-crm"    onclick="switchTab('crm')"><span>📊</span><span>לוח בקרה</span></div>
-  <div class="top-tab" id="tab-fieldjournal" onclick="switchTab('journal');if(typeof jwGoto==='function')jwGoto(1);"><span>🌅</span><span>בריפינג בוקר</span></div>
-  <div class="top-tab"        id="tab-inbox" onclick="switchTab('inbox')"><span>📥</span><span>תיבת נכנסים 📥</span><span id="tab-inbox-badge" style="display:none;background:#ef4444;color:#fff;border-radius:8px;padding:1px 6px;font-size:9px;font-weight:800;"></span></div>
+  <div class="top-tab" id="tab-fieldjournal" onclick="switchTab('journal');if(typeof jwGoto==='function')jwGoto(1);"><span>🌅</span><span>יומן שטח מלא עם קישור לקבלן</span></div>
+  <div class="top-tab"        id="tab-inbox" onclick="switchTab('inbox')"><span>📥</span><span>תיבת נכנסים</span><span id="tab-inbox-badge" style="display:none;background:#ef4444;color:#fff;border-radius:8px;padding:1px 6px;font-size:9px;font-weight:800;"></span></div>
 </div>
 
 <!-- ══ PANELS — loaded dynamically from Supabase Storage ══ -->
@@ -383,7 +383,7 @@ window.addEventListener('unhandledrejection', function(e) {
 
   <!-- GROUP: יומי -->
   <div class="nav-group-label">יומי</div>
-  <div class="nav-item" onclick="switchTab('eod')" id="tab-eod-nav"><span class="nav-icon">🧠</span><span>יומן שטח</span></div>
+  <div class="nav-item" onclick="switchTab('eod')" id="tab-eod-nav"><span class="nav-icon">🧠</span><span>יומן שטח אישי קצר</span></div>
   <div class="nav-item" onclick="switchTab('gcal')" id="tab-gcal-nav"><span class="nav-icon">📅</span><span>יומן Google</span></div>
 
   <!-- GROUP: פרויקטים -->
