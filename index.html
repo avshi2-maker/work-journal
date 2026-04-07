@@ -5189,13 +5189,33 @@ async function bootstrap() {
     }, 500);
 
     _createStopButton(); // floating stop button for AI operations
+
   // Auto-refresh Field Intel + Beni Tasks every 60 seconds (only when CRM tab visible)
-    setInterval(function() {
-      const crmActive = document.getElementById('crm-panel')?.classList.contains('active');
-      if (!crmActive) return;
-      try { if (typeof loadFieldIntel === 'function') loadFieldIntel(); } catch(e){}
-      try { if (typeof loadBeniTasks  === 'function') loadBeniTasks();  } catch(e){}
-    }, 60000);
+  // Auto-refresh inbox every 90 seconds when inbox tab is active
+  var _inboxCountdown = 90;
+  setInterval(function() {
+    const crmActive = document.getElementById('crm-panel')?.classList.contains('active');
+    if (!crmActive) return;
+    try { if (typeof loadFieldIntel === 'function') loadFieldIntel(); } catch(e){}
+    try { if (typeof loadBeniTasks  === 'function') loadBeniTasks();  } catch(e){}
+    // inbox auto-refresh
+    var inboxActive = document.getElementById('inbox-panel')?.style.display === 'block';
+    var indicator   = document.getElementById('inbox-refresh-indicator');
+    var countdown   = document.getElementById('inbox-countdown');
+    if (inboxActive) {
+      if (indicator) indicator.style.display = 'inline';
+      _inboxCountdown -= 1;
+      if (countdown) countdown.textContent = _inboxCountdown;
+      if (_inboxCountdown <= 0) {
+        _inboxCountdown = 90;
+        if (countdown) countdown.textContent = 90;
+        try { if (typeof sibInit === 'function') sibInit(); } catch(e){}
+      }
+    } else {
+      _inboxCountdown = 90;
+      if (indicator) indicator.style.display = 'none';
+    }
+  }, 1000);
 
     // 7. Done — hide loading screen
     const loadingEl = document.getElementById('global-loading');
@@ -7621,6 +7641,25 @@ var _assetInboxFetched = false;
 async function _fetchAssetInboxModule() {
   _assetInboxFetched = true;
 }
+// Error log helpers — called from inbox.js and Beni Pocket upload responses
+function inboxLogError(msg) {
+  var log  = document.getElementById('inbox-error-log');
+  var list = document.getElementById('inbox-error-list');
+  if (!log || !list) return;
+  var time = new Date().toLocaleTimeString('he-IL', {hour:'2-digit', minute:'2-digit'});
+  var line = document.createElement('div');
+  line.textContent = time + ' — ' + msg;
+  list.insertBefore(line, list.firstChild);
+  log.style.display = 'block';
+  // Keep max 10 errors
+  while (list.children.length > 10) list.removeChild(list.lastChild);
+}
+function inboxClearErrors() {
+  var log  = document.getElementById('inbox-error-log');
+  var list = document.getElementById('inbox-error-list');
+  if (list) list.innerHTML = '';
+  if (log)  log.style.display = 'none';
+}
 // assetInboxLoad = alias that loads inbox.js then calls sibInit
 async function assetInboxLoad() {
   if (typeof sibInit === 'function') { sibInit(); return; }
@@ -8725,13 +8764,23 @@ function openLinkModal(takeoffId) {
         <h1 style="font-size:24px;font-weight:900;color:#fff;margin:0;">📥 תיבת נכנסים — קבצי בני</h1>
         <div style="font-size:12px;color:#666;margin-top:4px;">כל הקבצים שבני העלה מהאנדרואיד — בחר יעד לכל קובץ ולחץ אישור</div>
       </div>
-      <div style="display:flex;gap:8px;">
+      <div style="display:flex;gap:8px;align-items:center;">
+        <span id="inbox-refresh-indicator" style="font-size:11px;color:#555;display:none;">⏱ רענון אוטומטי: <span id="inbox-countdown">90</span>ש'</span>
         <button onclick="assetInboxLoad()" style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);color:#aaa;border-radius:10px;padding:9px 16px;font-size:12px;cursor:pointer;font-family:Heebo,sans-serif;">🔄 רענן</button>
       </div>
     </div>
 
     <!-- Stats row -->
     <div style="display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap;" id="inbox-stats-row"></div>
+
+    <!-- Error log -->
+    <div id="inbox-error-log" style="display:none;background:rgba(220,38,38,0.08);border:1px solid rgba(220,38,38,0.25);border-radius:10px;padding:12px 16px;margin-bottom:16px;direction:rtl;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+        <span style="font-size:12px;font-weight:800;color:#f87171;">🚨 שגיאות העלאה אחרונות</span>
+        <button onclick="inboxClearErrors()" style="background:none;border:none;color:#666;font-size:11px;cursor:pointer;font-family:Heebo,sans-serif;">נקה</button>
+      </div>
+      <div id="inbox-error-list" style="font-size:11px;color:#fca5a5;line-height:1.8;"></div>
+    </div>
 
     <!-- List -->
     <div id="inbox-panel-list">
