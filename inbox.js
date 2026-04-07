@@ -31,42 +31,42 @@ async function sibInit() {
 }
 
 function sibHTML() {
-  return `<div id="sib-root" style="min-height:100vh;background:#0f1117;font-family:Heebo,sans-serif;direction:rtl;padding:0;">
+  return `<div id="sib-root" style="min-height:100vh;background:#fdf6e3;font-family:Heebo,sans-serif;direction:rtl;padding:0;">
 
   <!-- TOPBAR -->
-  <div style="background:#161b27;border-bottom:1px solid rgba(255,255,255,0.06);padding:14px 20px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
+  <div style="background:#f5e9c4;border-bottom:2px solid #c9a84c;padding:14px 20px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
     <div>
-      <div style="font-size:9px;letter-spacing:3px;color:#c9a84c;text-transform:uppercase;margin-bottom:3px;">Smart Inbox</div>
-      <div style="font-size:18px;font-weight:900;color:#fff;">📥 תיבת נכנסים חכמה</div>
+      <div style="font-size:9px;letter-spacing:3px;color:#9a6f00;font-weight:800;text-transform:uppercase;margin-bottom:3px;">Smart Inbox</div>
+      <div style="font-size:18px;font-weight:900;color:#1a3d5c;">📥 תיבת נכנסים חכמה</div>
     </div>
     <div style="display:flex;gap:8px;align-items:center;">
-      <span id="sib-badge" style="display:none;background:#ef4444;color:#fff;border-radius:20px;padding:3px 10px;font-size:11px;font-weight:800;"></span>
-      <button onclick="sibLoad()" style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);color:#aaa;border-radius:8px;padding:7px 14px;font-size:11px;cursor:pointer;font-family:Heebo,sans-serif;">🔄 רענן</button>
-      <select id="sib-proj-filter" onchange="sibFilterByProject(this.value)" style="background:#1e2535;border:1px solid rgba(255,255,255,0.1);color:#ccc;border-radius:8px;padding:7px 12px;font-size:11px;font-family:Heebo,sans-serif;direction:rtl;">
+      <span id="sib-badge" style="display:none;background:#ef4444;color:#1a3d5c;border-radius:20px;padding:3px 10px;font-size:11px;font-weight:800;"></span>
+      <button onclick="sibLoad()" style="background:#f5f0e8;border:1px solid rgba(180,140,60,0.3);color:#5a6f7c;border-radius:8px;padding:7px 14px;font-size:11px;cursor:pointer;font-family:Heebo,sans-serif;">🔄 רענן</button>
+      <select id="sib-proj-filter" onchange="sibFilterByProject(this.value)" style="background:#fff;border:1px solid rgba(180,140,60,0.3);color:#2c4a6e;border-radius:8px;padding:7px 12px;font-size:11px;font-family:Heebo,sans-serif;direction:rtl;">
         <option value="">כל הפרויקטים</option>
       </select>
     </div>
   </div>
 
   <!-- STATS BAR -->
-  <div id="sib-stats" style="display:flex;gap:8px;padding:10px 20px;background:#161b27;border-bottom:1px solid rgba(255,255,255,0.04);flex-wrap:wrap;"></div>
+  <div id="sib-stats" style="display:flex;gap:8px;padding:10px 20px;background:#f5e9c4;border-bottom:1px solid #f5f0e8;flex-wrap:wrap;"></div>
 
   <!-- MAIN TWO-PANEL -->
   <div style="display:grid;grid-template-columns:1fr 1fr;min-height:calc(100vh - 120px);">
 
     <!-- RIGHT PANEL: Incoming files -->
-    <div style="border-left:1px solid rgba(255,255,255,0.06);padding:16px;overflow-y:auto;max-height:calc(100vh - 120px);">
-      <div style="font-size:10px;font-weight:700;color:#666;letter-spacing:1px;text-transform:uppercase;margin-bottom:12px;">קבצים נכנסים — בני פרסקי</div>
+    <div style="border-left:2px solid rgba(180,140,60,0.3);background:#fdf6e3;padding:16px;overflow-y:auto;max-height:calc(100vh - 120px);">
+      <div style="font-size:10px;font-weight:700;color:#7a8a95;letter-spacing:1px;text-transform:uppercase;margin-bottom:12px;">קבצים נכנסים — בני פרסקי</div>
       <div id="sib-file-list" style="display:flex;flex-direction:column;gap:8px;">
-        <div style="text-align:center;padding:40px;color:#444;font-size:13px;">טוען קבצים...</div>
+        <div style="text-align:center;padding:40px;color:#9aabb5;font-size:13px;">טוען קבצים...</div>
       </div>
     </div>
 
     <!-- LEFT PANEL: Analysis -->
-    <div style="padding:16px;overflow-y:auto;max-height:calc(100vh - 120px);">
-      <div style="font-size:10px;font-weight:700;color:#666;letter-spacing:1px;text-transform:uppercase;margin-bottom:12px;">ניתוח AI — מיידי</div>
+    <div style="background:#fdf6e3;padding:16px;overflow-y:auto;max-height:calc(100vh - 120px);">
+      <div style="font-size:10px;font-weight:700;color:#7a8a95;letter-spacing:1px;text-transform:uppercase;margin-bottom:12px;">ניתוח AI — מיידי</div>
       <div id="sib-analysis-panel">
-        <div style="text-align:center;padding:60px 20px;color:#333;font-size:13px;line-height:1.8;">
+        <div style="text-align:center;padding:60px 20px;color:#b0bec5;font-size:13px;line-height:1.8;">
           <div style="font-size:32px;margin-bottom:12px;">👈</div>
           בחר קובץ מהרשימה<br>ולחץ על כפתור הניתוח
         </div>
@@ -106,10 +106,10 @@ async function sibLoad() {
       ['🎙', audios, 'הקלטות'],
       ['📄', pdfs,   'מסמכים'],
     ].map(function(s){
-      return '<div style="display:flex;align-items:center;gap:5px;background:rgba(255,255,255,0.03);border-radius:6px;padding:5px 10px;">' +
+      return '<div style="display:flex;align-items:center;gap:5px;background:#fff;border-radius:6px;padding:5px 10px;">' +
         '<span style="font-size:14px;">' + s[0] + '</span>' +
-        '<span style="font-size:15px;font-weight:800;color:#fff;">' + s[1] + '</span>' +
-        '<span style="font-size:10px;color:#555;">' + s[2] + '</span></div>';
+        '<span style="font-size:15px;font-weight:800;color:#1a3d5c;">' + s[1] + '</span>' +
+        '<span style="font-size:10px;color:#8a9aa5;">' + s[2] + '</span></div>';
     }).join('');
   }
 
@@ -119,7 +119,7 @@ async function sibLoad() {
   }
 
   if (_sibItems.length === 0) {
-    listEl.innerHTML = '<div style="text-align:center;padding:60px 20px;color:#333;font-size:13px;line-height:2;">✅ תיבת הנכנסים ריקה<br><span style="font-size:11px;color:#222;">כל הקבצים טופלו</span></div>';
+    listEl.innerHTML = '<div style="text-align:center;padding:60px 20px;color:#b0bec5;font-size:13px;line-height:2;">✅ תיבת הנכנסים ריקה<br><span style="font-size:11px;color:#b0bec5;">כל הקבצים טופלו</span></div>';
     return;
   }
 
@@ -134,13 +134,13 @@ function sibFileCard(item) {
   var card = document.createElement('div');
   var isSelected = _sibSelected === item.id;
   card.id = 'sib-card-' + item.id;
-  card.style.cssText = 'background:' + (isSelected ? 'rgba(201,168,76,0.08)' : 'rgba(255,255,255,0.03)') + ';' +
-    'border:1px solid ' + (isSelected ? 'rgba(201,168,76,0.4)' : 'rgba(255,255,255,0.06)') + ';' +
+  card.style.cssText = 'background:' + (isSelected ? '#fffbf0' : '#fff') + ';' +
+    'border:1px solid ' + (isSelected ? 'rgba(180,140,60,0.5)' : 'rgba(180,140,60,0.2)') + ';' +
     'border-radius:10px;padding:12px;cursor:pointer;transition:all 0.15s;';
 
   var type = item.file_type || 'image';
   var typeIcon = type === 'video' ? '🎥' : type === 'audio' ? '🎙' : type === 'pdf' ? '📄' : '📸';
-  var typeBg   = type === 'video' ? '#2d1f00' : type === 'audio' ? '#0d2117' : type === 'pdf' ? '#1a0d0d' : '#0d1a2d';
+  var typeBg   = type === 'video' ? '#fff8e8' : type === 'audio' ? '#e8f8f0' : type === 'pdf' ? '#fdf0f0' : '#e8f0fd';
   var typeColor= type === 'video' ? '#f59e0b' : type === 'audio' ? '#10b981' : type === 'pdf' ? '#ef4444' : '#3b82f6';
 
   var fname = item.file_name || 'קובץ ללא שם';
@@ -155,14 +155,14 @@ function sibFileCard(item) {
     '<div style="display:flex;align-items:flex-start;gap:10px;">' +
       '<div style="width:36px;height:36px;border-radius:8px;background:' + typeBg + ';display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;">' + typeIcon + '</div>' +
       '<div style="flex:1;min-width:0;">' +
-        '<div style="font-size:12px;font-weight:700;color:#ddd;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + sibEsc(fname) + '</div>' +
+        '<div style="font-size:12px;font-weight:700;color:#1a3d5c;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + sibEsc(fname) + '</div>' +
         '<div style="display:flex;gap:6px;align-items:center;margin-top:3px;">' +
-          '<span style="font-size:10px;color:#555;">' + timeStr + '</span>' +
-          '<span style="font-size:9px;padding:1px 7px;border-radius:10px;background:rgba(255,255,255,0.05);color:' + typeColor + ';border:1px solid ' + typeColor + '22;">' + type + '</span>' +
-          '<span style="font-size:9px;color:#444;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:90px;">' + sibEsc(projName) + '</span>' +
+          '<span style="font-size:10px;color:#8a9aa5;">' + timeStr + '</span>' +
+          '<span style="font-size:9px;padding:1px 7px;border-radius:10px;background:#f5f0e8;color:' + typeColor + ';border:1px solid ' + typeColor + '22;">' + type + '</span>' +
+          '<span style="font-size:9px;color:#9aabb5;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:90px;">' + sibEsc(projName) + '</span>' +
         '</div>' +
       '</div>' +
-      '<button onclick="sibDeleteItem(\'' + item.id + '\')" style="background:none;border:none;color:#333;cursor:pointer;font-size:14px;padding:2px;flex-shrink:0;" title="מחק">🗑️</button>' +
+      '<button onclick="sibDeleteItem(\'' + item.id + '\')" style="background:none;border:none;color:#b0bec5;cursor:pointer;font-size:14px;padding:2px;flex-shrink:0;" title="מחק">🗑️</button>' +
     '</div>' +
     '<div style="display:flex;gap:5px;flex-wrap:wrap;margin-top:10px;">' + actions + '</div>';
 
@@ -203,11 +203,11 @@ function sibActionButtons(item) {
 
 function sibBtn(label, onclick, style) {
   var styles = {
-    primary: 'background:#1a3d5c;color:#7eb8e8;border:1px solid rgba(59,130,246,0.3);',
-    sec:     'background:rgba(255,255,255,0.04);color:#aaa;border:1px solid rgba(255,255,255,0.1);',
-    danger:  'background:rgba(239,68,68,0.1);color:#fca5a5;border:1px solid rgba(239,68,68,0.2);',
-    enc:     'background:rgba(139,92,246,0.12);color:#c4b5fd;border:1px solid rgba(139,92,246,0.25);',
-    approve: 'background:rgba(16,185,129,0.12);color:#6ee7b7;border:1px solid rgba(16,185,129,0.25);',
+    primary: 'background:#1a3d5c;color:#fff;border:1px solid #1a3d5c;',
+    sec:     'background:#f5f0e8;color:#5a6f7c;border:1px solid rgba(180,140,60,0.3);',
+    danger:  'background:#fff5f5;color:#c62828;border:1px solid #fca5a5;',
+    enc:     'background:#ede7f6;color:#4527a0;border:1px solid #9c6fdd;',
+    approve: 'background:#e8f5e9;color:#1b5e20;border:1px solid #a5d6a7;',
   };
   return '<button onclick="' + onclick + ';event.stopPropagation();" style="' +
     (styles[style] || styles.sec) +
@@ -223,8 +223,8 @@ function sibSelectItem(id) {
     var card = document.getElementById('sib-card-' + item.id);
     if (!card) return;
     var sel = item.id === id;
-    card.style.background = sel ? 'rgba(201,168,76,0.08)' : 'rgba(255,255,255,0.03)';
-    card.style.border = '1px solid ' + (sel ? 'rgba(201,168,76,0.4)' : 'rgba(255,255,255,0.06)');
+    card.style.background = sel ? '#fffbf0' : '#fff';
+    card.style.border = '1px solid ' + (sel ? 'rgba(180,140,60,0.5)' : 'rgba(180,140,60,0.2)');
   });
   // Show existing analysis or prompt
   var panel = document.getElementById('sib-analysis-panel');
@@ -237,16 +237,16 @@ function sibSelectItem(id) {
   } else {
     var typeIcon = item.file_type === 'video' ? '🎥' : item.file_type === 'audio' ? '🎙' : item.file_type === 'pdf' ? '📄' : '📸';
     panel.innerHTML =
-      '<div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:10px;padding:16px;margin-bottom:12px;">' +
+      '<div style="background:#fff;border:1px solid rgba(180,140,60,0.25);border-radius:10px;padding:16px;margin-bottom:12px;">' +
         '<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">' +
           '<span style="font-size:24px;">' + typeIcon + '</span>' +
           '<div>' +
-            '<div style="font-size:13px;font-weight:700;color:#ddd;">' + sibEsc(item.file_name||'קובץ') + '</div>' +
-            '<div style="font-size:10px;color:#555;margin-top:2px;">' + new Date(item.created_at).toLocaleString('he-IL') + '</div>' +
+            '<div style="font-size:13px;font-weight:700;color:#1a3d5c;">' + sibEsc(item.file_name||'קובץ') + '</div>' +
+            '<div style="font-size:10px;color:#8a9aa5;margin-top:2px;">' + new Date(item.created_at).toLocaleString('he-IL') + '</div>' +
           '</div>' +
         '</div>' +
         (item.thumbnail_url ? '<img src="' + item.thumbnail_url + '" style="width:100%;border-radius:8px;margin-bottom:10px;max-height:180px;object-fit:cover;" />' : '') +
-        '<div style="font-size:11px;color:#555;text-align:center;padding:10px;">לחץ על כפתורי הניתוח בכרטיס הקובץ</div>' +
+        '<div style="font-size:11px;color:#8a9aa5;text-align:center;padding:10px;">לחץ על כפתורי הניתוח בכרטיס הקובץ</div>' +
       '</div>' +
       sibApprovePanel(item);
   }
@@ -258,10 +258,10 @@ function sibApprovePanel(item) {
       return '<option value="' + p.id + '"' + (p.id === item.project_id ? ' selected' : '') + '>' + sibEsc(p.project_name) + '</option>';
     }).join('');
 
-  return '<div style="background:rgba(16,185,129,0.05);border:1px solid rgba(16,185,129,0.15);border-radius:10px;padding:14px;">' +
-    '<div style="font-size:11px;font-weight:700;color:#6ee7b7;margin-bottom:10px;">שייך לפרויקט ואשר</div>' +
-    '<select id="sib-proj-sel-' + item.id + '" style="width:100%;background:#1e2535;border:1px solid rgba(255,255,255,0.1);color:#ccc;border-radius:8px;padding:8px 12px;font-family:Heebo,sans-serif;font-size:12px;direction:rtl;margin-bottom:8px;">' + projOpts + '</select>' +
-    '<button onclick="sibApproveWithProject(\'' + item.id + '\')" style="width:100%;padding:10px;background:linear-gradient(135deg,#0d9488,#0f766e);border:none;color:#fff;border-radius:8px;font-family:Heebo,sans-serif;font-size:13px;font-weight:800;cursor:pointer;">✅ אשר ושייך לפרויקט</button>' +
+  return '<div style="background:#f0faf5;border:1px solid #a5d6a7;border-radius:10px;padding:14px;">' +
+    '<div style="font-size:11px;font-weight:700;color:#1b7a4a;font-weight:800;margin-bottom:10px;">שייך לפרויקט ואשר</div>' +
+    '<select id="sib-proj-sel-' + item.id + '" style="width:100%;background:#fff;border:1px solid rgba(180,140,60,0.3);color:#2c4a6e;border-radius:8px;padding:8px 12px;font-family:Heebo,sans-serif;font-size:12px;direction:rtl;margin-bottom:8px;">' + projOpts + '</select>' +
+    '<button onclick="sibApproveWithProject(\'' + item.id + '\')" style="width:100%;padding:10px;background:linear-gradient(135deg,#0d9488,#0f766e);border:none;color:#1a3d5c;border-radius:8px;font-family:Heebo,sans-serif;font-size:13px;font-weight:800;cursor:pointer;">✅ אשר ושייך לפרויקט</button>' +
     '</div>';
 }
 
@@ -273,7 +273,7 @@ async function sibAnalyze(id, mode) {
   sibSelectItem(id);
   var panel = document.getElementById('sib-analysis-panel');
   if (panel) {
-    panel.innerHTML = '<div style="text-align:center;padding:40px;color:#c9a84c;font-size:13px;">' +
+    panel.innerHTML = '<div style="text-align:center;padding:40px;color:#9a6f00;font-size:13px;">' +
       '<div style="font-size:28px;margin-bottom:12px;animation:spin 1s linear infinite;">⚙️</div>' +
       'Claude מנתח את הקובץ...' +
       '</div>' +
@@ -336,32 +336,32 @@ function sibShowAnalysis(id, result) {
   var severity = '';
   if (result.mode === 'safety') {
     if (/גבוה/.test(result.text)) severity = '<span style="background:rgba(239,68,68,0.15);color:#fca5a5;border-radius:4px;padding:2px 8px;font-size:10px;margin-right:6px;">🔴 גבוה</span>';
-    else if (/בינוני/.test(result.text)) severity = '<span style="background:rgba(245,158,11,0.15);color:#fcd34d;border-radius:4px;padding:2px 8px;font-size:10px;margin-right:6px;">🟡 בינוני</span>';
-    else severity = '<span style="background:rgba(16,185,129,0.15);color:#6ee7b7;border-radius:4px;padding:2px 8px;font-size:10px;margin-right:6px;">🟢 נמוך</span>';
+    else if (/בינוני/.test(result.text)) severity = '<span style="background:rgba(245,158,11,0.15);color:#9a6f00;border-radius:4px;padding:2px 8px;font-size:10px;margin-right:6px;">🟡 בינוני</span>';
+    else severity = '<span style="background:rgba(16,185,129,0.15);color:#1b5e20;border-radius:4px;padding:2px 8px;font-size:10px;margin-right:6px;">🟢 נמוך</span>';
   }
 
   panel.innerHTML =
-    '<div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:10px;padding:14px;margin-bottom:10px;">' +
+    '<div style="background:#fff;border:1px solid rgba(180,140,60,0.25);border-radius:10px;padding:14px;margin-bottom:10px;">' +
       '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">' +
         '<div style="display:flex;align-items:center;gap:6px;">' +
           '<span style="font-size:10px;padding:2px 10px;border-radius:20px;background:' + modeColor + '22;color:' + modeColor + ';border:1px solid ' + modeColor + '44;">ניתוח ' + modeLabel + '</span>' +
           severity +
         '</div>' +
-        '<span style="font-size:9px;color:#333;">' + new Date(result.timestamp).toLocaleTimeString('he-IL',{hour:'2-digit',minute:'2-digit'}) + '</span>' +
+        '<span style="font-size:9px;color:#b0bec5;">' + new Date(result.timestamp).toLocaleTimeString('he-IL',{hour:'2-digit',minute:'2-digit'}) + '</span>' +
       '</div>' +
-      '<div style="font-size:12px;color:#ccc;line-height:1.8;white-space:pre-wrap;direction:rtl;">' + sibEsc(result.text) + '</div>' +
+      '<div style="font-size:12px;color:#2c4a6e;line-height:1.8;white-space:pre-wrap;direction:rtl;">' + sibEsc(result.text) + '</div>' +
     '</div>' +
     '<div style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap;">' +
-      '<button onclick="sibSaveAnalysisAsNote(\'' + id + '\')" style="flex:1;padding:8px;background:rgba(201,168,76,0.12);border:1px solid rgba(201,168,76,0.25);color:#c9a84c;border-radius:7px;font-family:Heebo,sans-serif;font-size:11px;font-weight:700;cursor:pointer;">💾 שמור כדוח</button>' +
-      '<button onclick="sibSaveToEnc(\'' + id + '\')" style="flex:1;padding:8px;background:rgba(139,92,246,0.1);border:1px solid rgba(139,92,246,0.2);color:#c4b5fd;border-radius:7px;font-family:Heebo,sans-serif;font-size:11px;font-weight:700;cursor:pointer;">📚 לאנציקלופדיה</button>' +
-      '<button onclick="sibCopyAnalysis(\'' + id + '\')" style="padding:8px 12px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);color:#666;border-radius:7px;font-family:Heebo,sans-serif;font-size:11px;cursor:pointer;">📋 העתק</button>' +
+      '<button onclick="sibSaveAnalysisAsNote(\'' + id + '\')" style="flex:1;padding:8px;background:#f5e9c4;border:1px solid rgba(180,140,60,0.4);color:#9a6f00;border-radius:7px;font-family:Heebo,sans-serif;font-size:11px;font-weight:700;cursor:pointer;">💾 שמור כדוח</button>' +
+      '<button onclick="sibSaveToEnc(\'' + id + '\')" style="flex:1;padding:8px;background:#ede7f6;border:1px solid #9c6fdd;color:#4527a0;border-radius:7px;font-family:Heebo,sans-serif;font-size:11px;font-weight:700;cursor:pointer;">📚 לאנציקלופדיה</button>' +
+      '<button onclick="sibCopyAnalysis(\'' + id + '\')" style="padding:8px 12px;background:#f5f0e8;border:1px solid rgba(180,140,60,0.25);color:#7a8a95;border-radius:7px;font-family:Heebo,sans-serif;font-size:11px;cursor:pointer;">📋 העתק</button>' +
     '</div>' +
     sibApprovePanel(item);
 }
 
 function sibShowError(msg) {
   var panel = document.getElementById('sib-analysis-panel');
-  if (panel) panel.innerHTML = '<div style="background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.2);border-radius:8px;padding:14px;color:#fca5a5;font-size:12px;">' + sibEsc(msg) + '</div>';
+  if (panel) panel.innerHTML = '<div style="background:#fff5f5;border:1px solid #fca5a5;border-radius:8px;padding:14px;color:#c62828;font-size:12px;">' + sibEsc(msg) + '</div>';
 }
 
 // ── TRANSCRIBE AUDIO ──────────────────────────────────────────────────
@@ -371,7 +371,7 @@ async function sibTranscribe(id) {
   sibSelectItem(id);
 
   var panel = document.getElementById('sib-analysis-panel');
-  if (panel) panel.innerHTML = '<div style="text-align:center;padding:40px;color:#10b981;font-size:13px;">🎙️ מתמלל הקלטה...</div>';
+  if (panel) panel.innerHTML = '<div style="text-align:center;padding:40px;color:#1b7a4a;font-size:13px;">🎙️ מתמלל הקלטה...</div>';
 
   var elevenlabsKey = null;
   try {
@@ -413,13 +413,13 @@ async function sibTranscribe(id) {
     var panel2 = document.getElementById('sib-analysis-panel');
     if (panel2) {
       panel2.innerHTML =
-        '<div style="background:rgba(16,185,129,0.05);border:1px solid rgba(16,185,129,0.15);border-radius:10px;padding:14px;margin-bottom:10px;">' +
-          '<div style="font-size:10px;color:#10b981;font-weight:700;margin-bottom:8px;">תמלול שיחה</div>' +
-          '<div style="font-size:12px;color:#ccc;line-height:1.8;white-space:pre-wrap;direction:rtl;max-height:250px;overflow-y:auto;">' + sibEsc(transcript) + '</div>' +
+        '<div style="background:#f0faf5;border:1px solid #a5d6a7;border-radius:10px;padding:14px;margin-bottom:10px;">' +
+          '<div style="font-size:10px;color:#1b7a4a;font-weight:800;margin-bottom:8px;">תמלול שיחה</div>' +
+          '<div style="font-size:12px;color:#2c4a6e;line-height:1.8;white-space:pre-wrap;direction:rtl;max-height:250px;overflow-y:auto;">' + sibEsc(transcript) + '</div>' +
         '</div>' +
         '<div style="display:flex;gap:6px;margin-bottom:10px;">' +
-          '<button onclick="sibAnalyzeTranscript(\'' + id + '\')" style="flex:1;padding:9px;background:#1a3d5c;color:#7eb8e8;border:1px solid rgba(59,130,246,0.3);border-radius:7px;font-family:Heebo,sans-serif;font-size:11px;font-weight:700;cursor:pointer;">🤖 נתח תמלול</button>' +
-          '<button onclick="sibSaveToJournal(\'' + id + '\')" style="flex:1;padding:9px;background:rgba(255,255,255,0.04);color:#aaa;border:1px solid rgba(255,255,255,0.1);border-radius:7px;font-family:Heebo,sans-serif;font-size:11px;cursor:pointer;">📋 שמור ביומן</button>' +
+          '<button onclick="sibAnalyzeTranscript(\'' + id + '\')" style="flex:1;padding:9px;background:#1a3d5c;color:#fff;border:1px solid #1a3d5c;border-radius:7px;font-family:Heebo,sans-serif;font-size:11px;font-weight:700;cursor:pointer;">🤖 נתח תמלול</button>' +
+          '<button onclick="sibSaveToJournal(\'' + id + '\')" style="flex:1;padding:9px;background:#f5f0e8;color:#5a6f7c;border:1px solid rgba(180,140,60,0.3);border-radius:7px;font-family:Heebo,sans-serif;font-size:11px;cursor:pointer;">📋 שמור ביומן</button>' +
         '</div>' +
         sibApprovePanel(item);
     }
@@ -439,14 +439,14 @@ async function sibExtractFrame(id) {
   var panel = document.getElementById('sib-analysis-panel');
   if (panel) {
     panel.innerHTML =
-      '<div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:10px;padding:14px;margin-bottom:10px;">' +
-        '<div style="font-size:10px;color:#f59e0b;font-weight:700;margin-bottom:8px;">🎞️ פריים חולץ</div>' +
+      '<div style="background:#fff;border:1px solid rgba(180,140,60,0.25);border-radius:10px;padding:14px;margin-bottom:10px;">' +
+        '<div style="font-size:10px;color:#9a6f00;font-weight:800;margin-bottom:8px;">🎞️ פריים חולץ</div>' +
         '<img src="' + frameUrl + '" style="width:100%;border-radius:8px;margin-bottom:10px;" onerror="this.style.display=\'none\'">' +
-        '<div style="font-size:11px;color:#555;text-align:center;">שניה 1 מתוך הוידאו</div>' +
+        '<div style="font-size:11px;color:#8a9aa5;text-align:center;">שניה 1 מתוך הוידאו</div>' +
       '</div>' +
       '<div style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap;">' +
-        '<button onclick="sibAnalyzeFrame(\'' + id + '\',\'' + frameUrl + '\')" style="flex:1;padding:9px;background:#1a3d5c;color:#7eb8e8;border:1px solid rgba(59,130,246,0.3);border-radius:7px;font-family:Heebo,sans-serif;font-size:11px;font-weight:700;cursor:pointer;">🔍 נתח פריים</button>' +
-        '<button onclick="sibAnalyzeFrame(\'' + id + '\',\'' + frameUrl + '\',\'safety\')" style="flex:1;padding:9px;background:rgba(239,68,68,0.1);color:#fca5a5;border:1px solid rgba(239,68,68,0.2);border-radius:7px;font-family:Heebo,sans-serif;font-size:11px;cursor:pointer;">⚠️ בטיחות</button>' +
+        '<button onclick="sibAnalyzeFrame(\'' + id + '\',\'' + frameUrl + '\')" style="flex:1;padding:9px;background:#1a3d5c;color:#fff;border:1px solid #1a3d5c;border-radius:7px;font-family:Heebo,sans-serif;font-size:11px;font-weight:700;cursor:pointer;">🔍 נתח פריים</button>' +
+        '<button onclick="sibAnalyzeFrame(\'' + id + '\',\'' + frameUrl + '\',\'safety\')" style="flex:1;padding:9px;background:#fff5f5;color:#c62828;border:1px solid #fca5a5;border-radius:7px;font-family:Heebo,sans-serif;font-size:11px;cursor:pointer;">⚠️ בטיחות</button>' +
       '</div>' +
       sibApprovePanel(item);
   }
@@ -474,7 +474,7 @@ async function sibAnalyzePDF(id) {
   if (!apiKey) { sibShowError('לא נמצא מפתח API'); return; }
 
   var panel = document.getElementById('sib-analysis-panel');
-  if (panel) panel.innerHTML = '<div style="text-align:center;padding:40px;color:#ef4444;font-size:13px;">📄 מנתח מסמך PDF...</div>';
+  if (panel) panel.innerHTML = '<div style="text-align:center;padding:40px;color:#c62828;font-weight:800;font-size:13px;">📄 מנתח מסמך PDF...</div>';
 
   try {
     var resp = await claudeFetch({
@@ -599,7 +599,7 @@ async function sibApprove(id, projectId) {
     showToast('✅ אושר ושויך','success');
     _sibSelected = null;
     document.getElementById('sib-analysis-panel').innerHTML =
-      '<div style="text-align:center;padding:40px;color:#10b981;font-size:13px;">✅ הקובץ אושר בהצלחה</div>';
+      '<div style="text-align:center;padding:40px;color:#1b7a4a;font-size:13px;">✅ הקובץ אושר בהצלחה</div>';
     await sibLoad();
   } catch(e) {
     showToast('שגיאה: ' + e.message, 'error');
@@ -617,7 +617,7 @@ async function sibDeleteItem(id) {
     if (_sibSelected === id) {
       _sibSelected = null;
       var panel = document.getElementById('sib-analysis-panel');
-      if (panel) panel.innerHTML = '<div style="text-align:center;padding:60px;color:#333;font-size:13px;">בחר קובץ מהרשימה</div>';
+      if (panel) panel.innerHTML = '<div style="text-align:center;padding:60px;color:#b0bec5;font-size:13px;">בחר קובץ מהרשימה</div>';
     }
     await sibLoad();
   } catch(e) {
@@ -632,7 +632,7 @@ function sibFilterByProject(projId) {
   var filtered = projId ? _sibItems.filter(function(i){ return i.project_id === projId; }) : _sibItems;
   listEl.innerHTML = '';
   if (filtered.length === 0) {
-    listEl.innerHTML = '<div style="text-align:center;padding:40px;color:#333;font-size:12px;">אין קבצים לפרויקט זה</div>';
+    listEl.innerHTML = '<div style="text-align:center;padding:40px;color:#b0bec5;font-size:12px;">אין קבצים לפרויקט זה</div>';
     return;
   }
   filtered.forEach(function(item) { listEl.appendChild(sibFileCard(item)); });
@@ -656,7 +656,7 @@ async function sibAnalyzeTranscript(id) {
   if (!apiKey) { sibShowError('אין מפתח API'); return; }
 
   var panel = document.getElementById('sib-analysis-panel');
-  if (panel) panel.innerHTML = '<div style="text-align:center;padding:40px;color:#c9a84c;font-size:13px;">🤖 מנתח תמלול...</div>';
+  if (panel) panel.innerHTML = '<div style="text-align:center;padding:40px;color:#9a6f00;font-size:13px;">🤖 מנתח תמלול...</div>';
 
   try {
     var resp = await claudeFetch({
