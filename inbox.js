@@ -756,9 +756,25 @@ async function sibAnalyzeTranscript(id) {
     }, null);
 
     var text = resp && resp.content && resp.content[0] ? resp.content[0].text : '';
-    var newResult = { mode: 'analysis', text: text, timestamp: new Date().toISOString() };
+    var usage = resp && resp.usage;
+    var newResult = { mode: 'analysis', text: text, timestamp: new Date().toISOString(), usage: usage };
     _sibAnalysis[id] = newResult;
     sibShowAnalysis(id, newResult);
+    // Show token/cost meter
+    if (usage) {
+      var inputT  = usage.input_tokens  || 0;
+      var outputT = usage.output_tokens || 0;
+      var costUSD = (inputT * 3 + outputT * 15) / 1000000;
+      var panel3  = document.getElementById('sib-analysis-panel');
+      if (panel3) {
+        var meter = document.createElement('div');
+        meter.style.cssText = 'background:rgba(201,168,76,0.08);border:1px solid rgba(201,168,76,0.2);border-radius:6px;padding:6px 10px;margin-top:8px;font-size:10px;color:#888;display:flex;gap:10px;flex-wrap:wrap;';
+        meter.innerHTML = '🔢 <b style="color:#c9a84c">'+(inputT+outputT).toLocaleString()+'</b> טוקנים' +
+          ' · 📥 '+inputT.toLocaleString()+' · 📤 '+outputT.toLocaleString() +
+          ' · 💰 <b style="color:#c9a84c">$'+costUSD.toFixed(4)+'</b>';
+        panel3.appendChild(meter);
+      }
+    }
   } catch(e) {
     sibShowError('שגיאה: ' + e.message);
   }

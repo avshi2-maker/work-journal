@@ -4743,8 +4743,14 @@ async function openCallAnalysisModal(transcript, projectId, item) {
     if (!apiKey) { showToast('מפתח Claude חסר','error'); genBtn.disabled=false; genBtn.textContent='🚀 צור ניתוח מלא'; return; }
 
     var namedTrans = transcript
-      .replace(/דובר 1/g, s1name).replace(/דובר 2/g, s2name)
-      .replace(/speaker_0/g, s1name).replace(/speaker_1/g, s2name);
+      .replace(/דובר 1/gi, s1name).replace(/דובר 2/gi, s2name)
+      .replace(/SPEAKER_00/g, s1name).replace(/SPEAKER_01/g, s2name)
+      .replace(/SPEAKER_0/g,  s1name).replace(/SPEAKER_1/g,  s2name)
+      .replace(/speaker_00/g, s1name).replace(/speaker_01/g, s2name)
+      .replace(/speaker_0/g,  s1name).replace(/speaker_1/g,  s2name)
+      .replace(/\[דובר 1\]/g, '['+s1name+']').replace(/\[דובר 2\]/g, '['+s2name+']');
+    // Log for debug
+    console.log('Speaker replace: "'+s1name+'" / "'+s2name+'" applied to transcript ('+transcript.length+' chars)');
 
     var instrMap = {
       'פרוטוקול שיחה': 'פרוטוקול: תאריך, משתתפים, נושאים שנדונו לפי סדר עם ציטוטים מרכזיים',
@@ -4830,6 +4836,23 @@ async function openCallAnalysisModal(transcript, projectId, item) {
       });
 
       genBtn.disabled = false; genBtn.textContent = '🔄 נתח שוב';
+      // Show token usage if available
+      var usage = data && data.usage;
+      if (usage) {
+        var inputT  = usage.input_tokens  || 0;
+        var outputT = usage.output_tokens || 0;
+        var totalT  = inputT + outputT;
+        // Sonnet pricing: $3/1M input, $15/1M output
+        var costUSD = (inputT * 3 + outputT * 15) / 1000000;
+        var costILS = costUSD * 3.7;
+        var meterEl = document.createElement('div');
+        meterEl.style.cssText = 'background:rgba(201,168,76,0.08);border:1px solid rgba(201,168,76,0.2);border-radius:8px;padding:8px 12px;margin-top:10px;font-size:11px;color:#888;display:flex;gap:12px;flex-wrap:wrap;';
+        meterEl.innerHTML = '<span>🔢 טוקנים: <b style="color:#c9a84c">' + totalT.toLocaleString() + '</b></span>' +
+          '<span>📥 קלט: ' + inputT.toLocaleString() + '</span>' +
+          '<span>📤 פלט: ' + outputT.toLocaleString() + '</span>' +
+          '<span>💰 עלות: <b style="color:#c9a84c">$' + costUSD.toFixed(4) + ' (~₪' + costILS.toFixed(3) + ')</b></span>';
+        resultsDiv.appendChild(meterEl);
+      }
       showToast('✅ ניתוח הושלם','success');
 
     } catch(e) {
