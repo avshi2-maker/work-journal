@@ -3647,9 +3647,21 @@ async function miscRouteItem(cardId, source, rawId, dest, encodedText, encodedMe
         var img     = document.getElementById('rag-photo-img');
         var ana     = document.getElementById('rag-photo-analysis');
         var acts    = document.getElementById('rag-photo-actions');
-        // Fetch the image and convert to base64 for Claude Vision
+        // Check if media is video — extract frame via Cloudinary
+        var isVideo = /\.(mp4|mov|avi|3gp|m4v|mkv)(\?|$)/i.test(media) || media.includes('/video/upload/');
+        var mediaToLoad = media;
+        if (isVideo) {
+          // Extract frame at 1 second via Cloudinary transformation
+          mediaToLoad = media.replace('/upload/', '/upload/so_1,w_1200,f_jpg/')
+                             .replace(/\.(mp4|mov|avi|3gp|m4v|mkv)(\?.*)?$/i, '.jpg');
+          if (ana) ana.innerHTML = '🎬 פריים מווידאו — לחץ <strong>🤖 הפעל בינה מלאכותית</strong>';
+        } else {
+          if (ana) ana.innerHTML = '📸 תמונה — לחץ <strong>🤖 הפעל בינה מלאכותית</strong> לניתוח';
+        }
+        // Fetch and convert to base64
         try {
-          var r = await fetch(media);
+          var r = await fetch(mediaToLoad);
+          if (!r.ok) throw new Error('HTTP ' + r.status);
           var blob = await r.blob();
           var b64 = await new Promise(function(resolve){
             var rd = new FileReader();
@@ -3660,16 +3672,14 @@ async function miscRouteItem(cardId, source, rawId, dest, encodedText, encodedMe
           if (img)  { img.src = b64; }
           if (preview) preview.style.display = 'block';
           if (acts)    acts.style.display = 'flex';
-          if (ana)     ana.innerHTML = '📸 תמונה מ<strong>מגוון</strong> — לחץ <strong>🤖 הפעל בינה מלאכותית</strong> לניתוח';
-          showToast('✅ תמונה נטענה לייעוץ הנדסי — לחץ הפעל', 'success');
+          showToast('✅ ' + (isVideo ? 'פריים מווידאו' : 'תמונה') + ' נטענה — לחץ הפעל', 'success');
         } catch(fetchErr) {
-          // If fetch fails, just set the URL directly
-          window._ragCurrentPhoto = media;
-          if (img)  { img.src = media; }
+          // Fallback: set URL directly (works for images, not video)
+          window._ragCurrentPhoto = mediaToLoad;
+          if (img)  { img.src = mediaToLoad; }
           if (preview) preview.style.display = 'block';
           if (acts)    acts.style.display = 'flex';
-          if (ana)     ana.innerHTML = '📸 תמונה מ<strong>מגוון</strong> — לחץ <strong>🤖 הפעל בינה מלאכותית</strong> לניתוח';
-          showToast('✅ תמונה נטענה לייעוץ הנדסי — לחץ הפעל', 'success');
+          showToast('⚠️ ' + (isVideo ? 'פריים ווידאו' : 'תמונה') + ' נטענה — לחץ הפעל', 'success');
         }
       } else if (text) {
         var inp = document.getElementById('rag-input');
@@ -3719,7 +3729,7 @@ async function miscProcessAll() {
     ].join('\n');
 
     var resp = await claudeFetch({
-      _apiKey: apiKey, model: 'claude-sonnet-4-20250514', max_tokens: 1000,
+      _apiKey: apiKey, model: 'claude-sonnet-4-6', max_tokens: 1000,
       system: 'מנתב תוכן. החזר JSON בלבד ללא markdown.',
       messages: [{ role: 'user', content: prompt }]
     }, null);
@@ -4157,9 +4167,21 @@ async function miscRouteItem(cardId, source, rawId, dest, encodedText, encodedMe
         var img     = document.getElementById('rag-photo-img');
         var ana     = document.getElementById('rag-photo-analysis');
         var acts    = document.getElementById('rag-photo-actions');
-        // Fetch the image and convert to base64 for Claude Vision
+        // Check if media is video — extract frame via Cloudinary
+        var isVideo = /\.(mp4|mov|avi|3gp|m4v|mkv)(\?|$)/i.test(media) || media.includes('/video/upload/');
+        var mediaToLoad = media;
+        if (isVideo) {
+          // Extract frame at 1 second via Cloudinary transformation
+          mediaToLoad = media.replace('/upload/', '/upload/so_1,w_1200,f_jpg/')
+                             .replace(/\.(mp4|mov|avi|3gp|m4v|mkv)(\?.*)?$/i, '.jpg');
+          if (ana) ana.innerHTML = '🎬 פריים מווידאו — לחץ <strong>🤖 הפעל בינה מלאכותית</strong>';
+        } else {
+          if (ana) ana.innerHTML = '📸 תמונה — לחץ <strong>🤖 הפעל בינה מלאכותית</strong> לניתוח';
+        }
+        // Fetch and convert to base64
         try {
-          var r = await fetch(media);
+          var r = await fetch(mediaToLoad);
+          if (!r.ok) throw new Error('HTTP ' + r.status);
           var blob = await r.blob();
           var b64 = await new Promise(function(resolve){
             var rd = new FileReader();
@@ -4170,16 +4192,14 @@ async function miscRouteItem(cardId, source, rawId, dest, encodedText, encodedMe
           if (img)  { img.src = b64; }
           if (preview) preview.style.display = 'block';
           if (acts)    acts.style.display = 'flex';
-          if (ana)     ana.innerHTML = '📸 תמונה מ<strong>מגוון</strong> — לחץ <strong>🤖 הפעל בינה מלאכותית</strong> לניתוח';
-          showToast('✅ תמונה נטענה לייעוץ הנדסי — לחץ הפעל', 'success');
+          showToast('✅ ' + (isVideo ? 'פריים מווידאו' : 'תמונה') + ' נטענה — לחץ הפעל', 'success');
         } catch(fetchErr) {
-          // If fetch fails, just set the URL directly
-          window._ragCurrentPhoto = media;
-          if (img)  { img.src = media; }
+          // Fallback: set URL directly (works for images, not video)
+          window._ragCurrentPhoto = mediaToLoad;
+          if (img)  { img.src = mediaToLoad; }
           if (preview) preview.style.display = 'block';
           if (acts)    acts.style.display = 'flex';
-          if (ana)     ana.innerHTML = '📸 תמונה מ<strong>מגוון</strong> — לחץ <strong>🤖 הפעל בינה מלאכותית</strong> לניתוח';
-          showToast('✅ תמונה נטענה לייעוץ הנדסי — לחץ הפעל', 'success');
+          showToast('⚠️ ' + (isVideo ? 'פריים ווידאו' : 'תמונה') + ' נטענה — לחץ הפעל', 'success');
         }
       } else if (text) {
         var inp = document.getElementById('rag-input');
@@ -4226,7 +4246,7 @@ async function miscProcessAll() {
       'החזר JSON בלבד: {"items":[{"id":"...","route":"...","reason":"...","project_hint":null}]}'
     ].join('\n');
 
-    var resp = await claudeFetch({ _apiKey: apiKey, model: 'claude-sonnet-4-20250514', max_tokens: 1000,
+    var resp = await claudeFetch({ _apiKey: apiKey, model: 'claude-sonnet-4-6', max_tokens: 1000,
       system: 'מנתב תוכן. החזר JSON בלבד ללא markdown.',
       messages: [{ role: 'user', content: prompt }]
     }, null);
@@ -4770,7 +4790,7 @@ async function openCallAnalysisModal(transcript, projectId, item) {
       chosen.map(function(t){ return instrMap[t] || t; }).join('\n\n');
 
     try {
-      var resp = await claudeFetch({ _apiKey:apiKey, model:'claude-sonnet-4-20250514', max_tokens:3000,
+      var resp = await claudeFetch({ _apiKey:apiKey, model:'claude-sonnet-4-6', max_tokens:3000,
         messages:[{role:'user',content:prompt}] }, null);
       var data = await resp.json();
       var result = data.content && data.content[0] ? data.content[0].text : '';

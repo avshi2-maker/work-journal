@@ -323,7 +323,7 @@ async function sibAnalyze(id, mode) {
 
     var resp = await claudeFetch({
       _apiKey: apiKey,
-      model: 'claude-sonnet-4-20250514',
+      model: 'claude-sonnet-4-6',
       max_tokens: 600,
       system: 'אתה מהנדס שטח מנוסה. ענה תמיד בעברית. היה ספציפי, קצר, עם המלצות פעולה ברורות.',
       messages: messages
@@ -534,7 +534,7 @@ async function sibAnalyzePDF(id) {
   try {
     var resp = await claudeFetch({
       _apiKey: apiKey,
-      model: 'claude-sonnet-4-20250514',
+      model: 'claude-sonnet-4-6',
       max_tokens: 800,
       messages: [{ role: 'user', content: 'URL של מסמך PDF: ' + (item.cloudinary_url || 'אין URL') + '\n\nנתח את המסמך: מהו, מה כולל, נקודות עיקריות, פעולות נדרשות. עברית.' }]
     }, null);
@@ -749,7 +749,7 @@ async function sibAnalyzeTranscript(id) {
   try {
     var resp = await claudeFetch({
       _apiKey: apiKey,
-      model: 'claude-sonnet-4-20250514',
+      model: 'claude-sonnet-4-6',
       max_tokens: 600,
       system: 'אתה מנהל פרויקטים. נתח שיחה ותמצה: נושאים עיקריים, החלטות, משימות לביצוע, דדליינים. עברית.',
       messages: [{ role: 'user', content: 'תמלול שיחה:\n\n' + analysis.text }]
