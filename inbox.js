@@ -473,7 +473,7 @@ async function sibTranscribe(id) {
           '<div style="font-size:12px;color:#2c4a6e;line-height:1.8;white-space:pre-wrap;direction:rtl;max-height:250px;overflow-y:auto;">' + sibEsc(transcript) + '</div>' +
         '</div>' +
         '<div style="display:flex;gap:6px;margin-bottom:10px;">' +
-          '<button onclick="sibAnalyzeTranscript(\'' + id + '\')" style="flex:1;padding:9px;background:#1a3d5c;color:#fff;border:1px solid #1a3d5c;border-radius:7px;font-family:Heebo,sans-serif;font-size:11px;font-weight:700;cursor:pointer;">🤖 נתח תמלול</button>' +
+          '<button onclick="sibOpenFullAnalysis(\'' + id + '\')" style="flex:1;padding:9px;background:#1a3d5c;color:#fff;border:1px solid #1a3d5c;border-radius:7px;font-family:Heebo,sans-serif;font-size:11px;font-weight:700;cursor:pointer;">🤖 נתח + עריכת דוברים</button>' +
           '<button onclick="sibSaveToJournal(\'' + id + '\')" style="flex:1;padding:9px;background:#f5f0e8;color:#5a6f7c;border:1px solid rgba(180,140,60,0.3);border-radius:7px;font-family:Heebo,sans-serif;font-size:11px;cursor:pointer;">📋 שמור ביומן</button>' +
         '</div>' +
         sibApprovePanel(item);
@@ -717,6 +717,23 @@ function sibPopulateProjects() {
     o.value = p.id; o.textContent = p.project_name;
     sel.appendChild(o);
   });
+}
+
+// ── Open full analysis modal with speaker name editor ─────────────────
+function sibOpenFullAnalysis(id) {
+  var analysis = _sibAnalysis[id];
+  if (!analysis || !analysis.text) {
+    sibShowError('אין תמלול — תמלל קודם'); return;
+  }
+  var item = _sibItems.find(function(i){ return i.id === id; });
+  var projId = item ? item.project_id : null;
+  // openCallAnalysisModal lives in index.html — gives speaker A/B name editor
+  if (typeof openCallAnalysisModal === 'function') {
+    openCallAnalysisModal(analysis.text, projId, item);
+  } else {
+    // fallback — direct analysis without editor
+    sibAnalyzeTranscript(id);
+  }
 }
 
 async function sibAnalyzeTranscript(id) {
