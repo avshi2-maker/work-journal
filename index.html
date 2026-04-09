@@ -4806,16 +4806,22 @@ async function openCallAnalysisModal(transcript, projectId, item) {
         actRow.appendChild(saveBtn2);
       }
 
-      // Google Calendar — extract JSON if present
+      // Google Calendar — always show manual calendar button
+      var calManualBtn = document.createElement('button');
+      calManualBtn.textContent = '📅 קבע פגישה ב-Google Calendar';
+      calManualBtn.style.cssText = 'background:rgba(34,197,94,0.15);border:1px solid rgba(34,197,94,0.4);color:#86efac;padding:10px 16px;border-radius:8px;cursor:pointer;font-family:Heebo,sans-serif;font-size:12px;font-weight:700;';
+      calManualBtn.onclick = (function(r,t,s1,s2){ return function(){ openManualCalendarModal(r,t,s1,s2); }; })(result, topic, s1name, s2name);
+      actRow.appendChild(calManualBtn);
+      // Also try auto-fill from Claude JSON output
       var calMatch = result.match(/\{[\s\S]*?"title"[\s\S]*?\}/);
       if (calMatch) {
         try {
           var calData = JSON.parse(calMatch[0]);
           if (calData.title) {
             var calBtn = document.createElement('button');
-            calBtn.textContent = '📅 צור ב-Google Calendar';
-            calBtn.style.cssText = 'background:rgba(34,197,94,0.15);border:1px solid rgba(34,197,94,0.4);color:#86efac;padding:10px 16px;border-radius:8px;cursor:pointer;font-family:Heebo,sans-serif;font-size:12px;font-weight:700;';
-            calBtn.onclick = function(){ openGoogleCalendar(calData); };
+            calBtn.textContent = '⚡ מלא אוטומטית';
+            calBtn.style.cssText = 'background:rgba(34,197,94,0.08);border:1px solid rgba(34,197,94,0.2);color:#86efac;padding:10px 12px;border-radius:8px;cursor:pointer;font-family:Heebo,sans-serif;font-size:11px;';
+            calBtn.onclick = (function(cd){ return function(){ openGoogleCalendar(cd); }; })(calData);
             actRow.appendChild(calBtn);
           }
         } catch(e) {}
