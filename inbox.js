@@ -441,7 +441,7 @@ async function sibTranscribe(id) {
     var fixedBlob = new Blob([audioBlob], { type: mimeType });
 
     var formData = new FormData();
-    formData.append('audio', fixedBlob, fileName);
+    formData.append('file', fixedBlob, fileName);
     formData.append('model_id', 'scribe_v1');
     formData.append('language_code', 'he');
     formData.append('diarize', 'true');
