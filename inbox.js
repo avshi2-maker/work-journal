@@ -427,11 +427,26 @@ async function sibTranscribe(id) {
   try {
     var audioResp = await fetch(item.cloudinary_url);
     var audioBlob = await audioResp.blob();
+
+    // Fix MIME type — Samsung records .m4a/.3gp with empty or wrong MIME
+    var fileName = item.file_name || 'audio.m4a';
+    var mimeType = audioBlob.type;
+    if (!mimeType || mimeType === 'application/octet-stream' || mimeType === 'video/3gpp') {
+      var ext = fileName.split('.').pop().toLowerCase();
+      var mimeMap = { m4a:'audio/mp4', mp3:'audio/mpeg', wav:'audio/wav',
+                      ogg:'audio/ogg', webm:'audio/webm', aac:'audio/aac',
+                      '3gp':'audio/3gpp', flac:'audio/flac' };
+      mimeType = mimeMap[ext] || 'audio/mp4';
+    }
+    var fixedBlob = new Blob([audioBlob], { type: mimeType });
+
     var formData = new FormData();
-    formData.append('audio', audioBlob, item.file_name || 'audio.m4a');
+    formData.append('audio', fixedBlob, fileName);
     formData.append('model_id', 'scribe_v1');
     formData.append('language_code', 'he');
     formData.append('diarize', 'true');
+    formData.append('tag_audio_events', 'false');
+    formData.append('timestamps_granularity', 'none');
 
     var transcResp = await fetch('https://api.elevenlabs.io/v1/speech-to-text', {
       method: 'POST',
@@ -439,7 +454,11 @@ async function sibTranscribe(id) {
       body: formData
     });
 
-    if (!transcResp.ok) throw new Error('ElevenLabs HTTP ' + transcResp.status);
+    if (!transcResp.ok) {
+      var errBody = '';
+      try { var errJson = await transcResp.json(); errBody = JSON.stringify(errJson); } catch(e2) {}
+      throw new Error('ElevenLabs HTTP ' + transcResp.status + (errBody ? ' — ' + errBody : ''));
+    }
     var transcData = await transcResp.json();
     var transcript = transcData.text || '';
 
