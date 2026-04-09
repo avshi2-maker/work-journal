@@ -5085,12 +5085,14 @@ function openManualCalendarModal(protocol, topic, speaker1, speaker2) {
       pad(endDateTime.getMonth()+1) + pad(endDateTime.getDate()) + 'T' +
       pad(endDateTime.getHours()) + pad(endDateTime.getMinutes()) + '00';
 
+    // Note: &add= guests param triggers Google's invite system which
+    // can fail with "cannot create event" on some accounts.
+    // Instead: open pre-filled event, user adds guests inside Google safely.
     var url = 'https://calendar.google.com/calendar/render?action=TEMPLATE' +
       '&text='    + encodeURIComponent(t) +
       '&dates='   + startDt + '/' + endDt +
-      '&details=' + encodeURIComponent(desc) +
-      (loc    ? '&location=' + encodeURIComponent(loc)    : '') +
-      (guests ? '&add='      + encodeURIComponent(guests) : '');
+      '&details=' + encodeURIComponent(desc + (guests ? '\n\nמשתתפים: ' + guests : '')) +
+      (loc    ? '&location=' + encodeURIComponent(loc) : '');
 
     window.open(url, '_blank');
     showToast('📅 פותח Google Calendar','success');
@@ -5151,9 +5153,8 @@ function openGoogleCalendar(calData) {
 
   var url = 'https://calendar.google.com/calendar/render?action=TEMPLATE' +
     '&text=' + title +
-    '&details=' + details +
+    '&details=' + details + (guests ? encodeURIComponent('\n\nמשתתפים: ' + decodeURIComponent(guests)) : '') +
     '&location=' + location +
-    (guests ? '&add=' + guests : '') +
     (startDate ? '&dates=' + startDate + '/' + endDate : '');
 
   window.open(url, '_blank');
