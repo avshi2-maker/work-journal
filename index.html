@@ -4762,7 +4762,9 @@ async function openCallAnalysisModal(transcript, projectId, item) {
     };
 
     var prompt = 'אתה מנהל פרויקטים מקצועי. קיבלת תמלול שיחה עסקית.\n' +
-      'נושא: ' + topic + '\n\n' +
+      'נושא: ' + topic + '\n' +
+      'משתתפים: ' + s1name + ' (דובר 1), ' + s2name + ' (דובר 2)\n\n' +
+      'חשוב: השתמש בשמות האמיתיים ' + s1name + ' ו-' + s2name + ' בכל הפלטים.\n\n' +
       'תמלול:\n---\n' + namedTrans + '\n---\n\n' +
       'צור את הפלטים הבאים בעברית, כל אחד תחת כותרת ## :\n\n' +
       chosen.map(function(t){ return instrMap[t] || t; }).join('\n\n');
@@ -5068,10 +5070,14 @@ function openManualCalendarModal(protocol, topic, speaker1, speaker2) {
     var desc  = document.getElementById('mc-desc').value.trim();
 
     // Build start/end datetime strings for Google Calendar
+    // Both must be local time format: YYYYMMDDTHHMMSS (no Z suffix)
     var startDt = d.replace(/-/g,'') + 'T' + tm.replace(':','') + '00';
-    var endDate = new Date(d + 'T' + tm);
-    endDate.setMinutes(endDate.getMinutes() + dur);
-    var endDt = endDate.toISOString().replace(/[-:]/g,'').replace(/\.\d{3}Z/,'');
+    var startDateTime = new Date(d + 'T' + tm + ':00');
+    var endDateTime   = new Date(startDateTime.getTime() + dur * 60000);
+    var pad = function(n){ return n.toString().padStart(2,'0'); };
+    var endDt = endDateTime.getFullYear().toString() +
+      pad(endDateTime.getMonth()+1) + pad(endDateTime.getDate()) + 'T' +
+      pad(endDateTime.getHours()) + pad(endDateTime.getMinutes()) + '00';
 
     var url = 'https://calendar.google.com/calendar/render?action=TEMPLATE' +
       '&text='    + encodeURIComponent(t) +
