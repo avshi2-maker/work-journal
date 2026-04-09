@@ -4818,8 +4818,8 @@ async function openCallAnalysisModal(transcript, projectId, item) {
       sb.from('call_analyses').insert({
         project_id:  projectId || null,
         call_date:   item && item.date ? item.date : new Date().toISOString(),
-        speaker1:    s1,
-        speaker2:    s2,
+        speaker1:    s1name,
+        speaker2:    s2name,
         topic:       topic,
         transcript:  transcript ? transcript.substring(0,3000) : '',
         analysis:    result,
