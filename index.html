@@ -3647,21 +3647,9 @@ async function miscRouteItem(cardId, source, rawId, dest, encodedText, encodedMe
         var img     = document.getElementById('rag-photo-img');
         var ana     = document.getElementById('rag-photo-analysis');
         var acts    = document.getElementById('rag-photo-actions');
-        // Check if media is video — extract frame via Cloudinary
-        var isVideo = /\.(mp4|mov|avi|3gp|m4v|mkv)(\?|$)/i.test(media) || media.includes('/video/upload/');
-        var mediaToLoad = media;
-        if (isVideo) {
-          // Extract frame at 1 second via Cloudinary transformation
-          mediaToLoad = media.replace('/upload/', '/upload/so_1,w_1200,f_jpg/')
-                             .replace(/\.(mp4|mov|avi|3gp|m4v|mkv)(\?.*)?$/i, '.jpg');
-          if (ana) ana.innerHTML = '🎬 פריים מווידאו — לחץ <strong>🤖 הפעל בינה מלאכותית</strong>';
-        } else {
-          if (ana) ana.innerHTML = '📸 תמונה — לחץ <strong>🤖 הפעל בינה מלאכותית</strong> לניתוח';
-        }
-        // Fetch and convert to base64
+        // Fetch the image and convert to base64 for Claude Vision
         try {
-          var r = await fetch(mediaToLoad);
-          if (!r.ok) throw new Error('HTTP ' + r.status);
+          var r = await fetch(media);
           var blob = await r.blob();
           var b64 = await new Promise(function(resolve){
             var rd = new FileReader();
@@ -3672,14 +3660,16 @@ async function miscRouteItem(cardId, source, rawId, dest, encodedText, encodedMe
           if (img)  { img.src = b64; }
           if (preview) preview.style.display = 'block';
           if (acts)    acts.style.display = 'flex';
-          showToast('✅ ' + (isVideo ? 'פריים מווידאו' : 'תמונה') + ' נטענה — לחץ הפעל', 'success');
+          if (ana)     ana.innerHTML = '📸 תמונה מ<strong>מגוון</strong> — לחץ <strong>🤖 הפעל בינה מלאכותית</strong> לניתוח';
+          showToast('✅ תמונה נטענה לייעוץ הנדסי — לחץ הפעל', 'success');
         } catch(fetchErr) {
-          // Fallback: set URL directly (works for images, not video)
-          window._ragCurrentPhoto = mediaToLoad;
-          if (img)  { img.src = mediaToLoad; }
+          // If fetch fails, just set the URL directly
+          window._ragCurrentPhoto = media;
+          if (img)  { img.src = media; }
           if (preview) preview.style.display = 'block';
           if (acts)    acts.style.display = 'flex';
-          showToast('⚠️ ' + (isVideo ? 'פריים ווידאו' : 'תמונה') + ' נטענה — לחץ הפעל', 'success');
+          if (ana)     ana.innerHTML = '📸 תמונה מ<strong>מגוון</strong> — לחץ <strong>🤖 הפעל בינה מלאכותית</strong> לניתוח';
+          showToast('✅ תמונה נטענה לייעוץ הנדסי — לחץ הפעל', 'success');
         }
       } else if (text) {
         var inp = document.getElementById('rag-input');
@@ -3729,7 +3719,7 @@ async function miscProcessAll() {
     ].join('\n');
 
     var resp = await claudeFetch({
-      _apiKey: apiKey, model: 'claude-sonnet-4-6', max_tokens: 1000,
+      _apiKey: apiKey, model: 'claude-sonnet-4-20250514', max_tokens: 1000,
       system: 'מנתב תוכן. החזר JSON בלבד ללא markdown.',
       messages: [{ role: 'user', content: prompt }]
     }, null);
@@ -4167,21 +4157,9 @@ async function miscRouteItem(cardId, source, rawId, dest, encodedText, encodedMe
         var img     = document.getElementById('rag-photo-img');
         var ana     = document.getElementById('rag-photo-analysis');
         var acts    = document.getElementById('rag-photo-actions');
-        // Check if media is video — extract frame via Cloudinary
-        var isVideo = /\.(mp4|mov|avi|3gp|m4v|mkv)(\?|$)/i.test(media) || media.includes('/video/upload/');
-        var mediaToLoad = media;
-        if (isVideo) {
-          // Extract frame at 1 second via Cloudinary transformation
-          mediaToLoad = media.replace('/upload/', '/upload/so_1,w_1200,f_jpg/')
-                             .replace(/\.(mp4|mov|avi|3gp|m4v|mkv)(\?.*)?$/i, '.jpg');
-          if (ana) ana.innerHTML = '🎬 פריים מווידאו — לחץ <strong>🤖 הפעל בינה מלאכותית</strong>';
-        } else {
-          if (ana) ana.innerHTML = '📸 תמונה — לחץ <strong>🤖 הפעל בינה מלאכותית</strong> לניתוח';
-        }
-        // Fetch and convert to base64
+        // Fetch the image and convert to base64 for Claude Vision
         try {
-          var r = await fetch(mediaToLoad);
-          if (!r.ok) throw new Error('HTTP ' + r.status);
+          var r = await fetch(media);
           var blob = await r.blob();
           var b64 = await new Promise(function(resolve){
             var rd = new FileReader();
@@ -4192,14 +4170,16 @@ async function miscRouteItem(cardId, source, rawId, dest, encodedText, encodedMe
           if (img)  { img.src = b64; }
           if (preview) preview.style.display = 'block';
           if (acts)    acts.style.display = 'flex';
-          showToast('✅ ' + (isVideo ? 'פריים מווידאו' : 'תמונה') + ' נטענה — לחץ הפעל', 'success');
+          if (ana)     ana.innerHTML = '📸 תמונה מ<strong>מגוון</strong> — לחץ <strong>🤖 הפעל בינה מלאכותית</strong> לניתוח';
+          showToast('✅ תמונה נטענה לייעוץ הנדסי — לחץ הפעל', 'success');
         } catch(fetchErr) {
-          // Fallback: set URL directly (works for images, not video)
-          window._ragCurrentPhoto = mediaToLoad;
-          if (img)  { img.src = mediaToLoad; }
+          // If fetch fails, just set the URL directly
+          window._ragCurrentPhoto = media;
+          if (img)  { img.src = media; }
           if (preview) preview.style.display = 'block';
           if (acts)    acts.style.display = 'flex';
-          showToast('⚠️ ' + (isVideo ? 'פריים ווידאו' : 'תמונה') + ' נטענה — לחץ הפעל', 'success');
+          if (ana)     ana.innerHTML = '📸 תמונה מ<strong>מגוון</strong> — לחץ <strong>🤖 הפעל בינה מלאכותית</strong> לניתוח';
+          showToast('✅ תמונה נטענה לייעוץ הנדסי — לחץ הפעל', 'success');
         }
       } else if (text) {
         var inp = document.getElementById('rag-input');
@@ -4246,7 +4226,7 @@ async function miscProcessAll() {
       'החזר JSON בלבד: {"items":[{"id":"...","route":"...","reason":"...","project_hint":null}]}'
     ].join('\n');
 
-    var resp = await claudeFetch({ _apiKey: apiKey, model: 'claude-sonnet-4-6', max_tokens: 1000,
+    var resp = await claudeFetch({ _apiKey: apiKey, model: 'claude-sonnet-4-20250514', max_tokens: 1000,
       system: 'מנתב תוכן. החזר JSON בלבד ללא markdown.',
       messages: [{ role: 'user', content: prompt }]
     }, null);
@@ -4790,7 +4770,7 @@ async function openCallAnalysisModal(transcript, projectId, item) {
       chosen.map(function(t){ return instrMap[t] || t; }).join('\n\n');
 
     try {
-      var resp = await claudeFetch({ _apiKey:apiKey, model:'claude-sonnet-4-6', max_tokens:3000,
+      var resp = await claudeFetch({ _apiKey:apiKey, model:'claude-sonnet-4-20250514', max_tokens:3000,
         messages:[{role:'user',content:prompt}] }, null);
       var data = await resp.json();
       var result = data.content && data.content[0] ? data.content[0].text : '';
@@ -5686,6 +5666,42 @@ ${d.notes?`<div class="notes" style="margin-top:14px;"><strong>הערות:</stro
   <div class="sig-box"><div style="font-weight:700;font-size:10pt;">${d.ordererName}</div><div class="sig-line"></div><div style="font-size:8.5pt;color:#888;">אישור מנהל פרויקט ויועץ פיקוח</div></div>
 </div>
 <div class="footer">מסמך זה הופק ממערכת ניהול הפרויקטים של בני פרסקי | ${d.poNumber} | ${dateStr}</div>
+
+<!-- ── LOCAL UPLOAD MODAL ──────────────────────────── -->
+<div id="modal-local-upload" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:9000;align-items:center;justify-content:center;">
+  <div style="background:#1e2235;border:1px solid rgba(201,168,76,0.3);border-radius:16px;padding:28px;width:90%;max-width:520px;direction:rtl;box-shadow:0 20px 60px rgba(0,0,0,0.5);font-family:Heebo,sans-serif;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
+      <h3 style="font-size:18px;font-weight:900;color:#c9a84c;margin:0;">📂 העלאה מהמחשב לתיבת נכנסים</h3>
+      <button onclick="closeLocalUpload()" style="background:none;border:none;color:#666;font-size:20px;cursor:pointer;">×</button>
+    </div>
+    <!-- Drop zone -->
+    <div id="lu-dropzone"
+      ondragover="event.preventDefault();this.style.borderColor='#c9a84c';this.style.background='rgba(201,168,76,0.08)'"
+      ondragleave="this.style.borderColor='rgba(255,255,255,0.12)';this.style.background='rgba(255,255,255,0.03)'"
+      ondrop="luHandleDrop(event)"
+      onclick="document.getElementById('lu-file-input').click()"
+      style="border:2px dashed rgba(255,255,255,0.12);border-radius:12px;padding:32px;text-align:center;cursor:pointer;transition:all .2s;background:rgba(255,255,255,0.03);margin-bottom:16px;">
+      <div style="font-size:32px;margin-bottom:8px;">📁</div>
+      <div style="font-size:14px;font-weight:700;color:#fff;margin-bottom:4px;">גרור קבצים לכאן או לחץ לבחירה</div>
+      <div style="font-size:11px;color:#666;">תמונות · וידאו · PDF · Word · Excel · CSV · אודיו · כל פורמט</div>
+    </div>
+    <input type="file" id="lu-file-input" multiple accept="*/*" style="display:none" onchange="luHandleFiles(this.files)">
+    <!-- File list -->
+    <div id="lu-file-list" style="display:flex;flex-direction:column;gap:8px;max-height:240px;overflow-y:auto;margin-bottom:16px;"></div>
+    <!-- Progress -->
+    <div id="lu-progress" style="display:none;margin-bottom:12px;">
+      <div style="font-size:12px;color:#c9a84c;margin-bottom:4px;" id="lu-progress-text">מעלה...</div>
+      <div style="background:rgba(255,255,255,0.08);border-radius:4px;height:6px;overflow:hidden;">
+        <div id="lu-progress-bar" style="height:100%;background:#c9a84c;border-radius:4px;transition:width .3s;width:0%"></div>
+      </div>
+    </div>
+    <!-- Actions -->
+    <div style="display:flex;gap:10px;justify-content:flex-end;">
+      <button onclick="closeLocalUpload()" style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);color:#aaa;border-radius:8px;padding:10px 20px;font-size:13px;cursor:pointer;font-family:Heebo,sans-serif;">ביטול</button>
+      <button id="lu-upload-btn" onclick="luStartUpload()" style="background:linear-gradient(135deg,#c9a84c,#a07820);border:none;color:#1a1a2e;border-radius:8px;padding:10px 24px;font-size:13px;font-weight:800;cursor:pointer;font-family:Heebo,sans-serif;" disabled>⬆ העלה לתיבת נכנסים</button>
+    </div>
+  </div>
+</div>
 </body></html>`);
   win.document.close();
 }
@@ -8665,6 +8681,166 @@ function openLinkModal(takeoffId) {
 // [WIZARD JS — moved to wizard.js]
 
 
+
+// ── LOCAL UPLOAD TO INBOX ────────────────────────────────────────
+var _luFiles = [];
+
+function openLocalUpload() {
+  _luFiles = [];
+  document.getElementById('lu-file-list').innerHTML = '';
+  document.getElementById('lu-progress').style.display = 'none';
+  document.getElementById('lu-upload-btn').disabled = true;
+  document.getElementById('lu-file-input').value = '';
+  var m = document.getElementById('modal-local-upload');
+  m.style.display = 'flex';
+}
+
+function closeLocalUpload() {
+  document.getElementById('modal-local-upload').style.display = 'none';
+}
+
+function luHandleDrop(e) {
+  e.preventDefault();
+  var dz = document.getElementById('lu-dropzone');
+  dz.style.borderColor = 'rgba(255,255,255,0.12)';
+  dz.style.background = 'rgba(255,255,255,0.03)';
+  luHandleFiles(e.dataTransfer.files);
+}
+
+function luHandleFiles(files) {
+  for (var i = 0; i < files.length; i++) {
+    _luFiles.push(files[i]);
+  }
+  luRenderFileList();
+}
+
+function luRenderFileList() {
+  var list = document.getElementById('lu-file-list');
+  if (!_luFiles.length) { list.innerHTML = ''; document.getElementById('lu-upload-btn').disabled = true; return; }
+  document.getElementById('lu-upload-btn').disabled = false;
+  list.innerHTML = _luFiles.map(function(f, i) {
+    var icon = luFileIcon(f.name, f.type);
+    var size = f.size > 1048576 ? (f.size/1048576).toFixed(1) + ' MB' : Math.round(f.size/1024) + ' KB';
+    return '<div style="display:flex;align-items:center;gap:10px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:8px 12px;" id="lu-file-row-'+i+'">' +
+      '<span style="font-size:20px">' + icon + '</span>' +
+      '<div style="flex:1;min-width:0">' +
+        '<div style="font-size:12px;font-weight:700;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + f.name + '</div>' +
+        '<div style="font-size:10px;color:#666">' + size + '</div>' +
+      '</div>' +
+      '<span id="lu-status-'+i+'" style="font-size:11px;color:#666">ממתין</span>' +
+      '<button onclick="luRemoveFile('+i+')" style="background:none;border:none;color:#666;cursor:pointer;font-size:14px;padding:0 4px;">×</button>' +
+    '</div>';
+  }).join('');
+}
+
+function luRemoveFile(idx) {
+  _luFiles.splice(idx, 1);
+  luRenderFileList();
+}
+
+function luFileIcon(name, type) {
+  var ext = (name.split('.').pop() || '').toLowerCase();
+  if (/^image/i.test(type) || /jpg|jpeg|png|gif|webp|heic|bmp|svg/i.test(ext)) return '🖼';
+  if (/^video/i.test(type) || /mp4|mov|avi|mkv|m4v|3gp|wmv|webm/i.test(ext)) return '🎬';
+  if (/^audio/i.test(type) || /mp3|wav|m4a|aac|ogg|flac|3gp/i.test(ext)) return '🎵';
+  if (/pdf/i.test(ext)) return '📄';
+  if (/docx?/i.test(ext)) return '📝';
+  if (/xlsx?|csv/i.test(ext)) return '📊';
+  if (/txt|log/i.test(ext)) return '📃';
+  return '📎';
+}
+
+function luFileType(name, type) {
+  var ext = (name.split('.').pop() || '').toLowerCase();
+  if (/^image/i.test(type) || /jpg|jpeg|png|gif|webp|heic|bmp/i.test(ext)) return 'image';
+  if (/^video/i.test(type) || /mp4|mov|avi|mkv|m4v|3gp|wmv|webm/i.test(ext)) return 'video';
+  if (/^audio/i.test(type) || /mp3|wav|m4a|aac|ogg|flac/i.test(ext)) return 'audio';
+  if (/pdf/i.test(ext)) return 'pdf';
+  if (/docx?/i.test(ext)) return 'document';
+  if (/xlsx?/i.test(ext)) return 'spreadsheet';
+  if (/csv/i.test(ext)) return 'csv';
+  return 'file';
+}
+
+async function luStartUpload() {
+  if (!_luFiles.length) return;
+  var btn = document.getElementById('lu-upload-btn');
+  btn.disabled = true;
+  btn.textContent = '⏳ מעלה...';
+  var prog = document.getElementById('lu-progress');
+  var progBar = document.getElementById('lu-progress-bar');
+  var progText = document.getElementById('lu-progress-text');
+  prog.style.display = 'block';
+
+  var done = 0;
+  var errors = 0;
+
+  for (var i = 0; i < _luFiles.length; i++) {
+    var f = _luFiles[i];
+    var statusEl = document.getElementById('lu-status-' + i);
+    if (statusEl) statusEl.textContent = 'מעלה...';
+    progText.textContent = 'מעלה ' + (i+1) + ' מתוך ' + _luFiles.length + ': ' + f.name.substr(0,30);
+
+    try {
+      // Upload to Supabase Storage — app-assets/inbox/
+      var ts = Date.now();
+      var safeName = f.name.replace(/[^a-zA-Z0-9._֐-׿-]/g, '_');
+      var storagePath = 'inbox/' + ts + '_' + safeName;
+
+      var { data: storageData, error: storageError } = await sb.storage
+        .from('app-assets')
+        .upload(storagePath, f, { upsert: true, contentType: f.type || 'application/octet-stream' });
+
+      if (storageError) throw new Error(storageError.message);
+
+      var publicUrl = SB_URL + '/storage/v1/object/public/app-assets/' + storagePath;
+      var ftype = luFileType(f.name, f.type);
+
+      // Insert into asset_inbox
+      var insertRes = await fetch(SB_URL + '/rest/v1/asset_inbox', {
+        method: 'POST',
+        headers: {
+          'apikey': SB_KEY,
+          'Authorization': 'Bearer ' + SB_KEY,
+          'Content-Type': 'application/json',
+          'Prefer': 'return=minimal'
+        },
+        body: JSON.stringify({
+          cloudinary_url: publicUrl,
+          file_name: f.name,
+          file_type: ftype,
+          thumbnail_url: ftype === 'image' ? publicUrl : null,
+          status: 'pending',
+          project_id: null
+        })
+      });
+
+      if (!insertRes.ok) {
+        var errText = await insertRes.text();
+        throw new Error(errText.substr(0, 80));
+      }
+
+      done++;
+      if (statusEl) { statusEl.textContent = '✅'; statusEl.style.color = '#4ade80'; }
+    } catch(e) {
+      errors++;
+      if (statusEl) { statusEl.textContent = '❌ ' + (e.message||'').substr(0,30); statusEl.style.color = '#f87171'; }
+      console.error('Upload error:', f.name, e);
+    }
+
+    progBar.style.width = Math.round((i+1) / _luFiles.length * 100) + '%';
+  }
+
+  progText.textContent = '✅ הועלו ' + done + ' קבצים' + (errors ? ' | ❌ ' + errors + ' שגיאות' : '');
+  btn.textContent = '✅ הסתיים';
+
+  // Refresh inbox after 1.5s
+  setTimeout(function() {
+    closeLocalUpload();
+    if (typeof assetInboxLoad === 'function') assetInboxLoad();
+  }, 1500);
+}
+
 </script>
 <!-- ══ STANDARDS RAG PANEL ═══════════════════════════════════════════ -->
 <div class="app-panel" id="standards-panel">
@@ -8850,6 +9026,7 @@ function openLinkModal(takeoffId) {
       <div style="display:flex;gap:8px;align-items:center;">
         <span id="inbox-refresh-indicator" style="font-size:11px;color:#555;display:none;">⏱ רענון אוטומטי: <span id="inbox-countdown">90</span>ש'</span>
         <button onclick="assetInboxLoad()" style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);color:#aaa;border-radius:10px;padding:9px 16px;font-size:12px;cursor:pointer;font-family:Heebo,sans-serif;">🔄 רענן</button>
+        <button onclick="openLocalUpload()" style="background:linear-gradient(135deg,#c9a84c,#a07820);border:none;color:#1a1a2e;border-radius:10px;padding:9px 16px;font-size:12px;font-weight:800;cursor:pointer;font-family:Heebo,sans-serif;">📂 העלה מהמחשב</button>
       </div>
     </div>
 
