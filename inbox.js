@@ -147,8 +147,8 @@ function sibHTML() {
 
   // URL / YOUTUBE INPUT BAR
   '<div style="background:#e8f0fd;border-bottom:1px solid #c3d4f0;padding:8px 20px;display:flex;gap:8px;align-items:center;">' +
-    '<span style="font-size:11px;font-weight:800;color:#1a3d5c;white-space:nowrap;">🌐 נתח URL / יוטיוב:</span>' +
-    '<input id="sib-url-input" type="text" placeholder="https://... או https://youtube.com/watch?v=..." style="flex:1;border:1px solid rgba(26,61,92,0.3);border-radius:8px;padding:7px 12px;font-family:Heebo,sans-serif;font-size:12px;direction:ltr;">' +
+    '<span style="font-size:11px;font-weight:800;color:#1a3d5c;white-space:nowrap;">🌐 נתח URL / יוטיוב + אתרים:</span>' +
+    '<input id="sib-url-input" type="text" placeholder="https://youtube.com/watch?v=... או כתובת אתר לסריקה..." style="flex:1;border:1px solid rgba(26,61,92,0.3);border-radius:8px;padding:7px 12px;font-family:Heebo,sans-serif;font-size:12px;direction:ltr;">' +
     '<button onclick="sibAddUrl()" style="background:#1a3d5c;border:none;color:#fff;border-radius:8px;padding:7px 14px;font-size:11px;font-weight:800;cursor:pointer;font-family:Heebo,sans-serif;white-space:nowrap;">➕ הוסף לתיבה</button>' +
   '</div>' +
 
@@ -1142,42 +1142,171 @@ async function sibAddUrl() {
 
 // Phase 1 for URL — fetch page text or YouTube transcript
 async function sibPhase1Url(id) {
-  var item = _sibItems.find(function(i){return i.id===id;});
-  if(!item) return;
+  var item = _sibItems.find(function(i){ return i.id === id; });
+  if (!item) return;
   sibSelectItem(id);
   var panel = document.getElementById('sib-analysis-panel');
-  var url = item.cloudinary_url||'';
-  var isYT = /youtube\.com\/watch|youtu\.be\//.test(url);
-
-  if(panel){ panel.innerHTML='<div style="text-align:center;padding:60px 20px 20px;color:#1a3d5c;font-size:13px;">'+(isYT?'🎬 מנתח וידאו יוטיוב...':'🌐 מנתח דף אינטרנט...')+'</div>'; sibStartMeter(isYT?'ניתוח יוטיוב':'ניתוח URL'); }
-
+  var url   = item.cloudinary_url || '';
+  var isYT  = /youtube\.com\/watch|youtu\.be\//.test(url);
   var apiKey = (window.APP&&window.APP.config&&window.APP.config.anthropic_key)||_sibApiKey;
-  if(!apiKey){try{var cfg=await sbQ('app_config','select=key,value');var row=(cfg.data||[]).find(function(r){return r.key==='anthropic_key';});if(row){apiKey=row.value;_sibApiKey=row.value;}}catch(e){}}
-  if(!apiKey){sibStopMeter();sibShowError('אין מפתח API');return;}
+  if (!apiKey) {
+    try {
+      var cfg = await sbQ('app_config','select=key,value');
+      var row = (cfg.data||[]).find(function(r){ return r.key==='anthropic_key'; });
+      if (row) { apiKey = row.value; _sibApiKey = row.value; }
+    } catch(e) {}
+  }
+  if (!apiKey) { sibStopMeter(); sibShowError('אין מפתח API'); return; }
 
-  try {
-    var prompt = isYT
-    var prompt = isYT
-      ? ('\u05d6\u05d4\u05d5 URL \u05e9\u05dc \u05e1\u05e8\u05d8\u05d5\u05df \u05d9\u05d5\u05d8\u05d9\u05d5\u05d1: ' + url + '\n\n\u05d0\u05d9\u05e0\u05da \u05d9\u05db\u05d5\u05dc \u05dc\u05e6\u05e4\u05d5\u05ea \u05d1\u05e1\u05e8\u05d8\u05d5\u05df \u05d9\u05e9\u05d9\u05e8\u05d5\u05ea. \u05d1\u05e7\u05e9 \u05de\u05d4\u05de\u05e9\u05ea\u05de\u05e9 \u05dc\u05d4\u05d3\u05d1\u05d9\u05e7 \u05db\u05ea\u05d5\u05d1\u05d9\u05d5\u05ea/\u05ea\u05de\u05dc\u05d5\u05dc \u05e9\u05dc \u05d4\u05e1\u05e8\u05d8\u05d5\u05df.')
-      : ('\u05e0\u05ea\u05d7 \u05d0\u05ea \u05d4\u05d3\u05e3 \u05d4\u05d1\u05d0: ' + url + '\n\n\u05ea\u05d0\u05e8 \u05de\u05d4 \u05d9\u05d5\u05d3\u05e2 \u05e2\u05dc URL \u05d6\u05d4. \u05d1\u05e7\u05e9 \u05de\u05d4\u05de\u05e9\u05ea\u05de\u05e9 \u05dc\u05d4\u05d3\u05d1\u05d9\u05e7 \u05d0\u05ea \u05ea\u05d5\u05db\u05df \u05d4\u05d3\u05e3.');
-    var raw = await claudeFetch({_apiKey:apiKey,model:'claude-sonnet-4-20250514',max_tokens:800,
-      system:'אתה עוזר לניתוח תוכן אינטרנטי ווידאו.',
-      messages:[{role:'user',content:prompt}]
-    },null);
-    var resp = raw&&typeof raw.json==='function'?await raw.json():raw;
-    var txt = resp&&resp.content&&resp.content[0]?resp.content[0].text:'';
-    sibStopMeter(resp&&resp.usage);
+  var extracted = '';
 
-    // For URLs — add instruction to paste content
-    var editableContent = txt + (isYT
-      ? '\n\n---\n📌 הדבק כאן את הכתוביות/תמלול של הסרטון:'
-      : '\n\n---\n📌 הדבק כאן את תוכן הדף לניתוח:');
+  // ── YOUTUBE ─────────────────────────────────────────────────────────
+  if (isYT) {
+    if (panel) {
+      panel.innerHTML = '<div style="text-align:center;padding:40px 20px 10px;color:#dc2626;font-size:13px;">🎬 יוטיוב — לא ניתן לגשת ישירות</div>' +
+        '<div style="background:#fff7ed;border:1px solid #fb923c;border-radius:10px;padding:14px;margin:10px;">' +
+          '<div style="font-size:12px;font-weight:700;color:#7c2d12;margin-bottom:8px;">📋 כיצד לקבל תמלול יוטיוב:</div>' +
+          '<div style="font-size:11px;color:#555;line-height:2;">'+
+            '1. פתח את הסרטון: <a href="'+url+'" target="_blank" style="color:#1a3d5c;font-weight:700;">לחץ כאן לפתיחה ←</a><br>'+
+            '2. לחץ על <b>...</b> מתחת לסרטון<br>'+
+            '3. בחר <b>"Show transcript"</b> / <b>"הצג תמלול"</b><br>'+
+            '4. בחר הכל → העתק → הדבק בתיבה למטה'+
+          '</div>' +
+          '<textarea id="yt-paste-'+id+'" rows="6" placeholder="הדבק כאן את התמלול מיוטיוב..." '+
+            'style="width:100%;margin-top:10px;border:1px solid rgba(180,140,60,0.3);border-radius:8px;'+
+            'padding:10px;font-family:Heebo,sans-serif;font-size:12px;direction:rtl;box-sizing:border-box;"></textarea>'+
+          '<button onclick="sibSubmitYTPaste(\''+id+'\')" '+
+            'style="width:100%;margin-top:8px;padding:10px;background:#dc2626;border:none;color:#fff;'+
+            'border-radius:8px;font-family:Heebo,sans-serif;font-size:13px;font-weight:800;cursor:pointer;">'+
+            '🚀 נתח תמלול זה'+
+          '</button>'+
+        '</div>';
+    }
+    return; // wait for user to paste
 
-    _sibPhase1[id] = editableContent;
-    sibRefreshCard(id);
-    sibShowPhase2Panel(id);
-  } catch(e){ sibStopMeter(); sibShowError('שגיאה: '+e.message); }
+  // ── WEBSITE SCRAPE ───────────────────────────────────────────────────
+  } else {
+    if (panel) {
+      panel.innerHTML = '<div style="text-align:center;padding:60px 20px 20px;color:#2563eb;font-size:13px;">🌐 סורק אתר...</div>';
+      sibStartMeter('סריקת אתר');
+    }
+
+    // Try multiple CORS proxies in order
+    var proxies = [
+      'https://api.allorigins.win/get?url=',
+      'https://corsproxy.io/?',
+      'https://cors-anywhere.herokuapp.com/'
+    ];
+
+    var pageText = '';
+    var fetchOk  = false;
+
+    for (var pi = 0; pi < proxies.length; pi++) {
+      try {
+        var proxyUrl = proxies[pi] + encodeURIComponent(url);
+        var res = await fetch(proxyUrl, { signal: AbortSignal.timeout(8000) });
+        if (!res.ok) continue;
+        var data = await res.json().catch(async function() {
+          return { contents: await res.text() };
+        });
+        var html = data.contents || data || '';
+        if (typeof html !== 'string') html = JSON.stringify(html);
+
+        // Strip HTML tags, scripts, styles → clean text
+        pageText = html
+          .replace(/<script[\s\S]*?<\/script>/gi, ' ')
+          .replace(/<style[\s\S]*?<\/style>/gi, ' ')
+          .replace(/<[^>]+>/g, ' ')
+          .replace(/&nbsp;/g, ' ')
+          .replace(/&amp;/g, '&')
+          .replace(/&lt;/g, '<')
+          .replace(/&gt;/g, '>')
+          .replace(/\s{3,}/g, '\n')
+          .trim();
+
+        if (pageText.length > 200) { fetchOk = true; break; }
+      } catch(pe) { /* try next proxy */ }
+    }
+
+    if (!fetchOk || pageText.length < 100) {
+      // Proxy failed — show manual paste fallback
+      sibStopMeter();
+      if (panel) {
+        panel.innerHTML =
+          '<div style="background:#fff5f5;border:1px solid #fca5a5;border-radius:10px;padding:14px;margin:10px;">' +
+            '<div style="font-size:12px;font-weight:700;color:#c62828;margin-bottom:8px;">⚠️ לא הצלחנו לסרוק את האתר אוטומטית</div>' +
+            '<div style="font-size:11px;color:#555;line-height:2;margin-bottom:8px;">'+
+              '1. פתח את האתר: <a href="'+url+'" target="_blank" style="color:#1a3d5c;font-weight:700;">לחץ כאן ←</a><br>'+
+              '2. בחר הכל (Ctrl+A) → העתק (Ctrl+C)<br>'+
+              '3. הדבק בתיבה למטה'+
+            '</div>' +
+            '<textarea id="web-paste-'+id+'" rows="8" placeholder="הדבק כאן את תוכן הדף..." '+
+              'style="width:100%;border:1px solid rgba(180,140,60,0.3);border-radius:8px;'+
+              'padding:10px;font-family:Heebo,sans-serif;font-size:12px;direction:rtl;box-sizing:border-box;"></textarea>'+
+            '<button onclick="sibSubmitWebPaste(\''+id+'\')" '+
+              'style="width:100%;margin-top:8px;padding:10px;background:#1a3d5c;border:none;color:#fff;'+
+              'border-radius:8px;font-family:Heebo,sans-serif;font-size:13px;font-weight:800;cursor:pointer;">'+
+              '🚀 נתח תוכן זה'+
+            '</button>'+
+          '</div>';
+      }
+      return;
+    }
+
+    // Got content — truncate and send to Claude for structured extraction
+    if (pageText.length > 12000) pageText = pageText.substr(0, 12000) + '\n\n[... תוכן קוצר ...]';
+
+    try {
+      var raw = await claudeFetch({
+        _apiKey: apiKey,
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 1500,
+        system: 'אתה עוזר המנתח תוכן אתרי בנייה ונדל"ן. חלץ את המידע הרלוונטי בצורה מובנית בעברית.',
+        messages: [{ role: 'user', content:
+          'תוכן הדף מ: ' + url + '\n\n' + pageText + '\n\n---\n' +
+          'נתח ותסכם:\n' +
+          '1. מהו האתר ומה הוא מציע\n' +
+          '2. מידע מקצועי רלוונטי לבנייה/נדל"ן\n' +
+          '3. נתונים, מחירים, תקנים, מפרטים שמצאת\n' +
+          '4. נקודות עיקריות לפעולה'
+        }]
+      }, null);
+
+      var resp = raw && typeof raw.json === 'function' ? await raw.json() : raw;
+      var summary = resp && resp.content && resp.content[0] ? resp.content[0].text : '';
+      sibStopMeter(resp && resp.usage);
+
+      extracted = '=== תוכן שנסרק מ: ' + url + ' ===\n\n' + summary +
+        '\n\n---\n[תוכן גולמי לעיון]\n' + pageText.substr(0, 2000) + (pageText.length > 2000 ? '\n...' : '');
+
+      _sibPhase1[id] = extracted;
+      sibRefreshCard(id);
+      sibShowPhase2Panel(id);
+
+    } catch(e) { sibStopMeter(); sibShowError('שגיאה: ' + e.message); }
+  }
 }
+
+// ── YOUTUBE TRANSCRIPT PASTE SUBMIT ──────────────────────────────────
+function sibSubmitYTPaste(id) {
+  var el = document.getElementById('yt-paste-' + id);
+  var txt = el ? el.value.trim() : '';
+  if (!txt) { showToast('הדבק תמלול תחילה', 'error'); return; }
+  _sibPhase1[id] = 'תמלול יוטיוב:\n\n' + txt;
+  sibRefreshCard(id);
+  sibShowPhase2Panel(id);
+}
+
+// ── WEB CONTENT PASTE SUBMIT ──────────────────────────────────────────
+function sibSubmitWebPaste(id) {
+  var el = document.getElementById('web-paste-' + id);
+  var txt = el ? el.value.trim() : '';
+  if (!txt) { showToast('הדבק תוכן תחילה', 'error'); return; }
+  _sibPhase1[id] = 'תוכן אתר:\n\n' + txt;
+  sibRefreshCard(id);
+  sibShowPhase2Panel(id);
+}
+
 
 
 // ── APPROVE + SAVE REPORT ─────────────────────────────────────────────
