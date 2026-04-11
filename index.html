@@ -5667,41 +5667,7 @@ ${d.notes?`<div class="notes" style="margin-top:14px;"><strong>הערות:</stro
 </div>
 <div class="footer">מסמך זה הופק ממערכת ניהול הפרויקטים של בני פרסקי | ${d.poNumber} | ${dateStr}</div>
 
-<!-- ── LOCAL UPLOAD MODAL ──────────────────────────── -->
-<div id="modal-local-upload" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:9000;align-items:center;justify-content:center;">
-  <div style="background:#1e2235;border:1px solid rgba(201,168,76,0.3);border-radius:16px;padding:28px;width:90%;max-width:520px;direction:rtl;box-shadow:0 20px 60px rgba(0,0,0,0.5);font-family:Heebo,sans-serif;">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
-      <h3 style="font-size:18px;font-weight:900;color:#c9a84c;margin:0;">📂 העלאה מהמחשב לתיבת נכנסים</h3>
-      <button onclick="closeLocalUpload()" style="background:none;border:none;color:#666;font-size:20px;cursor:pointer;">×</button>
-    </div>
-    <!-- Drop zone -->
-    <div id="lu-dropzone"
-      ondragover="event.preventDefault();this.style.borderColor='#c9a84c';this.style.background='rgba(201,168,76,0.08)'"
-      ondragleave="this.style.borderColor='rgba(255,255,255,0.12)';this.style.background='rgba(255,255,255,0.03)'"
-      ondrop="luHandleDrop(event)"
-      onclick="document.getElementById('lu-file-input').click()"
-      style="border:2px dashed rgba(255,255,255,0.12);border-radius:12px;padding:32px;text-align:center;cursor:pointer;transition:all .2s;background:rgba(255,255,255,0.03);margin-bottom:16px;">
-      <div style="font-size:32px;margin-bottom:8px;">📁</div>
-      <div style="font-size:14px;font-weight:700;color:#fff;margin-bottom:4px;">גרור קבצים לכאן או לחץ לבחירה</div>
-      <div style="font-size:11px;color:#666;">תמונות · וידאו · PDF · Word · Excel · CSV · אודיו · כל פורמט</div>
-    </div>
-    <input type="file" id="lu-file-input" multiple accept="*/*" style="display:none" onchange="luHandleFiles(this.files)">
-    <!-- File list -->
-    <div id="lu-file-list" style="display:flex;flex-direction:column;gap:8px;max-height:240px;overflow-y:auto;margin-bottom:16px;"></div>
-    <!-- Progress -->
-    <div id="lu-progress" style="display:none;margin-bottom:12px;">
-      <div style="font-size:12px;color:#c9a84c;margin-bottom:4px;" id="lu-progress-text">מעלה...</div>
-      <div style="background:rgba(255,255,255,0.08);border-radius:4px;height:6px;overflow:hidden;">
-        <div id="lu-progress-bar" style="height:100%;background:#c9a84c;border-radius:4px;transition:width .3s;width:0%"></div>
-      </div>
-    </div>
-    <!-- Actions -->
-    <div style="display:flex;gap:10px;justify-content:flex-end;">
-      <button onclick="closeLocalUpload()" style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);color:#aaa;border-radius:8px;padding:10px 20px;font-size:13px;cursor:pointer;font-family:Heebo,sans-serif;">ביטול</button>
-      <button id="lu-upload-btn" onclick="luStartUpload()" style="background:linear-gradient(135deg,#c9a84c,#a07820);border:none;color:#1a1a2e;border-radius:8px;padding:10px 24px;font-size:13px;font-weight:800;cursor:pointer;font-family:Heebo,sans-serif;" disabled>⬆ העלה לתיבת נכנסים</button>
-    </div>
-  </div>
-</div>
+
 </body></html>`);
   win.document.close();
 }
@@ -9080,5 +9046,37 @@ async function luStartUpload() {
   </div>
 </div>
 
+
+<!-- ── LOCAL UPLOAD MODAL ──────────────────────────── -->
+<div id="modal-local-upload" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:9000;align-items:center;justify-content:center;">
+  <div style="background:#1e2235;border:1px solid rgba(201,168,76,0.3);border-radius:16px;padding:28px;width:90%;max-width:520px;direction:rtl;box-shadow:0 20px 60px rgba(0,0,0,0.5);font-family:Heebo,sans-serif;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
+      <h3 style="font-size:18px;font-weight:900;color:#c9a84c;margin:0;">📂 העלאה מהמחשב לתיבת נכנסים</h3>
+      <button onclick="closeLocalUpload()" style="background:none;border:none;color:#666;font-size:20px;cursor:pointer;">×</button>
+    </div>
+    <div id="lu-dropzone"
+      ondragover="event.preventDefault();this.style.borderColor='#c9a84c';this.style.background='rgba(201,168,76,0.08)'"
+      ondragleave="this.style.borderColor='rgba(255,255,255,0.12)';this.style.background='rgba(255,255,255,0.03)'"
+      ondrop="luHandleDrop(event)"
+      onclick="document.getElementById('lu-file-input').click()"
+      style="border:2px dashed rgba(255,255,255,0.12);border-radius:12px;padding:32px;text-align:center;cursor:pointer;transition:all .2s;background:rgba(255,255,255,0.03);margin-bottom:16px;">
+      <div style="font-size:32px;margin-bottom:8px;">📁</div>
+      <div style="font-size:14px;font-weight:700;color:#fff;margin-bottom:4px;">גרור קבצים לכאן או לחץ לבחירה</div>
+      <div style="font-size:11px;color:#666;">תמונות · וידאו · PDF · Word · Excel · CSV · אודיו · כל פורמט</div>
+    </div>
+    <input type="file" id="lu-file-input" multiple accept="*/*" style="display:none" onchange="luHandleFiles(this.files)">
+    <div id="lu-file-list" style="display:flex;flex-direction:column;gap:8px;max-height:240px;overflow-y:auto;margin-bottom:16px;"></div>
+    <div id="lu-progress" style="display:none;margin-bottom:12px;">
+      <div style="font-size:12px;color:#c9a84c;margin-bottom:4px;" id="lu-progress-text">מעלה...</div>
+      <div style="background:rgba(255,255,255,0.08);border-radius:4px;height:6px;overflow:hidden;">
+        <div id="lu-progress-bar" style="height:100%;background:#c9a84c;border-radius:4px;transition:width .3s;width:0%"></div>
+      </div>
+    </div>
+    <div style="display:flex;gap:10px;justify-content:flex-end;">
+      <button onclick="closeLocalUpload()" style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);color:#aaa;border-radius:8px;padding:10px 20px;font-size:13px;cursor:pointer;font-family:Heebo,sans-serif;">ביטול</button>
+      <button id="lu-upload-btn" onclick="luStartUpload()" style="background:linear-gradient(135deg,#c9a84c,#a07820);border:none;color:#1a1a2e;border-radius:8px;padding:10px 24px;font-size:13px;font-weight:800;cursor:pointer;font-family:Heebo,sans-serif;" disabled>⬆ העלה לתיבת נכנסים</button>
+    </div>
+  </div>
+</div>
 </body>
 </html>
