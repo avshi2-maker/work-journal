@@ -8685,7 +8685,7 @@ function openLinkModal(takeoffId) {
 // ── LOCAL UPLOAD TO INBOX ────────────────────────────────────────
 var _luFiles = [];
 
-function openLocalUpload() {
+window.openLocalUpload = function() {
   _luFiles = [];
   document.getElementById('lu-file-list').innerHTML = '';
   document.getElementById('lu-progress').style.display = 'none';
@@ -8693,11 +8693,11 @@ function openLocalUpload() {
   document.getElementById('lu-file-input').value = '';
   var m = document.getElementById('modal-local-upload');
   m.style.display = 'flex';
-}
+};
 
-function closeLocalUpload() {
+window.closeLocalUpload = function() {
   document.getElementById('modal-local-upload').style.display = 'none';
-}
+};
 
 function luHandleDrop(e) {
   e.preventDefault();
