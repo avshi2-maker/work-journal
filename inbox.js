@@ -162,8 +162,10 @@ function sibFileCard(item) {
   var typeIcon = type === 'video' ? '🎥' : type === 'audio' ? '🎙' : type === 'pdf' ? '📄' : '📸';
   var typeBg   = type === 'video' ? '#fff8e8' : type === 'audio' ? '#e8f8f0' : type === 'pdf' ? '#fdf0f0' : '#e8f0fd';
   var typeColor= type === 'video' ? '#f59e0b' : type === 'audio' ? '#10b981' : type === 'pdf' ? '#ef4444' : '#3b82f6';
-  var hasThumb = (type === 'image' || type === 'photo' || type === 'video') && (item.thumbnail_url || item.cloudinary_url);
-  var thumbUrl = item.thumbnail_url || (item.cloudinary_url ? item.cloudinary_url.replace('/upload/', '/upload/w_80,h_80,c_fill,f_jpg/') : '');
+  var _rawThumb = item.thumbnail_url || (item.cloudinary_url && item.cloudinary_url.includes('/upload/') ? item.cloudinary_url.replace('/upload/', '/upload/w_80,h_80,c_fill,f_jpg/') : '');
+  // Only use thumbnail if it's an absolute URL (starts with http)
+  var thumbUrl = (_rawThumb && _rawThumb.startsWith('http')) ? _rawThumb : '';
+  var hasThumb = (type === 'image' || type === 'photo' || type === 'video') && thumbUrl;
 
   var fname = item.file_name || 'קובץ ללא שם';
   var proj = (window.allProjects||[]).find(function(p){ return p.id === item.project_id; });
@@ -740,7 +742,7 @@ async function sibDeleteItem(id) {
 function sibPlayMedia(id) {
   var item = _sibItems.find(function(i){ return i.id === id; });
   if (!item) return;
-  var url = item.cloudinary_url || '';
+  var url = (item.cloudinary_url && item.cloudinary_url.startsWith('http')) ? item.cloudinary_url : '';
   var type = item.file_type || '';
   var fname = item.file_name || id;
   var panel = document.getElementById('sib-analysis-panel');
