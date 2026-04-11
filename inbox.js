@@ -43,7 +43,7 @@ function sibHTML() {
     <div style="display:flex;gap:8px;align-items:center;">
       <span id="sib-badge" style="display:none;background:#ef4444;color:#1a3d5c;border-radius:20px;padding:3px 10px;font-size:11px;font-weight:800;"></span>
       <button onclick="sibLoad()" style="background:#f5f0e8;border:1px solid rgba(180,140,60,0.3);color:#5a6f7c;border-radius:8px;padding:7px 14px;font-size:11px;cursor:pointer;font-family:Heebo,sans-serif;">🔄 רענן</button>
-      <button onclick="openLocalUpload()" style="background:linear-gradient(135deg,#c9a84c,#9a6f00);border:none;color:#1a1a2e;border-radius:8px;padding:7px 14px;font-size:11px;font-weight:800;cursor:pointer;font-family:Heebo,sans-serif;">📂 העלה מהמחשב</button>
+      <button onclick="var m=document.getElementById('modal-local-upload');if(m){m.style.display='flex';}else if(window.openLocalUpload){window.openLocalUpload();}" style="background:linear-gradient(135deg,#c9a84c,#9a6f00);border:none;color:#1a1a2e;border-radius:8px;padding:7px 14px;font-size:11px;font-weight:800;cursor:pointer;font-family:Heebo,sans-serif;">📂 העלה מהמחשב</button>
       <select id="sib-proj-filter" onchange="sibFilterByProject(this.value)" style="background:#fff;border:1px solid rgba(180,140,60,0.3);color:#2c4a6e;border-radius:8px;padding:7px 12px;font-size:11px;font-family:Heebo,sans-serif;direction:rtl;">
         <option value="">כל הפרויקטים</option>
       </select>
