@@ -15,6 +15,9 @@ async function sibInit() {
   // Inject full two-panel UI into inbox-panel
   var panel = document.getElementById('inbox-panel');
   if (!panel) return;
+  // Force full width — app-panel has no width by default
+  panel.style.width = '100%';
+  panel.style.boxSizing = 'border-box';
 
   // Get API key — check APP.config first (already loaded by index.html bootstrap)
   var ak = window.APP && window.APP.config && window.APP.config.anthropic_key;
@@ -35,7 +38,7 @@ async function sibInit() {
 }
 
 function sibHTML() {
-  return `<div id="sib-root" style="min-height:100vh;background:#fdf6e3;font-family:Heebo,sans-serif;direction:rtl;padding:0;">
+  return `<div id="sib-root" style="width:100%;min-height:100vh;background:#fdf6e3;font-family:Heebo,sans-serif;direction:rtl;padding:0;box-sizing:border-box;">
 
   <!-- TOPBAR -->
   <div style="background:#f5e9c4;border-bottom:2px solid #c9a84c;padding:14px 20px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
@@ -57,7 +60,11 @@ function sibHTML() {
   <div id="sib-stats" style="display:flex;gap:8px;padding:10px 20px;background:#f5e9c4;border-bottom:1px solid #f5f0e8;flex-wrap:wrap;"></div>
 
   <!-- MAIN TWO-PANEL -->
-  <div style="display:grid;grid-template-columns:1fr 1fr;min-height:calc(100vh - 120px);">
+  <div style="display:grid;grid-template-columns:1fr 1fr;min-height:calc(100vh - 120px);width:100%;" id="sib-two-panel">
+  <style>
+    @media(max-width:700px){#sib-two-panel{grid-template-columns:1fr !important;}}
+    #sib-root,#inbox-panel{width:100% !important;box-sizing:border-box;}
+  </style>
 
     <!-- RIGHT PANEL: Incoming files -->
     <div style="border-left:2px solid rgba(180,140,60,0.3);background:#fdf6e3;padding:16px;overflow-y:auto;max-height:calc(100vh - 120px);">
@@ -212,7 +219,8 @@ function sibActionButtons(item) {
     btns += sibBtn('📚 אנציקלופדיה','sibSaveToEnc(\'' + id + '\')', 'enc');
   } else if (type === 'video') {
     btns += sibBtn('▶ נגן',          'sibPlayMedia(\'' + id + '\')', 'sec');
-    btns += sibBtn('🎞️ חלץ פריים', 'sibExtractFrame(\'' + id + '\')', 'primary');
+    btns += sibBtn('🎙️ תמלל + נתח','sibTranscribe(\'' + id + '\')', 'primary');
+    btns += sibBtn('🎞️ חלץ פריים', 'sibExtractFrame(\'' + id + '\')', 'sec');
     btns += sibBtn('🔍 נתח',       'sibAnalyze(\'' + id + '\',\'general\')', 'sec');
     btns += sibBtn('📚 אנציקלופדיה','sibSaveToEnc(\'' + id + '\')', 'enc');
   } else if (type === 'audio') {
@@ -297,20 +305,77 @@ function sibApprovePanel(item) {
     '</div>';
 }
 
+// ── LIVE TOKEN METER ──────────────────────────────────────────────────
+var _sibMeterTimer = null;
+
+function sibStartMeter(label) {
+  sibStopMeter();
+  var panel = document.getElementById('sib-analysis-panel');
+  if (!panel) return;
+  var startTime = Date.now();
+  var meterId = 'sib-live-meter';
+  var old = document.getElementById(meterId);
+  if (old) old.remove();
+  var meterEl = document.createElement('div');
+  meterEl.id = meterId;
+  meterEl.style.cssText = 'background:rgba(26,61,92,0.06);border:1px solid rgba(26,61,92,0.15);border-radius:8px;padding:8px 12px;margin-top:10px;font-size:11px;color:#5a6f7c;display:flex;align-items:center;gap:8px;font-family:Heebo,sans-serif;direction:rtl;';
+  meterEl.innerHTML = '<span style="display:inline-block;animation:sibspin 1s linear infinite;font-size:14px;">⚙️</span>' +
+    '<span style="color:#1a3d5c;font-weight:700;">' + (label||'AI עובד') + '</span>' +
+    '<span style="margin-right:auto;"></span>' +
+    '<span id="sib-meter-time" style="color:#c9a84c;font-weight:800;font-size:12px;">0s</span>' +
+    '<span style="color:#aaa;margin:0 4px;">|</span>' +
+    '<span id="sib-meter-est" style="color:#7a9ab5;font-size:10px;">מחשב...</span>';
+  if (!document.getElementById('sib-spin-style')) {
+    var st = document.createElement('style');
+    st.id = 'sib-spin-style';
+    st.textContent = '@keyframes sibspin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}';
+    document.head.appendChild(st);
+  }
+  panel.appendChild(meterEl);
+  _sibMeterTimer = setInterval(function() {
+    var elapsed = Math.floor((Date.now() - startTime) / 1000);
+    var timeEl = document.getElementById('sib-meter-time');
+    var estEl  = document.getElementById('sib-meter-est');
+    if (!timeEl) { clearInterval(_sibMeterTimer); return; }
+    timeEl.textContent = elapsed + 's';
+    var estTokens = elapsed * 40;
+    var estCost   = (estTokens * 15) / 1000000;
+    if (estEl) estEl.textContent = '~' + estTokens + ' טוקנים · ~$' + estCost.toFixed(4);
+  }, 1000);
+}
+
+function sibStopMeter(usageObj) {
+  if (_sibMeterTimer) { clearInterval(_sibMeterTimer); _sibMeterTimer = null; }
+  var meterEl = document.getElementById('sib-live-meter');
+  if (!meterEl) return;
+  if (usageObj) {
+    var iT = usageObj.input_tokens  || 0;
+    var oT = usageObj.output_tokens || 0;
+    var cost = (iT * 3 + oT * 15) / 1000000;
+    meterEl.style.background = 'rgba(201,168,76,0.08)';
+    meterEl.style.borderColor = 'rgba(201,168,76,0.25)';
+    meterEl.innerHTML = '🔢 <b style="color:#c9a84c">' + (iT+oT).toLocaleString() + '</b> טוקנים' +
+      ' &nbsp;·&nbsp; 📥 ' + iT.toLocaleString() +
+      ' &nbsp;·&nbsp; 📤 ' + oT.toLocaleString() +
+      ' &nbsp;·&nbsp; 💰 <b style="color:#c9a84c">$' + cost.toFixed(4) + '</b>';
+  } else {
+    meterEl.remove();
+  }
+}
+
 // ── AI ANALYSIS ───────────────────────────────────────────────────────
 async function sibAnalyze(id, mode) {
   var item = _sibItems.find(function(i){ return i.id === id; });
   if (!item) return;
 
   sibSelectItem(id);
-  var panel = document.getElementById('sib-analysis-panel');
-  if (panel) {
-    panel.innerHTML = '<div style="text-align:center;padding:40px;color:#9a6f00;font-size:13px;">' +
-      '<div style="font-size:28px;margin-bottom:12px;animation:spin 1s linear infinite;">⚙️</div>' +
-      'Claude מנתח את הקובץ...' +
-      '</div>' +
-      '<style>@keyframes spin{from{transform:rotate(0)}to{transform:rotate(360deg)}}</style>';
-  }
+  setTimeout(function() {
+    var panel = document.getElementById('sib-analysis-panel');
+    if (panel) {
+      panel.innerHTML = '<div style="text-align:center;padding:60px 20px 20px;color:#9a6f00;font-size:13px;">Claude מנתח...</div>';
+      sibStartMeter('ניתוח ' + (mode||'כללי') + ' — ' + (item.file_name||id).substr(0,22));
+    }
+  }, 0);
 
   var apiKey = _sibApiKey || (window.APP && window.APP.config && window.APP.config.anthropic_key);
   if (!apiKey) {
@@ -344,6 +409,7 @@ async function sibAnalyze(id, mode) {
     var resp = _rawResp && typeof _rawResp.json === 'function' ? await _rawResp.json() : _rawResp;
 
     if (window.tkrunEnd && resp && resp.usage) window.tkrunEnd(resp.usage.input_tokens||0, resp.usage.output_tokens||0);
+    sibStopMeter(resp && resp.usage);
     var result = {
       mode: mode,
       text: resp && resp.content && resp.content[0] ? resp.content[0].text : 'אין תגובה',
@@ -355,6 +421,7 @@ async function sibAnalyze(id, mode) {
     sibShowAnalysis(id, result);
 
   } catch(e) {
+    sibStopMeter();
     sibShowError('שגיאת ניתוח: ' + e.message);
   }
 }
@@ -421,7 +488,11 @@ async function sibTranscribe(id) {
   sibSelectItem(id);
 
   var panel = document.getElementById('sib-analysis-panel');
-  if (panel) panel.innerHTML = '<div style="text-align:center;padding:40px;color:#1b7a4a;font-size:13px;">🎙️ מתמלל הקלטה...</div>';
+  if (panel) {
+    panel.innerHTML = '<div style="text-align:center;padding:60px 20px 20px;color:#1b7a4a;font-size:13px;">🎙️ ' +
+      (item.file_type === 'video' ? 'מחלץ אודיו מהוידאו ומתמלל...' : 'מתמלל הקלטה...') + '</div>';
+    sibStartMeter('תמלול — ' + (item.file_name||id).substr(0,25));
+  }
 
   if (window.tkrunStart) window.tkrunStart('תמלול — ' + (item.file_name||id).substr(0,25));
   var elevenlabsKey = null;
@@ -452,14 +523,20 @@ async function sibTranscribe(id) {
     var audioBlob = await audioResp.blob();
 
     // Fix MIME type — Samsung records .m4a/.3gp with empty or wrong MIME
+    // mp4 video files with audio track (call recordings) also supported
     var fileName = item.file_name || 'audio.m4a';
     var mimeType = audioBlob.type;
-    if (!mimeType || mimeType === 'application/octet-stream' || mimeType === 'video/3gpp') {
+    if (!mimeType || mimeType === 'application/octet-stream' || mimeType === 'video/3gpp' || mimeType === 'video/mp4') {
       var ext = fileName.split('.').pop().toLowerCase();
       var mimeMap = { m4a:'audio/mp4', mp3:'audio/mpeg', wav:'audio/wav',
                       ogg:'audio/ogg', webm:'audio/webm', aac:'audio/aac',
-                      '3gp':'audio/3gpp', flac:'audio/flac' };
+                      '3gp':'audio/3gpp', flac:'audio/flac',
+                      mp4:'audio/mp4' }; // mp4 call recordings → send as audio/mp4
       mimeType = mimeMap[ext] || 'audio/mp4';
+    }
+    // Rename .mp4 files to .m4a so ElevenLabs treats them as audio
+    if (fileName.toLowerCase().endsWith('.mp4')) {
+      fileName = fileName.replace(/\.mp4$/i, '.m4a');
     }
     var fixedBlob = new Blob([audioBlob], { type: mimeType });
 
@@ -497,6 +574,7 @@ async function sibTranscribe(id) {
     console.log('[INBOX] transcript length:', transcript.length);
 
     if (window.tkrunEnd) window.tkrunEnd(0, Math.ceil(transcript.length/4));
+    sibStopMeter({ input_tokens: 0, output_tokens: Math.ceil(transcript.length/4) });
     var result = { mode: 'transcription', text: transcript, timestamp: new Date().toISOString() };
     _sibAnalysis[id] = result;
 
@@ -514,6 +592,7 @@ async function sibTranscribe(id) {
         sibApprovePanel(item);
     }
   } catch(e) {
+    sibStopMeter();
     sibShowError('שגיאת תמלול: ' + e.message);
   }
 }
@@ -564,7 +643,10 @@ async function sibAnalyzePDF(id) {
   if (!apiKey) { sibShowError('לא נמצא מפתח API'); return; }
 
   var panel = document.getElementById('sib-analysis-panel');
-  if (panel) panel.innerHTML = '<div style="text-align:center;padding:40px;color:#c62828;font-weight:800;font-size:13px;">📄 מנתח מסמך PDF...</div>';
+  if (panel) {
+    panel.innerHTML = '<div style="text-align:center;padding:60px 20px 20px;color:#c62828;font-weight:800;font-size:13px;">📄 מנתח מסמך PDF...</div>';
+    sibStartMeter('ניתוח PDF — ' + (item.file_name||id).substr(0,22));
+  }
 
   try {
     var _cfraw1 = await claudeFetch({
@@ -576,10 +658,12 @@ async function sibAnalyzePDF(id) {
     var resp = _cfraw1 && typeof _cfraw1.json==='function' ? await _cfraw1.json() : _cfraw1;
 
     var text = resp && resp.content && resp.content[0] ? resp.content[0].text : 'אין תגובה';
-    var result = { mode: 'pdf', text: text, timestamp: new Date().toISOString() };
+    sibStopMeter(resp && resp.usage);
+    var result = { mode: 'pdf', text: text, timestamp: new Date().toISOString(), usage: resp && resp.usage };
     _sibAnalysis[id] = result;
     sibShowAnalysis(id, result);
   } catch(e) {
+    sibStopMeter();
     sibShowError('שגיאה: ' + e.message);
   }
 }
@@ -737,13 +821,28 @@ async function sibDeleteItem(id) {
 function sibPlayMedia(id) {
   var item = _sibItems.find(function(i){ return i.id === id; });
   if (!item) return;
+  sibSelectItem(id); // highlight card (may overwrite panel)
   var url = (item.cloudinary_url && item.cloudinary_url.startsWith('http')) ? item.cloudinary_url : '';
-  var type = item.file_type || '';
+  var rawType = (item.file_type || '').toLowerCase();
+  // Normalize type aliases
+  var typeMap = { mp4:'video', mov:'video', avi:'video', webm:'video',
+                  mp3:'audio', m4a:'audio', wav:'audio', ogg:'audio', aac:'audio', '3gp':'audio', flac:'audio',
+                  jpg:'image', jpeg:'image', png:'image', gif:'image', webp:'image',
+                  pdf:'pdf' };
+  var type = typeMap[rawType] || rawType;
   var fname = item.file_name || id;
-  var panel = document.getElementById('sib-analysis-panel');
-  if (!panel) return;
 
-  var playerHtml = '';
+  // Use setTimeout(0) so this runs AFTER sibSelectItem's synchronous panel update
+  setTimeout(function() {
+    var panel = document.getElementById('sib-analysis-panel');
+    if (!panel) { console.warn('[sibPlayMedia] sib-analysis-panel not found'); return; }
+
+    if (!url) {
+      panel.innerHTML = '<div style="background:#fff5f5;border:1px solid #fca5a5;border-radius:8px;padding:20px;text-align:center;color:#c62828;font-size:12px;">⚠️ אין כתובת URL לקובץ זה<br><small style="color:#aaa">' + sibEsc(fname) + '</small></div>';
+      return;
+    }
+
+    var playerHtml = '';
 
   if (type === 'video') {
     playerHtml =
@@ -783,10 +882,15 @@ function sibPlayMedia(id) {
       '</div>';
   } else {
     playerHtml =
-      '<div style="padding:20px;text-align:center;color:#9a6f00">אין תצוגה מקדימה לסוג קובץ זה</div>';
+      '<div style="padding:20px;text-align:center;color:#9a6f00">אין תצוגה מקדימה לסוג קובץ זה ('+sibEsc(rawType)+')</div>';
   }
 
-  panel.innerHTML = playerHtml;
+    panel.innerHTML =
+      '<div style="background:#fff;border:1px solid rgba(180,140,60,0.25);border-radius:10px;overflow:hidden;margin-bottom:10px;">' +
+        playerHtml +
+      '</div>' +
+      sibApprovePanel(item);
+  }, 0); // end setTimeout
 }
 
 // ── FILTER ────────────────────────────────────────────────────────────
@@ -837,7 +941,10 @@ async function sibAnalyzeTranscript(id) {
   if (!apiKey) { sibShowError('אין מפתח API'); return; }
 
   var panel = document.getElementById('sib-analysis-panel');
-  if (panel) panel.innerHTML = '<div style="text-align:center;padding:40px;color:#9a6f00;font-size:13px;">🤖 מנתח תמלול...</div>';
+  if (panel) {
+    panel.innerHTML = '<div style="text-align:center;padding:60px 20px 20px;color:#9a6f00;font-size:13px;">🤖 מנתח תמלול...</div>';
+    sibStartMeter('ניתוח תמלול');
+  }
 
   try {
     var _taItem = _sibItems.find(function(i){ return i.id === id; });
@@ -854,10 +961,12 @@ async function sibAnalyzeTranscript(id) {
     var text = resp && resp.content && resp.content[0] ? resp.content[0].text : '';
     if (window.tkrunEnd && resp && resp.usage) window.tkrunEnd(resp.usage.input_tokens||0, resp.usage.output_tokens||0);
     var usage = resp && resp.usage;
+    sibStopMeter(usage);
     var newResult = { mode: 'analysis', text: text, timestamp: new Date().toISOString(), usage: usage };
     _sibAnalysis[id] = newResult;
     sibShowAnalysis(id, newResult);
   } catch(e) {
+    sibStopMeter();
     sibShowError('שגיאה: ' + e.message);
   }
 }
