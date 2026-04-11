@@ -242,6 +242,9 @@ async function sibLoad() {
   var statsEl = document.getElementById('sib-stats');
   var badge   = document.getElementById('sib-badge');
   if (!listEl) return;
+  // Clear stale selections on every reload
+  _sibSelSet = {};
+  sibUpdateBatchBar();
   try {
     var res = await sbQ('asset_inbox','status=eq.pending&order=created_at.desc&limit=100&select=id,cloudinary_url,file_name,file_type,thumbnail_url,project_id,created_at');
     _sibItems = res.data || [];
@@ -1120,7 +1123,10 @@ function sibPopulateProjects() {
 async function sibAddUrl() {
   var inp = document.getElementById('sib-url-input');
   var url = inp ? inp.value.trim() : '';
-  if(!url || !url.startsWith('http')){ showToast('הזן URL תקין','error'); return; }
+  if(!url){ showToast('הזן URL','error'); return; }
+  // Auto-fix missing protocol
+  if(!url.startsWith('http://') && !url.startsWith('https://')) url = 'https://' + url;
+  if(inp) inp.value = url;
 
   var isYT = /youtube\.com\/watch|youtu\.be\//.test(url);
   var fname = isYT ? 'YouTube: '+url.substr(0,60) : 'URL: '+url.substr(0,60);
@@ -1195,6 +1201,8 @@ async function sibPhase1Url(id) {
     var proxies = [
       'https://api.allorigins.win/get?url=',
       'https://corsproxy.io/?',
+      'https://api.codetabs.com/v1/proxy?quest=',
+      'https://thingproxy.freeboard.io/fetch/',
       'https://cors-anywhere.herokuapp.com/'
     ];
 
