@@ -40,6 +40,66 @@ async function sibInit() {
 }
 
 // ── HTML SHELL ────────────────────────────────────────────────────────
+
+// ── AI MODULE SELECTOR HELPERS ────────────────────────────────────────
+var _sibModuleDefaults = {
+  'mod-safety':true,'mod-engineering':true,'mod-standards':true,
+  'mod-thirdparty':true,'mod-financial':false,'mod-protocol':false,
+  'mod-ocr':false,'mod-equipment':false,'mod-neighbor':false,
+  'mod-evidence':false,'mod-general':true
+};
+var _sibModules = Object.assign({}, _sibModuleDefaults);
+
+function sibModuleChip(id, label, color, bg, border, defaultOn) {
+  var on = (_sibModules[id] !== undefined) ? _sibModules[id] : defaultOn;
+  return '<label id="chip-'+id+'" onclick="sibToggleModule(\''+id+'\',this)" style="display:inline-flex;align-items:center;gap:5px;cursor:pointer;'+
+    'background:'+(on?bg:'#f5f5f5')+';border:2px solid '+(on?border:'#ddd')+';'+
+    'border-radius:20px;padding:5px 12px;font-size:11px;font-weight:800;'+
+    'color:'+(on?color:'#999')+';transition:all 0.15s;user-select:none;white-space:nowrap;">' +
+    '<span id="chip-dot-'+id+'" style="font-size:12px;">'+(on?'✅':'⬜')+'</span>' +
+    label +
+    '</label>';
+}
+
+function sibToggleModule(id, labelEl) {
+  _sibModules[id] = !_sibModules[id];
+  var on = _sibModules[id];
+  // Re-render chip by rebuilding its style
+  var defaults = {
+    'mod-safety':    {color:'#c62828',bg:'#fff5f5',border:'#fca5a5'},
+    'mod-engineering':{color:'#1a3d5c',bg:'#e8f0fd',border:'#93c5fd'},
+    'mod-standards': {color:'#4527a0',bg:'#ede7f6',border:'#9c6fdd'},
+    'mod-thirdparty':{color:'#7c2d12',bg:'#fff7ed',border:'#fb923c'},
+    'mod-financial': {color:'#1b5e20',bg:'#e8f5e9',border:'#a5d6a7'},
+    'mod-protocol':  {color:'#7a5500',bg:'#fffde7',border:'#f59e0b'},
+    'mod-ocr':       {color:'#0f766e',bg:'#f0fdfb',border:'#5eead4'},
+    'mod-equipment': {color:'#92400e',bg:'#fef3c7',border:'#fcd34d'},
+    'mod-neighbor':  {color:'#1e40af',bg:'#eff6ff',border:'#93c5fd'},
+    'mod-evidence':  {color:'#374151',bg:'#f9fafb',border:'#9ca3af'},
+    'mod-general':   {color:'#555',   bg:'#f5f5f5',border:'#ccc'},
+  };
+  var d = defaults[id] || {color:'#555',bg:'#f5f5f5',border:'#ccc'};
+  if (labelEl) {
+    labelEl.style.background = on ? d.bg : '#f5f5f5';
+    labelEl.style.borderColor = on ? d.border : '#ddd';
+    labelEl.style.color = on ? d.color : '#999';
+    var dot = document.getElementById('chip-dot-'+id);
+    if (dot) dot.textContent = on ? '✅' : '⬜';
+  }
+}
+
+function sibToggleAllModules(on) {
+  Object.keys(_sibModules).forEach(function(id) {
+    _sibModules[id] = on;
+    var chip = document.getElementById('chip-'+id);
+    if (chip) sibToggleModule(id, chip);
+  });
+}
+
+function sibIsModuleActive(id) {
+  return !!_sibModules[id];
+}
+
 function sibHTML() {
   return '<div id="sib-root" style="width:100%;min-height:100vh;background:#fdf6e3;font-family:Heebo,sans-serif;direction:rtl;padding:0;box-sizing:border-box;">' +
 
@@ -59,6 +119,29 @@ function sibHTML() {
       '<select id="sib-proj-filter" onchange="sibFilterByProject(this.value)" style="background:#fff;border:1px solid rgba(180,140,60,0.3);color:#2c4a6e;border-radius:8px;padding:8px 12px;font-size:11px;font-family:Heebo,sans-serif;direction:rtl;">' +
         '<option value="">כל הפרויקטים</option>' +
       '</select>' +
+    '</div>' +
+  '</div>' +
+
+  // AI MODULE SELECTOR BOX
+  '<div style="background:#fff;border-bottom:2px solid #c9a84c;padding:12px 20px;">' +
+    '<div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">' +
+      '<div style="font-size:11px;font-weight:900;color:#1a3d5c;letter-spacing:0.5px;">🎛️ מודולי AI פעילים — בחר מה ישתתף בניתוח:</div>' +
+      '<button onclick="sibToggleAllModules(true)" style="background:#e8f5e9;border:1px solid #a5d6a7;color:#1b5e20;border-radius:6px;padding:3px 10px;font-size:10px;font-weight:700;cursor:pointer;font-family:Heebo,sans-serif;">✓ הכל</button>' +
+      '<button onclick="sibToggleAllModules(false)" style="background:#f5f5f5;border:1px solid #ccc;color:#888;border-radius:6px;padding:3px 10px;font-size:10px;cursor:pointer;font-family:Heebo,sans-serif;">✗ נקה</button>' +
+    '</div>' +
+    '<div style="display:flex;gap:8px;flex-wrap:wrap;">' +
+      // Safety
+      sibModuleChip('mod-safety',    '⚠️ בטיחות',        '#c62828', '#fff5f5', '#fca5a5', true)  +
+      sibModuleChip('mod-engineering','🏗️ הנדסי',        '#1a3d5c', '#e8f0fd', '#93c5fd', true)  +
+      sibModuleChip('mod-standards',  '📋 תקנים 838',     '#4527a0', '#ede7f6', '#9c6fdd', true)  +
+      sibModuleChip('mod-thirdparty', '⚖️ צד שלישי',      '#7c2d12', '#fff7ed', '#fb923c', true)  +
+      sibModuleChip('mod-financial',  '💰 רווח/הפסד',     '#1b5e20', '#e8f5e9', '#a5d6a7', false) +
+      sibModuleChip('mod-protocol',   '📝 פרוטוקול שיחה', '#7a5500', '#fffde7', '#f59e0b', false) +
+      sibModuleChip('mod-ocr',        '📐 מדידות OCR',    '#0f766e', '#f0fdfb', '#5eead4', false) +
+      sibModuleChip('mod-equipment',  '🔧 השאלת ציוד',    '#92400e', '#fef3c7', '#fcd34d', false) +
+      sibModuleChip('mod-neighbor',   '✉️ מכתב שכנים',   '#1e40af', '#eff6ff', '#93c5fd', false) +
+      sibModuleChip('mod-evidence',   '🛡️ מסמך הגנתי',   '#374151', '#f9fafb', '#9ca3af', false) +
+      sibModuleChip('mod-general',    '📊 כללי',          '#555',    '#f5f5f5', '#ccc',    true)  +
     '</div>' +
   '</div>' +
 
@@ -446,15 +529,22 @@ function sibShowPhase2Panel(id) {
   var isAudio = (type==='audio'||type==='video');
 
   // Direction buttons
-  var directions = [
-    {id:'safety',      label:'⚠️ בטיחות',       color:'#c62828', bg:'#fff5f5', border:'#fca5a5'},
-    {id:'engineering', label:'🏗️ הנדסי',        color:'#1a3d5c', bg:'#e8f0fd', border:'#93c5fd'},
-    {id:'standards',   label:'📋 תקנים',         color:'#4527a0', bg:'#ede7f6', border:'#9c6fdd'},
-    {id:'thirdparty',  label:'⚖️ צד שלישי',      color:'#7c2d12', bg:'#fff7ed', border:'#fb923c'},
+  // Build directions from active modules only
+  var allDirections = [
+    {id:'safety',      mod:'mod-safety',      label:'⚠️ בטיחות',        color:'#c62828', bg:'#fff5f5', border:'#fca5a5', always:true},
+    {id:'engineering', mod:'mod-engineering', label:'🏗️ הנדסי',         color:'#1a3d5c', bg:'#e8f0fd', border:'#93c5fd', always:true},
+    {id:'standards',   mod:'mod-standards',   label:'📋 תקנים 838',      color:'#4527a0', bg:'#ede7f6', border:'#9c6fdd', always:true},
+    {id:'thirdparty',  mod:'mod-thirdparty',  label:'⚖️ צד שלישי',       color:'#7c2d12', bg:'#fff7ed', border:'#fb923c', always:true},
+    {id:'financial',   mod:'mod-financial',   label:'💰 רווח/הפסד',      color:'#1b5e20', bg:'#e8f5e9', border:'#a5d6a7', always:isFinancial},
+    {id:'protocol',    mod:'mod-protocol',    label:'📝 פרוטוקול',        color:'#7a5500', bg:'#fffde7', border:'#f59e0b', always:isAudio},
+    {id:'ocr',         mod:'mod-ocr',         label:'📐 מדידות OCR',      color:'#0f766e', bg:'#f0fdfb', border:'#5eead4', always:false},
+    {id:'equipment',   mod:'mod-equipment',   label:'🔧 השאלת ציוד',      color:'#92400e', bg:'#fef3c7', border:'#fcd34d', always:false},
+    {id:'general',     mod:'mod-general',     label:'📊 כללי',            color:'#555',    bg:'#f5f5f5', border:'#ccc',    always:true},
   ];
-  if(isFinancial) directions.push({id:'financial',label:'💰 רווח/הפסד',color:'#1b5e20',bg:'#e8f5e9',border:'#a5d6a7'});
-  if(isAudio) directions.push({id:'protocol',label:'📝 פרוטוקול',color:'#7a5500',bg:'#fffde7',border:'#f59e0b'});
-  directions.push({id:'general',label:'📊 כללי',color:'#555',bg:'#f5f5f5',border:'#ccc'});
+  // Show direction if: module is ticked OR the direction is contextually relevant
+  var directions = allDirections.filter(function(d){
+    return sibIsModuleActive(d.mod) || d.always;
+  });
 
   var dirBtns = directions.map(function(d){
     return '<button onclick="sibPhase2Run(\''+id+'\',\''+d.id+'\')" style="background:'+d.bg+';border:1px solid '+d.border+';color:'+d.color+';border-radius:8px;padding:7px 12px;font-size:11px;font-weight:800;cursor:pointer;font-family:Heebo,sans-serif;">'+d.label+'</button>';
@@ -622,6 +712,18 @@ async function sibPhase2Run(id, direction) {
     reportTitle = '📊 ניתוח כללי';
     systemPrompt = 'אתה מנהל פרויקטי בנייה מנוסה. נתח את החומר ותן תובנות מקצועיות.';
     userPrompt = 'נתח את החומר הבא:\n\n'+p1text+'\n\nהפק דוח בפורמט:\n\n## סיכום\n\n## נקודות מרכזיות\n[ממוספר]\n\n## ממצאים חשובים\n\n## פעולות נדרשות\n[ממוספר עם עדיפות]\n\n## המלצות';
+  }
+
+  // Special module actions that don't go to claudeFetch
+  if(direction==='ocr'){
+    sibStopMeter();
+    sibOpenMeasurements(id);
+    return;
+  }
+  if(direction==='equipment'){
+    sibStopMeter();
+    sibOpenEquipmentLog(id);
+    return;
   }
 
   try {
