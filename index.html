@@ -361,7 +361,7 @@ window.addEventListener('unhandledrejection', function(e) {
 <div id="top-tabs">
   <div class="top-tab active" id="tab-crm"    onclick="switchTab('crm')"><span>📊</span><span>לוח בקרה</span></div>
   <div class="top-tab" id="tab-fieldjournal" onclick="switchTab('journal');if(typeof jwGoto==='function')jwGoto(1);"><span>🌅</span><span>יומן שטח מלא עם קישור לקבלן</span></div>
-  <div class="top-tab"        id="tab-inbox" onclick="switchTab('inbox')"><span>📥</span><span>תיבת נכנסים</span><span id="tab-inbox-badge" style="display:none;background:#ef4444;color:#fff;border-radius:8px;padding:1px 6px;font-size:9px;font-weight:800;"></span></div>
+  <div class="top-tab"        id="tab-inbox" onclick="switchTab('inbox')"><span>📥</span><span>🧠 מרכז נתונים שטח AI</span><span id="tab-inbox-badge" style="display:none;background:#ef4444;color:#fff;border-radius:8px;padding:1px 6px;font-size:9px;font-weight:800;"></span></div>
 </div>
 
 <!-- ══ PANELS — loaded dynamically from Supabase Storage ══ -->
@@ -407,7 +407,7 @@ window.addEventListener('unhandledrejection', function(e) {
 
   <!-- GROUP: כלים -->
   <div class="nav-group-label">כלים</div>
-  <div class="nav-item" onclick="switchTab('safety')" id="tab-safety-nav"><span class="nav-icon">🛡️</span><span>בטיחות / ליקויים</span></div>
+  <div class="nav-item" onclick="switchTab('safety')" id="tab-safety-nav" style="display:none;"><span class="nav-icon">🛡️</span><span>בטיחות / ליקויים</span></div>
   <div class="nav-item" onclick="switchTab('notes')" id="tab-notes-nav"><span class="nav-icon">📝</span><span>מזכרים בני</span></div>
   <div class="nav-item" onclick="switchTab('rag')" id="tab-rag-nav"><span class="nav-icon">🏗️</span><span>ייעוץ הנדסי</span></div>
   <div class="nav-item" onclick="switchTab('encyclopedia')" id="tab-encyclopedia-nav"><span class="nav-icon">📚</span><span>אנציקלופדיה</span></div>

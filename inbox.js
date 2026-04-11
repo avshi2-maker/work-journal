@@ -1,1173 +1,879 @@
-// inbox.js - Smart Inbox Module
+// inbox.js — מרכז נתונים שטח AI
+// Unified file analysis center: Beni's mobile files + desktop uploads
+// Two-phase workflow: Extract → Analyze with direction
 // Loaded dynamically by index.html via _fetchInboxModule()
-// Two-panel layout: incoming files (right) + AI analysis (left)
 
-// ── STATE ────────────────────────────────────────────────────────────
-var _sibItems      = [];   // all pending inbox items
-var _sibSelected   = null; // currently selected item id (for analysis panel)
-var _sibSelSet     = {};   // {itemId: true} — checked for batch delete/enc
-var _sibAnalysis   = {};   // analysis results keyed by item id
-var _sibApiKey     = null; // Claude API key from app_config
-var _sibChecked    = {};   // {itemId: {safety:bool, engineering:bool, standards:bool}}
+// ── STATE ─────────────────────────────────────────────────────────────
+var _sibItems      = [];
+var _sibSelected   = null;
+var _sibSelSet     = {};
+var _sibAnalysis   = {};
+var _sibApiKey     = null;
+var _sibChecked    = {};
+var _sibMeterTimer = null;
+var _sibPhase1     = {};   // {itemId: extracted text/data from phase 1}
+var _sibSafetyCategories = []; // loaded from Supabase
 
-
-// ── INIT ─────────────────────────────────────────────────────────────
+// ── INIT ──────────────────────────────────────────────────────────────
 async function sibInit() {
-  // Inject full two-panel UI into inbox-panel
   var panel = document.getElementById('inbox-panel');
   if (!panel) return;
-  // Force full width — app-panel has no width by default
   panel.style.width = '100%';
   panel.style.boxSizing = 'border-box';
 
-  // Get API key — check APP.config first (already loaded by index.html bootstrap)
+  // API key
   var ak = window.APP && window.APP.config && window.APP.config.anthropic_key;
-  if (ak) {
-    _sibApiKey = ak;
-  } else {
+  if (ak) { _sibApiKey = ak; }
+  else {
     try {
-      var cfg = await sbQ('app_config', 'select=key,value');
-      var rows = cfg.data || [];
-      var row = rows.find(function(r){ return r.key === 'anthropic_key'; });
+      var cfg = await sbQ('app_config','select=key,value');
+      var row = (cfg.data||[]).find(function(r){ return r.key==='anthropic_key'; });
       if (row) _sibApiKey = row.value;
     } catch(e) {}
   }
 
   panel.innerHTML = sibHTML();
   sibPopulateProjects();
+  await sibLoadCategories();
+  sibRenderCategoryFilters();
   await sibLoad();
 }
 
+// ── HTML SHELL ────────────────────────────────────────────────────────
 function sibHTML() {
-  return `<div id="sib-root" style="width:100%;min-height:100vh;background:#fdf6e3;font-family:Heebo,sans-serif;direction:rtl;padding:0;box-sizing:border-box;">
+  return '<div id="sib-root" style="width:100%;min-height:100vh;background:#fdf6e3;font-family:Heebo,sans-serif;direction:rtl;padding:0;box-sizing:border-box;">' +
 
-  <!-- TOPBAR -->
-  <div style="background:#f5e9c4;border-bottom:2px solid #c9a84c;padding:14px 20px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
-    <div>
-      <div style="font-size:9px;letter-spacing:3px;color:#9a6f00;font-weight:800;text-transform:uppercase;margin-bottom:3px;">Smart Inbox</div>
-      <div style="font-size:18px;font-weight:900;color:#1a3d5c;">📥 תיבת נכנסים חכמה</div>
-    </div>
-    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
-      <span id="sib-badge" style="display:none;background:#ef4444;color:#fff;border-radius:20px;padding:3px 12px;font-size:12px;font-weight:800;"></span>
-      <!-- BIG SYNC BUTTON — Beni finishes day → click to load his files -->
-      <button onclick="sibSyncBeni()" id="sib-sync-btn"
-        style="background:linear-gradient(135deg,#1a3d5c,#2d6a9f);border:none;color:#fff;border-radius:10px;padding:10px 20px;font-size:13px;font-weight:900;cursor:pointer;font-family:Heebo,sans-serif;display:flex;align-items:center;gap:8px;box-shadow:0 2px 8px rgba(26,61,92,0.3);">
-        <span style="font-size:18px;">📲</span> העלה קבצים מנייד של בני
-      </button>
-      <!-- Desktop upload -->
-      <button onclick="if(window.openLocalUpload)window.openLocalUpload();"
-        style="background:#f5e9c4;border:1px solid #c9a84c;color:#7a5500;border-radius:8px;padding:8px 14px;font-size:11px;font-weight:700;cursor:pointer;font-family:Heebo,sans-serif;">
-        💻 העלה מהמחשב
-      </button>
-      <button onclick="sibLoad()"
-        style="background:#f5f0e8;border:1px solid rgba(180,140,60,0.3);color:#5a6f7c;border-radius:8px;padding:8px 12px;font-size:11px;cursor:pointer;font-family:Heebo,sans-serif;">
-        🔄 רענן
-      </button>
-      <select id="sib-proj-filter" onchange="sibFilterByProject(this.value)"
-        style="background:#fff;border:1px solid rgba(180,140,60,0.3);color:#2c4a6e;border-radius:8px;padding:8px 12px;font-size:11px;font-family:Heebo,sans-serif;direction:rtl;">
-        <option value="">כל הפרויקטים</option>
-      </select>
-    </div>
-  </div>
+  // TOPBAR
+  '<div style="background:#f5e9c4;border-bottom:2px solid #c9a84c;padding:14px 20px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">' +
+    '<div>' +
+      '<div style="font-size:9px;letter-spacing:3px;color:#9a6f00;font-weight:800;text-transform:uppercase;margin-bottom:3px;">AI Site Intelligence</div>' +
+      '<div style="font-size:20px;font-weight:900;color:#1a3d5c;">🧠 מרכז נתונים שטח AI</div>' +
+    '</div>' +
+    '<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">' +
+      '<span id="sib-badge" style="display:none;background:#ef4444;color:#fff;border-radius:20px;padding:3px 12px;font-size:12px;font-weight:800;"></span>' +
+      '<button onclick="sibSyncBeni()" id="sib-sync-btn" style="background:linear-gradient(135deg,#1a3d5c,#2d6a9f);border:none;color:#fff;border-radius:10px;padding:10px 20px;font-size:13px;font-weight:900;cursor:pointer;font-family:Heebo,sans-serif;display:flex;align-items:center;gap:8px;box-shadow:0 2px 8px rgba(26,61,92,0.3);">' +
+        '<span style="font-size:18px;">📲</span> העלה קבצים מנייד של בני' +
+      '</button>' +
+      '<button onclick="if(window.openLocalUpload)window.openLocalUpload();" style="background:#f5e9c4;border:1px solid #c9a84c;color:#7a5500;border-radius:8px;padding:8px 14px;font-size:11px;font-weight:700;cursor:pointer;font-family:Heebo,sans-serif;">💻 העלה מהמחשב</button>' +
+      '<button onclick="sibLoad()" style="background:#f5f0e8;border:1px solid rgba(180,140,60,0.3);color:#5a6f7c;border-radius:8px;padding:8px 12px;font-size:11px;cursor:pointer;font-family:Heebo,sans-serif;">🔄 רענן</button>' +
+      '<select id="sib-proj-filter" onchange="sibFilterByProject(this.value)" style="background:#fff;border:1px solid rgba(180,140,60,0.3);color:#2c4a6e;border-radius:8px;padding:8px 12px;font-size:11px;font-family:Heebo,sans-serif;direction:rtl;">' +
+        '<option value="">כל הפרויקטים</option>' +
+      '</select>' +
+    '</div>' +
+  '</div>' +
 
-  <!-- STATS BAR -->
-  <div id="sib-stats" style="display:flex;gap:8px;padding:10px 20px;background:#f5e9c4;border-bottom:1px solid #f5f0e8;flex-wrap:wrap;align-items:center;">
-    <div id="sib-batch-bar" style="display:none;margin-right:auto;display:flex;gap:8px;align-items:center;">
-      <span id="sib-sel-count" style="font-size:12px;font-weight:800;color:#1a3d5c;background:#fff;border-radius:20px;padding:3px 12px;border:1px solid #c9a84c;"></span>
-      <button onclick="sibBatchDelete()" style="background:#fff5f5;border:1px solid #fca5a5;color:#c62828;border-radius:8px;padding:6px 14px;font-size:12px;font-weight:800;cursor:pointer;font-family:Heebo,sans-serif;">🗑️ מחק נבחרים</button>
-      <button onclick="sibBatchToEnc()" style="background:#ede7f6;border:1px solid #9c6fdd;color:#4527a0;border-radius:8px;padding:6px 14px;font-size:12px;font-weight:800;cursor:pointer;font-family:Heebo,sans-serif;">📚 שלח לאנציקלופדיה</button>
-      <button onclick="sibClearSel()" style="background:#f5f0e8;border:1px solid rgba(180,140,60,0.3);color:#7a8a95;border-radius:8px;padding:6px 12px;font-size:11px;cursor:pointer;font-family:Heebo,sans-serif;">✕ בטל בחירה</button>
-    </div>
-  </div>
+  // STATS + BATCH BAR
+  '<div id="sib-stats" style="display:flex;gap:8px;padding:10px 20px;background:#f5e9c4;border-bottom:1px solid #e8ddb5;flex-wrap:wrap;align-items:center;">' +
+    '<div id="sib-batch-bar" style="display:none;margin-right:auto;display:flex;gap:8px;align-items:center;">' +
+      '<span id="sib-sel-count" style="font-size:12px;font-weight:800;color:#1a3d5c;background:#fff;border-radius:20px;padding:3px 12px;border:1px solid #c9a84c;"></span>' +
+      '<button onclick="sibBatchDelete()" style="background:#fff5f5;border:1px solid #fca5a5;color:#c62828;border-radius:8px;padding:6px 14px;font-size:12px;font-weight:800;cursor:pointer;font-family:Heebo,sans-serif;">🗑️ מחק נבחרים</button>' +
+      '<button onclick="sibBatchToEnc()" style="background:#ede7f6;border:1px solid #9c6fdd;color:#4527a0;border-radius:8px;padding:6px 14px;font-size:12px;font-weight:800;cursor:pointer;font-family:Heebo,sans-serif;">📚 שלח לאנציקלופדיה</button>' +
+      '<button onclick="sibClearSel()" style="background:#f5f0e8;border:1px solid rgba(180,140,60,0.3);color:#7a8a95;border-radius:8px;padding:6px 12px;font-size:11px;cursor:pointer;font-family:Heebo,sans-serif;">✕ בטל בחירה</button>' +
+    '</div>' +
+  '</div>' +
 
-  <!-- MAIN TWO-PANEL -->
-  <div style="display:grid;grid-template-columns:1fr 1fr;min-height:calc(100vh - 120px);width:100%;" id="sib-two-panel">
-  <style>
-    @media(max-width:700px){#sib-two-panel{grid-template-columns:1fr !important;}}
-    #sib-root,#inbox-panel{width:100% !important;box-sizing:border-box;}
-  </style>
+  // TWO-PANEL
+  '<div id="sib-two-panel" style="display:grid;grid-template-columns:1fr 1fr;min-height:calc(100vh - 140px);width:100%;">' +
+  '<style>#sib-root,#inbox-panel{width:100%!important;box-sizing:border-box!important;}</style>' +
 
-    <!-- RIGHT PANEL: Incoming files -->
-    <div style="border-left:2px solid rgba(180,140,60,0.3);background:#fdf6e3;padding:16px;overflow-y:auto;max-height:calc(100vh - 120px);">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
-        <div style="font-size:10px;font-weight:700;color:#9a6f00;letter-spacing:1px;text-transform:uppercase;">קבצים נכנסים — בני פרסקי</div>
-        <button onclick="sibBatchAnalyze()" style="background:linear-gradient(135deg,#1a3d5c,#2d6a9f);border:none;color:#fff;border-radius:8px;padding:6px 12px;font-family:Heebo,sans-serif;font-size:10px;font-weight:800;cursor:pointer;">🚀 הפעל ניתוח חכם</button>
-      </div>
-      <div id="sib-file-list" style="display:flex;flex-direction:column;gap:8px;">
-        <div style="text-align:center;padding:40px;color:#9aabb5;font-size:13px;">טוען קבצים...</div>
-      </div>
-    </div>
+    // RIGHT — file list
+    '<div style="border-left:2px solid rgba(180,140,60,0.3);background:#fdf6e3;padding:16px;overflow-y:auto;max-height:calc(100vh - 140px);">' +
+      '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">' +
+        '<div style="font-size:10px;font-weight:700;color:#9a6f00;letter-spacing:1px;text-transform:uppercase;">קבצי בני + העלאות</div>' +
+        '<button onclick="sibBatchAnalyze()" style="background:linear-gradient(135deg,#1a3d5c,#2d6a9f);border:none;color:#fff;border-radius:8px;padding:6px 12px;font-family:Heebo,sans-serif;font-size:10px;font-weight:800;cursor:pointer;">🚀 ניתוח קבוצתי</button>' +
+      '</div>' +
+      '<div id="sib-file-list" style="display:flex;flex-direction:column;gap:8px;">' +
+        '<div style="text-align:center;padding:40px;color:#9aabb5;font-size:13px;">טוען קבצים...</div>' +
+      '</div>' +
+    '</div>' +
 
-    <!-- LEFT PANEL: Analysis -->
-    <div style="background:#fdf6e3;padding:16px;overflow-y:auto;max-height:calc(100vh - 120px);">
-      <div style="font-size:10px;font-weight:700;color:#7a8a95;letter-spacing:1px;text-transform:uppercase;margin-bottom:12px;">ניתוח AI — מיידי</div>
-      <div id="sib-analysis-panel">
-        <div style="text-align:center;padding:60px 20px;color:#b0bec5;font-size:13px;line-height:1.8;">
-          <div style="font-size:32px;margin-bottom:12px;">👈</div>
-          בחר קובץ מהרשימה<br>ולחץ על כפתור הניתוח
-        </div>
-      </div>
-    </div>
+    // LEFT — analysis workspace
+    '<div style="background:#fdf6e3;padding:16px;overflow-y:auto;max-height:calc(100vh - 140px);">' +
+      '<div style="font-size:10px;font-weight:700;color:#7a8a95;letter-spacing:1px;text-transform:uppercase;margin-bottom:12px;">🧠 סביבת עבודה — ניתוח AI</div>' +
+      '<div id="sib-analysis-panel">' +
+        '<div style="text-align:center;padding:60px 20px;color:#b0bec5;font-size:13px;line-height:1.8;">' +
+          '<div style="font-size:32px;margin-bottom:12px;">👈</div>' +
+          'בחר קובץ מהרשימה<br>ולחץ על כפתור הניתוח' +
+        '</div>' +
+      '</div>' +
+    '</div>' +
 
-  </div>
-</div>`;
+  '</div>' +
+  '</div>';
 }
 
-// ── LOAD ─────────────────────────────────────────────────────────────
+// ── LOAD SAFETY CATEGORIES ────────────────────────────────────────────
+async function sibLoadCategories() {
+  if (_sibSafetyCategories.length > 0) return;
+  try {
+    var res = await sbQ('safety_categories', 'select=id,name,icon,description&order=sort_order.asc');
+    if (res.data && res.data.length > 0) {
+      _sibSafetyCategories = res.data;
+      return;
+    }
+  } catch(e) {}
+  // Fallback hardcoded
+  _sibSafetyCategories = [
+    {id:'01',name:'ציוד מגן אישי (PPE)',icon:'🦺'},
+    {id:'02',name:'עבודה בגובה',icon:'🪜'},
+    {id:'03',name:'חפירות ובורות',icon:'⛏️'},
+    {id:'04',name:'בטיחות חשמל',icon:'⚡'},
+    {id:'05',name:'חלל מוקף',icon:'🕳️'},
+    {id:'06',name:'עבודות חמות',icon:'🔥'},
+    {id:'07',name:'עבודה בגובה',icon:'🏗️'},
+    {id:'08',name:'מכונות וציוד כבד',icon:'🚜'},
+    {id:'09',name:'סדר וניקיון',icon:'🧹'},
+  ];
+}
 
-// ── SYNC BENI FILES ───────────────────────────────────────────────────
-// Beni uploads from his phone → Beni Pocket saves to Cloudinary + asset_inbox
-// This button simply reloads the list from Supabase — no Cloudinary API needed
+function sibRenderCategoryFilters() {
+  // Category filters are shown in the Phase 2 panel — not here
+}
+
+// ── SYNC BENI ─────────────────────────────────────────────────────────
 async function sibSyncBeni() {
   var btn = document.getElementById('sib-sync-btn');
-  var listEl = document.getElementById('sib-file-list');
-  if (!listEl) return;
-
-  // Show loading state on button
   var origHTML = btn ? btn.innerHTML : '';
-  if (btn) {
-    btn.disabled = true;
-    btn.innerHTML = '<span style="display:inline-block;animation:sibspin 0.8s linear infinite;font-size:16px;">⏳</span> טוען קבצי בני...';
-    btn.style.opacity = '0.8';
-  }
-
-  // Count before
+  if (btn) { btn.disabled = true; btn.innerHTML = '<span style="display:inline-block;animation:sibspin 0.8s linear infinite;font-size:16px;">⏳</span> טוען קבצי בני...'; btn.style.opacity='0.8'; }
   var countBefore = _sibItems.length;
-
   await sibLoad();
-
-  // Count after
-  var countAfter = _sibItems.length;
-  var newCount = Math.max(0, countAfter - countBefore);
-
-  // Restore button
-  if (btn) {
-    btn.disabled = false;
-    btn.innerHTML = origHTML;
-    btn.style.opacity = '1';
-  }
-
-  // Toast result
-  if (newCount > 0) {
-    showToast('📲 ' + newCount + ' קבצים חדשים מבני!', 'success');
-  } else if (countAfter === 0) {
-    showToast('📭 אין קבצים חדשים מבני', 'success');
-  } else {
-    showToast('✅ ' + countAfter + ' קבצים בתיבה', 'success');
-  }
+  var newCount = Math.max(0, _sibItems.length - countBefore);
+  if (btn) { btn.disabled=false; btn.innerHTML=origHTML; btn.style.opacity='1'; }
+  if (newCount > 0) showToast('📲 '+newCount+' קבצים חדשים מבני!','success');
+  else if (_sibItems.length === 0) showToast('📭 אין קבצים חדשים','success');
+  else showToast('✅ '+_sibItems.length+' קבצים בתיבה','success');
 }
 
+// ── LOAD ──────────────────────────────────────────────────────────────
 async function sibLoad() {
   var listEl = document.getElementById('sib-file-list');
   var statsEl = document.getElementById('sib-stats');
-  var badge = document.getElementById('sib-badge');
+  var badge   = document.getElementById('sib-badge');
   if (!listEl) return;
-
   try {
-    var { data, error } = await sbQ('asset_inbox',
-      'status=eq.pending&order=created_at.desc&limit=100&select=id,cloudinary_url,file_name,file_type,thumbnail_url,project_id,created_at');
-    _sibItems = data || [];
-  } catch(e) {
-    listEl.innerHTML = '<div style="color:#ef4444;padding:20px;font-size:12px;">שגיאה בטעינה</div>';
-    return;
-  }
+    var res = await sbQ('asset_inbox','status=eq.pending&order=created_at.desc&limit=100&select=id,cloudinary_url,file_name,file_type,thumbnail_url,project_id,created_at');
+    _sibItems = res.data || [];
+  } catch(e) { listEl.innerHTML='<div style="color:#ef4444;padding:20px;font-size:12px;">שגיאה בטעינה</div>'; return; }
 
-  // Stats
-  var photos = _sibItems.filter(function(i){ return i.file_type === 'image'; }).length;
-  var videos = _sibItems.filter(function(i){ return i.file_type === 'video'; }).length;
-  var audios = _sibItems.filter(function(i){ return i.file_type === 'audio'; }).length;
-  var pdfs   = _sibItems.filter(function(i){ return i.file_type === 'pdf' || i.file_type === 'document'; }).length;
+  var photos = _sibItems.filter(function(i){return i.file_type==='image';}).length;
+  var videos = _sibItems.filter(function(i){return i.file_type==='video';}).length;
+  var audios = _sibItems.filter(function(i){return i.file_type==='audio';}).length;
+  var pdfs   = _sibItems.filter(function(i){return i.file_type==='pdf'||i.file_type==='document';}).length;
+  var sheets = _sibItems.filter(function(i){return i.file_type==='spreadsheet'||i.file_type==='csv';}).length;
 
   if (statsEl) {
-    statsEl.innerHTML = [
-      ['📸', photos, 'תמונות'],
-      ['🎥', videos, 'וידאו'],
-      ['🎙', audios, 'הקלטות'],
-      ['📄', pdfs,   'מסמכים'],
-    ].map(function(s){
-      return '<div style="display:flex;align-items:center;gap:5px;background:#fff;border-radius:6px;padding:5px 10px;">' +
-        '<span style="font-size:14px;">' + s[0] + '</span>' +
-        '<span style="font-size:15px;font-weight:800;color:#1a3d5c;">' + s[1] + '</span>' +
-        '<span style="font-size:10px;color:#8a9aa5;">' + s[2] + '</span></div>';
-    }).join('');
+    var batchBar = document.getElementById('sib-batch-bar');
+    var batchHTML = batchBar ? batchBar.outerHTML : '';
+    statsEl.innerHTML = batchHTML +
+      [['📸',photos,'תמונות'],['🎥',videos,'וידאו'],['🎙',audios,'הקלטות'],['📄',pdfs,'מסמכים'],['📊',sheets,'טבלאות']]
+      .map(function(s){ return '<div style="display:flex;align-items:center;gap:5px;background:#fff;border-radius:6px;padding:5px 10px;"><span style="font-size:14px;">'+s[0]+'</span><span style="font-size:15px;font-weight:800;color:#1a3d5c;">'+s[1]+'</span><span style="font-size:10px;color:#8a9aa5;">'+s[2]+'</span></div>'; })
+      .join('');
   }
 
-  if (badge) {
-    if (_sibItems.length > 0) { badge.textContent = _sibItems.length + ' חדשים'; badge.style.display = 'inline'; }
-    else badge.style.display = 'none';
-  }
-
-  if (_sibItems.length === 0) {
-    listEl.innerHTML = '<div style="text-align:center;padding:60px 20px;color:#b0bec5;font-size:13px;line-height:2;">✅ תיבת הנכנסים ריקה<br><span style="font-size:11px;color:#b0bec5;">כל הקבצים טופלו</span></div>';
-    return;
-  }
-
-  listEl.innerHTML = '';
-  _sibItems.forEach(function(item) {
-    listEl.appendChild(sibFileCard(item));
-  });
+  if (badge) { if (_sibItems.length>0){badge.textContent=_sibItems.length+' חדשים';badge.style.display='inline';}else badge.style.display='none'; }
+  if (_sibItems.length===0){listEl.innerHTML='<div style="text-align:center;padding:60px 20px;color:#b0bec5;font-size:13px;line-height:2;">✅ תיבת הנכנסים ריקה</div>';return;}
+  listEl.innerHTML='';
+  _sibItems.forEach(function(item){ listEl.appendChild(sibFileCard(item)); });
 }
 
 // ── FILE CARD ─────────────────────────────────────────────────────────
 function sibFileCard(item) {
   var card = document.createElement('div');
   var isSelected = _sibSelected === item.id;
-  card.id = 'sib-card-' + item.id;
-  card.style.cssText = 'background:' + (isSelected ? '#fffbf0' : '#fff') + ';' +
-    'border:1px solid ' + (isSelected ? 'rgba(180,140,60,0.5)' : 'rgba(180,140,60,0.2)') + ';' +
-    'border-radius:10px;padding:12px;cursor:pointer;transition:all 0.15s;';
-
-  var type = item.file_type || 'image';
-  var typeIcon = type === 'video' ? '🎥' : type === 'audio' ? '🎙' : type === 'pdf' ? '📄' : '📸';
-  var typeBg   = type === 'video' ? '#fff8e8' : type === 'audio' ? '#e8f8f0' : type === 'pdf' ? '#fdf0f0' : '#e8f0fd';
-  var typeColor= type === 'video' ? '#f59e0b' : type === 'audio' ? '#10b981' : type === 'pdf' ? '#ef4444' : '#3b82f6';
-  var _rawThumb = item.thumbnail_url || (item.cloudinary_url && item.cloudinary_url.includes('/upload/') ? item.cloudinary_url.replace('/upload/', '/upload/w_80,h_80,c_fill,f_jpg/') : '');
-  // Only use thumbnail if it's an absolute URL (starts with http)
-  var thumbUrl = (_rawThumb && _rawThumb.startsWith('http')) ? _rawThumb : '';
-  var hasThumb = (type === 'image' || type === 'photo' || type === 'video') && thumbUrl;
-
-  var fname = item.file_name || 'קובץ ללא שם';
-  var proj = (window.allProjects||[]).find(function(p){ return p.id === item.project_id; });
-  var projName = proj ? proj.project_name : (item.project_id ? '...' : 'לא שויך');
-  var timeStr = new Date(item.created_at).toLocaleTimeString('he-IL',{hour:'2-digit',minute:'2-digit'});
-
-  // Action buttons per type
-  var actions = sibActionButtons(item);
-
-  // Init checkbox state
-  if (!_sibChecked[item.id]) _sibChecked[item.id] = {safety:true, engineering:false, standards:false};
-  var chk = _sibChecked[item.id];
-  var hasVisual = (type === 'image' || type === 'photo' || type === 'video' || type === 'audio');
-  var checkboxRow = hasVisual ?
-    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;margin:8px 0 6px;padding:7px 10px;background:#fffbf0;border-radius:8px;border:1px solid rgba(180,140,60,0.15);">' +
-      '<label style="display:flex;align-items:center;gap:5px;cursor:pointer;font-size:11px;font-weight:700;color:#c62828;">' +
-        '<input type="checkbox" ' + (chk.safety?'checked':'') + ' onchange="_sibChecked[&quot;' + item.id + '&quot;].safety=this.checked;event.stopPropagation();" style="accent-color:#c62828;"> ⚠️ בטיחות</label>' +
-      '<label style="display:flex;align-items:center;gap:5px;cursor:pointer;font-size:11px;font-weight:700;color:#1a3d5c;">' +
-        '<input type="checkbox" ' + (chk.engineering?'checked':'') + ' onchange="_sibChecked[&quot;' + item.id + '&quot;].engineering=this.checked;event.stopPropagation();" style="accent-color:#1a3d5c;"> 🏗️ הנדסי</label>' +
-      '<label style="display:flex;align-items:center;gap:5px;cursor:pointer;font-size:11px;font-weight:700;color:#9a6f00;">' +
-        '<input type="checkbox" ' + (chk.standards?'checked':'') + ' onchange="_sibChecked[&quot;' + item.id + '&quot;].standards=this.checked;event.stopPropagation();" style="accent-color:#9a6f00;"> 📋 תקנים</label>' +
-    '</div>' : '';
-
   var isSel = !!_sibSelSet[item.id];
+  card.id = 'sib-card-'+item.id;
+  card.style.cssText = 'background:'+(isSelected?'#fffbf0':'#fff')+';border:1px solid '+(isSelected?'rgba(180,140,60,0.5)':'rgba(180,140,60,0.2)')+';border-radius:10px;padding:12px;cursor:pointer;transition:all 0.15s;';
+
+  var type = item.file_type||'image';
+  var typeIcon = type==='video'?'🎥':type==='audio'?'🎙':type==='pdf'?'📄':type==='document'?'📝':type==='spreadsheet'||type==='csv'?'📊':'📸';
+  var typeBg   = type==='video'?'#fff8e8':type==='audio'?'#e8f8f0':type==='pdf'||type==='document'?'#fdf0f0':type==='spreadsheet'||type==='csv'?'#e8f8e8':'#e8f0fd';
+  var typeColor= type==='video'?'#f59e0b':type==='audio'?'#10b981':type==='pdf'||type==='document'?'#ef4444':type==='spreadsheet'||type==='csv'?'#059669':'#3b82f6';
+  var rawThumb = item.thumbnail_url||(item.cloudinary_url&&item.cloudinary_url.includes('/upload/')?item.cloudinary_url.replace('/upload/','/upload/w_80,h_80,c_fill,f_jpg/'):'');
+  var thumbUrl = (rawThumb&&rawThumb.startsWith('http'))?rawThumb:'';
+  var hasThumb = (type==='image'||type==='photo'||type==='video')&&thumbUrl;
+  var fname = item.file_name||'קובץ ללא שם';
+  var proj = (window.allProjects||[]).find(function(p){return p.id===item.project_id;});
+  var projName = proj?proj.project_name:(item.project_id?'...':'לא שויך');
+  var timeStr = new Date(item.created_at).toLocaleTimeString('he-IL',{hour:'2-digit',minute:'2-digit'});
+  var hasPhase1 = !!_sibPhase1[item.id];
+
+  if (!_sibChecked[item.id]) _sibChecked[item.id]={safety:true,engineering:false,standards:false};
+
   card.innerHTML =
     '<div style="display:flex;align-items:flex-start;gap:10px;">' +
-      '<input type="checkbox" id="sib-sel-' + item.id + '" ' + (isSel ? 'checked' : '') + ' ' +
-        'onchange="_sibSelSet[&quot;' + item.id + '&quot;]=this.checked;sibUpdateBatchBar();event.stopPropagation();" ' +
-        'style="width:16px;height:16px;margin-top:10px;accent-color:#1a3d5c;flex-shrink:0;cursor:pointer;" ' +
-        'title="\u05d1\u05d7\u05e8 \u05dc\u05e4\u05e2\u05d5\u05dc\u05d4 \u05e7\u05d1\u05d5\u05e6\u05ea\u05d9\u05ea">' +
-      (hasThumb ? '<img src="' + thumbUrl + '" style="width:52px;height:52px;border-radius:8px;object-fit:cover;flex-shrink:0;" onerror="this.outerHTML=\'<div style=\\"width:36px;height:36px;border-radius:8px;background:' + typeBg + ';display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;\\">'+typeIcon+'</div>\'">' : '<div style="width:36px;height:36px;border-radius:8px;background:' + typeBg + ';display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;">' + typeIcon + '</div>') +
+      '<input type="checkbox" id="sib-sel-'+item.id+'" '+(isSel?'checked':'')+' '+
+        'onchange="_sibSelSet[&quot;'+item.id+'&quot;]=this.checked;sibUpdateBatchBar();event.stopPropagation();" '+
+        'style="width:16px;height:16px;margin-top:10px;accent-color:#1a3d5c;flex-shrink:0;cursor:pointer;">' +
+      (hasThumb?'<img src="'+thumbUrl+'" style="width:52px;height:52px;border-radius:8px;object-fit:cover;flex-shrink:0;" onerror="this.style.display=\'none\'">':'<div style="width:36px;height:36px;border-radius:8px;background:'+typeBg+';display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;">'+typeIcon+'</div>') +
       '<div style="flex:1;min-width:0;">' +
-        '<div style="font-size:12px;font-weight:700;color:#1a3d5c;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + sibEsc(fname) + '</div>' +
+        '<div style="font-size:12px;font-weight:700;color:#1a3d5c;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+sibEsc(fname)+'</div>' +
         '<div style="display:flex;gap:6px;align-items:center;margin-top:3px;">' +
-          '<span style="font-size:10px;color:#8a9aa5;">' + timeStr + '</span>' +
-          '<span style="font-size:9px;padding:1px 7px;border-radius:10px;background:#f5f0e8;color:' + typeColor + ';border:1px solid ' + typeColor + '22;">' + type + '</span>' +
-          '<span style="font-size:9px;color:#9aabb5;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:90px;">' + sibEsc(projName) + '</span>' +
+          '<span style="font-size:10px;color:#8a9aa5;">'+timeStr+'</span>' +
+          '<span style="font-size:9px;padding:1px 7px;border-radius:10px;background:#f5f0e8;color:'+typeColor+';border:1px solid '+typeColor+'22;">'+type+'</span>' +
+          '<span style="font-size:9px;color:#9aabb5;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:90px;">'+sibEsc(projName)+'</span>' +
+          (hasPhase1?'<span style="font-size:9px;background:#e8f5e9;color:#1b7a4a;border-radius:4px;padding:1px 6px;border:1px solid #a5d6a7;">✓ שלב 1</span>':'') +
         '</div>' +
       '</div>' +
-      '<button onclick="sibDeleteItem(\'' + item.id + '\')" style="background:none;border:none;color:#b0bec5;cursor:pointer;font-size:14px;padding:2px;flex-shrink:0;" title="מחק">🗑️</button>' +
+      '<button onclick="sibDeleteItem(\''+item.id+'\')" style="background:none;border:none;color:#b0bec5;cursor:pointer;font-size:14px;padding:2px;flex-shrink:0;" title="מחק">🗑️</button>' +
     '</div>' +
-    '<div style="display:flex;gap:5px;flex-wrap:wrap;margin-top:6px;">' + checkboxRow + actions + '</div>';
+    '<div style="display:flex;gap:5px;flex-wrap:wrap;margin-top:8px;">' + sibActionButtons(item) + '</div>';
 
-  card.onclick = function(e) {
-    if (e.target.closest('button')) return;
-    sibSelectItem(item.id);
-  };
-
+  card.onclick = function(e){ if(e.target.closest('button')||e.target.type==='checkbox') return; sibSelectItem(item.id); };
   return card;
 }
 
 function sibActionButtons(item) {
   var id = item.id;
-  var type = item.file_type || 'image';
+  var type = item.file_type||'image';
   var btns = '';
+  var hasP1 = !!_sibPhase1[id];
 
-  if (type === 'image' || type === 'photo') {
-    btns += sibBtn('🔍 נתח עכשיו', 'sibAnalyze(\'' + id + '\',\'general\')', 'primary');
-    btns += sibBtn('🏗️ הנדסי',      'sibAnalyze(\'' + id + '\',\'engineering\')', 'sec');
-    btns += sibBtn('⚠️ בטיחות',    'sibAnalyze(\'' + id + '\',\'safety\')', 'danger');
-    btns += sibBtn('📚 אנציקלופדיה','sibSaveToEnc(\'' + id + '\')', 'enc');
-  } else if (type === 'video') {
-    btns += sibBtn('▶ נגן',          'sibPlayMedia(\'' + id + '\')', 'sec');
-    btns += sibBtn('🎙️ תמלל + נתח','sibTranscribe(\'' + id + '\')', 'primary');
-    btns += sibBtn('🎞️ חלץ פריים', 'sibExtractFrame(\'' + id + '\')', 'sec');
-    btns += sibBtn('🔍 נתח',       'sibAnalyze(\'' + id + '\',\'general\')', 'sec');
-    btns += sibBtn('📚 אנציקלופדיה','sibSaveToEnc(\'' + id + '\')', 'enc');
-  } else if (type === 'audio') {
-    btns += sibBtn('▶ נגן',          'sibPlayMedia(\'' + id + '\')', 'sec');
-    btns += sibBtn('🎙️ תמלל + נתח','sibTranscribe(\'' + id + '\')', 'primary');
-    btns += sibBtn('📋 יומן',       'sibSaveToJournal(\'' + id + '\')', 'sec');
-  } else if (type === 'pdf' || type === 'document' || type === 'spreadsheet' || type === 'csv') {
-    btns += sibBtn('👁 צפה',          'sibPlayMedia(\'' + id + '\')', 'sec');
-    btns += sibBtn('📑 OCR + ניתוח','sibAnalyzePDF(\'' + id + '\')', 'primary');
-    btns += sibBtn('📚 אנציקלופדיה','sibSaveToEnc(\'' + id + '\')', 'enc');
-  } else if (type === 'file') {
-    btns += sibBtn('👁 צפה',          'sibPlayMedia(\'' + id + '\')', 'sec');
-    btns += sibBtn('📑 ניתוח',        'sibAnalyzePDF(\'' + id + '\')', 'primary');
+  // Phase 1 — Extract
+  if (type==='image'||type==='photo') {
+    btns += sibBtn('👁 צפה','sibPlayMedia(\''+id+'\')','sec');
+    btns += sibBtn('📋 שלב 1: תאר','sibPhase1Image(\''+id+'\')','phase1');
+  } else if (type==='video') {
+    btns += sibBtn('▶ נגן','sibPlayMedia(\''+id+'\')','sec');
+    btns += sibBtn('🎙 תמלל','sibTranscribe(\''+id+'\')','phase1');
+    btns += sibBtn('🎞 פריים','sibExtractFrame(\''+id+'\')','sec');
+  } else if (type==='audio') {
+    btns += sibBtn('▶ נגן','sibPlayMedia(\''+id+'\')','sec');
+    btns += sibBtn('🎙 תמלל','sibTranscribe(\''+id+'\')','phase1');
+  } else if (type==='pdf') {
+    btns += sibBtn('👁 צפה','sibPlayMedia(\''+id+'\')','sec');
+    btns += sibBtn('📑 חלץ טקסט','sibPhase1Doc(\''+id+'\')','phase1');
+  } else if (type==='document') {
+    btns += sibBtn('👁 צפה','sibPlayMedia(\''+id+'\')','sec');
+    btns += sibBtn('📝 חלץ טקסט','sibPhase1Doc(\''+id+'\')','phase1');
+  } else if (type==='spreadsheet'||type==='csv') {
+    btns += sibBtn('👁 צפה','sibPlayMedia(\''+id+'\')','sec');
+    btns += sibBtn('📊 חלץ נתונים','sibPhase1Doc(\''+id+'\')','phase1');
+  } else {
+    btns += sibBtn('👁 צפה','sibPlayMedia(\''+id+'\')','sec');
+    btns += sibBtn('📋 חלץ','sibPhase1Doc(\''+id+'\')','phase1');
   }
 
-  btns += sibBtn('✅ אשר',  'sibApprove(\'' + id + '\')', 'approve');
+  // Phase 2 — only if phase 1 done
+  if (hasP1) {
+    btns += sibBtn('🚀 שלב 2: נתח','sibShowPhase2Panel(\''+id+'\')','phase2');
+  }
 
+  btns += sibBtn('✅ אשר','sibApprove(\''+id+'\')','approve');
   return btns;
 }
 
 function sibBtn(label, onclick, style) {
   var styles = {
-    primary: 'background:#1a3d5c;color:#fff;border:1px solid #1a3d5c;',
+    phase1:  'background:#1a3d5c;color:#fff;border:1px solid #1a3d5c;',
+    phase2:  'background:linear-gradient(135deg,#7c3aed,#2d6a9f);color:#fff;border:none;',
     sec:     'background:#f5f0e8;color:#5a6f7c;border:1px solid rgba(180,140,60,0.3);',
     danger:  'background:#fff5f5;color:#c62828;border:1px solid #fca5a5;',
     enc:     'background:#ede7f6;color:#4527a0;border:1px solid #9c6fdd;',
     approve: 'background:#e8f5e9;color:#1b5e20;border:1px solid #a5d6a7;',
   };
-  return '<button onclick="' + onclick + ';event.stopPropagation();" style="' +
-    (styles[style] || styles.sec) +
-    'border-radius:6px;padding:4px 9px;font-size:10px;font-weight:700;cursor:pointer;font-family:Heebo,sans-serif;white-space:nowrap;">' +
-    label + '</button>';
+  return '<button onclick="'+onclick+';event.stopPropagation();" style="'+(styles[style]||styles.sec)+'border-radius:6px;padding:4px 9px;font-size:10px;font-weight:700;cursor:pointer;font-family:Heebo,sans-serif;white-space:nowrap;">'+label+'</button>';
 }
 
 // ── SELECT ITEM ───────────────────────────────────────────────────────
 function sibSelectItem(id) {
   _sibSelected = id;
-  // Re-render all cards to update selection highlight
   _sibItems.forEach(function(item) {
-    var card = document.getElementById('sib-card-' + item.id);
+    var card = document.getElementById('sib-card-'+item.id);
     if (!card) return;
-    var sel = item.id === id;
-    card.style.background = sel ? '#fffbf0' : '#fff';
-    card.style.border = '1px solid ' + (sel ? 'rgba(180,140,60,0.5)' : 'rgba(180,140,60,0.2)');
+    card.style.background = item.id===id?'#fffbf0':'#fff';
+    card.style.border = '1px solid '+(item.id===id?'rgba(180,140,60,0.5)':'rgba(180,140,60,0.2)');
   });
-  // Show existing analysis or prompt
   var panel = document.getElementById('sib-analysis-panel');
   if (!panel) return;
-  var item = _sibItems.find(function(i){ return i.id === id; });
+  var item = _sibItems.find(function(i){return i.id===id;});
   if (!item) return;
-
-  if (_sibAnalysis[id]) {
-    sibShowAnalysis(id, _sibAnalysis[id]);
-  } else {
-    var typeIcon = item.file_type === 'video' ? '🎥' : item.file_type === 'audio' ? '🎙' : item.file_type === 'pdf' ? '📄' : '📸';
-    panel.innerHTML =
-      '<div style="background:#fff;border:1px solid rgba(180,140,60,0.25);border-radius:10px;padding:16px;margin-bottom:12px;">' +
-        '<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">' +
-          '<span style="font-size:24px;">' + typeIcon + '</span>' +
-          '<div>' +
-            '<div style="font-size:13px;font-weight:700;color:#1a3d5c;">' + sibEsc(item.file_name||'קובץ') + '</div>' +
-            '<div style="font-size:10px;color:#8a9aa5;margin-top:2px;">' + new Date(item.created_at).toLocaleString('he-IL') + '</div>' +
-          '</div>' +
-        '</div>' +
-        (item.thumbnail_url ? '<img src="' + item.thumbnail_url + '" style="width:100%;border-radius:8px;margin-bottom:10px;max-height:180px;object-fit:cover;" />' : '') +
-        '<div style="font-size:11px;color:#8a9aa5;text-align:center;padding:10px;">לחץ על כפתורי הניתוח בכרטיס הקובץ</div>' +
+  if (_sibAnalysis[id]) { sibShowAnalysis(id,_sibAnalysis[id]); return; }
+  if (_sibPhase1[id])   { sibShowPhase2Panel(id); return; }
+  panel.innerHTML =
+    '<div style="background:#fff;border:1px solid rgba(180,140,60,0.25);border-radius:10px;padding:16px;margin-bottom:12px;">' +
+      '<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">' +
+        '<span style="font-size:24px;">'+(item.file_type==='video'?'🎥':item.file_type==='audio'?'🎙':item.file_type==='pdf'?'📄':'📸')+'</span>' +
+        '<div><div style="font-size:13px;font-weight:700;color:#1a3d5c;">'+sibEsc(item.file_name||'קובץ')+'</div>' +
+          '<div style="font-size:10px;color:#8a9aa5;margin-top:2px;">'+new Date(item.created_at).toLocaleString('he-IL')+'</div></div>' +
       '</div>' +
-      sibApprovePanel(item);
-  }
+      '<div style="font-size:11px;color:#8a9aa5;text-align:center;padding:10px;">לחץ על כפתורי הניתוח בכרטיס הקובץ</div>' +
+    '</div>' + sibApprovePanel(item);
 }
 
-function sibApprovePanel(item) {
-  var projOpts = '<option value="">— בחר פרויקט —</option>' +
-    (window.allProjects||[]).map(function(p){
-      return '<option value="' + p.id + '"' + (p.id === item.project_id ? ' selected' : '') + '>' + sibEsc(p.project_name) + '</option>';
-    }).join('');
-
-  return '<div style="background:#f0faf5;border:1px solid #a5d6a7;border-radius:10px;padding:14px;">' +
-    '<div style="font-size:11px;font-weight:700;color:#1b7a4a;font-weight:800;margin-bottom:10px;">שייך לפרויקט ואשר</div>' +
-    '<select id="sib-proj-sel-' + item.id + '" style="width:100%;background:#fff;border:1px solid rgba(180,140,60,0.3);color:#2c4a6e;border-radius:8px;padding:8px 12px;font-family:Heebo,sans-serif;font-size:12px;direction:rtl;margin-bottom:8px;">' + projOpts + '</select>' +
-    '<button onclick="sibApproveWithProject(\'' + item.id + '\')" style="width:100%;padding:10px;background:linear-gradient(135deg,#0d9488,#0f766e);border:none;color:#1a3d5c;border-radius:8px;font-family:Heebo,sans-serif;font-size:13px;font-weight:800;cursor:pointer;">✅ אשר ושייך לפרויקט</button>' +
-    '</div>';
-}
-
-// ── LIVE TOKEN METER ──────────────────────────────────────────────────
-var _sibMeterTimer = null;
-
-function sibStartMeter(label) {
-  sibStopMeter();
-  var panel = document.getElementById('sib-analysis-panel');
-  if (!panel) return;
-  var startTime = Date.now();
-  var meterId = 'sib-live-meter';
-  var old = document.getElementById(meterId);
-  if (old) old.remove();
-  var meterEl = document.createElement('div');
-  meterEl.id = meterId;
-  meterEl.style.cssText = 'background:rgba(26,61,92,0.06);border:1px solid rgba(26,61,92,0.15);border-radius:8px;padding:8px 12px;margin-top:10px;font-size:11px;color:#5a6f7c;display:flex;align-items:center;gap:8px;font-family:Heebo,sans-serif;direction:rtl;';
-  meterEl.innerHTML = '<span style="display:inline-block;animation:sibspin 1s linear infinite;font-size:14px;">⚙️</span>' +
-    '<span style="color:#1a3d5c;font-weight:700;">' + (label||'AI עובד') + '</span>' +
-    '<span style="margin-right:auto;"></span>' +
-    '<span id="sib-meter-time" style="color:#c9a84c;font-weight:800;font-size:12px;">0s</span>' +
-    '<span style="color:#aaa;margin:0 4px;">|</span>' +
-    '<span id="sib-meter-est" style="color:#7a9ab5;font-size:10px;">מחשב...</span>';
-  if (!document.getElementById('sib-spin-style')) {
-    var st = document.createElement('style');
-    st.id = 'sib-spin-style';
-    st.textContent = '@keyframes sibspin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}';
-    document.head.appendChild(st);
-  }
-  panel.appendChild(meterEl);
-  _sibMeterTimer = setInterval(function() {
-    var elapsed = Math.floor((Date.now() - startTime) / 1000);
-    var timeEl = document.getElementById('sib-meter-time');
-    var estEl  = document.getElementById('sib-meter-est');
-    if (!timeEl) { clearInterval(_sibMeterTimer); return; }
-    timeEl.textContent = elapsed + 's';
-    var estTokens = elapsed * 40;
-    var estCost   = (estTokens * 15) / 1000000;
-    if (estEl) estEl.textContent = '~' + estTokens.toLocaleString() + ' טוקנים  ·  ~$' + estCost.toFixed(4);
-  }, 1000);
-}
-
-function sibStopMeter(usageObj) {
-  if (_sibMeterTimer) { clearInterval(_sibMeterTimer); _sibMeterTimer = null; }
-  var meterEl = document.getElementById('sib-live-meter');
-  if (!meterEl) return;
-  if (usageObj) {
-    var iT = usageObj.input_tokens  || 0;
-    var oT = usageObj.output_tokens || 0;
-    var cost = (iT * 3 + oT * 15) / 1000000;
-    meterEl.style.background = '#fffbf0';
-    meterEl.style.border = '2px solid #c9a84c';
-    meterEl.style.fontSize = '13px';
-    meterEl.style.color = '#1a1a1a';
-    meterEl.innerHTML = '🔢&nbsp; <b style="color:#c9a84c;font-size:15px;">' + (iT+oT).toLocaleString() + '</b> <span style="color:#333">טוקנים סה״כ</span>' +
-      '&nbsp;&nbsp;·&nbsp;&nbsp; <span style="color:#555">📥 ' + iT.toLocaleString() + ' קלט</span>' +
-      '&nbsp;&nbsp;·&nbsp;&nbsp; <span style="color:#555">📤 ' + oT.toLocaleString() + ' פלט</span>' +
-      '&nbsp;&nbsp;·&nbsp;&nbsp; 💰 <b style="color:#1a3d5c;font-size:14px;">$' + cost.toFixed(4) + '</b>';
-  } else {
-    meterEl.remove();
-  }
-}
-
-// ── AI ANALYSIS ───────────────────────────────────────────────────────
-async function sibAnalyze(id, mode) {
-  var item = _sibItems.find(function(i){ return i.id === id; });
+// ── PHASE 1: IMAGE DESCRIPTION ────────────────────────────────────────
+async function sibPhase1Image(id) {
+  var item = _sibItems.find(function(i){return i.id===id;});
   if (!item) return;
-
   sibSelectItem(id);
-  setTimeout(function() {
-    var panel = document.getElementById('sib-analysis-panel');
-    if (panel) {
-      panel.innerHTML = '<div style="text-align:center;padding:60px 20px 20px;color:#9a6f00;font-size:13px;">Claude מנתח...</div>';
-      sibStartMeter('ניתוח ' + (mode||'כללי') + ' — ' + (item.file_name||id).substr(0,22));
-    }
-  }, 0);
-
-  var apiKey = _sibApiKey || (window.APP && window.APP.config && window.APP.config.anthropic_key);
-  if (!apiKey) {
-    sibShowError('לא נמצא מפתח API — הגדר anthropic_key ב-app_config');
-    return;
-  }
-
-  var prompts = {
-    general:     'נתח את התמונה מהשטח הבנייה הזה. זהה: מה מצולם, מה הסטטוס, האם יש בעיות, מה המלצתך. ענה בעברית, קצר וברור.',
-    engineering: 'נתח את התמונה מהנדסית: עובי שכבות, איכות ביצוע, חריגות מהמפרט, ממצאים לדוח הנדסי. עברית.',
-    safety:      'נתח בטיחות: זהה סיכונים, ציוד מגן חסר, הפרות תקן, ליקויים מסוכנים. דרג חומרה: גבוה/בינוני/נמוך. עברית.',
-  };
-
+  var panel = document.getElementById('sib-analysis-panel');
+  if (panel) { panel.innerHTML='<div style="text-align:center;padding:60px 20px 20px;color:#1a3d5c;font-size:13px;">🔍 Claude מתאר את התמונה...</div>'; sibStartMeter('תיאור תמונה'); }
+  var apiKey = _sibApiKey||(window.APP&&window.APP.config&&window.APP.config.anthropic_key);
+  if (!apiKey) { sibStopMeter(); sibShowError('אין מפתח API'); return; }
   try {
-    var messages = [{
-      role: 'user',
-      content: item.cloudinary_url ? [
-        { type: 'image', source: { type: 'url', url: item.cloudinary_url } },
-        { type: 'text', text: prompts[mode] || prompts.general }
-      ] : [{ type: 'text', text: 'קובץ ללא URL זמין. ' + (prompts[mode] || prompts.general) }]
-    }];
-
-    var _tkIdx = window.tkrunStart ? window.tkrunStart('ניתוח ' + (mode||'כללי') + ' — ' + (item.file_name||id).substr(0,25)) : -1;
-    var _rawResp = await claudeFetch({
-      _apiKey: apiKey,
-      model: 'claude-sonnet-4-20250514',
-      max_tokens: 600,
-      system: 'אתה מהנדס שטח מנוסה. ענה תמיד בעברית. היה ספציפי, קצר, עם המלצות פעולה ברורות.',
-      messages: messages
+    var raw = await claudeFetch({ _apiKey:apiKey, model:'claude-sonnet-4-20250514', max_tokens:600,
+      system:'אתה מהנדס שטח. תאר בעברית את מה שאתה רואה בתמונה בצורה מפורטת וטכנית. רשום כל פרט נראה לעין.',
+      messages:[{role:'user',content:item.cloudinary_url?[{type:'image',source:{type:'url',url:item.cloudinary_url}},{type:'text',text:'תאר את התמונה הזו בפירוט.'}]:[{type:'text',text:'אין תמונה זמינה.'}]}]
     }, null);
-    var resp = _rawResp && typeof _rawResp.json === 'function' ? await _rawResp.json() : _rawResp;
-
-    if (window.tkrunEnd && resp && resp.usage) window.tkrunEnd(resp.usage.input_tokens||0, resp.usage.output_tokens||0);
-    sibStopMeter(resp && resp.usage);
-    var result = {
-      mode: mode,
-      text: resp && resp.content && resp.content[0] ? resp.content[0].text : 'אין תגובה',
-      timestamp: new Date().toISOString(),
-      usage: resp && resp.usage
-    };
-
-    _sibAnalysis[id] = result;
-    sibShowAnalysis(id, result);
-
-  } catch(e) {
-    sibStopMeter();
-    sibShowError('שגיאת ניתוח: ' + e.message);
-  }
+    var resp = raw&&typeof raw.json==='function'?await raw.json():raw;
+    var txt = resp&&resp.content&&resp.content[0]?resp.content[0].text:'';
+    sibStopMeter(resp&&resp.usage);
+    _sibPhase1[id] = txt;
+    sibRefreshCard(id);
+    sibShowPhase2Panel(id);
+  } catch(e) { sibStopMeter(); sibShowError('שגיאה: '+e.message); }
 }
 
-function sibShowAnalysis(id, result) {
-  var panel = document.getElementById('sib-analysis-panel');
-  if (!panel) return;
-  var item = _sibItems.find(function(i){ return i.id === id; });
+// ── PHASE 1: DOCUMENT EXTRACTION ─────────────────────────────────────
+async function sibPhase1Doc(id) {
+  var item = _sibItems.find(function(i){return i.id===id;});
   if (!item) return;
+  sibSelectItem(id);
+  var panel = document.getElementById('sib-analysis-panel');
+  if (panel) { panel.innerHTML='<div style="text-align:center;padding:60px 20px 20px;color:#1a3d5c;font-size:13px;">📄 חולץ תוכן מסמך...</div>'; sibStartMeter('חילוץ מסמך'); }
+  var url = item.cloudinary_url||'';
+  var fname = (item.file_name||'').toLowerCase();
+  var ext = fname.split('.').pop();
+  var ftype = item.file_type||'document';
+  var extracted = '';
+  try {
+    if (ext==='pdf'||ext==='doc'||ext==='docx'||ftype==='pdf') {
+      var mediaType = ext==='pdf'?'application/pdf':ext==='docx'?'application/vnd.openxmlformats-officedocument.wordprocessingml.document':'application/msword';
+      var apiKey = _sibApiKey||(window.APP&&window.APP.config&&window.APP.config.anthropic_key);
+      var binR = await fetch(url); var buf = await binR.arrayBuffer(); var bytes = new Uint8Array(buf);
+      var bin=''; for(var bi=0;bi<bytes.length;bi+=8192) bin+=String.fromCharCode.apply(null,bytes.subarray(bi,bi+8192));
+      var b64=btoa(bin);
+      var raw = await claudeFetch({_apiKey:apiKey,model:'claude-sonnet-4-20250514',max_tokens:2000,
+        system:'חלץ את כל הטקסט מהמסמך. החזר את הטקסט המלא ללא עיבוד או סיכום.',
+        messages:[{role:'user',content:[{type:'document',source:{type:'base64',media_type:mediaType,data:b64}},{type:'text',text:'חלץ את כל הטקסט מהמסמך הזה.'}]}]
+      },null);
+      var resp=raw&&typeof raw.json==='function'?await raw.json():raw;
+      extracted=resp&&resp.content&&resp.content[0]?resp.content[0].text:'';
+      sibStopMeter(resp&&resp.usage);
+    } else if (ext==='md'||ext==='txt'||ext==='log'||ext==='csv') {
+      var txtR=await fetch(url); extracted=await txtR.text();
+      if(extracted.length>80000) extracted=extracted.substr(0,80000)+'\n[... קובץ קוצר ...]';
+      sibStopMeter();
+    } else if (ext==='xls'||ext==='xlsx'||ftype==='spreadsheet') {
+      if(typeof XLSX==='undefined') await new Promise(function(res,rej){var s=document.createElement('script');s.src='https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';s.onload=res;s.onerror=rej;document.head.appendChild(s);});
+      var xlsR=await fetch(url); var xlsBuf=await xlsR.arrayBuffer();
+      var wb=XLSX.read(xlsBuf,{type:'array'});
+      wb.SheetNames.forEach(function(sname){
+        var csv=XLSX.utils.sheet_to_csv(wb.Sheets[sname]);
+        extracted+='=== גיליון: '+sname+' ===\n'+csv.split('\n').slice(0,200).join('\n')+'\n\n';
+      });
+      if(extracted.length>80000) extracted=extracted.substr(0,80000)+'\n[...]';
+      sibStopMeter();
+    } else {
+      var unkR=await fetch(url); extracted=await unkR.text();
+      if(extracted.length>50000) extracted=extracted.substr(0,50000)+'\n[...]';
+      sibStopMeter();
+    }
+    _sibPhase1[id] = extracted;
+    sibRefreshCard(id);
+    sibShowPhase2Panel(id);
+  } catch(e) { sibStopMeter(); sibShowError('שגיאת חילוץ: '+e.message); }
+}
 
-  var modeLabel = { general: 'כללי', engineering: 'הנדסי', safety: 'בטיחות' }[result.mode] || result.mode;
-  var modeColor = { general: '#3b82f6', engineering: '#f59e0b', safety: '#ef4444' }[result.mode] || '#aaa';
+// ── PHASE 1: TRANSCRIBE (audio/video) ────────────────────────────────
+async function sibTranscribe(id) {
+  var item = _sibItems.find(function(i){return i.id===id;});
+  if (!item) return;
+  sibSelectItem(id);
+  var panel = document.getElementById('sib-analysis-panel');
+  if (panel) {
+    panel.innerHTML='<div style="text-align:center;padding:60px 20px 20px;color:#1b7a4a;font-size:13px;">🎙️ '+(item.file_type==='video'?'מחלץ אודיו מהוידאו ומתמלל...':'מתמלל הקלטה...')+'</div>';
+    sibStartMeter('תמלול — '+(item.file_name||id).substr(0,25));
+  }
+  var elevenlabsKey = null;
+  try {
+    if(window.APP&&window.APP.config&&window.APP.config.elevenlabs_key) { elevenlabsKey=window.APP.config.elevenlabs_key; }
+    else { var cfg=await sbQ('app_config','select=key,value'); var row=(cfg.data||[]).find(function(r){return r.key==='elevenlabs_key';}); if(row) elevenlabsKey=row.value; }
+  } catch(e){}
+  if(!elevenlabsKey){sibStopMeter();sibShowError('לא נמצא מפתח ElevenLabs');return;}
+  if(!item.cloudinary_url){sibStopMeter();sibShowError('אין URL לקובץ');return;}
+  try {
+    var audioResp=await fetch(item.cloudinary_url); var audioBlob=await audioResp.blob();
+    var fileName=item.file_name||'audio.m4a'; var mimeType=audioBlob.type;
+    if(!mimeType||mimeType==='application/octet-stream'||mimeType==='video/3gpp'||mimeType==='video/mp4'){
+      var ext2=fileName.split('.').pop().toLowerCase();
+      var mimeMap={m4a:'audio/mp4',mp3:'audio/mpeg',wav:'audio/wav',ogg:'audio/ogg',webm:'audio/webm',aac:'audio/aac','3gp':'audio/3gpp',flac:'audio/flac',mp4:'audio/mp4'};
+      mimeType=mimeMap[ext2]||'audio/mp4';
+    }
+    if(fileName.toLowerCase().endsWith('.mp4')) fileName=fileName.replace(/\.mp4$/i,'.m4a');
+    var fixedBlob=new Blob([audioBlob],{type:mimeType});
+    var formData=new FormData(); formData.append('file',fixedBlob,fileName); formData.append('model_id','scribe_v1');
+    formData.append('language_code','he'); formData.append('diarize','true'); formData.append('tag_audio_events','false'); formData.append('timestamps_granularity','none');
+    var transcResp=await fetch('https://api.elevenlabs.io/v1/speech-to-text',{method:'POST',headers:{'xi-api-key':elevenlabsKey},body:formData});
+    if(!transcResp.ok){var errJ=await transcResp.json().catch(function(){return{};});throw new Error('ElevenLabs '+transcResp.status+' — '+(errJ.detail||JSON.stringify(errJ)).substr(0,100));}
+    var transcData=await transcResp.json();
+    var transcript=transcData.text||'';
+    if(!transcript&&transcData.words&&transcData.words.length){transcript=transcData.words.map(function(w){return w.type==='spacing'?'':(w.speaker_id?'[דובר '+w.speaker_id+'] ':'')+w.text;}).join(' ').replace(/\s+/g,' ').trim();}
+    if(!transcript) transcript='(לא זוהה טקסט)';
+    sibStopMeter({input_tokens:0,output_tokens:Math.ceil(transcript.length/4)});
+    _sibPhase1[id] = transcript;
+    sibRefreshCard(id);
+    sibShowPhase2Panel(id);
+  } catch(e){sibStopMeter();sibShowError('שגיאת תמלול: '+e.message);}
+}
 
-  // Parse severity if safety
-  var severity = '';
-  if (result.mode === 'safety') {
-    if (/גבוה/.test(result.text)) severity = '<span style="background:rgba(239,68,68,0.15);color:#fca5a5;border-radius:4px;padding:2px 8px;font-size:10px;margin-right:6px;">🔴 גבוה</span>';
-    else if (/בינוני/.test(result.text)) severity = '<span style="background:rgba(245,158,11,0.15);color:#9a6f00;border-radius:4px;padding:2px 8px;font-size:10px;margin-right:6px;">🟡 בינוני</span>';
-    else severity = '<span style="background:rgba(16,185,129,0.15);color:#1b5e20;border-radius:4px;padding:2px 8px;font-size:10px;margin-right:6px;">🟢 נמוך</span>';
+// ── PHASE 2: SHOW ANALYSIS PANEL ─────────────────────────────────────
+function sibShowPhase2Panel(id) {
+  var item = _sibItems.find(function(i){return i.id===id;});
+  if(!item) return;
+  _sibSelected = id;
+  var p1text = _sibPhase1[id]||'';
+  var panel = document.getElementById('sib-analysis-panel');
+  if(!panel) return;
+
+  var type = item.file_type||'image';
+  var isFinancial = (type==='spreadsheet'||type==='csv'||(item.file_name||'').match(/\.xlsx?$|\.csv$/i));
+  var isAudio = (type==='audio'||type==='video');
+
+  // Direction buttons
+  var directions = [
+    {id:'safety',   label:'⚠️ בטיחות',    color:'#c62828', bg:'#fff5f5', border:'#fca5a5'},
+    {id:'engineering',label:'🏗️ הנדסי',  color:'#1a3d5c', bg:'#e8f0fd', border:'#93c5fd'},
+    {id:'standards',label:'📋 תקנים',     color:'#4527a0', bg:'#ede7f6', border:'#9c6fdd'},
+  ];
+  if(isFinancial) directions.push({id:'financial',label:'💰 רווח/הפסד',color:'#1b5e20',bg:'#e8f5e9',border:'#a5d6a7'});
+  if(isAudio) directions.push({id:'protocol',label:'📝 פרוטוקול',color:'#7a5500',bg:'#fffde7',border:'#f59e0b'});
+  directions.push({id:'general',label:'📊 כללי',color:'#555',bg:'#f5f5f5',border:'#ccc'});
+
+  var dirBtns = directions.map(function(d){
+    return '<button onclick="sibPhase2Run(\''+id+'\',\''+d.id+'\')" style="background:'+d.bg+';border:1px solid '+d.border+';color:'+d.color+';border-radius:8px;padding:7px 12px;font-size:11px;font-weight:800;cursor:pointer;font-family:Heebo,sans-serif;">'+d.label+'</button>';
+  }).join('');
+
+  // Safety subcategories
+  var catHTML = '';
+  if(_sibSafetyCategories.length>0){
+    catHTML = '<div id="sib-safety-cats" style="display:none;background:#fff5f5;border:1px solid #fca5a5;border-radius:8px;padding:10px;margin-top:8px;">' +
+      '<div style="font-size:10px;font-weight:800;color:#c62828;margin-bottom:8px;">בחר קטגוריות בטיחות לבדיקה:</div>' +
+      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;">' +
+      _sibSafetyCategories.map(function(cat){
+        return '<label style="display:flex;align-items:center;gap:5px;cursor:pointer;font-size:11px;color:#1a1a1a;">' +
+          '<input type="checkbox" class="sib-cat-cb" value="'+sibEsc(cat.name)+'" checked style="accent-color:#c62828;">'+
+          (cat.icon||'')+'&nbsp;'+sibEsc(cat.name)+'</label>';
+      }).join('') +
+      '</div></div>';
   }
 
   panel.innerHTML =
+    // Phase 1 extract + editable
     '<div style="background:#fff;border:1px solid rgba(180,140,60,0.25);border-radius:10px;padding:14px;margin-bottom:10px;">' +
-      '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">' +
-        '<div style="display:flex;align-items:center;gap:6px;">' +
-          '<span style="font-size:10px;padding:2px 10px;border-radius:20px;background:' + modeColor + '22;color:' + modeColor + ';border:1px solid ' + modeColor + '44;">ניתוח ' + modeLabel + '</span>' +
-          severity +
-        '</div>' +
-        '<span style="font-size:9px;color:#b0bec5;">' + new Date(result.timestamp).toLocaleTimeString('he-IL',{hour:'2-digit',minute:'2-digit'}) + '</span>' +
+      '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">' +
+        '<div style="font-size:11px;font-weight:800;color:#1a3d5c;">📋 שלב 1 — חומר גלם (ניתן לעריכה)</div>' +
+        '<button onclick="sibClearPhase1(\''+id+'\')" style="background:none;border:none;color:#aaa;cursor:pointer;font-size:11px;font-family:Heebo,sans-serif;">✕ נקה</button>' +
       '</div>' +
-      '<div style="font-size:12px;color:#2c4a6e;line-height:1.8;white-space:pre-wrap;direction:rtl;">' + sibEsc(result.text) + '</div>' +
-      (result.usage ? (function(){
-        var iT = result.usage.input_tokens||0, oT = result.usage.output_tokens||0;
-        var cost = (iT*3 + oT*15)/1000000;
-        return '<div style="background:rgba(201,168,76,0.08);border:1px solid rgba(201,168,76,0.2);border-radius:6px;padding:5px 10px;margin-top:8px;font-size:10px;color:#888;display:flex;gap:10px;flex-wrap:wrap;">' +
-          '🔢 <b style="color:#c9a84c">'+(iT+oT).toLocaleString()+'</b> טוקנים · 📥 '+iT.toLocaleString()+' · 📤 '+oT.toLocaleString()+' · 💰 <b style="color:#c9a84c">$'+cost.toFixed(4)+'</b></div>';
-      })() : '') +
+      '<textarea id="sib-p1-edit-'+id+'" style="width:100%;min-height:180px;border:1px solid rgba(180,140,60,0.3);border-radius:8px;padding:10px;font-family:Heebo,sans-serif;font-size:12px;color:#1a1a1a;direction:rtl;resize:vertical;box-sizing:border-box;line-height:1.7;">'+sibEsc(p1text)+'</textarea>' +
+    '</div>' +
+    // Phase 2 direction selector
+    '<div style="background:#fff;border:1px solid rgba(26,61,92,0.2);border-radius:10px;padding:14px;margin-bottom:10px;">' +
+      '<div style="font-size:11px;font-weight:800;color:#1a3d5c;margin-bottom:10px;">🚀 שלב 2 — כיוון ניתוח</div>' +
+      '<div style="display:flex;gap:6px;flex-wrap:wrap;">'+dirBtns+'</div>' +
+      catHTML +
+    '</div>' +
+    '<div id="sib-p2-result"></div>' +
+    sibApprovePanel(item);
+
+  // Toggle safety cats when בטיחות clicked
+  var safetyBtns = panel.querySelectorAll('button');
+  safetyBtns.forEach(function(btn){
+    if(btn.textContent.indexOf('בטיחות')>-1){
+      btn.addEventListener('click',function(){
+        var cats=document.getElementById('sib-safety-cats');
+        if(cats) cats.style.display=cats.style.display==='none'?'block':'block';
+      });
+    }
+  });
+}
+
+// ── PHASE 2: RUN ANALYSIS ─────────────────────────────────────────────
+async function sibPhase2Run(id, direction) {
+  var item = _sibItems.find(function(i){return i.id===id;});
+  if(!item) return;
+
+  var apiKey = _sibApiKey||(window.APP&&window.APP.config&&window.APP.config.anthropic_key);
+  if(!apiKey){sibShowError('אין מפתח API');return;}
+
+  // Get edited phase 1 text
+  var p1el = document.getElementById('sib-p1-edit-'+id);
+  var p1text = p1el?p1el.value:(_sibPhase1[id]||'');
+  if(!p1text){sibShowError('אין חומר גלם — הפעל שלב 1 תחילה');return;}
+
+  var resultEl = document.getElementById('sib-p2-result');
+  if(resultEl){
+    resultEl.innerHTML='<div style="text-align:center;padding:30px;color:#1a3d5c;font-size:13px;">🧠 Claude מנתח...</div>';
+    sibStartMeter('ניתוח '+direction+' — '+(item.file_name||id).substr(0,20));
+  }
+
+  // Build direction-specific prompt
+  var systemPrompt = '';
+  var userPrompt = '';
+  var reportTitle = '';
+
+  if(direction==='safety'){
+    // Get selected categories
+    var selectedCats = [];
+    document.querySelectorAll('.sib-cat-cb:checked').forEach(function(cb){ selectedCats.push(cb.value); });
+    var catsStr = selectedCats.length>0?selectedCats.join(', '):'כל קטגוריות הבטיחות';
+    reportTitle = '⚠️ דוח בטיחות';
+    systemPrompt = 'אתה מפקח בטיחות בנייה מוסמך. עליך לנתח ממצאים בשטח ולהפיק דוחות בטיחות מקצועיים לפי תקנות הבטיחות בעבודה הישראליות.';
+    userPrompt = 'נתח את החומר הבא לפי קטגוריות הבטיחות: '+catsStr+'\n\nחומר לניתוח:\n'+p1text+'\n\nהפק דוח בטיחות מקצועי בפורמט הבא:\n\n## סיכום מנהלים\n[2-3 שורות]\n\n## ממצאי בטיחות\n[לכל ממצא: תיאור, חומרה (🔴 קריטי / 🟡 בינוני / 🟢 נמוך), תקנה רלוונטית]\n\n## פעולות נדרשות לתיקון\n[ממוספר, עם עדיפות ודדליין]\n\n## ציון בטיחות כולל: X/10\n\n## המלצות לעתיד';
+  }
+  else if(direction==='engineering'){
+    reportTitle = '🏗️ דוח הנדסי';
+    systemPrompt = 'אתה מהנדס בנייה מוסמך עם ניסיון בפיקוח שטח. נתח ממצאים הנדסיים בצורה מקצועית.';
+    userPrompt = 'נתח הנדסית את החומר הבא:\n\n'+p1text+'\n\nהפק דוח הנדסי בפורמט:\n\n## סיכום מצב\n\n## ממצאים הנדסיים\n[לכל ממצא: תיאור טכני, חריגה מהמפרט, השלכות]\n\n## רמת ביצוע: X/10\n\n## ליקויים דחופים\n\n## המלצות לתיקון\n[ממוספר עם עדיפות]\n\n## אבני דרך להמשך';
+  }
+  else if(direction==='standards'){
+    reportTitle = '📋 דוח תאימות תקנים';
+    // Will use RAG — build context first
+    userPrompt = p1text; // temporary, will be overridden
+  }
+  else if(direction==='financial'){
+    reportTitle = '💰 דוח רווח/הפסד';
+    systemPrompt = 'אתה רואה חשבון ומנהל פרויקטי בנייה. נתח נתונים פיננסיים בצורה מקצועית, בדוק לוגיקה חשבונאית, מצא אנומליות, הפק תובנות.';
+    userPrompt = 'נתח את הנתונים הפיננסיים הבאים:\n\n'+p1text+'\n\nהפק דוח פיננסי בפורמט:\n\n## סיכום פיננסי\n\n## בדיקת תקינות חישובים\n[בדוק כל חישוב — האם הלוגיקה נכונה?]\n\n## אנומליות שזוהו\n\n## סיכום רווח/הפסד\n[סכומים, אחוזים, מגמות]\n\n## נקודות סיכון\n\n## המלצות לאופטימיזציה';
+  }
+  else if(direction==='protocol'){
+    reportTitle = '📝 פרוטוקול שיחה';
+    systemPrompt = 'אתה מנהל פרויקטי בניה. הפק פרוטוקול שיחה מקצועי ותמציתי מהתמלול.';
+    userPrompt = 'הפק פרוטוקול מהתמלול הבא:\n\n'+p1text+'\n\nפורמט:\n\n## פרטי שיחה\nתאריך: [אם מוזכר]\nמשתתפים: [שמות/תפקידים]\n\n## נושאים שנדונו\n[ממוספר]\n\n## החלטות שהתקבלו\n[ממוספר]\n\n## משימות לביצוע\n[משימה | אחראי | דדליין]\n\n## נושאים פתוחים\n\n## פעולות הבאות';
+  }
+  else {
+    reportTitle = '📊 ניתוח כללי';
+    systemPrompt = 'אתה מנהל פרויקטי בנייה מנוסה. נתח את החומר ותן תובנות מקצועיות.';
+    userPrompt = 'נתח את החומר הבא:\n\n'+p1text+'\n\nהפק דוח בפורמט:\n\n## סיכום\n\n## נקודות מרכזיות\n[ממוספר]\n\n## ממצאים חשובים\n\n## פעולות נדרשות\n[ממוספר עם עדיפות]\n\n## המלצות';
+  }
+
+  try {
+    var finalText = '';
+
+    // Standards direction — call RAG first
+    if(direction==='standards'){
+      if(typeof ragQuery!=='function'){ sibStopMeter(); sibShowError('מנוע RAG לא טעון — נסה שוב בעוד שנייה'); return; }
+      if(resultEl) resultEl.innerHTML='<div style="text-align:center;padding:20px;color:#4527a0;font-size:12px;">📚 מחפש ב-838 תקנים...</div>';
+      var ragResult = await ragQuery(p1text.substr(0,500));
+      if(ragResult.error) throw new Error('RAG: '+ragResult.error);
+      var ragContext = '';
+      var retrieved = ragResult.retrieved||{};
+      var allSources = (retrieved.building_standards||[]).concat(retrieved.mamad||[]).concat(retrieved.spec||[]).concat(retrieved.renovation||[]);
+      if(allSources.length===0) throw new Error('לא נמצאו תקנים רלוונטיים במאגר — נסה עם טקסט אחר');
+      allSources.forEach(function(s){ ragContext+='תקן: '+(s.standard_number||s.title||'')+' — '+(s.content||s.description||'').substr(0,200)+'\n'; });
+      systemPrompt = 'אתה מהנדס בנייה מוסמך ומומחה לתקני בנייה ישראליים. עליך לבדוק תאימות לתקנים הרלוונטיים שנמצאו.';
+      userPrompt = 'חומר לבדיקה:\n'+p1text+'\n\nתקנים רלוונטיים שנמצאו במאגר (838 תקנים):\n'+ragContext+'\n\nהפק דוח תאימות תקנים בפורמט:\n\n## תקנים שנבדקו ('+allSources.length+' תקנים)\n\n## ממצאי תאימות\n[לכל תקן: עומד/לא עומד/חלקי + הסבר]\n\n## חריגות מהתקן\n[ממוספר, עם מספר התקן]\n\n## פעולות לתיקון\n[ממוספר]\n\n## ציון תאימות: X/10';
+    }
+
+    var raw = await claudeFetch({
+      _apiKey: apiKey,
+      model: 'claude-sonnet-4-20250514',
+      max_tokens: 2000,
+      system: systemPrompt,
+      messages: [{role:'user',content:userPrompt}]
+    }, null);
+    var resp = raw&&typeof raw.json==='function'?await raw.json():raw;
+    finalText = resp&&resp.content&&resp.content[0]?resp.content[0].text:'אין תגובה';
+    sibStopMeter(resp&&resp.usage);
+
+    var result = {mode:direction, text:finalText, timestamp:new Date().toISOString(), usage:resp&&resp.usage, title:reportTitle};
+    _sibAnalysis[id] = result;
+    sibRenderReport(id, result, p1text);
+
+  } catch(e){ sibStopMeter(); if(resultEl) resultEl.innerHTML='<div style="background:#fff5f5;border:1px solid #fca5a5;border-radius:8px;padding:14px;color:#c62828;font-size:12px;">שגיאה: '+sibEsc(e.message)+'</div>'; }
+}
+
+// ── RENDER REPORT ─────────────────────────────────────────────────────
+function sibRenderReport(id, result, p1text) {
+  var resultEl = document.getElementById('sib-p2-result');
+  if(!resultEl) return;
+  var item = _sibItems.find(function(i){return i.id===id;});
+  var modeColors = {safety:'#c62828',engineering:'#1a3d5c',standards:'#4527a0',financial:'#1b5e20',protocol:'#7a5500',general:'#555'};
+  var color = modeColors[result.mode]||'#555';
+
+  // Convert markdown-ish to HTML
+  var html = result.text
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/^## (.+)$/gm,'<div style="font-size:13px;font-weight:900;color:'+color+';margin:14px 0 6px;border-bottom:2px solid '+color+'33;padding-bottom:4px;">$1</div>')
+    .replace(/^### (.+)$/gm,'<div style="font-size:12px;font-weight:800;color:#1a3d5c;margin:10px 0 4px;">$1</div>')
+    .replace(/\*\*([^*]+)\*\*/g,'<b>$1</b>')
+    .replace(/🔴/g,'<span style="color:#c62828;font-weight:900;">🔴</span>')
+    .replace(/🟡/g,'<span style="color:#f59e0b;font-weight:900;">🟡</span>')
+    .replace(/🟢/g,'<span style="color:#1b7a4a;font-weight:900;">🟢</span>')
+    .replace(/\n/g,'<br>');
+
+  var usageBar = '';
+  if(result.usage){
+    var iT=result.usage.input_tokens||0, oT=result.usage.output_tokens||0, cost=(iT*3+oT*15)/1000000;
+    usageBar='<div style="background:#fffbf0;border:2px solid #c9a84c;border-radius:8px;padding:8px 12px;margin-top:8px;font-size:13px;color:#1a1a1a;">🔢 <b style="color:#c9a84c;font-size:15px;">'+(iT+oT).toLocaleString()+'</b> טוקנים &nbsp;·&nbsp; 📥 '+iT.toLocaleString()+' &nbsp;·&nbsp; 📤 '+oT.toLocaleString()+' &nbsp;·&nbsp; 💰 <b style="color:#1a3d5c;font-size:14px;">$'+cost.toFixed(4)+'</b></div>';
+  }
+
+  resultEl.innerHTML =
+    '<div style="background:#fff;border:2px solid '+color+'33;border-radius:10px;padding:16px;margin-bottom:10px;">' +
+      '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">' +
+        '<div style="font-size:14px;font-weight:900;color:'+color+';">'+sibEsc(result.title||result.mode)+'</div>' +
+        '<span style="font-size:9px;color:#b0bec5;">'+new Date(result.timestamp).toLocaleTimeString('he-IL',{hour:'2-digit',minute:'2-digit'})+'</span>' +
+      '</div>' +
+      '<div style="font-size:12px;color:#1a1a1a;line-height:1.9;direction:rtl;">'+html+'</div>' +
+      usageBar +
     '</div>' +
     '<div style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap;">' +
-      '<div style="background:#fffbf0;border:1px solid rgba(180,140,60,0.3);border-radius:8px;padding:8px;margin-bottom:4px;width:100%;">' +
-        '<div style="font-size:10px;color:#9a6f00;font-weight:800;margin-bottom:5px;">💾 שמור כדוח ביומן</div>' +
-        '<select id="sib-save-proj-' + id + '" style="width:100%;background:#fff;border:1px solid rgba(180,140,60,0.3);color:#2c4a6e;border-radius:6px;padding:5px 8px;font-family:Heebo,sans-serif;font-size:11px;direction:rtl;margin-bottom:5px;">' +
-          '<option value="">— בחר פרויקט (אופציונלי) —</option>' +
-          (window.allProjects||[]).map(function(p){ return '<option value="' + p.id + '"' + (p.id === item.project_id ? ' selected' : '') + '>' + sibEsc(p.project_name) + '</option>'; }).join('') +
-        '</select>' +
-        '<button onclick="sibSaveAnalysisAsNote(\'' + id + '\')" style="width:100%;padding:7px;background:#f5e9c4;border:1px solid rgba(180,140,60,0.4);color:#9a6f00;border-radius:6px;font-family:Heebo,sans-serif;font-size:11px;font-weight:800;cursor:pointer;">💾 שמור ביומן מזכרים</button>' +
-      '</div>' +
-      '<button onclick="sibSaveToEnc(\'' + id + '\')" style="flex:1;padding:8px;background:#ede7f6;border:1px solid #9c6fdd;color:#4527a0;border-radius:7px;font-family:Heebo,sans-serif;font-size:11px;font-weight:700;cursor:pointer;">📚 לאנציקלופדיה</button>' +
-      '<button onclick="sibCopyAnalysis(\'' + id + '\')" style="padding:8px 12px;background:#f5f0e8;border:1px solid rgba(180,140,60,0.25);color:#7a8a95;border-radius:7px;font-family:Heebo,sans-serif;font-size:11px;cursor:pointer;">📋 העתק</button>' +
-      '<button onclick="switchTab(\'rag\')" style="padding:8px 12px;background:#e8f0fd;border:1px solid rgba(26,61,92,0.2);color:#1a3d5c;border-radius:7px;font-family:Heebo,sans-serif;font-size:11px;font-weight:700;cursor:pointer;">🏗️ ייעוץ</button>' +
-    '</div>' +
-    sibApprovePanel(item);
+      '<button onclick="sibCopyReport(\''+id+'\')" style="flex:1;padding:8px;background:#f5f0e8;border:1px solid rgba(180,140,60,0.3);color:#7a8a95;border-radius:7px;font-family:Heebo,sans-serif;font-size:11px;cursor:pointer;">📋 העתק דוח</button>' +
+      '<button onclick="sibSaveAnalysisAsNote(\''+id+'\')" style="flex:1;padding:8px;background:#f5e9c4;border:1px solid rgba(180,140,60,0.4);color:#9a6f00;border-radius:7px;font-family:Heebo,sans-serif;font-size:11px;font-weight:800;cursor:pointer;">💾 שמור ביומן</button>' +
+      '<button onclick="sibSaveToEnc(\''+id+'\')" style="flex:1;padding:8px;background:#ede7f6;border:1px solid #9c6fdd;color:#4527a0;border-radius:7px;font-family:Heebo,sans-serif;font-size:11px;cursor:pointer;">📚 אנציקלופדיה</button>' +
+    '</div>';
 }
 
-function sibShowError(msg) {
+// ── SHOW ANALYSIS (for previously saved results) ───────────────────────
+function sibShowAnalysis(id, result) {
+  var p1text = _sibPhase1[id]||'';
+  if(p1text){ sibShowPhase2Panel(id); return; }
+  // Fallback direct show
   var panel = document.getElementById('sib-analysis-panel');
-  if (panel) panel.innerHTML = '<div style="background:#fff5f5;border:1px solid #fca5a5;border-radius:8px;padding:14px;color:#c62828;font-size:12px;">' + sibEsc(msg) + '</div>';
+  if(!panel) return;
+  var item = _sibItems.find(function(i){return i.id===id;});
+  panel.innerHTML = '<div id="sib-p2-result"></div>';
+  sibRenderReport(id, result, p1text);
+  if(item) panel.innerHTML += sibApprovePanel(item);
 }
 
-// ── TRANSCRIBE AUDIO ──────────────────────────────────────────────────
-async function sibTranscribe(id) {
-  var item = _sibItems.find(function(i){ return i.id === id; });
-  if (!item) return;
+// ── MEDIA PREVIEW ─────────────────────────────────────────────────────
+function sibPlayMedia(id) {
+  var item = _sibItems.find(function(i){return i.id===id;});
+  if(!item) return;
   sibSelectItem(id);
-
-  var panel = document.getElementById('sib-analysis-panel');
-  if (panel) {
-    panel.innerHTML = '<div style="text-align:center;padding:60px 20px 20px;color:#1b7a4a;font-size:13px;">🎙️ ' +
-      (item.file_type === 'video' ? 'מחלץ אודיו מהוידאו ומתמלל...' : 'מתמלל הקלטה...') + '</div>';
-    sibStartMeter('תמלול — ' + (item.file_name||id).substr(0,25));
-  }
-
-  if (window.tkrunStart) window.tkrunStart('תמלול — ' + (item.file_name||id).substr(0,25));
-  var elevenlabsKey = null;
-  try {
-    // Try global APP config first (already loaded by CRM)
-    if (window.APP && window.APP.config && window.APP.config.elevenlabs_key) {
-      elevenlabsKey = window.APP.config.elevenlabs_key;
-    } else {
-      var cfg = await sbQ('app_config', 'select=key,value');
-      var rows = (cfg.data || []);
-      var row = rows.find(function(r){ return r.key === 'elevenlabs_key'; });
-      if (row) elevenlabsKey = row.value;
-    }
-  } catch(e) {}
-
-  if (!elevenlabsKey) {
-    sibShowError('לא נמצא מפתח ElevenLabs — הגדר elevenlabs_key ב-app_config');
-    return;
-  }
-
-  if (!item.cloudinary_url) {
-    sibShowError('אין URL לקובץ האודיו');
-    return;
-  }
-
-  try {
-    var audioResp = await fetch(item.cloudinary_url);
-    var audioBlob = await audioResp.blob();
-
-    // Fix MIME type — Samsung records .m4a/.3gp with empty or wrong MIME
-    // mp4 video files with audio track (call recordings) also supported
-    var fileName = item.file_name || 'audio.m4a';
-    var mimeType = audioBlob.type;
-    if (!mimeType || mimeType === 'application/octet-stream' || mimeType === 'video/3gpp' || mimeType === 'video/mp4') {
-      var ext = fileName.split('.').pop().toLowerCase();
-      var mimeMap = { m4a:'audio/mp4', mp3:'audio/mpeg', wav:'audio/wav',
-                      ogg:'audio/ogg', webm:'audio/webm', aac:'audio/aac',
-                      '3gp':'audio/3gpp', flac:'audio/flac',
-                      mp4:'audio/mp4' }; // mp4 call recordings → send as audio/mp4
-      mimeType = mimeMap[ext] || 'audio/mp4';
-    }
-    // Rename .mp4 files to .m4a so ElevenLabs treats them as audio
-    if (fileName.toLowerCase().endsWith('.mp4')) {
-      fileName = fileName.replace(/\.mp4$/i, '.m4a');
-    }
-    var fixedBlob = new Blob([audioBlob], { type: mimeType });
-
-    var formData = new FormData();
-    formData.append('file', fixedBlob, fileName);
-    formData.append('model_id', 'scribe_v1');
-    formData.append('language_code', 'he');
-    formData.append('diarize', 'true');
-    formData.append('tag_audio_events', 'false');
-    formData.append('timestamps_granularity', 'none');
-
-    var transcResp = await fetch('https://api.elevenlabs.io/v1/speech-to-text', {
-      method: 'POST',
-      headers: { 'xi-api-key': elevenlabsKey },
-      body: formData
-    });
-
-    if (!transcResp.ok) {
-      var errBody = '';
-      try { var errJson = await transcResp.json(); errBody = JSON.stringify(errJson); } catch(e2) {}
-      throw new Error('ElevenLabs HTTP ' + transcResp.status + (errBody ? ' — ' + errBody : ''));
-    }
-    var transcData = await transcResp.json();
-    console.log('[INBOX] ElevenLabs response keys:', Object.keys(transcData));
-    // scribe_v1 returns .text directly; with diarize=true also returns .words[]
-    var transcript = transcData.text || '';
-    // If .text is empty but .words exist, build transcript from words
-    if (!transcript && transcData.words && transcData.words.length) {
-      transcript = transcData.words.map(function(w){
-        var spk = w.speaker_id ? '[דובר '+w.speaker_id+'] ' : '';
-        return (w.type === 'spacing' ? '' : spk + (w.text||''));
-      }).join(' ').replace(/\s+/g,' ').trim();
-    }
-    if (!transcript) transcript = '(לא זוהה טקסט — נסה קובץ אחר)';
-    console.log('[INBOX] transcript length:', transcript.length);
-
-    if (window.tkrunEnd) window.tkrunEnd(0, Math.ceil(transcript.length/4));
-    sibStopMeter({ input_tokens: 0, output_tokens: Math.ceil(transcript.length/4) });
-    var result = { mode: 'transcription', text: transcript, timestamp: new Date().toISOString() };
-    _sibAnalysis[id] = result;
-
-    var panel2 = document.getElementById('sib-analysis-panel');
-    if (panel2) {
-      panel2.innerHTML =
-        '<div style="background:#f0faf5;border:1px solid #a5d6a7;border-radius:10px;padding:14px;margin-bottom:10px;">' +
-          '<div style="font-size:10px;color:#1b7a4a;font-weight:800;margin-bottom:8px;">תמלול שיחה</div>' +
-          '<div style="font-size:12px;color:#2c4a6e;line-height:1.8;white-space:pre-wrap;direction:rtl;max-height:250px;overflow-y:auto;">' + sibEsc(transcript) + '</div>' +
-        '</div>' +
-        '<div style="display:flex;gap:6px;margin-bottom:10px;">' +
-          '<button onclick="sibOpenFullAnalysis(\'' + id + '\')" style="flex:1;padding:9px;background:#1a3d5c;color:#fff;border:1px solid #1a3d5c;border-radius:7px;font-family:Heebo,sans-serif;font-size:11px;font-weight:700;cursor:pointer;">🤖 נתח + עריכת דוברים</button>' +
-          '<button onclick="sibSaveToJournal(\'' + id + '\')" style="flex:1;padding:9px;background:#f5f0e8;color:#5a6f7c;border:1px solid rgba(180,140,60,0.3);border-radius:7px;font-family:Heebo,sans-serif;font-size:11px;cursor:pointer;">📋 שמור ביומן</button>' +
-        '</div>' +
-        sibApprovePanel(item);
-    }
-  } catch(e) {
-    sibStopMeter();
-    sibShowError('שגיאת תמלול: ' + e.message);
-  }
+  var url=(item.cloudinary_url&&item.cloudinary_url.startsWith('http'))?item.cloudinary_url:'';
+  var rawType=(item.file_type||'').toLowerCase();
+  var typeMap={mp4:'video',mov:'video',avi:'video',webm:'video',mp3:'audio',m4a:'audio',wav:'audio',ogg:'audio',aac:'audio','3gp':'audio',flac:'audio',jpg:'image',jpeg:'image',png:'image',gif:'image',webp:'image',pdf:'pdf'};
+  var type=typeMap[rawType]||rawType;
+  var fname=item.file_name||id;
+  setTimeout(function(){
+    var panel=document.getElementById('sib-analysis-panel');
+    if(!panel) return;
+    if(!url){panel.innerHTML='<div style="background:#fff5f5;border:1px solid #fca5a5;border-radius:8px;padding:20px;text-align:center;color:#c62828;font-size:12px;">⚠️ אין URL לקובץ זה</div>';return;}
+    var playerHtml='';
+    if(type==='video') playerHtml='<div style="padding:12px;"><div style="font-size:11px;color:#9a6f00;margin-bottom:8px;font-weight:700;">▶ '+sibEsc(fname)+'</div><video controls autoplay style="width:100%;border-radius:8px;background:#000;max-height:360px;" crossorigin="anonymous"><source src="'+sibEsc(url)+'"></video><div style="margin-top:8px;text-align:center;"><a href="'+sibEsc(url)+'" target="_blank" style="font-size:10px;color:#c9a84c;">⬇ פתח בחלון חדש</a></div></div>';
+    else if(type==='audio') playerHtml='<div style="padding:20px;"><div style="font-size:16px;text-align:center;margin-bottom:12px;">🎵</div><div style="font-size:11px;color:#9a6f00;margin-bottom:12px;font-weight:700;text-align:center;">'+sibEsc(fname)+'</div><audio controls autoplay style="width:100%;margin-bottom:10px;" crossorigin="anonymous"><source src="'+sibEsc(url)+'"></audio><div style="text-align:center;"><a href="'+sibEsc(url)+'" target="_blank" style="font-size:10px;color:#c9a84c;">⬇ פתח בחלון חדש</a></div></div>';
+    else if(type==='image') playerHtml='<div style="padding:12px;text-align:center;"><div style="font-size:11px;color:#9a6f00;margin-bottom:8px;font-weight:700;text-align:right;">🖼 '+sibEsc(fname)+'</div><img src="'+sibEsc(url)+'" style="max-width:100%;max-height:420px;border-radius:8px;object-fit:contain;border:1px solid rgba(180,140,60,0.2);" onerror="this.style.display=\'none\'"><div style="margin-top:8px;text-align:center;"><a href="'+sibEsc(url)+'" target="_blank" style="font-size:10px;color:#c9a84c;">⬇ פתח בגודל מלא</a></div></div>';
+    else if(type==='pdf') playerHtml='<div style="padding:8px;"><div style="font-size:11px;color:#9a6f00;margin-bottom:8px;font-weight:700;">📄 '+sibEsc(fname)+'</div><iframe src="'+sibEsc(url)+'" style="width:100%;height:400px;border:none;border-radius:8px;"></iframe></div>';
+    else playerHtml='<div style="padding:20px;text-align:center;"><div style="font-size:32px;margin-bottom:12px;">📎</div><div style="font-size:12px;font-weight:700;color:#1a3d5c;margin-bottom:12px;">'+sibEsc(fname)+'</div><a href="'+sibEsc(url)+'" target="_blank" style="background:#1a3d5c;color:#fff;padding:10px 20px;border-radius:8px;text-decoration:none;font-size:12px;font-weight:700;font-family:Heebo,sans-serif;">⬇ פתח / הורד קובץ</a></div>';
+    panel.innerHTML='<div style="background:#fff;border:1px solid rgba(180,140,60,0.25);border-radius:10px;overflow:hidden;margin-bottom:10px;">'+playerHtml+'</div>'+sibApprovePanel(item);
+  },0);
 }
 
-// ── EXTRACT FRAME ──────────────────────────────────────────────────────
+// ── FRAME EXTRACTION ──────────────────────────────────────────────────
 async function sibExtractFrame(id) {
-  var item = _sibItems.find(function(i){ return i.id === id; });
-  if (!item || !item.cloudinary_url) { sibShowError('אין URL לוידאו'); return; }
+  var item = _sibItems.find(function(i){return i.id===id;});
+  if(!item||!item.cloudinary_url){sibShowError('אין URL לוידאו');return;}
   sibSelectItem(id);
-
-  // Use Cloudinary transformation to extract frame
-  var frameUrl = item.cloudinary_url.replace('/upload/', '/upload/so_1,w_800/').replace('.mp4', '.jpg').replace('.mov', '.jpg').replace('.avi', '.jpg');
-  var panel = document.getElementById('sib-analysis-panel');
-  if (panel) {
-    panel.innerHTML =
+  var frameUrl=item.cloudinary_url.replace('/upload/','/upload/so_1,w_800/').replace(/\.mp4$/,'.jpg').replace(/\.mov$/,'.jpg').replace(/\.avi$/,'.jpg');
+  var panel=document.getElementById('sib-analysis-panel');
+  if(panel){
+    panel.innerHTML=
       '<div style="background:#fff;border:1px solid rgba(180,140,60,0.25);border-radius:10px;padding:14px;margin-bottom:10px;">' +
         '<div style="font-size:10px;color:#9a6f00;font-weight:800;margin-bottom:8px;">🎞️ פריים חולץ</div>' +
-        '<img src="' + frameUrl + '" style="width:100%;border-radius:8px;margin-bottom:10px;" onerror="this.style.display=\'none\'">' +
-        '<div style="font-size:11px;color:#8a9aa5;text-align:center;">שניה 1 מתוך הוידאו</div>' +
-      '</div>' +
-      '<div style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap;">' +
-        '<button onclick="sibAnalyzeFrame(\'' + id + '\',\'' + frameUrl + '\')" style="flex:1;padding:9px;background:#1a3d5c;color:#fff;border:1px solid #1a3d5c;border-radius:7px;font-family:Heebo,sans-serif;font-size:11px;font-weight:700;cursor:pointer;">🔍 נתח פריים</button>' +
-        '<button onclick="sibAnalyzeFrame(\'' + id + '\',\'' + frameUrl + '\',\'safety\')" style="flex:1;padding:9px;background:#fff5f5;color:#c62828;border:1px solid #fca5a5;border-radius:7px;font-family:Heebo,sans-serif;font-size:11px;cursor:pointer;">⚠️ בטיחות</button>' +
-      '</div>' +
-      sibApprovePanel(item);
-  }
-}
-
-async function sibAnalyzeFrame(id, frameUrl, mode) {
-  var item = _sibItems.find(function(i){ return i.id === id; });
-  if (!item) return;
-  // Create a temporary item copy with the frame URL for analysis
-  var tempItem = Object.assign({}, item, { cloudinary_url: frameUrl, file_type: 'image' });
-  _sibItems.push(tempItem);
-  var realItem = _sibItems.find(function(i){ return i.id === id; });
-  if (realItem) realItem._frameUrl = frameUrl;
-
-  await sibAnalyze(id, mode || 'general');
-}
-
-// ── ANALYZE PDF ───────────────────────────────────────────────────────
-async function sibAnalyzePDF(id) {
-  var item = _sibItems.find(function(i){ return i.id === id; });
-  if (!item) return;
-  sibSelectItem(id);
-
-  var apiKey = _sibApiKey || (window.APP && window.APP.config && window.APP.config.anthropic_key);
-  if (!apiKey) { sibShowError('לא נמצא מפתח API'); return; }
-
-  var panel = document.getElementById('sib-analysis-panel');
-  if (panel) {
-    panel.innerHTML = '<div style="text-align:center;padding:60px 20px 20px;color:#c62828;font-weight:800;font-size:13px;">📄 מנתח מסמך PDF...</div>';
-    sibStartMeter('ניתוח PDF — ' + (item.file_name||id).substr(0,22));
-  }
-
-  try {
-    var _cfraw1 = await claudeFetch({
-      _apiKey: apiKey,
-      model: 'claude-sonnet-4-20250514',
-      max_tokens: 800,
-      messages: [{ role: 'user', content: 'URL של מסמך PDF: ' + (item.cloudinary_url || 'אין URL') + '\n\nנתח את המסמך: מהו, מה כולל, נקודות עיקריות, פעולות נדרשות. עברית.' }]
-    }, null);
-    var resp = _cfraw1 && typeof _cfraw1.json==='function' ? await _cfraw1.json() : _cfraw1;
-
-    var text = resp && resp.content && resp.content[0] ? resp.content[0].text : 'אין תגובה';
-    sibStopMeter(resp && resp.usage);
-    var result = { mode: 'pdf', text: text, timestamp: new Date().toISOString(), usage: resp && resp.usage };
-    _sibAnalysis[id] = result;
-    sibShowAnalysis(id, result);
-  } catch(e) {
-    sibStopMeter();
-    sibShowError('שגיאה: ' + e.message);
-  }
-}
-
-// ── SAVE ACTIONS ──────────────────────────────────────────────────────
-async function sibSaveAnalysisAsNote(id) {
-  var item = _sibItems.find(function(i){ return i.id === id; });
-  var analysis = _sibAnalysis[id];
-  if (!item || !analysis) return;
-
-  // Read project from selector if present
-  var sel = document.getElementById('sib-save-proj-' + id);
-  var projectId = (sel && sel.value) ? sel.value : (item.project_id || null);
-  var modeLabel = { general: 'כללי', engineering: 'הנדסי', safety: 'בטיחות', pdf: 'PDF', transcription: 'תמלול' }[analysis.mode] || analysis.mode;
-  var proj = (window.allProjects||[]).find(function(p){ return p.id === projectId; });
-  var projName = proj ? proj.project_name : '';
-
-  try {
-    await sb.from('beni_notes').insert({
-      note_text: '📊 דוח AI — ' + modeLabel + (projName ? ' | ' + projName : '') + '\n\n' + analysis.text,
-      note_type: 'text',
-      photo_url: item.cloudinary_url || null,
-      project_id: projectId,
-      color: 'blue',
-      created_at: new Date().toISOString()
-    });
-    showToast('✅ נשמר ביומן מזכרים' + (projName ? ' — ' + projName : ''), 'success');
-    // Also update item project if selected
-    if (projectId && projectId !== item.project_id) {
-      await fetch(SB_URL + '/rest/v1/asset_inbox?id=eq.' + id, {
-        method: 'PATCH',
-        headers: { apikey: SB_KEY, Authorization: 'Bearer ' + SB_KEY, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
-        body: JSON.stringify({ project_id: projectId })
-      });
-      item.project_id = projectId;
-    }
-  } catch(e) {
-    showToast('שגיאה: ' + e.message, 'error');
-  }
-}
-
-async function sibSaveToEnc(id) {
-  var item = _sibItems.find(function(i){ return i.id === id; });
-  if (!item) return;
-  var analysis = _sibAnalysis[id];
-
-  try {
-    await sb.from('field_encyclopedia').insert({
-      category: 'שטח',
-      title: item.file_name || 'קובץ מהשטח',
-      description: analysis ? analysis.text : 'קובץ מהתיבה',
-      media_url: item.cloudinary_url || null,
-      media_type: item.file_type || 'image',
-      severity: 'guideline',
-      source_project_id: item.project_id || null,
-      created_at: new Date().toISOString()
-    });
-    showToast('✅ נשמר לאנציקלופדיה','success');
-  } catch(e) {
-    showToast('שגיאה: ' + e.message, 'error');
-  }
-}
-
-async function sibSaveToJournal(id) {
-  var item = _sibItems.find(function(i){ return i.id === id; });
-  if (!item) return;
-  var analysis = _sibAnalysis[id];
-
-  try {
-    await sb.from('beni_notes').insert({
-      note_text: analysis ? analysis.text : ('קובץ: ' + (item.file_name || '')),
-      note_type: item.file_type === 'audio' ? 'audio' : 'text',
-      photo_url: item.cloudinary_url || null,
-      project_id: item.project_id || null,
-      created_at: new Date().toISOString()
-    });
-    showToast('✅ נשמר ביומן','success');
-  } catch(e) {
-    showToast('שגיאה: ' + e.message, 'error');
-  }
-}
-
-async function sibCopyAnalysis(id) {
-  var analysis = _sibAnalysis[id];
-  if (!analysis) return;
-  try {
-    await navigator.clipboard.writeText(analysis.text);
-    showToast('✅ הועתק','success');
-  } catch(e) {
-    showToast('שגיאה בהעתקה', 'error');
-  }
-}
-
-// ── APPROVE ───────────────────────────────────────────────────────────
-async function sibApproveWithProject(id) {
-  var sel = document.getElementById('sib-proj-sel-' + id);
-  var projId = sel ? sel.value : null;
-  await sibApprove(id, projId);
-}
-
-async function sibApprove(id, projectId) {
-  try {
-    var patch = { status: 'approved' };
-    if (projectId) patch.project_id = projectId;
-
-    await fetch(SB_URL + '/rest/v1/asset_inbox?id=eq.' + id, {
-      method: 'PATCH',
-      headers: { apikey: SB_KEY, Authorization: 'Bearer ' + SB_KEY, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
-      body: JSON.stringify(patch)
-    });
-
-    // Also save to beni_notes if has media
-    var item = _sibItems.find(function(i){ return i.id === id; });
-    if (item && item.cloudinary_url) {
-      await sb.from('beni_notes').insert({
-        note_text: item.file_name || 'קובץ מאושר',
-        note_type: item.file_type || 'photo',
-        photo_url: item.cloudinary_url,
-        project_id: projectId || item.project_id || null,
-        created_at: new Date().toISOString()
-      });
-    }
-
-    showToast('✅ אושר ושויך','success');
-    _sibSelected = null;
-    document.getElementById('sib-analysis-panel').innerHTML =
-      '<div style="text-align:center;padding:40px;color:#1b7a4a;font-size:13px;">✅ הקובץ אושר בהצלחה</div>';
-    await sibLoad();
-  } catch(e) {
-    showToast('שגיאה: ' + e.message, 'error');
-  }
-}
-
-async function sibDeleteItem(id) {
-  if (!confirm('למחוק קובץ זה מהתיבה?')) return;
-  try {
-    await fetch(SB_URL + '/rest/v1/asset_inbox?id=eq.' + id, {
-      method: 'DELETE',
-      headers: { apikey: SB_KEY, Authorization: 'Bearer ' + SB_KEY }
-    });
-    showToast('🗑️ נמחק','success');
-    if (_sibSelected === id) {
-      _sibSelected = null;
-      var panel = document.getElementById('sib-analysis-panel');
-      if (panel) panel.innerHTML = '<div style="text-align:center;padding:60px;color:#b0bec5;font-size:13px;">בחר קובץ מהרשימה</div>';
-    }
-    await sibLoad();
-  } catch(e) {
-    showToast('שגיאה: ' + e.message, 'error');
-  }
-}
-
-
-// ── MEDIA PREVIEW PLAYER ─────────────────────────────────────────
-function sibPlayMedia(id) {
-  var item = _sibItems.find(function(i){ return i.id === id; });
-  if (!item) return;
-  sibSelectItem(id); // highlight card (may overwrite panel)
-  var url = (item.cloudinary_url && item.cloudinary_url.startsWith('http')) ? item.cloudinary_url : '';
-  var rawType = (item.file_type || '').toLowerCase();
-  // Normalize type aliases
-  var typeMap = { mp4:'video', mov:'video', avi:'video', webm:'video',
-                  mp3:'audio', m4a:'audio', wav:'audio', ogg:'audio', aac:'audio', '3gp':'audio', flac:'audio',
-                  jpg:'image', jpeg:'image', png:'image', gif:'image', webp:'image',
-                  pdf:'pdf' };
-  var type = typeMap[rawType] || rawType;
-  var fname = item.file_name || id;
-
-  // Use setTimeout(0) so this runs AFTER sibSelectItem's synchronous panel update
-  setTimeout(function() {
-    var panel = document.getElementById('sib-analysis-panel');
-    if (!panel) { console.warn('[sibPlayMedia] sib-analysis-panel not found'); return; }
-
-    if (!url) {
-      panel.innerHTML = '<div style="background:#fff5f5;border:1px solid #fca5a5;border-radius:8px;padding:20px;text-align:center;color:#c62828;font-size:12px;">⚠️ אין כתובת URL לקובץ זה<br><small style="color:#aaa">' + sibEsc(fname) + '</small></div>';
-      return;
-    }
-
-    var playerHtml = '';
-
-  if (type === 'video') {
-    playerHtml =
-      '<div style="padding:12px">' +
-        '<div style="font-size:11px;color:#9a6f00;margin-bottom:8px;font-weight:700">▶ ' + sibEsc(fname) + '</div>' +
-        '<video controls autoplay style="width:100%;border-radius:8px;background:#000;max-height:360px" crossorigin="anonymous">' +
-          '<source src="' + sibEsc(url) + '">' +
-        '</video>' +
-        '<div style="margin-top:8px;text-align:center">' +
-          '<a href="' + sibEsc(url) + '" target="_blank" style="font-size:10px;color:#c9a84c">⬇ פתח בחלון חדש</a>' +
+        '<img src="'+frameUrl+'" style="width:100%;border-radius:8px;margin-bottom:10px;" onerror="this.style.display=\'none\'">' +
+        '<div style="display:flex;gap:6px;">' +
+          '<button onclick="sibPhase1FromFrame(\''+id+'\',\''+frameUrl+'\')" style="flex:1;padding:9px;background:#1a3d5c;color:#fff;border:1px solid #1a3d5c;border-radius:7px;font-family:Heebo,sans-serif;font-size:11px;font-weight:700;cursor:pointer;">📋 שלב 1 — תאר פריים</button>' +
         '</div>' +
-      '</div>';
-  } else if (type === 'audio') {
-    playerHtml =
-      '<div style="padding:20px">' +
-        '<div style="font-size:16px;text-align:center;margin-bottom:12px">🎵</div>' +
-        '<div style="font-size:11px;color:#9a6f00;margin-bottom:12px;font-weight:700;text-align:center">' + sibEsc(fname) + '</div>' +
-        '<audio controls autoplay style="width:100%;margin-bottom:10px" crossorigin="anonymous">' +
-          '<source src="' + sibEsc(url) + '">' +
-        '</audio>' +
-        '<div style="text-align:center">' +
-          '<a href="' + sibEsc(url) + '" target="_blank" style="font-size:10px;color:#c9a84c">⬇ פתח בחלון חדש</a>' +
-        '</div>' +
-      '</div>';
-  } else if (type === 'pdf') {
-    playerHtml =
-      '<div style="padding:8px">' +
-        '<div style="font-size:11px;color:#9a6f00;margin-bottom:8px;font-weight:700">📄 ' + sibEsc(fname) + '</div>' +
-        '<iframe src="' + sibEsc(url) + '" style="width:100%;height:400px;border:none;border-radius:8px;"></iframe>' +
-      '</div>';
-  } else if (type === 'document' || type === 'spreadsheet' || type === 'csv' || type === 'file') {
-    playerHtml =
-      '<div style="padding:20px;text-align:center">' +
-        '<div style="font-size:32px;margin-bottom:12px">📎</div>' +
-        '<div style="font-size:12px;font-weight:700;color:#1a3d5c;margin-bottom:12px">' + sibEsc(fname) + '</div>' +
-        '<a href="' + sibEsc(url) + '" target="_blank" style="background:#1a3d5c;color:#fff;padding:10px 20px;border-radius:8px;text-decoration:none;font-size:12px;font-weight:700;font-family:Heebo,sans-serif">⬇ פתח / הורד קובץ</a>' +
-      '</div>';
-  } else if (type === 'image') {
-    playerHtml =
-      '<div style="padding:12px;text-align:center;">' +
-        '<div style="font-size:11px;color:#9a6f00;margin-bottom:8px;font-weight:700;text-align:right;">🖼 ' + sibEsc(fname) + '</div>' +
-        '<img src="' + sibEsc(url) + '" style="max-width:100%;max-height:420px;border-radius:8px;object-fit:contain;border:1px solid rgba(180,140,60,0.2);" ' +
-          'onerror="this.style.display=\'none\'">' +
-        '<div style="margin-top:8px;text-align:center;">' +
-          '<a href="' + sibEsc(url) + '" target="_blank" style="font-size:10px;color:#c9a84c;">⬇ פתח בגודל מלא</a>' +
-        '</div>' +
-      '</div>';
-  } else {
-    playerHtml =
-      '<div style="padding:20px;text-align:center;color:#9a6f00">אין תצוגה מקדימה לסוג קובץ זה ('+sibEsc(rawType)+')</div>';
+      '</div>' + sibApprovePanel(item);
   }
-
-    panel.innerHTML =
-      '<div style="background:#fff;border:1px solid rgba(180,140,60,0.25);border-radius:10px;overflow:hidden;margin-bottom:10px;">' +
-        playerHtml +
-      '</div>' +
-      sibApprovePanel(item);
-  }, 0); // end setTimeout
 }
 
+async function sibPhase1FromFrame(id, frameUrl) {
+  var item = _sibItems.find(function(i){return i.id===id;});
+  if(!item) return;
+  var savedUrl = item.cloudinary_url;
+  item.cloudinary_url = frameUrl;
+  await sibPhase1Image(id);
+  item.cloudinary_url = savedUrl;
+}
 
-// ── BATCH SELECTION & ACTIONS ─────────────────────────────────────────
+// ── LIVE TOKEN METER ──────────────────────────────────────────────────
+function sibStartMeter(label) {
+  sibStopMeter();
+  var panel=document.getElementById('sib-analysis-panel');
+  if(!panel) return;
+  var startTime=Date.now();
+  var old=document.getElementById('sib-live-meter'); if(old) old.remove();
+  var meterEl=document.createElement('div');
+  meterEl.id='sib-live-meter';
+  meterEl.style.cssText='background:#fff8e8;border:2px solid #c9a84c;border-radius:10px;padding:10px 16px;margin-top:12px;font-size:13px;color:#1a1a1a;display:flex;align-items:center;gap:10px;font-family:Heebo,sans-serif;direction:rtl;box-shadow:0 2px 8px rgba(201,168,76,0.2);';
+  meterEl.innerHTML='<span style="display:inline-block;animation:sibspin 1s linear infinite;font-size:18px;">⚙️</span><span style="color:#1a3d5c;font-weight:800;font-size:13px;">'+(label||'AI עובד')+'</span><span style="margin-right:auto;"></span><span id="sib-meter-time" style="color:#c9a84c;font-weight:900;font-size:16px;min-width:36px;">0s</span><span style="color:#aaa;margin:0 6px;">|</span><span id="sib-meter-est" style="color:#333;font-size:12px;font-weight:700;">מחשב...</span>';
+  if(!document.getElementById('sib-spin-style')){var st=document.createElement('style');st.id='sib-spin-style';st.textContent='@keyframes sibspin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}';document.head.appendChild(st);}
+  panel.appendChild(meterEl);
+  _sibMeterTimer=setInterval(function(){
+    var elapsed=Math.floor((Date.now()-startTime)/1000);
+    var tEl=document.getElementById('sib-meter-time'),eEl=document.getElementById('sib-meter-est');
+    if(!tEl){clearInterval(_sibMeterTimer);return;}
+    tEl.textContent=elapsed+'s';
+    var est=elapsed*40;
+    if(eEl) eEl.textContent='~'+est.toLocaleString()+' טוקנים · ~$'+(est*15/1000000).toFixed(4);
+  },1000);
+}
+
+function sibStopMeter(usageObj) {
+  if(_sibMeterTimer){clearInterval(_sibMeterTimer);_sibMeterTimer=null;}
+  var meterEl=document.getElementById('sib-live-meter');
+  if(!meterEl) return;
+  if(usageObj){
+    var iT=usageObj.input_tokens||0,oT=usageObj.output_tokens||0,cost=(iT*3+oT*15)/1000000;
+    meterEl.style.background='#fffbf0'; meterEl.style.border='2px solid #c9a84c'; meterEl.style.fontSize='13px'; meterEl.style.color='#1a1a1a';
+    meterEl.innerHTML='🔢 <b style="color:#c9a84c;font-size:15px;">'+(iT+oT).toLocaleString()+'</b> <span style="color:#333">טוקנים סה״כ</span> &nbsp;·&nbsp; <span style="color:#555">📥 '+iT.toLocaleString()+' קלט</span> &nbsp;·&nbsp; <span style="color:#555">📤 '+oT.toLocaleString()+' פלט</span> &nbsp;·&nbsp; 💰 <b style="color:#1a3d5c;font-size:14px;">$'+cost.toFixed(4)+'</b>';
+  } else { meterEl.remove(); }
+}
+
+// ── BATCH SELECTION ───────────────────────────────────────────────────
 function sibUpdateBatchBar() {
-  var count = Object.keys(_sibSelSet).filter(function(k){ return _sibSelSet[k]; }).length;
-  var bar = document.getElementById('sib-batch-bar');
-  var countEl = document.getElementById('sib-sel-count');
-  if (!bar) return;
-  if (count > 0) {
-    bar.style.display = 'flex';
-    if (countEl) countEl.textContent = count + ' נבחרו';
-  } else {
-    bar.style.display = 'none';
-  }
+  var count=Object.keys(_sibSelSet).filter(function(k){return _sibSelSet[k];}).length;
+  var bar=document.getElementById('sib-batch-bar'),countEl=document.getElementById('sib-sel-count');
+  if(!bar) return;
+  bar.style.display=count>0?'flex':'none';
+  if(countEl) countEl.textContent=count+' נבחרו';
 }
-
 function sibClearSel() {
-  _sibSelSet = {};
-  // Uncheck all checkboxes
-  _sibItems.forEach(function(item) {
-    var cb = document.getElementById('sib-sel-' + item.id);
-    if (cb) cb.checked = false;
-  });
+  _sibSelSet={};
+  _sibItems.forEach(function(item){var cb=document.getElementById('sib-sel-'+item.id);if(cb) cb.checked=false;});
   sibUpdateBatchBar();
 }
-
 async function sibBatchDelete() {
-  var ids = Object.keys(_sibSelSet).filter(function(k){ return _sibSelSet[k]; });
-  if (!ids.length) return;
-  if (!confirm('למחוק ' + ids.length + ' קבצים?')) return;
-  var ok = 0;
-  for (var i = 0; i < ids.length; i++) {
-    try {
-      var r = await fetch(SB_URL + '/rest/v1/asset_inbox?id=eq.' + ids[i], {
-        method: 'DELETE',
-        headers: { apikey: SB_KEY, Authorization: 'Bearer ' + SB_KEY }
-      });
-      if (r.ok) ok++;
-    } catch(e) {}
-  }
-  showToast('🗑️ נמחקו ' + ok + ' קבצים', 'success');
-  _sibSelSet = {};
-  if (_sibSelected && ids.indexOf(_sibSelected) !== -1) {
-    _sibSelected = null;
-    var panel = document.getElementById('sib-analysis-panel');
-    if (panel) panel.innerHTML = '<div style="text-align:center;padding:60px;color:#b0bec5;font-size:13px;">בחר קובץ מהרשימה</div>';
-  }
-  await sibLoad();
-  sibUpdateBatchBar();
+  var ids=Object.keys(_sibSelSet).filter(function(k){return _sibSelSet[k];});
+  if(!ids.length) return;
+  if(!confirm('למחוק '+ids.length+' קבצים?')) return;
+  var ok=0;
+  for(var i=0;i<ids.length;i++){try{var r=await fetch(SB_URL+'/rest/v1/asset_inbox?id=eq.'+ids[i],{method:'DELETE',headers:{apikey:SB_KEY,Authorization:'Bearer '+SB_KEY}});if(r.ok) ok++;}catch(e){}}
+  showToast('🗑️ נמחקו '+ok+' קבצים','success');
+  _sibSelSet={};
+  await sibLoad(); sibUpdateBatchBar();
 }
-
 async function sibBatchToEnc() {
-  var ids = Object.keys(_sibSelSet).filter(function(k){ return _sibSelSet[k]; });
-  if (!ids.length) return;
-  var ok = 0;
-  for (var i = 0; i < ids.length; i++) {
-    var item = _sibItems.find(function(it){ return it.id === ids[i]; });
-    if (!item) continue;
-    try {
-      await sb.from('field_encyclopedia').insert({
-        category: 'שטח',
-        title: item.file_name || 'קובץ מהתיבה',
-        description: (_sibAnalysis[item.id] && _sibAnalysis[item.id].text) || 'קובץ מתיבת הנכנסים',
-        media_url: item.cloudinary_url || null,
-        media_type: item.file_type || 'image',
-        severity: 'guideline',
-        source_project_id: item.project_id || null,
-        created_at: new Date().toISOString()
-      });
-      // Mark as approved in inbox
-      await fetch(SB_URL + '/rest/v1/asset_inbox?id=eq.' + item.id, {
-        method: 'PATCH',
-        headers: { apikey: SB_KEY, Authorization: 'Bearer ' + SB_KEY, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
-        body: JSON.stringify({ status: 'approved' })
-      });
+  var ids=Object.keys(_sibSelSet).filter(function(k){return _sibSelSet[k];});
+  if(!ids.length) return;
+  var ok=0;
+  for(var i=0;i<ids.length;i++){
+    var item=_sibItems.find(function(it){return it.id===ids[i];});
+    if(!item) continue;
+    try{
+      await sb.from('field_encyclopedia').insert({category:'שטח',title:item.file_name||'קובץ',description:(_sibAnalysis[item.id]&&_sibAnalysis[item.id].text)||(_sibPhase1[item.id])||'קובץ מתיבת הנכנסים',media_url:item.cloudinary_url||null,media_type:item.file_type||'image',severity:'guideline',source_project_id:item.project_id||null,created_at:new Date().toISOString()});
+      await fetch(SB_URL+'/rest/v1/asset_inbox?id=eq.'+item.id,{method:'PATCH',headers:{apikey:SB_KEY,Authorization:'Bearer '+SB_KEY,'Content-Type':'application/json',Prefer:'return=minimal'},body:JSON.stringify({status:'approved'})});
       ok++;
-    } catch(e) { console.warn('enc insert failed', item.id, e); }
+    } catch(e){}
   }
-  showToast('📚 נשלחו ' + ok + ' קבצים לאנציקלופדיה', 'success');
-  _sibSelSet = {};
-  await sibLoad();
-  sibUpdateBatchBar();
+  showToast('📚 נשלחו '+ok+' קבצים לאנציקלופדיה','success');
+  _sibSelSet={};
+  await sibLoad(); sibUpdateBatchBar();
 }
-
-// ── FILTER ────────────────────────────────────────────────────────────
-function sibFilterByProject(projId) {
-  var listEl = document.getElementById('sib-file-list');
-  if (!listEl) return;
-  var filtered = projId ? _sibItems.filter(function(i){ return i.project_id === projId; }) : _sibItems;
-  listEl.innerHTML = '';
-  if (filtered.length === 0) {
-    listEl.innerHTML = '<div style="text-align:center;padding:40px;color:#b0bec5;font-size:12px;">אין קבצים לפרויקט זה</div>';
-    return;
-  }
-  filtered.forEach(function(item) { listEl.appendChild(sibFileCard(item)); });
-}
-
-function sibPopulateProjects() {
-  var sel = document.getElementById('sib-proj-filter');
-  if (!sel) return;
-  (window.allProjects||[]).forEach(function(p) {
-    var o = document.createElement('option');
-    o.value = p.id; o.textContent = p.project_name;
-    sel.appendChild(o);
-  });
-}
-
-// ── Open full analysis modal with speaker name editor ─────────────────
-function sibOpenFullAnalysis(id) {
-  var analysis = _sibAnalysis[id];
-  if (!analysis || !analysis.text) {
-    sibShowError('אין תמלול — תמלל קודם'); return;
-  }
-  var item = _sibItems.find(function(i){ return i.id === id; });
-  var projId = item ? item.project_id : null;
-  // openCallAnalysisModal lives in index.html — gives speaker A/B name editor
-  if (typeof openCallAnalysisModal === 'function') {
-    openCallAnalysisModal(analysis.text, projId, item);
-  } else {
-    // fallback — direct analysis without editor
-    sibAnalyzeTranscript(id);
-  }
-}
-
-async function sibAnalyzeTranscript(id) {
-  var analysis = _sibAnalysis[id];
-  if (!analysis || !analysis.text) return;
-
-  var apiKey = _sibApiKey || (window.APP && window.APP.config && window.APP.config.anthropic_key);
-  if (!apiKey) { sibShowError('אין מפתח API'); return; }
-
-  var panel = document.getElementById('sib-analysis-panel');
-  if (panel) {
-    panel.innerHTML = '<div style="text-align:center;padding:60px 20px 20px;color:#9a6f00;font-size:13px;">🤖 מנתח תמלול...</div>';
-    sibStartMeter('ניתוח תמלול');
-  }
-
-  try {
-    var _taItem = _sibItems.find(function(i){ return i.id === id; });
-    if (window.tkrunStart) window.tkrunStart('ניתוח תמלול — ' + ((_taItem && _taItem.file_name)||id).substr(0,25));
-    var _cfraw2 = await claudeFetch({
-      _apiKey: apiKey,
-      model: 'claude-sonnet-4-20250514',
-      max_tokens: 600,
-      system: 'אתה מנהל פרויקטים. נתח שיחה ותמצה: נושאים עיקריים, החלטות, משימות לביצוע, דדליינים. עברית.',
-      messages: [{ role: 'user', content: 'תמלול שיחה:\n\n' + analysis.text }]
-    }, null);
-    var resp = _cfraw2 && typeof _cfraw2.json==='function' ? await _cfraw2.json() : _cfraw2;
-
-    var text = resp && resp.content && resp.content[0] ? resp.content[0].text : '';
-    if (window.tkrunEnd && resp && resp.usage) window.tkrunEnd(resp.usage.input_tokens||0, resp.usage.output_tokens||0);
-    var usage = resp && resp.usage;
-    sibStopMeter(usage);
-    var newResult = { mode: 'analysis', text: text, timestamp: new Date().toISOString(), usage: usage };
-    _sibAnalysis[id] = newResult;
-    sibShowAnalysis(id, newResult);
-  } catch(e) {
-    sibStopMeter();
-    sibShowError('שגיאה: ' + e.message);
-  }
-}
-
-// ── BATCH ANALYZE ────────────────────────────────────────────────────
 async function sibBatchAnalyze() {
-  var toAnalyze = _sibItems.filter(function(i){
-    var chk = _sibChecked[i.id] || {};
-    return chk.safety || chk.engineering || chk.standards;
-  });
-  if (!toAnalyze.length) {
-    showToast('בחר לפחות קובץ אחד עם סוג ניתוח','error'); return;
+  var ids=Object.keys(_sibSelSet).filter(function(k){return _sibSelSet[k];});
+  if(!ids.length){showToast('בחר קבצים תחילה','error');return;}
+  showToast('🚀 מנתח '+ids.length+' קבצים...','success');
+  for(var i=0;i<ids.length;i++){
+    sibSelectItem(ids[i]);
+    var item=_sibItems.find(function(it){return it.id===ids[i];});
+    if(!item) continue;
+    if(item.file_type==='audio'||item.file_type==='video') await sibTranscribe(ids[i]);
+    else if(item.file_type==='image') await sibPhase1Image(ids[i]);
+    else await sibPhase1Doc(ids[i]);
+    await new Promise(function(r){setTimeout(r,500);});
   }
-  showToast('🚀 מנתח ' + toAnalyze.length + ' קבצים...','success');
-  for (var i = 0; i < toAnalyze.length; i++) {
-    var item = toAnalyze[i];
-    var chk = _sibChecked[item.id] || {};
-    var mode = chk.safety ? 'safety' : chk.engineering ? 'engineering' : 'general';
-    sibSelectItem(item.id);
-    await sibAnalyze(item.id, mode);
-    await new Promise(function(r){ setTimeout(r, 800); }); // brief pause between calls
-  }
-  showToast('✅ ניתוח הושלם','success');
+  showToast('✅ שלב 1 הושלם — בחר כיוון ניתוח לכל קובץ','success');
 }
 
-// ── UTILS ─────────────────────────────────────────────────────────────
+// ── HELPERS ───────────────────────────────────────────────────────────
+function sibClearPhase1(id) {
+  delete _sibPhase1[id]; delete _sibAnalysis[id];
+  sibRefreshCard(id);
+  var p1el=document.getElementById('sib-p1-edit-'+id); if(p1el) p1el.value='';
+}
+function sibRefreshCard(id) {
+  var item=_sibItems.find(function(i){return i.id===id;});
+  if(!item) return;
+  var card=document.getElementById('sib-card-'+id);
+  if(!card) return;
+  var newCard=sibFileCard(item);
+  card.parentNode.replaceChild(newCard,card);
+}
+async function sibCopyReport(id) {
+  var a=_sibAnalysis[id]; if(!a) return;
+  try{await navigator.clipboard.writeText(a.text);showToast('✅ הועתק','success');}catch(e){showToast('שגיאה','error');}
+}
+function sibShowError(msg) {
+  var panel=document.getElementById('sib-analysis-panel');
+  if(panel) panel.innerHTML='<div style="background:#fff5f5;border:1px solid #fca5a5;border-radius:8px;padding:14px;color:#c62828;font-size:12px;">'+sibEsc(msg)+'</div>';
+}
 function sibEsc(str) {
   return String(str||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
-// ── assetInboxLoad override — manual only, no auto-refresh ───────────────
-// Auto-refresh disabled: Beni uploads from Beni Pocket → rows already in Supabase
-// Avshi clicks the sync button manually when Beni finishes his day
+// ── APPROVE / DELETE ──────────────────────────────────────────────────
+function sibApprovePanel(item) {
+  var projOpts='<option value="">— בחר פרויקט —</option>'+(window.allProjects||[]).map(function(p){return '<option value="'+p.id+'"'+(p.id===item.project_id?' selected':'')+'>'+sibEsc(p.project_name)+'</option>';}).join('');
+  return '<div style="background:#f0faf5;border:1px solid #a5d6a7;border-radius:10px;padding:14px;">' +
+    '<div style="font-size:11px;font-weight:800;color:#1b7a4a;margin-bottom:10px;">שייך לפרויקט ואשר</div>' +
+    '<select id="sib-proj-sel-'+item.id+'" style="width:100%;background:#fff;border:1px solid rgba(180,140,60,0.3);color:#2c4a6e;border-radius:8px;padding:8px 12px;font-family:Heebo,sans-serif;font-size:12px;direction:rtl;margin-bottom:8px;">'+projOpts+'</select>' +
+    '<button onclick="sibApproveWithProject(\''+item.id+'\')" style="width:100%;padding:10px;background:linear-gradient(135deg,#0d9488,#0f766e);border:none;color:#fff;border-radius:8px;font-family:Heebo,sans-serif;font-size:13px;font-weight:800;cursor:pointer;">✅ אשר ושייך לפרויקט</button>' +
+    '</div>';
+}
+async function sibApproveWithProject(id) {
+  var sel=document.getElementById('sib-proj-sel-'+id);
+  await sibApprove(id,sel?sel.value:null);
+}
+async function sibApprove(id,projectId) {
+  try{
+    var patch={status:'approved'}; if(projectId) patch.project_id=projectId;
+    await fetch(SB_URL+'/rest/v1/asset_inbox?id=eq.'+id,{method:'PATCH',headers:{apikey:SB_KEY,Authorization:'Bearer '+SB_KEY,'Content-Type':'application/json',Prefer:'return=minimal'},body:JSON.stringify(patch)});
+    var item=_sibItems.find(function(i){return i.id===id;});
+    if(item&&item.cloudinary_url) await sb.from('beni_notes').insert({note_text:item.file_name||'קובץ מאושר',note_type:item.file_type||'photo',photo_url:item.cloudinary_url,project_id:projectId||item.project_id||null,created_at:new Date().toISOString()});
+    showToast('✅ אושר ושויך','success');
+    _sibSelected=null;
+    var panel=document.getElementById('sib-analysis-panel');
+    if(panel) panel.innerHTML='<div style="text-align:center;padding:40px;color:#1b7a4a;font-size:13px;">✅ הקובץ אושר בהצלחה</div>';
+    await sibLoad();
+  } catch(e){showToast('שגיאה: '+e.message,'error');}
+}
+async function sibDeleteItem(id) {
+  if(!confirm('למחוק קובץ זה מהתיבה?')) return;
+  try{
+    await fetch(SB_URL+'/rest/v1/asset_inbox?id=eq.'+id,{method:'DELETE',headers:{apikey:SB_KEY,Authorization:'Bearer '+SB_KEY}});
+    showToast('🗑️ נמחק','success');
+    if(_sibSelected===id){_sibSelected=null;var panel=document.getElementById('sib-analysis-panel');if(panel) panel.innerHTML='<div style="text-align:center;padding:60px;color:#b0bec5;font-size:13px;">בחר קובץ מהרשימה</div>';}
+    await sibLoad();
+  } catch(e){showToast('שגיאה: '+e.message,'error');}
+}
+
+// ── SAVE ACTIONS ──────────────────────────────────────────────────────
+async function sibSaveAnalysisAsNote(id) {
+  var item=_sibItems.find(function(i){return i.id===id;}); var analysis=_sibAnalysis[id];
+  if(!item||!analysis) return;
+  var sel=document.getElementById('sib-proj-sel-'+id); var projectId=(sel&&sel.value)?sel.value:(item.project_id||null);
+  try{
+    await sb.from('beni_notes').insert({note_text:'📊 דוח AI — '+(analysis.title||analysis.mode)+'\n\n'+analysis.text,note_type:'text',photo_url:item.cloudinary_url||null,project_id:projectId,color:'blue',created_at:new Date().toISOString()});
+    showToast('✅ נשמר ביומן','success');
+  } catch(e){showToast('שגיאה: '+e.message,'error');}
+}
+async function sibSaveToEnc(id) {
+  var item=_sibItems.find(function(i){return i.id===id;}); if(!item) return;
+  var analysis=_sibAnalysis[id];
+  try{
+    await sb.from('field_encyclopedia').insert({category:'שטח',title:item.file_name||'קובץ',description:analysis?analysis.text:'קובץ מהתיבה',media_url:item.cloudinary_url||null,media_type:item.file_type||'image',severity:'guideline',source_project_id:item.project_id||null,created_at:new Date().toISOString()});
+    showToast('✅ נשמר לאנציקלופדיה','success');
+  } catch(e){showToast('שגיאה: '+e.message,'error');}
+}
+
+// ── FILTER & PROJECTS ─────────────────────────────────────────────────
+function sibFilterByProject(projId) {
+  var listEl=document.getElementById('sib-file-list'); if(!listEl) return;
+  var filtered=projId?_sibItems.filter(function(i){return i.project_id===projId;}):_sibItems;
+  listEl.innerHTML='';
+  if(!filtered.length){listEl.innerHTML='<div style="text-align:center;padding:40px;color:#b0bec5;font-size:12px;">אין קבצים לפרויקט זה</div>';return;}
+  filtered.forEach(function(item){listEl.appendChild(sibFileCard(item));});
+}
+function sibPopulateProjects() {
+  var sel=document.getElementById('sib-proj-filter'); if(!sel) return;
+  (window.allProjects||[]).forEach(function(p){var o=document.createElement('option');o.value=p.id;o.textContent=p.project_name;sel.appendChild(o);});
+}
+
+// ── assetInboxLoad — no auto-rebuild ──────────────────────────────────
 function assetInboxLoad() {
-  // Only do full init if panel not yet built
-  if (!document.getElementById('sib-file-list')) {
-    sibInit();
-  }
-  // If already open — do nothing. Manual refresh via sibLoad() button only.
+  if(!document.getElementById('sib-file-list')) sibInit();
+  // else do nothing — manual refresh only
 }
