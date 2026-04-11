@@ -344,13 +344,14 @@ async function sibAnalyze(id, mode) {
     }];
 
     var _tkIdx = window.tkrunStart ? window.tkrunStart('ניתוח ' + (mode||'כללי') + ' — ' + (item.file_name||id).substr(0,25)) : -1;
-    var resp = await claudeFetch({
+    var _rawResp = await claudeFetch({
       _apiKey: apiKey,
       model: 'claude-sonnet-4-20250514',
       max_tokens: 600,
       system: 'אתה מהנדס שטח מנוסה. ענה תמיד בעברית. היה ספציפי, קצר, עם המלצות פעולה ברורות.',
       messages: messages
     }, null);
+    var resp = _rawResp && typeof _rawResp.json === 'function' ? await _rawResp.json() : _rawResp;
 
     if (window.tkrunEnd && resp && resp.usage) window.tkrunEnd(resp.usage.input_tokens||0, resp.usage.output_tokens||0);
     var result = {
@@ -557,12 +558,13 @@ async function sibAnalyzePDF(id) {
   if (panel) panel.innerHTML = '<div style="text-align:center;padding:40px;color:#c62828;font-weight:800;font-size:13px;">📄 מנתח מסמך PDF...</div>';
 
   try {
-    var resp = await claudeFetch({
+    var _cfraw1 = await claudeFetch({
       _apiKey: apiKey,
       model: 'claude-sonnet-4-20250514',
       max_tokens: 800,
       messages: [{ role: 'user', content: 'URL של מסמך PDF: ' + (item.cloudinary_url || 'אין URL') + '\n\nנתח את המסמך: מהו, מה כולל, נקודות עיקריות, פעולות נדרשות. עברית.' }]
     }, null);
+    var resp = _cfraw1 && typeof _cfraw1.json==='function' ? await _cfraw1.json() : _cfraw1;
 
     var text = resp && resp.content && resp.content[0] ? resp.content[0].text : 'אין תגובה';
     var result = { mode: 'pdf', text: text, timestamp: new Date().toISOString() };
@@ -738,19 +740,24 @@ function sibPlayMedia(id) {
     playerHtml =
       '<div style="padding:12px">' +
         '<div style="font-size:11px;color:#9a6f00;margin-bottom:8px;font-weight:700">▶ ' + sibEsc(fname) + '</div>' +
-        '<video controls style="width:100%;border-radius:8px;background:#000;max-height:300px">' +
+        '<video controls autoplay style="width:100%;border-radius:8px;background:#000;max-height:360px" crossorigin="anonymous">' +
           '<source src="' + sibEsc(url) + '">' +
-          'הדפדפן אינו תומך בנגן וידאו' +
         '</video>' +
+        '<div style="margin-top:8px;text-align:center">' +
+          '<a href="' + sibEsc(url) + '" target="_blank" style="font-size:10px;color:#c9a84c">⬇ פתח בחלון חדש</a>' +
+        '</div>' +
       '</div>';
   } else if (type === 'audio') {
     playerHtml =
       '<div style="padding:20px">' +
-        '<div style="font-size:11px;color:#9a6f00;margin-bottom:12px;font-weight:700">🎵 ' + sibEsc(fname) + '</div>' +
-        '<audio controls style="width:100%">' +
+        '<div style="font-size:16px;text-align:center;margin-bottom:12px">🎵</div>' +
+        '<div style="font-size:11px;color:#9a6f00;margin-bottom:12px;font-weight:700;text-align:center">' + sibEsc(fname) + '</div>' +
+        '<audio controls autoplay style="width:100%;margin-bottom:10px" crossorigin="anonymous">' +
           '<source src="' + sibEsc(url) + '">' +
-          'הדפדפן אינו תומך בנגן אודיו' +
         '</audio>' +
+        '<div style="text-align:center">' +
+          '<a href="' + sibEsc(url) + '" target="_blank" style="font-size:10px;color:#c9a84c">⬇ פתח בחלון חדש</a>' +
+        '</div>' +
       '</div>';
   } else if (type === 'pdf') {
     playerHtml =
@@ -809,7 +816,6 @@ function sibOpenFullAnalysis(id) {
     openCallAnalysisModal(analysis.text, projId, item);
   } else {
     // fallback — direct analysis without editor
-    if (window.tkrunEnd) window.tkrunEnd(0, 0);
     sibAnalyzeTranscript(id);
   }
 }
@@ -826,15 +832,17 @@ async function sibAnalyzeTranscript(id) {
 
   try {
     var _tkIdx = window.tkrunStart ? window.tkrunStart('ניתוח ' + (mode||'כללי') + ' — ' + (item.file_name||id).substr(0,25)) : -1;
-    var resp = await claudeFetch({
+    var _cfraw2 = await claudeFetch({
       _apiKey: apiKey,
       model: 'claude-sonnet-4-20250514',
       max_tokens: 600,
       system: 'אתה מנהל פרויקטים. נתח שיחה ותמצה: נושאים עיקריים, החלטות, משימות לביצוע, דדליינים. עברית.',
       messages: [{ role: 'user', content: 'תמלול שיחה:\n\n' + analysis.text }]
     }, null);
+    var resp = _cfraw2 && typeof _cfraw2.json==='function' ? await _cfraw2.json() : _cfraw2;
 
     var text = resp && resp.content && resp.content[0] ? resp.content[0].text : '';
+    if (window.tkrunEnd && resp && resp.usage) window.tkrunEnd(resp.usage.input_tokens||0, resp.usage.output_tokens||0);
     var usage = resp && resp.usage;
     var newResult = { mode: 'analysis', text: text, timestamp: new Date().toISOString(), usage: usage };
     _sibAnalysis[id] = newResult;
