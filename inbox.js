@@ -4,7 +4,8 @@
 
 // ── STATE ────────────────────────────────────────────────────────────
 var _sibItems      = [];   // all pending inbox items
-var _sibSelected   = null; // currently selected item id
+var _sibSelected   = null; // currently selected item id (for analysis panel)
+var _sibSelSet     = {};   // {itemId: true} — checked for batch delete/enc
 var _sibAnalysis   = {};   // analysis results keyed by item id
 var _sibApiKey     = null; // Claude API key from app_config
 var _sibChecked    = {};   // {itemId: {safety:bool, engineering:bool, standards:bool}}
@@ -46,18 +47,38 @@ function sibHTML() {
       <div style="font-size:9px;letter-spacing:3px;color:#9a6f00;font-weight:800;text-transform:uppercase;margin-bottom:3px;">Smart Inbox</div>
       <div style="font-size:18px;font-weight:900;color:#1a3d5c;">📥 תיבת נכנסים חכמה</div>
     </div>
-    <div style="display:flex;gap:8px;align-items:center;">
-      <span id="sib-badge" style="display:none;background:#ef4444;color:#1a3d5c;border-radius:20px;padding:3px 10px;font-size:11px;font-weight:800;"></span>
-      <button onclick="sibLoad()" style="background:#f5f0e8;border:1px solid rgba(180,140,60,0.3);color:#5a6f7c;border-radius:8px;padding:7px 14px;font-size:11px;cursor:pointer;font-family:Heebo,sans-serif;">🔄 רענן</button>
-      <button onclick="if(window.openLocalUpload)window.openLocalUpload();" style="background:linear-gradient(135deg,#c9a84c,#9a6f00);border:none;color:#1a1a2e;border-radius:8px;padding:7px 14px;font-size:11px;font-weight:800;cursor:pointer;font-family:Heebo,sans-serif;">📂 העלה מהמחשב</button>
-      <select id="sib-proj-filter" onchange="sibFilterByProject(this.value)" style="background:#fff;border:1px solid rgba(180,140,60,0.3);color:#2c4a6e;border-radius:8px;padding:7px 12px;font-size:11px;font-family:Heebo,sans-serif;direction:rtl;">
+    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+      <span id="sib-badge" style="display:none;background:#ef4444;color:#fff;border-radius:20px;padding:3px 12px;font-size:12px;font-weight:800;"></span>
+      <!-- BIG SYNC BUTTON — Beni finishes day → click to load his files -->
+      <button onclick="sibSyncBeni()" id="sib-sync-btn"
+        style="background:linear-gradient(135deg,#1a3d5c,#2d6a9f);border:none;color:#fff;border-radius:10px;padding:10px 20px;font-size:13px;font-weight:900;cursor:pointer;font-family:Heebo,sans-serif;display:flex;align-items:center;gap:8px;box-shadow:0 2px 8px rgba(26,61,92,0.3);">
+        <span style="font-size:18px;">📲</span> העלה קבצים מנייד של בני
+      </button>
+      <!-- Desktop upload -->
+      <button onclick="if(window.openLocalUpload)window.openLocalUpload();"
+        style="background:#f5e9c4;border:1px solid #c9a84c;color:#7a5500;border-radius:8px;padding:8px 14px;font-size:11px;font-weight:700;cursor:pointer;font-family:Heebo,sans-serif;">
+        💻 העלה מהמחשב
+      </button>
+      <button onclick="sibLoad()"
+        style="background:#f5f0e8;border:1px solid rgba(180,140,60,0.3);color:#5a6f7c;border-radius:8px;padding:8px 12px;font-size:11px;cursor:pointer;font-family:Heebo,sans-serif;">
+        🔄 רענן
+      </button>
+      <select id="sib-proj-filter" onchange="sibFilterByProject(this.value)"
+        style="background:#fff;border:1px solid rgba(180,140,60,0.3);color:#2c4a6e;border-radius:8px;padding:8px 12px;font-size:11px;font-family:Heebo,sans-serif;direction:rtl;">
         <option value="">כל הפרויקטים</option>
       </select>
     </div>
   </div>
 
   <!-- STATS BAR -->
-  <div id="sib-stats" style="display:flex;gap:8px;padding:10px 20px;background:#f5e9c4;border-bottom:1px solid #f5f0e8;flex-wrap:wrap;"></div>
+  <div id="sib-stats" style="display:flex;gap:8px;padding:10px 20px;background:#f5e9c4;border-bottom:1px solid #f5f0e8;flex-wrap:wrap;align-items:center;">
+    <div id="sib-batch-bar" style="display:none;margin-right:auto;display:flex;gap:8px;align-items:center;">
+      <span id="sib-sel-count" style="font-size:12px;font-weight:800;color:#1a3d5c;background:#fff;border-radius:20px;padding:3px 12px;border:1px solid #c9a84c;"></span>
+      <button onclick="sibBatchDelete()" style="background:#fff5f5;border:1px solid #fca5a5;color:#c62828;border-radius:8px;padding:6px 14px;font-size:12px;font-weight:800;cursor:pointer;font-family:Heebo,sans-serif;">🗑️ מחק נבחרים</button>
+      <button onclick="sibBatchToEnc()" style="background:#ede7f6;border:1px solid #9c6fdd;color:#4527a0;border-radius:8px;padding:6px 14px;font-size:12px;font-weight:800;cursor:pointer;font-family:Heebo,sans-serif;">📚 שלח לאנציקלופדיה</button>
+      <button onclick="sibClearSel()" style="background:#f5f0e8;border:1px solid rgba(180,140,60,0.3);color:#7a8a95;border-radius:8px;padding:6px 12px;font-size:11px;cursor:pointer;font-family:Heebo,sans-serif;">✕ בטל בחירה</button>
+    </div>
+  </div>
 
   <!-- MAIN TWO-PANEL -->
   <div style="display:grid;grid-template-columns:1fr 1fr;min-height:calc(100vh - 120px);width:100%;" id="sib-two-panel">
@@ -93,6 +114,49 @@ function sibHTML() {
 }
 
 // ── LOAD ─────────────────────────────────────────────────────────────
+
+// ── SYNC BENI FILES ───────────────────────────────────────────────────
+// Beni uploads from his phone → Beni Pocket saves to Cloudinary + asset_inbox
+// This button simply reloads the list from Supabase — no Cloudinary API needed
+async function sibSyncBeni() {
+  var btn = document.getElementById('sib-sync-btn');
+  var listEl = document.getElementById('sib-file-list');
+  if (!listEl) return;
+
+  // Show loading state on button
+  var origHTML = btn ? btn.innerHTML : '';
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = '<span style="display:inline-block;animation:sibspin 0.8s linear infinite;font-size:16px;">⏳</span> טוען קבצי בני...';
+    btn.style.opacity = '0.8';
+  }
+
+  // Count before
+  var countBefore = _sibItems.length;
+
+  await sibLoad();
+
+  // Count after
+  var countAfter = _sibItems.length;
+  var newCount = Math.max(0, countAfter - countBefore);
+
+  // Restore button
+  if (btn) {
+    btn.disabled = false;
+    btn.innerHTML = origHTML;
+    btn.style.opacity = '1';
+  }
+
+  // Toast result
+  if (newCount > 0) {
+    showToast('📲 ' + newCount + ' קבצים חדשים מבני!', 'success');
+  } else if (countAfter === 0) {
+    showToast('📭 אין קבצים חדשים מבני', 'success');
+  } else {
+    showToast('✅ ' + countAfter + ' קבצים בתיבה', 'success');
+  }
+}
+
 async function sibLoad() {
   var listEl = document.getElementById('sib-file-list');
   var statsEl = document.getElementById('sib-stats');
@@ -184,8 +248,13 @@ function sibFileCard(item) {
         '<input type="checkbox" ' + (chk.standards?'checked':'') + ' onchange="_sibChecked[&quot;' + item.id + '&quot;].standards=this.checked;event.stopPropagation();" style="accent-color:#9a6f00;"> 📋 תקנים</label>' +
     '</div>' : '';
 
+  var isSel = !!_sibSelSet[item.id];
   card.innerHTML =
     '<div style="display:flex;align-items:flex-start;gap:10px;">' +
+      '<input type="checkbox" id="sib-sel-' + item.id + '" ' + (isSel ? 'checked' : '') + ' ' +
+        'onchange="_sibSelSet[&quot;' + item.id + '&quot;]=this.checked;sibUpdateBatchBar();event.stopPropagation();" ' +
+        'style="width:16px;height:16px;margin-top:10px;accent-color:#1a3d5c;flex-shrink:0;cursor:pointer;" ' +
+        'title="\u05d1\u05d7\u05e8 \u05dc\u05e4\u05e2\u05d5\u05dc\u05d4 \u05e7\u05d1\u05d5\u05e6\u05ea\u05d9\u05ea">' +
       (hasThumb ? '<img src="' + thumbUrl + '" style="width:52px;height:52px;border-radius:8px;object-fit:cover;flex-shrink:0;" onerror="this.outerHTML=\'<div style=\\"width:36px;height:36px;border-radius:8px;background:' + typeBg + ';display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;\\">'+typeIcon+'</div>\'">' : '<div style="width:36px;height:36px;border-radius:8px;background:' + typeBg + ';display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;">' + typeIcon + '</div>') +
       '<div style="flex:1;min-width:0;">' +
         '<div style="font-size:12px;font-weight:700;color:#1a3d5c;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + sibEsc(fname) + '</div>' +
@@ -340,7 +409,7 @@ function sibStartMeter(label) {
     timeEl.textContent = elapsed + 's';
     var estTokens = elapsed * 40;
     var estCost   = (estTokens * 15) / 1000000;
-    if (estEl) estEl.textContent = '~' + estTokens + ' טוקנים · ~$' + estCost.toFixed(4);
+    if (estEl) estEl.textContent = '~' + estTokens.toLocaleString() + ' טוקנים  ·  ~$' + estCost.toFixed(4);
   }, 1000);
 }
 
@@ -352,12 +421,14 @@ function sibStopMeter(usageObj) {
     var iT = usageObj.input_tokens  || 0;
     var oT = usageObj.output_tokens || 0;
     var cost = (iT * 3 + oT * 15) / 1000000;
-    meterEl.style.background = 'rgba(201,168,76,0.08)';
-    meterEl.style.borderColor = 'rgba(201,168,76,0.25)';
-    meterEl.innerHTML = '🔢 <b style="color:#c9a84c">' + (iT+oT).toLocaleString() + '</b> טוקנים' +
-      ' &nbsp;·&nbsp; 📥 ' + iT.toLocaleString() +
-      ' &nbsp;·&nbsp; 📤 ' + oT.toLocaleString() +
-      ' &nbsp;·&nbsp; 💰 <b style="color:#c9a84c">$' + cost.toFixed(4) + '</b>';
+    meterEl.style.background = '#fffbf0';
+    meterEl.style.border = '2px solid #c9a84c';
+    meterEl.style.fontSize = '13px';
+    meterEl.style.color = '#1a1a1a';
+    meterEl.innerHTML = '🔢&nbsp; <b style="color:#c9a84c;font-size:15px;">' + (iT+oT).toLocaleString() + '</b> <span style="color:#333">טוקנים סה״כ</span>' +
+      '&nbsp;&nbsp;·&nbsp;&nbsp; <span style="color:#555">📥 ' + iT.toLocaleString() + ' קלט</span>' +
+      '&nbsp;&nbsp;·&nbsp;&nbsp; <span style="color:#555">📤 ' + oT.toLocaleString() + ' פלט</span>' +
+      '&nbsp;&nbsp;·&nbsp;&nbsp; 💰 <b style="color:#1a3d5c;font-size:14px;">$' + cost.toFixed(4) + '</b>';
   } else {
     meterEl.remove();
   }
@@ -880,6 +951,16 @@ function sibPlayMedia(id) {
         '<div style="font-size:12px;font-weight:700;color:#1a3d5c;margin-bottom:12px">' + sibEsc(fname) + '</div>' +
         '<a href="' + sibEsc(url) + '" target="_blank" style="background:#1a3d5c;color:#fff;padding:10px 20px;border-radius:8px;text-decoration:none;font-size:12px;font-weight:700;font-family:Heebo,sans-serif">⬇ פתח / הורד קובץ</a>' +
       '</div>';
+  } else if (type === 'image') {
+    playerHtml =
+      '<div style="padding:12px;text-align:center;">' +
+        '<div style="font-size:11px;color:#9a6f00;margin-bottom:8px;font-weight:700;text-align:right;">🖼 ' + sibEsc(fname) + '</div>' +
+        '<img src="' + sibEsc(url) + '" style="max-width:100%;max-height:420px;border-radius:8px;object-fit:contain;border:1px solid rgba(180,140,60,0.2);" ' +
+          'onerror="this.style.display=\'none\'">' +
+        '<div style="margin-top:8px;text-align:center;">' +
+          '<a href="' + sibEsc(url) + '" target="_blank" style="font-size:10px;color:#c9a84c;">⬇ פתח בגודל מלא</a>' +
+        '</div>' +
+      '</div>';
   } else {
     playerHtml =
       '<div style="padding:20px;text-align:center;color:#9a6f00">אין תצוגה מקדימה לסוג קובץ זה ('+sibEsc(rawType)+')</div>';
@@ -891,6 +972,89 @@ function sibPlayMedia(id) {
       '</div>' +
       sibApprovePanel(item);
   }, 0); // end setTimeout
+}
+
+
+// ── BATCH SELECTION & ACTIONS ─────────────────────────────────────────
+function sibUpdateBatchBar() {
+  var count = Object.keys(_sibSelSet).filter(function(k){ return _sibSelSet[k]; }).length;
+  var bar = document.getElementById('sib-batch-bar');
+  var countEl = document.getElementById('sib-sel-count');
+  if (!bar) return;
+  if (count > 0) {
+    bar.style.display = 'flex';
+    if (countEl) countEl.textContent = count + ' נבחרו';
+  } else {
+    bar.style.display = 'none';
+  }
+}
+
+function sibClearSel() {
+  _sibSelSet = {};
+  // Uncheck all checkboxes
+  _sibItems.forEach(function(item) {
+    var cb = document.getElementById('sib-sel-' + item.id);
+    if (cb) cb.checked = false;
+  });
+  sibUpdateBatchBar();
+}
+
+async function sibBatchDelete() {
+  var ids = Object.keys(_sibSelSet).filter(function(k){ return _sibSelSet[k]; });
+  if (!ids.length) return;
+  if (!confirm('למחוק ' + ids.length + ' קבצים?')) return;
+  var ok = 0;
+  for (var i = 0; i < ids.length; i++) {
+    try {
+      var r = await fetch(SB_URL + '/rest/v1/asset_inbox?id=eq.' + ids[i], {
+        method: 'DELETE',
+        headers: { apikey: SB_KEY, Authorization: 'Bearer ' + SB_KEY }
+      });
+      if (r.ok) ok++;
+    } catch(e) {}
+  }
+  showToast('🗑️ נמחקו ' + ok + ' קבצים', 'success');
+  _sibSelSet = {};
+  if (_sibSelected && ids.indexOf(_sibSelected) !== -1) {
+    _sibSelected = null;
+    var panel = document.getElementById('sib-analysis-panel');
+    if (panel) panel.innerHTML = '<div style="text-align:center;padding:60px;color:#b0bec5;font-size:13px;">בחר קובץ מהרשימה</div>';
+  }
+  await sibLoad();
+  sibUpdateBatchBar();
+}
+
+async function sibBatchToEnc() {
+  var ids = Object.keys(_sibSelSet).filter(function(k){ return _sibSelSet[k]; });
+  if (!ids.length) return;
+  var ok = 0;
+  for (var i = 0; i < ids.length; i++) {
+    var item = _sibItems.find(function(it){ return it.id === ids[i]; });
+    if (!item) continue;
+    try {
+      await sb.from('field_encyclopedia').insert({
+        category: 'שטח',
+        title: item.file_name || 'קובץ מהתיבה',
+        description: (_sibAnalysis[item.id] && _sibAnalysis[item.id].text) || 'קובץ מתיבת הנכנסים',
+        media_url: item.cloudinary_url || null,
+        media_type: item.file_type || 'image',
+        severity: 'guideline',
+        source_project_id: item.project_id || null,
+        created_at: new Date().toISOString()
+      });
+      // Mark as approved in inbox
+      await fetch(SB_URL + '/rest/v1/asset_inbox?id=eq.' + item.id, {
+        method: 'PATCH',
+        headers: { apikey: SB_KEY, Authorization: 'Bearer ' + SB_KEY, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+        body: JSON.stringify({ status: 'approved' })
+      });
+      ok++;
+    } catch(e) { console.warn('enc insert failed', item.id, e); }
+  }
+  showToast('📚 נשלחו ' + ok + ' קבצים לאנציקלופדיה', 'success');
+  _sibSelSet = {};
+  await sibLoad();
+  sibUpdateBatchBar();
 }
 
 // ── FILTER ────────────────────────────────────────────────────────────
@@ -997,7 +1161,13 @@ function sibEsc(str) {
   return String(str||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
-// ── assetInboxLoad override — wire to sibInit ─────────────────────────
+// ── assetInboxLoad override — manual only, no auto-refresh ───────────────
+// Auto-refresh disabled: Beni uploads from Beni Pocket → rows already in Supabase
+// Avshi clicks the sync button manually when Beni finishes his day
 function assetInboxLoad() {
-  sibInit();
+  // Only do full init if panel not yet built
+  if (!document.getElementById('sib-file-list')) {
+    sibInit();
+  }
+  // If already open — do nothing. Manual refresh via sibLoad() button only.
 }
