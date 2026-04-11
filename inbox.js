@@ -9,8 +9,23 @@ var _sibAnalysis   = {};   // analysis results keyed by item id
 var _sibApiKey     = null; // Claude API key from app_config
 var _sibChecked    = {};   // {itemId: {safety:bool, engineering:bool, standards:bool}}
 
+
+// ── TKRUN MODULE LOADER ──────────────────────────────────────────
+var _tkrunFetched = false;
+async function _loadTkrun() {
+  if (_tkrunFetched) return;
+  _tkrunFetched = true;
+  try {
+    var res = await fetch('tkrun.js?v=' + Date.now());
+    var code = await res.text();
+    var ns = document.createElement('script'); ns.textContent = code;
+    document.head.appendChild(ns);
+  } catch(e) { console.warn('tkrun.js not loaded:', e.message); _tkrunFetched = false; }
+}
+
 // ── INIT ─────────────────────────────────────────────────────────────
 async function sibInit() {
+  _loadTkrun();
   // Inject full two-panel UI into inbox-panel
   var panel = document.getElementById('inbox-panel');
   if (!panel) return;
@@ -206,15 +221,21 @@ function sibActionButtons(item) {
     btns += sibBtn('⚠️ בטיחות',    'sibAnalyze(\'' + id + '\',\'safety\')', 'danger');
     btns += sibBtn('📚 אנציקלופדיה','sibSaveToEnc(\'' + id + '\')', 'enc');
   } else if (type === 'video') {
+    btns += sibBtn('▶ נגן',          'sibPlayMedia(\'' + id + '\')', 'sec');
     btns += sibBtn('🎞️ חלץ פריים', 'sibExtractFrame(\'' + id + '\')', 'primary');
     btns += sibBtn('🔍 נתח',       'sibAnalyze(\'' + id + '\',\'general\')', 'sec');
     btns += sibBtn('📚 אנציקלופדיה','sibSaveToEnc(\'' + id + '\')', 'enc');
   } else if (type === 'audio') {
+    btns += sibBtn('▶ נגן',          'sibPlayMedia(\'' + id + '\')', 'sec');
     btns += sibBtn('🎙️ תמלל + נתח','sibTranscribe(\'' + id + '\')', 'primary');
     btns += sibBtn('📋 יומן',       'sibSaveToJournal(\'' + id + '\')', 'sec');
-  } else if (type === 'pdf' || type === 'document') {
+  } else if (type === 'pdf' || type === 'document' || type === 'spreadsheet' || type === 'csv') {
+    btns += sibBtn('👁 צפה',          'sibPlayMedia(\'' + id + '\')', 'sec');
     btns += sibBtn('📑 OCR + ניתוח','sibAnalyzePDF(\'' + id + '\')', 'primary');
     btns += sibBtn('📚 אנציקלופדיה','sibSaveToEnc(\'' + id + '\')', 'enc');
+  } else if (type === 'file') {
+    btns += sibBtn('👁 צפה',          'sibPlayMedia(\'' + id + '\')', 'sec');
+    btns += sibBtn('📑 ניתוח',        'sibAnalyzePDF(\'' + id + '\')', 'primary');
   }
 
   btns += sibBtn('✅ אשר',  'sibApprove(\'' + id + '\')', 'approve');
@@ -322,14 +343,16 @@ async function sibAnalyze(id, mode) {
       ] : [{ type: 'text', text: 'קובץ ללא URL זמין. ' + (prompts[mode] || prompts.general) }]
     }];
 
+    var _tkIdx = window.tkrunStart ? window.tkrunStart('ניתוח ' + (mode||'כללי') + ' — ' + (item.file_name||id).substr(0,25)) : -1;
     var resp = await claudeFetch({
       _apiKey: apiKey,
-      model: 'claude-sonnet-4-6',
+      model: 'claude-sonnet-4-20250514',
       max_tokens: 600,
       system: 'אתה מהנדס שטח מנוסה. ענה תמיד בעברית. היה ספציפי, קצר, עם המלצות פעולה ברורות.',
       messages: messages
     }, null);
 
+    if (window.tkrunEnd && resp && resp.usage) window.tkrunEnd(resp.usage.input_tokens||0, resp.usage.output_tokens||0);
     var result = {
       mode: mode,
       text: resp && resp.content && resp.content[0] ? resp.content[0].text : 'אין תגובה',
@@ -402,6 +425,7 @@ async function sibTranscribe(id) {
   var panel = document.getElementById('sib-analysis-panel');
   if (panel) panel.innerHTML = '<div style="text-align:center;padding:40px;color:#1b7a4a;font-size:13px;">🎙️ מתמלל הקלטה...</div>';
 
+  if (window.tkrunStart) window.tkrunStart('תמלול — ' + (item.file_name||id).substr(0,25));
   var elevenlabsKey = null;
   try {
     // Try global APP config first (already loaded by CRM)
@@ -535,7 +559,7 @@ async function sibAnalyzePDF(id) {
   try {
     var resp = await claudeFetch({
       _apiKey: apiKey,
-      model: 'claude-sonnet-4-6',
+      model: 'claude-sonnet-4-20250514',
       max_tokens: 800,
       messages: [{ role: 'user', content: 'URL של מסמך PDF: ' + (item.cloudinary_url || 'אין URL') + '\n\nנתח את המסמך: מהו, מה כולל, נקודות עיקריות, פעולות נדרשות. עברית.' }]
     }, null);
@@ -697,6 +721,58 @@ async function sibDeleteItem(id) {
   }
 }
 
+
+// ── MEDIA PREVIEW PLAYER ─────────────────────────────────────────
+function sibPlayMedia(id) {
+  var item = _sibItems.find(function(i){ return i.id === id; });
+  if (!item) return;
+  var url = item.cloudinary_url || '';
+  var type = item.file_type || '';
+  var fname = item.file_name || id;
+  var panel = document.getElementById('sib-analysis-panel');
+  if (!panel) return;
+
+  var playerHtml = '';
+
+  if (type === 'video') {
+    playerHtml =
+      '<div style="padding:12px">' +
+        '<div style="font-size:11px;color:#9a6f00;margin-bottom:8px;font-weight:700">▶ ' + sibEsc(fname) + '</div>' +
+        '<video controls style="width:100%;border-radius:8px;background:#000;max-height:300px">' +
+          '<source src="' + sibEsc(url) + '">' +
+          'הדפדפן אינו תומך בנגן וידאו' +
+        '</video>' +
+      '</div>';
+  } else if (type === 'audio') {
+    playerHtml =
+      '<div style="padding:20px">' +
+        '<div style="font-size:11px;color:#9a6f00;margin-bottom:12px;font-weight:700">🎵 ' + sibEsc(fname) + '</div>' +
+        '<audio controls style="width:100%">' +
+          '<source src="' + sibEsc(url) + '">' +
+          'הדפדפן אינו תומך בנגן אודיו' +
+        '</audio>' +
+      '</div>';
+  } else if (type === 'pdf') {
+    playerHtml =
+      '<div style="padding:8px">' +
+        '<div style="font-size:11px;color:#9a6f00;margin-bottom:8px;font-weight:700">📄 ' + sibEsc(fname) + '</div>' +
+        '<iframe src="' + sibEsc(url) + '" style="width:100%;height:400px;border:none;border-radius:8px;"></iframe>' +
+      '</div>';
+  } else if (type === 'document' || type === 'spreadsheet' || type === 'csv' || type === 'file') {
+    playerHtml =
+      '<div style="padding:20px;text-align:center">' +
+        '<div style="font-size:32px;margin-bottom:12px">📎</div>' +
+        '<div style="font-size:12px;font-weight:700;color:#1a3d5c;margin-bottom:12px">' + sibEsc(fname) + '</div>' +
+        '<a href="' + sibEsc(url) + '" target="_blank" style="background:#1a3d5c;color:#fff;padding:10px 20px;border-radius:8px;text-decoration:none;font-size:12px;font-weight:700;font-family:Heebo,sans-serif">⬇ פתח / הורד קובץ</a>' +
+      '</div>';
+  } else {
+    playerHtml =
+      '<div style="padding:20px;text-align:center;color:#9a6f00">אין תצוגה מקדימה לסוג קובץ זה</div>';
+  }
+
+  panel.innerHTML = playerHtml;
+}
+
 // ── FILTER ────────────────────────────────────────────────────────────
 function sibFilterByProject(projId) {
   var listEl = document.getElementById('sib-file-list');
@@ -733,6 +809,7 @@ function sibOpenFullAnalysis(id) {
     openCallAnalysisModal(analysis.text, projId, item);
   } else {
     // fallback — direct analysis without editor
+    if (window.tkrunEnd) window.tkrunEnd(0, 0);
     sibAnalyzeTranscript(id);
   }
 }
@@ -748,9 +825,10 @@ async function sibAnalyzeTranscript(id) {
   if (panel) panel.innerHTML = '<div style="text-align:center;padding:40px;color:#9a6f00;font-size:13px;">🤖 מנתח תמלול...</div>';
 
   try {
+    var _tkIdx = window.tkrunStart ? window.tkrunStart('ניתוח ' + (mode||'כללי') + ' — ' + (item.file_name||id).substr(0,25)) : -1;
     var resp = await claudeFetch({
       _apiKey: apiKey,
-      model: 'claude-sonnet-4-6',
+      model: 'claude-sonnet-4-20250514',
       max_tokens: 600,
       system: 'אתה מנהל פרויקטים. נתח שיחה ותמצה: נושאים עיקריים, החלטות, משימות לביצוע, דדליינים. עברית.',
       messages: [{ role: 'user', content: 'תמלול שיחה:\n\n' + analysis.text }]
