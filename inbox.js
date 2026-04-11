@@ -62,6 +62,13 @@ function sibHTML() {
     '</div>' +
   '</div>' +
 
+  // URL / YOUTUBE INPUT BAR
+  '<div style="background:#e8f0fd;border-bottom:1px solid #c3d4f0;padding:8px 20px;display:flex;gap:8px;align-items:center;">' +
+    '<span style="font-size:11px;font-weight:800;color:#1a3d5c;white-space:nowrap;">🌐 נתח URL / יוטיוב:</span>' +
+    '<input id="sib-url-input" type="text" placeholder="https://... או https://youtube.com/watch?v=..." style="flex:1;border:1px solid rgba(26,61,92,0.3);border-radius:8px;padding:7px 12px;font-family:Heebo,sans-serif;font-size:12px;direction:ltr;">' +
+    '<button onclick="sibAddUrl()" style="background:#1a3d5c;border:none;color:#fff;border-radius:8px;padding:7px 14px;font-size:11px;font-weight:800;cursor:pointer;font-family:Heebo,sans-serif;white-space:nowrap;">➕ הוסף לתיבה</button>' +
+  '</div>' +
+
   // STATS + BATCH BAR
   '<div id="sib-stats" style="display:flex;gap:8px;padding:10px 20px;background:#f5e9c4;border-bottom:1px solid #e8ddb5;flex-wrap:wrap;align-items:center;">' +
     '<div id="sib-batch-bar" style="display:none;margin-right:auto;display:flex;gap:8px;align-items:center;">' +
@@ -185,9 +192,9 @@ function sibFileCard(item) {
   card.style.cssText = 'background:'+(isSelected?'#fffbf0':'#fff')+';border:1px solid '+(isSelected?'rgba(180,140,60,0.5)':'rgba(180,140,60,0.2)')+';border-radius:10px;padding:12px;cursor:pointer;transition:all 0.15s;';
 
   var type = item.file_type||'image';
-  var typeIcon = type==='video'?'🎥':type==='audio'?'🎙':type==='pdf'?'📄':type==='document'?'📝':type==='spreadsheet'||type==='csv'?'📊':'📸';
-  var typeBg   = type==='video'?'#fff8e8':type==='audio'?'#e8f8f0':type==='pdf'||type==='document'?'#fdf0f0':type==='spreadsheet'||type==='csv'?'#e8f8e8':'#e8f0fd';
-  var typeColor= type==='video'?'#f59e0b':type==='audio'?'#10b981':type==='pdf'||type==='document'?'#ef4444':type==='spreadsheet'||type==='csv'?'#059669':'#3b82f6';
+  var typeIcon = type==='video'?'🎥':type==='audio'?'🎙':type==='pdf'?'📄':type==='document'?'📝':type==='spreadsheet'||type==='csv'?'📊':type==='youtube'?'🎬':type==='url'?'🌐':'📸';
+  var typeBg   = type==='video'?'#fff8e8':type==='audio'?'#e8f8f0':type==='pdf'||type==='document'?'#fdf0f0':type==='spreadsheet'||type==='csv'?'#e8f8e8':type==='youtube'?'#fce4e4':type==='url'?'#e4f0fc':'#e8f0fd';
+  var typeColor= type==='video'?'#f59e0b':type==='audio'?'#10b981':type==='pdf'||type==='document'?'#ef4444':type==='spreadsheet'||type==='csv'?'#059669':type==='youtube'?'#dc2626':type==='url'?'#2563eb':'#3b82f6';
   var rawThumb = item.thumbnail_url||(item.cloudinary_url&&item.cloudinary_url.includes('/upload/')?item.cloudinary_url.replace('/upload/','/upload/w_80,h_80,c_fill,f_jpg/'):'');
   var thumbUrl = (rawThumb&&rawThumb.startsWith('http'))?rawThumb:'';
   var hasThumb = (type==='image'||type==='photo'||type==='video')&&thumbUrl;
@@ -258,7 +265,7 @@ function sibActionButtons(item) {
     btns += sibBtn('🚀 שלב 2: נתח','sibShowPhase2Panel(\''+id+'\')','phase2');
   }
 
-  btns += sibBtn('✅ אשר','sibApprove(\''+id+'\')','approve');
+  btns += sibBtn('✅ אשר → יומן','sibApprove(\''+id+'\')','approve');
   return btns;
 }
 
@@ -307,7 +314,8 @@ async function sibPhase1Image(id) {
   sibSelectItem(id);
   var panel = document.getElementById('sib-analysis-panel');
   if (panel) { panel.innerHTML='<div style="text-align:center;padding:60px 20px 20px;color:#1a3d5c;font-size:13px;">🔍 Claude מתאר את התמונה...</div>'; sibStartMeter('תיאור תמונה'); }
-  var apiKey = _sibApiKey||(window.APP&&window.APP.config&&window.APP.config.anthropic_key);
+  var apiKey = (window.APP&&window.APP.config&&window.APP.config.anthropic_key)||_sibApiKey;
+  if(!apiKey){try{var cfg2=await sbQ('app_config','select=key,value');var row2=(cfg2.data||[]).find(function(r){return r.key==='anthropic_key';});if(row2){apiKey=row2.value;_sibApiKey=row2.value;}}catch(e2){}}
   if (!apiKey) { sibStopMeter(); sibShowError('אין מפתח API'); return; }
   try {
     var raw = await claudeFetch({ _apiKey:apiKey, model:'claude-sonnet-4-20250514', max_tokens:600,
@@ -335,10 +343,14 @@ async function sibPhase1Doc(id) {
   var ext = fname.split('.').pop();
   var ftype = item.file_type||'document';
   var extracted = '';
+  // Always read apiKey fresh — sibInit may have been cleared by refresh
+  var apiKey = (window.APP&&window.APP.config&&window.APP.config.anthropic_key)||_sibApiKey;
+  if(!apiKey){
+    try{var cfg=await sbQ('app_config','select=key,value');var row=(cfg.data||[]).find(function(r){return r.key==='anthropic_key';});if(row){apiKey=row.value;_sibApiKey=row.value;}}catch(e){}
+  }
   try {
     if (ext==='pdf'||ext==='doc'||ext==='docx'||ftype==='pdf') {
       var mediaType = ext==='pdf'?'application/pdf':ext==='docx'?'application/vnd.openxmlformats-officedocument.wordprocessingml.document':'application/msword';
-      var apiKey = _sibApiKey||(window.APP&&window.APP.config&&window.APP.config.anthropic_key);
       var binR = await fetch(url); var buf = await binR.arrayBuffer(); var bytes = new Uint8Array(buf);
       var bin=''; for(var bi=0;bi<bytes.length;bi+=8192) bin+=String.fromCharCode.apply(null,bytes.subarray(bi,bi+8192));
       var b64=btoa(bin);
@@ -492,8 +504,9 @@ async function sibPhase2Run(id, direction) {
   var item = _sibItems.find(function(i){return i.id===id;});
   if(!item) return;
 
-  var apiKey = _sibApiKey||(window.APP&&window.APP.config&&window.APP.config.anthropic_key);
-  if(!apiKey){sibShowError('אין מפתח API');return;}
+  var apiKey = (window.APP&&window.APP.config&&window.APP.config.anthropic_key)||_sibApiKey;
+  if(!apiKey){try{var cfgP=await sbQ('app_config','select=key,value');var rowP=(cfgP.data||[]).find(function(r){return r.key==='anthropic_key';});if(rowP){apiKey=rowP.value;_sibApiKey=rowP.value;}}catch(e){}}
+  if(!apiKey){sibShowError('אין מפתח API — הגדר anthropic_key ב-app_config');return;}
 
   // Get edited phase 1 text
   var p1el = document.getElementById('sib-p1-edit-'+id);
@@ -549,19 +562,23 @@ async function sibPhase2Run(id, direction) {
   try {
     var finalText = '';
 
-    // Standards direction — call RAG first
+    // Standards direction — use ragQuery() directly (it runs Claude internally)
     if(direction==='standards'){
-      if(typeof ragQuery!=='function'){ sibStopMeter(); sibShowError('מנוע RAG לא טעון — נסה שוב בעוד שנייה'); return; }
+      if(typeof ragQuery!=='function'){ sibStopMeter(); sibShowError('מנוע RAG לא טעון — פתח לשונית ייעוץ הנדסי פעם אחת לטעינה'); return; }
       if(resultEl) resultEl.innerHTML='<div style="text-align:center;padding:20px;color:#4527a0;font-size:12px;">📚 מחפש ב-838 תקנים...</div>';
-      var ragResult = await ragQuery(p1text.substr(0,500));
+      // ragQuery runs the full RAG + Claude pipeline internally
+      var ragResult = await ragQuery(p1text.substr(0,600));
       if(ragResult.error) throw new Error('RAG: '+ragResult.error);
-      var ragContext = '';
       var retrieved = ragResult.retrieved||{};
       var allSources = (retrieved.building_standards||[]).concat(retrieved.mamad||[]).concat(retrieved.spec||[]).concat(retrieved.renovation||[]);
-      if(allSources.length===0) throw new Error('לא נמצאו תקנים רלוונטיים במאגר — נסה עם טקסט אחר');
-      allSources.forEach(function(s){ ragContext+='תקן: '+(s.standard_number||s.title||'')+' — '+(s.content||s.description||'').substr(0,200)+'\n'; });
-      systemPrompt = 'אתה מהנדס בנייה מוסמך ומומחה לתקני בנייה ישראליים. עליך לבדוק תאימות לתקנים הרלוונטיים שנמצאו.';
-      userPrompt = 'חומר לבדיקה:\n'+p1text+'\n\nתקנים רלוונטיים שנמצאו במאגר (838 תקנים):\n'+ragContext+'\n\nהפק דוח תאימות תקנים בפורמט:\n\n## תקנים שנבדקו ('+allSources.length+' תקנים)\n\n## ממצאי תאימות\n[לכל תקן: עומד/לא עומד/חלקי + הסבר]\n\n## חריגות מהתקן\n[ממוספר, עם מספר התקן]\n\n## פעולות לתיקון\n[ממוספר]\n\n## ציון תאימות: X/10';
+      if(allSources.length===0) throw new Error('לא נמצאו תקנים רלוונטיים במאגר — נסה לנסח מחדש');
+      var srcCount = allSources.length;
+      sibStopMeter({input_tokens:srcCount*50, output_tokens:400});
+      var ragAnswer = ragResult.answer||'';
+      var result = {mode:'standards', text:'## תקנים רלוונטיים שנמצאו: '+srcCount+' רשומות\n\n'+ragAnswer, timestamp:new Date().toISOString(), title:'📋 דוח תאימות תקנים', usage:{input_tokens:srcCount*50,output_tokens:400}};
+      _sibAnalysis[id] = result;
+      sibRenderReport(id, result, p1text);
+      return; // done — no second claudeFetch needed
     }
 
     var raw = await claudeFetch({
@@ -870,6 +887,70 @@ function sibFilterByProject(projId) {
 function sibPopulateProjects() {
   var sel=document.getElementById('sib-proj-filter'); if(!sel) return;
   (window.allProjects||[]).forEach(function(p){var o=document.createElement('option');o.value=p.id;o.textContent=p.project_name;sel.appendChild(o);});
+}
+
+
+// ── URL / YOUTUBE HANDLER ─────────────────────────────────────────────
+async function sibAddUrl() {
+  var inp = document.getElementById('sib-url-input');
+  var url = inp ? inp.value.trim() : '';
+  if(!url || !url.startsWith('http')){ showToast('הזן URL תקין','error'); return; }
+
+  var isYT = /youtube\.com\/watch|youtu\.be\//.test(url);
+  var fname = isYT ? 'YouTube: '+url.substr(0,60) : 'URL: '+url.substr(0,60);
+  var ftype = isYT ? 'youtube' : 'url';
+
+  // Insert into asset_inbox as a URL record
+  try {
+    var res = await fetch(SB_URL+'/rest/v1/asset_inbox', {
+      method:'POST',
+      headers:{apikey:SB_KEY,Authorization:'Bearer '+SB_KEY,'Content-Type':'application/json',Prefer:'return=representation'},
+      body:JSON.stringify({cloudinary_url:url, file_name:fname, file_type:ftype, status:'pending', created_at:new Date().toISOString()})
+    });
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    showToast('✅ URL נוסף לתיבה','success');
+    if(inp) inp.value='';
+    await sibLoad();
+  } catch(e){ showToast('שגיאה: '+e.message,'error'); }
+}
+
+// Phase 1 for URL — fetch page text or YouTube transcript
+async function sibPhase1Url(id) {
+  var item = _sibItems.find(function(i){return i.id===id;});
+  if(!item) return;
+  sibSelectItem(id);
+  var panel = document.getElementById('sib-analysis-panel');
+  var url = item.cloudinary_url||'';
+  var isYT = /youtube\.com\/watch|youtu\.be\//.test(url);
+
+  if(panel){ panel.innerHTML='<div style="text-align:center;padding:60px 20px 20px;color:#1a3d5c;font-size:13px;">'+(isYT?'🎬 מנתח וידאו יוטיוב...':'🌐 מנתח דף אינטרנט...')+'</div>'; sibStartMeter(isYT?'ניתוח יוטיוב':'ניתוח URL'); }
+
+  var apiKey = (window.APP&&window.APP.config&&window.APP.config.anthropic_key)||_sibApiKey;
+  if(!apiKey){try{var cfg=await sbQ('app_config','select=key,value');var row=(cfg.data||[]).find(function(r){return r.key==='anthropic_key';});if(row){apiKey=row.value;_sibApiKey=row.value;}}catch(e){}}
+  if(!apiKey){sibStopMeter();sibShowError('אין מפתח API');return;}
+
+  try {
+    var prompt = isYT
+    var prompt = isYT
+      ? ('\u05d6\u05d4\u05d5 URL \u05e9\u05dc \u05e1\u05e8\u05d8\u05d5\u05df \u05d9\u05d5\u05d8\u05d9\u05d5\u05d1: ' + url + '\n\n\u05d0\u05d9\u05e0\u05da \u05d9\u05db\u05d5\u05dc \u05dc\u05e6\u05e4\u05d5\u05ea \u05d1\u05e1\u05e8\u05d8\u05d5\u05df \u05d9\u05e9\u05d9\u05e8\u05d5\u05ea. \u05d1\u05e7\u05e9 \u05de\u05d4\u05de\u05e9\u05ea\u05de\u05e9 \u05dc\u05d4\u05d3\u05d1\u05d9\u05e7 \u05db\u05ea\u05d5\u05d1\u05d9\u05d5\u05ea/\u05ea\u05de\u05dc\u05d5\u05dc \u05e9\u05dc \u05d4\u05e1\u05e8\u05d8\u05d5\u05df.')
+      : ('\u05e0\u05ea\u05d7 \u05d0\u05ea \u05d4\u05d3\u05e3 \u05d4\u05d1\u05d0: ' + url + '\n\n\u05ea\u05d0\u05e8 \u05de\u05d4 \u05d9\u05d5\u05d3\u05e2 \u05e2\u05dc URL \u05d6\u05d4. \u05d1\u05e7\u05e9 \u05de\u05d4\u05de\u05e9\u05ea\u05de\u05e9 \u05dc\u05d4\u05d3\u05d1\u05d9\u05e7 \u05d0\u05ea \u05ea\u05d5\u05db\u05df \u05d4\u05d3\u05e3.');
+    var raw = await claudeFetch({_apiKey:apiKey,model:'claude-sonnet-4-20250514',max_tokens:800,
+      system:'אתה עוזר לניתוח תוכן אינטרנטי ווידאו.',
+      messages:[{role:'user',content:prompt}]
+    },null);
+    var resp = raw&&typeof raw.json==='function'?await raw.json():raw;
+    var txt = resp&&resp.content&&resp.content[0]?resp.content[0].text:'';
+    sibStopMeter(resp&&resp.usage);
+
+    // For URLs — add instruction to paste content
+    var editableContent = txt + (isYT
+      ? '\n\n---\n📌 הדבק כאן את הכתוביות/תמלול של הסרטון:'
+      : '\n\n---\n📌 הדבק כאן את תוכן הדף לניתוח:');
+
+    _sibPhase1[id] = editableContent;
+    sibRefreshCard(id);
+    sibShowPhase2Panel(id);
+  } catch(e){ sibStopMeter(); sibShowError('שגיאה: '+e.message); }
 }
 
 // ── assetInboxLoad — no auto-rebuild ──────────────────────────────────
