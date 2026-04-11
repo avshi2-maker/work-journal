@@ -8751,8 +8751,9 @@ async function luStartUpload() {
     try {
       // Upload to Supabase Storage — app-assets/inbox/
       var ts = Date.now();
-      var safeName = f.name.replace(/[^a-zA-Z0-9._֐-׿-]/g, '_');
-      var storagePath = 'inbox/' + ts + '_' + safeName;
+      var ext = f.name.split('.').pop() || 'bin';
+      var safeName = ts + '_' + Math.random().toString(36).substr(2,6) + '.' + ext;
+      var storagePath = 'inbox/' + safeName;
 
       var { data: storageData, error: storageError } = await sb.storage
         .from('app-assets')
