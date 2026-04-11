@@ -5668,6 +5668,17 @@ ${d.notes?`<div class="notes" style="margin-top:14px;"><strong>הערות:</stro
 <div class="footer">מסמך זה הופק ממערכת ניהול הפרויקטים של בני פרסקי | ${d.poNumber} | ${dateStr}</div>
 
 
+
+<!-- ── FILE PREVIEW MODAL ──────────────────────────── -->
+<div id="lu-preview-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.9);z-index:9100;align-items:center;justify-content:center;flex-direction:column;">
+  <div style="background:#1e2235;border:1px solid rgba(201,168,76,0.3);border-radius:16px;padding:20px;width:90%;max-width:700px;max-height:85vh;display:flex;flex-direction:column;gap:12px;">
+    <div style="display:flex;justify-content:space-between;align-items:center;">
+      <div id="lu-preview-title" style="font-size:13px;font-weight:700;color:#c9a84c;max-width:80%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></div>
+      <button onclick="luClosePreview()" style="background:none;border:none;color:#aaa;font-size:22px;cursor:pointer;">×</button>
+    </div>
+    <div id="lu-preview-body" style="flex:1;overflow:auto;display:flex;align-items:center;justify-content:center;min-height:200px;max-height:65vh;background:rgba(0,0,0,0.3);border-radius:8px;"></div>
+  </div>
+</div>
 </body></html>`);
   win.document.close();
 }
@@ -8695,6 +8706,7 @@ function luRenderFileList() {
         '<div style="font-size:10px;color:#666">' + size + '</div>' +
       '</div>' +
       '<span id="lu-status-'+i+'" style="font-size:11px;color:#666">ממתין</span>' +
+      '<button onclick="luPreview('+i+')" style="background:none;border:none;color:#c9a84c;cursor:pointer;font-size:13px;padding:0 4px;" title="תצוגה מקדימה">👁</button>' +
       '<button onclick="luRemoveFile('+i+')" style="background:none;border:none;color:#666;cursor:pointer;font-size:14px;padding:0 4px;">×</button>' +
     '</div>';
   }).join('');
@@ -8808,6 +8820,55 @@ async function luStartUpload() {
     if (typeof assetInboxLoad === 'function') assetInboxLoad();
   }, 1500);
 }
+
+
+window.luPreview = function(idx) {
+  var f = _luFiles[idx];
+  if (!f) return;
+  var modal = document.getElementById('lu-preview-modal');
+  var title = document.getElementById('lu-preview-title');
+  var body  = document.getElementById('lu-preview-body');
+  title.textContent = f.name;
+  body.innerHTML = '';
+  var url = URL.createObjectURL(f);
+  var type = luFileType(f.name, f.type);
+
+  if (type === 'image') {
+    var img = document.createElement('img');
+    img.src = url;
+    img.style.cssText = 'max-width:100%;max-height:60vh;border-radius:8px;object-fit:contain;';
+    body.appendChild(img);
+  } else if (type === 'video') {
+    var vid = document.createElement('video');
+    vid.src = url; vid.controls = true; vid.autoplay = false;
+    vid.style.cssText = 'max-width:100%;max-height:60vh;border-radius:8px;';
+    body.appendChild(vid);
+  } else if (type === 'audio') {
+    var aud = document.createElement('audio');
+    aud.src = url; aud.controls = true;
+    aud.style.cssText = 'width:100%;margin:20px 0;';
+    body.appendChild(aud);
+  } else if (type === 'pdf') {
+    var iframe = document.createElement('iframe');
+    iframe.src = url;
+    iframe.style.cssText = 'width:100%;height:60vh;border:none;border-radius:8px;';
+    body.appendChild(iframe);
+  } else {
+    body.innerHTML = '<div style="color:#aaa;font-size:13px;padding:20px;text-align:center;">תצוגה מקדימה לא זמינה לסוג קובץ זה<br><br>' +
+      '<div style="font-size:11px;color:#666;">' + f.name + '<br>' + (f.size > 1048576 ? (f.size/1048576).toFixed(1)+' MB' : Math.round(f.size/1024)+' KB') + '</div></div>';
+  }
+  modal.style.display = 'flex';
+};
+
+window.luClosePreview = function() {
+  var modal = document.getElementById('lu-preview-modal');
+  var body = document.getElementById('lu-preview-body');
+  // Stop any media playing
+  var media = body.querySelector('video,audio');
+  if (media) { media.pause(); media.src = ''; }
+  body.innerHTML = '';
+  modal.style.display = 'none';
+};
 
 </script>
 <!-- ══ STANDARDS RAG PANEL ═══════════════════════════════════════════ -->
