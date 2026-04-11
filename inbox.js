@@ -112,13 +112,15 @@ function sibHTML() {
 // ── LOAD SAFETY CATEGORIES ────────────────────────────────────────────
 async function sibLoadCategories() {
   if (_sibSafetyCategories.length > 0) return;
+  // Try full query first, fall back to name-only if columns missing
   try {
-    var res = await sbQ('safety_categories', 'select=id,name,icon,description&order=sort_order.asc');
-    if (res.data && res.data.length > 0) {
-      _sibSafetyCategories = res.data;
-      return;
-    }
+    var res = await sbQ('safety_categories', 'select=id,name_he,icon,description&order=sort_order.asc&is_active=eq.true');
+    if (res.data && res.data.length > 0) { _sibSafetyCategories = res.data; return; }
   } catch(e) {}
+  try {
+    var res2 = await sbQ('safety_categories', 'select=id,name_he&order=id.asc');
+    if (res2.data && res2.data.length > 0) { _sibSafetyCategories = res2.data; return; }
+  } catch(e2) {}
   // Fallback hardcoded
   _sibSafetyCategories = [
     {id:'01',name:'ציוד מגן אישי (PPE)',icon:'🦺'},
@@ -238,6 +240,7 @@ function sibActionButtons(item) {
   // Phase 1 — Extract
   if (type==='image'||type==='photo') {
     btns += sibBtn('👁 צפה','sibPlayMedia(\''+id+'\')','sec');
+    btns += sibBtn('📐 מדידות OCR','sibOpenMeasurements(\''+id+'\')','meas');
     btns += sibBtn('📋 שלב 1: תאר','sibPhase1Image(\''+id+'\')','phase1');
   } else if (type==='video') {
     btns += sibBtn('▶ נגן','sibPlayMedia(\''+id+'\')','sec');
@@ -273,6 +276,7 @@ function sibBtn(label, onclick, style) {
   var styles = {
     phase1:  'background:#1a3d5c;color:#fff;border:1px solid #1a3d5c;',
     phase2:  'background:linear-gradient(135deg,#7c3aed,#2d6a9f);color:#fff;border:none;',
+    meas:    'background:#0d9488;color:#fff;border:1px solid #0d9488;',
     sec:     'background:#f5f0e8;color:#5a6f7c;border:1px solid rgba(180,140,60,0.3);',
     danger:  'background:#fff5f5;color:#c62828;border:1px solid #fca5a5;',
     enc:     'background:#ede7f6;color:#4527a0;border:1px solid #9c6fdd;',
@@ -443,9 +447,10 @@ function sibShowPhase2Panel(id) {
 
   // Direction buttons
   var directions = [
-    {id:'safety',   label:'⚠️ בטיחות',    color:'#c62828', bg:'#fff5f5', border:'#fca5a5'},
-    {id:'engineering',label:'🏗️ הנדסי',  color:'#1a3d5c', bg:'#e8f0fd', border:'#93c5fd'},
-    {id:'standards',label:'📋 תקנים',     color:'#4527a0', bg:'#ede7f6', border:'#9c6fdd'},
+    {id:'safety',      label:'⚠️ בטיחות',       color:'#c62828', bg:'#fff5f5', border:'#fca5a5'},
+    {id:'engineering', label:'🏗️ הנדסי',        color:'#1a3d5c', bg:'#e8f0fd', border:'#93c5fd'},
+    {id:'standards',   label:'📋 תקנים',         color:'#4527a0', bg:'#ede7f6', border:'#9c6fdd'},
+    {id:'thirdparty',  label:'⚖️ צד שלישי',      color:'#7c2d12', bg:'#fff7ed', border:'#fb923c'},
   ];
   if(isFinancial) directions.push({id:'financial',label:'💰 רווח/הפסד',color:'#1b5e20',bg:'#e8f5e9',border:'#a5d6a7'});
   if(isAudio) directions.push({id:'protocol',label:'📝 פרוטוקול',color:'#7a5500',bg:'#fffde7',border:'#f59e0b'});
@@ -463,8 +468,8 @@ function sibShowPhase2Panel(id) {
       '<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;">' +
       _sibSafetyCategories.map(function(cat){
         return '<label style="display:flex;align-items:center;gap:5px;cursor:pointer;font-size:11px;color:#1a1a1a;">' +
-          '<input type="checkbox" class="sib-cat-cb" value="'+sibEsc(cat.name)+'" checked style="accent-color:#c62828;">'+
-          (cat.icon||'')+'&nbsp;'+sibEsc(cat.name)+'</label>';
+          '<input type="checkbox" class="sib-cat-cb" value="'+sibEsc(cat.name_he||cat.name||'')+'" checked style="accent-color:#c62828;">'+
+          (cat.icon||'')+'&nbsp;'+sibEsc(cat.name_he||cat.name||'')+'</label>';
       }).join('') +
       '</div></div>';
   }
@@ -519,6 +524,14 @@ async function sibPhase2Run(id, direction) {
     sibStartMeter('ניתוח '+direction+' — '+(item.file_name||id).substr(0,20));
   }
 
+  // For video + visual directions (safety/engineering) — use frame image, not transcript
+  var isVideo = (item.file_type==='video');
+  var isVisualDirection = (direction==='safety'||direction==='engineering'||direction==='general');
+  var useImageAnalysis = isVideo && isVisualDirection && item.cloudinary_url;
+  var frameUrl = useImageAnalysis
+    ? item.cloudinary_url.replace('/upload/','/upload/so_2,w_1200/').replace(/\.(mp4|mov|avi|webm)$/i,'.jpg')
+    : null;
+
   // Build direction-specific prompt
   var systemPrompt = '';
   var userPrompt = '';
@@ -553,6 +566,58 @@ async function sibPhase2Run(id, direction) {
     systemPrompt = 'אתה מנהל פרויקטי בניה. הפק פרוטוקול שיחה מקצועי ותמציתי מהתמלול.';
     userPrompt = 'הפק פרוטוקול מהתמלול הבא:\n\n'+p1text+'\n\nפורמט:\n\n## פרטי שיחה\nתאריך: [אם מוזכר]\nמשתתפים: [שמות/תפקידים]\n\n## נושאים שנדונו\n[ממוספר]\n\n## החלטות שהתקבלו\n[ממוספר]\n\n## משימות לביצוע\n[משימה | אחראי | דדליין]\n\n## נושאים פתוחים\n\n## פעולות הבאות';
   }
+  else if(direction==='thirdparty'){
+    reportTitle = '⚖️ דוח חשיפה לצד שלישי';
+    systemPrompt = [
+      'אתה יועץ משפטי ומומחה ביטוח המתמחה באחריות קבלנים בישראל.',
+      'אתה מכיר לעומק: חוק הנזיקין סעיפים 35-36, חוק הבטיחות בעבודה,',
+      'חוק התכנון והבניה, תקנות הבטיחות באתרי בנייה,',
+      'ואחריות שילוחית בהשאלת ציוד (Equipment Lending Liability).',
+      'הדוח שלך מגן על הקבלן — זהה חשיפות לפני שהן הופכות לתביעות.'
+    ].join(' ');
+
+    userPrompt = [
+      'נתח את החומר הבא לאיתור חשיפות לאחריות צד שלישי:',
+      '',
+      p1text,
+      '',
+      'הפק דוח מקיף בפורמט הבא:',
+      '',
+      '## 1. סיכום חשיפות — טבלת סיכונים',
+      '[לכל חשיפה: סוג | חומרה 🔴/🟡/🟢 | סעיף חוק | חשיפה כספית משוערת]',
+      '',
+      '## 2. עוברי אורח ותנועה ציבורית',
+      '[גדרות, שלטים, מפגעי נפילה לתחום ציבורי, בוץ/פסולת בכביש]',
+      '',
+      '## 3. נזק לנכסים גובלים',
+      '[רטט, הצפה, חפירה, חסימת אור/אוויר — מה נראה בשטח]',
+      '',
+      '## 4. תשתיות ורשויות',
+      '[סיכון לתשתיות תת-קרקעיות, נזק לרכוש עירוני]',
+      '',
+      '## 5. ⚠️ השאלת ציוד — אחריות שילוחית',
+      '[זהה כל ציוד שעשוי להיות מושאל לקבלני משנה: סולמות, כבלים, פיגומים, כלים]',
+      '[לכל פריט: מה הסיכון, מה ההגנה הנדרשת]',
+      '[חוק הנזיקין סעיף 35 — אחריות רשלנות + סעיף 36 — חובת הזהירות]',
+      '[IMPORTANT: גם ציוד בשימוש משותף ולא הושאל פורמלית — חשיפה מלאה]',
+      '',
+      '## 6. עובדי קבלני משנה ומבקרים',
+      '[מי נכנס לאתר שאינו עובד ישיר? ביטוח? טופס כניסה? אישור?]',
+      '',
+      '## 7. חשיפות סביבתיות',
+      '[אבק, רעש, זיהום, ניקוז — תקנות רלוונטיות + דדליינים]',
+      '',
+      '## 8. תיעוד הגנתי — מה לייצר עכשיו',
+      '[רשימת מסמכים שיגנו על הקבלן בתביעה עתידית]',
+      '[כולל: פרוטוקולי מסירת ציוד, הסכמי שימוש, ביטוחי קבלני משנה]',
+      '',
+      '## 9. פעולות דחופות — 48 שעות',
+      '[ממוספר, עם אחראי ודדליין — מה לא יכול לחכות]',
+      '',
+      '## 10. ציון חשיפה כולל: X/10',
+      '[10 = חשיפה מקסימלית, 1 = מוגן היטב]'
+    ].join('\n');
+  }
   else {
     reportTitle = '📊 ניתוח כללי';
     systemPrompt = 'אתה מנהל פרויקטי בנייה מנוסה. נתח את החומר ותן תובנות מקצועיות.';
@@ -566,19 +631,48 @@ async function sibPhase2Run(id, direction) {
     if(direction==='standards'){
       if(typeof ragQuery!=='function'){ sibStopMeter(); sibShowError('מנוע RAG לא טעון — פתח לשונית ייעוץ הנדסי פעם אחת לטעינה'); return; }
       if(resultEl) resultEl.innerHTML='<div style="text-align:center;padding:20px;color:#4527a0;font-size:12px;">📚 מחפש ב-838 תקנים...</div>';
-      // ragQuery runs the full RAG + Claude pipeline internally
-      var ragResult = await ragQuery(p1text.substr(0,600));
+
+      // For audio/video transcripts — extract engineering keywords first
+      // RAG needs engineering terminology, not conversational speech
+      var ragQuery_text = p1text;
+      if(isVideo || item.file_type==='audio') {
+        // Extract key engineering terms from transcript via Claude before RAG
+        if(resultEl) resultEl.innerHTML='<div style="text-align:center;padding:20px;color:#4527a0;font-size:12px;">🧠 מחלץ מונחי תקנים מהתמלול...</div>';
+        try {
+          var keyRaw = await claudeFetch({_apiKey:apiKey, model:'claude-sonnet-4-20250514', max_tokens:200,
+            system:'חלץ מהטקסט הבא רק מונחי בנייה, חומרים, תקנים, פעולות הנדסיות. תשובה קצרה בעברית — רק מילות מפתח.',
+            messages:[{role:'user',content:p1text.substr(0,1000)}]
+          }, null);
+          var keyResp = keyRaw&&typeof keyRaw.json==='function'?await keyRaw.json():keyRaw;
+          var keywords = keyResp&&keyResp.content&&keyResp.content[0]?keyResp.content[0].text:'';
+          if(keywords && keywords.length > 10) ragQuery_text = keywords;
+        } catch(ke){ /* use original p1text */ }
+        if(resultEl) resultEl.innerHTML='<div style="text-align:center;padding:20px;color:#4527a0;font-size:12px;">📚 מחפש ב-838 תקנים...</div>';
+      }
+
+      var ragResult = await ragQuery(ragQuery_text.substr(0,600));
       if(ragResult.error) throw new Error('RAG: '+ragResult.error);
       var retrieved = ragResult.retrieved||{};
       var allSources = (retrieved.building_standards||[]).concat(retrieved.mamad||[]).concat(retrieved.spec||[]).concat(retrieved.renovation||[]);
-      if(allSources.length===0) throw new Error('לא נמצאו תקנים רלוונטיים במאגר — נסה לנסח מחדש');
+      if(allSources.length===0) throw new Error('לא נמצאו תקנים רלוונטיים — הטקסט לא מכיל מונחי בנייה מספיקים');
       var srcCount = allSources.length;
-      sibStopMeter({input_tokens:srcCount*50, output_tokens:400});
+      sibStopMeter({input_tokens:srcCount*50+200, output_tokens:400});
       var ragAnswer = ragResult.answer||'';
-      var result = {mode:'standards', text:'## תקנים רלוונטיים שנמצאו: '+srcCount+' רשומות\n\n'+ragAnswer, timestamp:new Date().toISOString(), title:'📋 דוח תאימות תקנים', usage:{input_tokens:srcCount*50,output_tokens:400}};
+      var result = {mode:'standards', text:'## תקנים רלוונטיים שנמצאו: '+srcCount+' רשומות\n\n'+ragAnswer, timestamp:new Date().toISOString(), title:'📋 דוח תאימות תקנים', usage:{input_tokens:srcCount*50+200,output_tokens:400}};
       _sibAnalysis[id] = result;
       sibRenderReport(id, result, p1text);
-      return; // done — no second claudeFetch needed
+      return;
+    }
+
+    // For video + visual analysis — send frame image to Claude Vision
+    var messages;
+    if(useImageAnalysis && frameUrl) {
+      messages = [{role:'user', content:[
+        {type:'image', source:{type:'url', url:frameUrl}},
+        {type:'text', text: userPrompt + '\n\n(הערה: זוהי תמונת מסגרת מתוך הסרטון ' + sibEsc(item.file_name||'') + ')'}
+      ]}];
+    } else {
+      messages = [{role:'user', content:userPrompt}];
     }
 
     var raw = await claudeFetch({
@@ -586,7 +680,7 @@ async function sibPhase2Run(id, direction) {
       model: 'claude-sonnet-4-20250514',
       max_tokens: 2000,
       system: systemPrompt,
-      messages: [{role:'user',content:userPrompt}]
+      messages: messages
     }, null);
     var resp = raw&&typeof raw.json==='function'?await raw.json():raw;
     finalText = resp&&resp.content&&resp.content[0]?resp.content[0].text:'אין תגובה';
@@ -595,6 +689,8 @@ async function sibPhase2Run(id, direction) {
     var result = {mode:direction, text:finalText, timestamp:new Date().toISOString(), usage:resp&&resp.usage, title:reportTitle};
     _sibAnalysis[id] = result;
     sibRenderReport(id, result, p1text);
+    // Wire third-party action buttons after report renders
+    if (direction==='thirdparty') setTimeout(function(){ sibAddTPActions(id); }, 100);
 
   } catch(e){ sibStopMeter(); if(resultEl) resultEl.innerHTML='<div style="background:#fff5f5;border:1px solid #fca5a5;border-radius:8px;padding:14px;color:#c62828;font-size:12px;">שגיאה: '+sibEsc(e.message)+'</div>'; }
 }
@@ -957,4 +1053,626 @@ async function sibPhase1Url(id) {
 function assetInboxLoad() {
   if(!document.getElementById('sib-file-list')) sibInit();
   // else do nothing — manual refresh only
+}
+
+// ══════════════════════════════════════════════════════════════════════
+// מדידות — FIELD MEASUREMENT OCR MODULE
+// Photo of handwritten takeoff → Claude Vision OCR → structured table
+// → Download CSV + Save to field_measurements Supabase table
+// ══════════════════════════════════════════════════════════════════════
+
+var _measItems = []; // parsed measurement rows from OCR
+
+// ── OPEN MEASUREMENT MODAL ────────────────────────────────────────────
+function sibOpenMeasurements(id) {
+  var item = _sibItems.find(function(i){ return i.id === id; });
+  if (!item) return;
+  sibSelectItem(id);
+  var panel = document.getElementById('sib-analysis-panel');
+  if (!panel) return;
+
+  var projOpts = '<option value="">— בחר פרויקט —</option>' +
+    (window.allProjects||[]).map(function(p){
+      return '<option value="'+p.id+'"'+(p.id===item.project_id?' selected':'')+'>'+sibEsc(p.project_name)+'</option>';
+    }).join('');
+
+  panel.innerHTML =
+    '<div style="background:#fff;border:2px solid #14b8a6;border-radius:12px;padding:16px;margin-bottom:10px;">' +
+      '<div style="font-size:14px;font-weight:900;color:#0f766e;margin-bottom:12px;">📐 מדידות שטח — OCR</div>' +
+
+      // Photo preview
+      (item.cloudinary_url && (item.file_type==='image'||item.file_type==='photo') ?
+        '<img src="'+sibEsc(item.cloudinary_url)+'" style="width:100%;max-height:220px;object-fit:contain;border-radius:8px;margin-bottom:12px;border:1px solid rgba(20,184,166,0.3);">' : '') +
+
+      // Session label + project
+      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;">' +
+        '<div>' +
+          '<div style="font-size:10px;font-weight:700;color:#0f766e;margin-bottom:4px;">תווית מדידה</div>' +
+          '<input id="meas-label-'+id+'" type="text" placeholder="למשל: קומה 1 — דירה 3" style="width:100%;border:1px solid rgba(20,184,166,0.3);border-radius:8px;padding:8px;font-family:Heebo,sans-serif;font-size:12px;direction:rtl;box-sizing:border-box;">' +
+        '</div>' +
+        '<div>' +
+          '<div style="font-size:10px;font-weight:700;color:#0f766e;margin-bottom:4px;">פרויקט</div>' +
+          '<select id="meas-proj-'+id+'" style="width:100%;border:1px solid rgba(20,184,166,0.3);border-radius:8px;padding:8px;font-family:Heebo,sans-serif;font-size:12px;direction:rtl;background:#fff;">'+projOpts+'</select>' +
+        '</div>' +
+      '</div>' +
+
+      // OCR button
+      '<button onclick="sibRunMeasOCR(\''+id+'\')" id="meas-ocr-btn-'+id+'" style="width:100%;padding:12px;background:linear-gradient(135deg,#0d9488,#0f766e);border:none;color:#fff;border-radius:10px;font-family:Heebo,sans-serif;font-size:14px;font-weight:900;cursor:pointer;margin-bottom:12px;">🔍 הפעל OCR — חלץ מדידות</button>' +
+
+      // Results area
+      '<div id="meas-result-'+id+'"></div>' +
+    '</div>';
+}
+
+// ── RUN OCR ───────────────────────────────────────────────────────────
+async function sibRunMeasOCR(id) {
+  var item = _sibItems.find(function(i){ return i.id === id; });
+  if (!item) return;
+
+  var apiKey = (window.APP&&window.APP.config&&window.APP.config.anthropic_key)||_sibApiKey;
+  if (!apiKey) { sibShowError('אין מפתח API'); return; }
+
+  var btn = document.getElementById('meas-ocr-btn-'+id);
+  var resultEl = document.getElementById('meas-result-'+id);
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ מעבד תמונה...'; }
+  if (resultEl) resultEl.innerHTML = '<div style="text-align:center;padding:20px;color:#0f766e;font-size:12px;">🧠 Claude קורא את כתב היד...</div>';
+  sibStartMeter('OCR מדידות');
+
+  try {
+  var _measPrompt = 'OCR \u05de\u05d3\u05d9\u05d3\u05d5\u05ea: \u05d7\u05dc\u05e5 \u05db\u05dc \u05d4\u05de\u05d3\u05d9\u05d3\u05d5\u05ea. JSON \u05d1\u05dc\u05d1\u05d3:\n{"rows":[{"item":"\u05e9\u05dd","length":4.5,"width":3.2,"area":14.4,"unit":"\u05de\"\u05e8","notes":""}],"total_area":14.4,"notes":""}';
+  var imageContent = item.cloudinary_url ? [
+    { type: 'image', source: { type: 'url', url: item.cloudinary_url } },
+    { type: 'text', text: _measPrompt }
+  ] : [{ type: 'text', text: '\u05d0\u05d9\u05df \u05ea\u05de\u05d5\u05e0\u05d4 \u05d6\u05de\u05d9\u05e0\u05d4' }];
+
+    var raw = await claudeFetch({
+      _apiKey: apiKey,
+      model: 'claude-sonnet-4-20250514',
+      max_tokens: 1500,
+      system: 'אתה מומחה OCR למדידות בנייה. קרא כתב יד מדויק והחזר JSON מובנה בלבד. אל תוסיף הסברים.',
+      messages: [{ role: 'user', content: imageContent }]
+    }, null);
+
+    var resp = raw && typeof raw.json === 'function' ? await raw.json() : raw;
+    sibStopMeter(resp && resp.usage);
+
+    var rawText = resp && resp.content && resp.content[0] ? resp.content[0].text : '';
+    // Strip markdown fences if present
+    rawText = rawText.replace(/```json\n?/g,'').replace(/```\n?/g,'').trim();
+
+    var parsed;
+    try { parsed = JSON.parse(rawText); }
+    catch(e) { throw new Error('Claude לא החזיר JSON תקין — נסה שוב או ערוך ידנית'); }
+
+    _measItems = parsed.rows || [];
+    if (_measItems.length === 0) throw new Error('לא נמצאו מדידות בתמונה');
+
+    sibRenderMeasTable(id, parsed);
+
+  } catch(e) {
+    sibStopMeter();
+    if (btn) { btn.disabled = false; btn.textContent = '🔍 הפעל OCR — חלץ מדידות'; }
+    if (resultEl) resultEl.innerHTML = '<div style="background:#fff5f5;border:1px solid #fca5a5;border-radius:8px;padding:12px;color:#c62828;font-size:12px;">שגיאה: '+sibEsc(e.message)+'</div>';
+  }
+}
+
+// ── RENDER MEASUREMENT TABLE ──────────────────────────────────────────
+function sibRenderMeasTable(id, parsed) {
+  var resultEl = document.getElementById('meas-result-'+id);
+  var btn = document.getElementById('meas-ocr-btn-'+id);
+  if (btn) { btn.disabled = false; btn.textContent = '🔄 הפעל שוב'; }
+  if (!resultEl) return;
+
+  var rows = parsed.rows || [];
+  var totalArea = parsed.total_area || rows.reduce(function(s,r){ return s+(parseFloat(r.area)||0); }, 0);
+
+  var tableRows = rows.map(function(r, i) {
+    return '<tr style="border-bottom:1px solid rgba(20,184,166,0.15);">' +
+      '<td style="padding:6px 8px;"><input value="'+sibEsc(r.item||'')+'" onchange="_measItems['+i+'].item=this.value" style="width:100%;border:none;border-bottom:1px solid #ccc;font-family:Heebo,sans-serif;font-size:12px;direction:rtl;background:transparent;"></td>' +
+      '<td style="padding:6px 8px;text-align:center;"><input type="number" step="0.01" value="'+(r.length||'')+'" onchange="_measItems['+i+'].length=parseFloat(this.value)||null;sibRecalcRow('+i+')" style="width:60px;border:none;border-bottom:1px solid #ccc;text-align:center;font-size:12px;"></td>' +
+      '<td style="padding:6px 8px;text-align:center;"><input type="number" step="0.01" value="'+(r.width||'')+'" onchange="_measItems['+i+'].width=parseFloat(this.value)||null;sibRecalcRow('+i+')" style="width:60px;border:none;border-bottom:1px solid #ccc;text-align:center;font-size:12px;"></td>' +
+      '<td style="padding:6px 8px;text-align:center;" id="meas-area-'+i+'"><b style="color:#0f766e;">'+(r.area?parseFloat(r.area).toFixed(2):'')+'</b></td>' +
+      '<td style="padding:6px 8px;font-size:10px;color:#888;">'+sibEsc(r.unit||'מ"ר')+'</td>' +
+      '<td style="padding:6px 8px;"><input value="'+sibEsc(r.notes||'')+'" onchange="_measItems['+i+'].notes=this.value" style="width:100%;border:none;border-bottom:1px solid #ccc;font-family:Heebo,sans-serif;font-size:11px;direction:rtl;background:transparent;" placeholder="הערה"></td>' +
+      '<td style="padding:6px 4px;"><button onclick="_measItems.splice('+i+',1);sibRenderMeasTable(\''+id+'\',{rows:_measItems,total_area:null,notes:\'\'});sibRecalcTotal();" style="background:none;border:none;color:#fca5a5;cursor:pointer;font-size:14px;">×</button></td>' +
+    '</tr>';
+  }).join('');
+
+  resultEl.innerHTML =
+    // Editable table
+    '<div style="overflow-x:auto;margin-bottom:10px;">' +
+      '<table style="width:100%;border-collapse:collapse;font-size:12px;">' +
+        '<thead><tr style="background:rgba(20,184,166,0.1);">' +
+          '<th style="padding:8px;text-align:right;color:#0f766e;font-weight:800;">פריט / חדר</th>' +
+          '<th style="padding:8px;text-align:center;color:#0f766e;">אורך מ\'</th>' +
+          '<th style="padding:8px;text-align:center;color:#0f766e;">רוחב מ\'</th>' +
+          '<th style="padding:8px;text-align:center;color:#0f766e;">שטח</th>' +
+          '<th style="padding:8px;text-align:center;color:#0f766e;">יחידה</th>' +
+          '<th style="padding:8px;text-align:right;color:#0f766e;">הערות</th>' +
+          '<th style="padding:8px;"></th>' +
+        '</tr></thead>' +
+        '<tbody>' + tableRows + '</tbody>' +
+        '<tfoot><tr style="background:rgba(20,184,166,0.1);font-weight:900;">' +
+          '<td colspan="3" style="padding:8px;color:#0f766e;">סה"כ שטח</td>' +
+          '<td style="padding:8px;text-align:center;color:#0f766e;font-size:15px;" id="meas-total">'+totalArea.toFixed(2)+' מ"ר</td>' +
+          '<td colspan="3"></td>' +
+        '</tr></tfoot>' +
+      '</table>' +
+    '</div>' +
+
+    // Add row button
+    '<button onclick="sibAddMeasRow(\''+id+'\')" style="background:#f0fdfb;border:1px dashed #14b8a6;color:#0f766e;border-radius:8px;padding:6px 14px;font-size:11px;font-weight:700;cursor:pointer;font-family:Heebo,sans-serif;margin-bottom:12px;">+ הוסף שורה</button>' +
+
+    // Notes + raw OCR
+    (parsed.notes ? '<div style="font-size:11px;color:#666;background:#f0fdfb;border-radius:8px;padding:8px;margin-bottom:10px;direction:rtl;">📝 '+sibEsc(parsed.notes)+'</div>' : '') +
+
+    // Action buttons
+    '<div style="display:flex;gap:8px;flex-wrap:wrap;">' +
+      '<button onclick="sibDownloadMeasCSV(\''+id+'\')" style="flex:1;padding:10px;background:#0f766e;border:none;color:#fff;border-radius:8px;font-family:Heebo,sans-serif;font-size:12px;font-weight:800;cursor:pointer;">⬇ הורד CSV</button>' +
+      '<button onclick="sibSaveMeasurements(\''+id+'\')" style="flex:1;padding:10px;background:linear-gradient(135deg,#1a3d5c,#2d6a9f);border:none;color:#fff;border-radius:8px;font-family:Heebo,sans-serif;font-size:12px;font-weight:800;cursor:pointer;">💾 שמור במאגר</button>' +
+      '<button onclick="sibSendMeasToTakeoff(\''+id+'\')" style="flex:1;padding:10px;background:#f5e9c4;border:1px solid #c9a84c;color:#7a5500;border-radius:8px;font-family:Heebo,sans-serif;font-size:12px;font-weight:700;cursor:pointer;">📐 שלח לטייקאוף</button>' +
+    '</div>';
+}
+
+function sibRecalcRow(i) {
+  var r = _measItems[i];
+  if (r && r.length && r.width) {
+    r.area = Math.round(r.length * r.width * 100) / 100;
+    var areaEl = document.getElementById('meas-area-'+i);
+    if (areaEl) areaEl.innerHTML = '<b style="color:#0f766e;">'+r.area.toFixed(2)+'</b>';
+  }
+  sibRecalcTotal();
+}
+
+function sibRecalcTotal() {
+  var total = _measItems.reduce(function(s,r){ return s+(parseFloat(r.area)||0); }, 0);
+  var el = document.getElementById('meas-total');
+  if (el) el.textContent = total.toFixed(2)+' מ"ר';
+}
+
+function sibAddMeasRow(id) {
+  _measItems.push({item:'',length:null,width:null,area:null,unit:'מ"ר',notes:''});
+  var parsed = {rows:_measItems, total_area:null, notes:''};
+  sibRenderMeasTable(id, parsed);
+}
+
+// ── DOWNLOAD CSV ──────────────────────────────────────────────────────
+function sibDownloadMeasCSV(id) {
+  var item = _sibItems.find(function(i){ return i.id === id; });
+  var labelEl = document.getElementById('meas-label-'+id);
+  var label = labelEl ? labelEl.value : '';
+  var total = _measItems.reduce(function(s,r){ return s+(parseFloat(r.area)||0); }, 0);
+
+  var header = 'פריט / חדר,אורך (מ\'),רוחב (מ\'),שטח (מ"ר),יחידה,הערות\n';
+  var dataRows = _measItems.map(function(r){
+    return [r.item||'',r.length||'',r.width||'',r.area||'',r.unit||'מ"ר',r.notes||'']
+      .map(function(v){ return '"'+String(v).replace(/"/g,'""')+'"'; }).join(',');
+  }).join('\n');
+  var footer = '\n"סה"כ","","",'+total.toFixed(2)+',"מ"ר",""';
+
+  var csv = '\uFEFF' + header + dataRows + footer; // BOM for Excel Hebrew
+  var blob = new Blob([csv], {type:'text/csv;charset=utf-8'});
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href = url;
+  a.download = (label||'מדידות_'+new Date().toLocaleDateString('he-IL')).replace(/[/\\:*?"<>|]/g,'_') + '.csv';
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast('⬇ CSV הורד','success');
+}
+
+// ── SAVE TO field_measurements ────────────────────────────────────────
+async function sibSaveMeasurements(id) {
+  var item = _sibItems.find(function(i){ return i.id === id; });
+  if (!item || !_measItems.length) { showToast('אין מדידות לשמירה','error'); return; }
+
+  var labelEl = document.getElementById('meas-label-'+id);
+  var projEl  = document.getElementById('meas-proj-'+id);
+  var label   = labelEl ? labelEl.value : '';
+  var projId  = projEl  ? projEl.value  : (item.project_id||null);
+  var total   = _measItems.reduce(function(s,r){ return s+(parseFloat(r.area)||0); }, 0);
+
+  try {
+    var res = await fetch(SB_URL+'/rest/v1/field_measurements', {
+      method: 'POST',
+      headers: { apikey:SB_KEY, Authorization:'Bearer '+SB_KEY, 'Content-Type':'application/json', Prefer:'return=minimal' },
+      body: JSON.stringify({
+        project_id:       projId||null,
+        photo_url:        item.cloudinary_url||null,
+        session_label:    label||null,
+        measured_by:      'בני',
+        measurement_date: new Date().toISOString().split('T')[0],
+        rows:             JSON.stringify(_measItems),
+        total_area:       Math.round(total*100)/100,
+        status:           'done',
+        created_at:       new Date().toISOString()
+      })
+    });
+    if (!res.ok) throw new Error('HTTP '+res.status);
+    showToast('✅ נשמר בטבלת מדידות שטח','success');
+
+    // Also approve the inbox item
+    await fetch(SB_URL+'/rest/v1/asset_inbox?id=eq.'+id, {
+      method:'PATCH',
+      headers:{apikey:SB_KEY,Authorization:'Bearer '+SB_KEY,'Content-Type':'application/json',Prefer:'return=minimal'},
+      body:JSON.stringify({status:'approved'})
+    });
+    await sibLoad();
+  } catch(e) {
+    showToast('שגיאה: '+e.message,'error');
+  }
+}
+
+// ── SEND TO site_takeoffs ─────────────────────────────────────────────
+async function sibSendMeasToTakeoff(id) {
+  var item = _sibItems.find(function(i){ return i.id === id; });
+  if (!item || !_measItems.length) { showToast('אין מדידות לשליחה','error'); return; }
+
+  var labelEl = document.getElementById('meas-label-'+id);
+  var projEl  = document.getElementById('meas-proj-'+id);
+  var label   = labelEl ? labelEl.value : '';
+  var projId  = projEl  ? projEl.value  : (item.project_id||null);
+  var total   = _measItems.reduce(function(s,r){ return s+(parseFloat(r.area)||0); }, 0);
+
+  // Map to site_takeoffs rows format
+  var takeoffRows = _measItems.map(function(r){
+    return { room: r.item||'', length: r.length||0, width: r.width||0, area: r.area||0 };
+  });
+
+  try {
+    var res = await fetch(SB_URL+'/rest/v1/site_takeoffs', {
+      method: 'POST',
+      headers: { apikey:SB_KEY, Authorization:'Bearer '+SB_KEY, 'Content-Type':'application/json', Prefer:'return=minimal' },
+      body: JSON.stringify({
+        project_id:    projId||null,
+        session_label: label || ('מדידת שטח — '+new Date().toLocaleDateString('he-IL')),
+        rows:          JSON.stringify(takeoffRows),
+        total_area:    Math.round(total*100)/100,
+        takeoff_type:  'standard',
+        submitted_by:  'בני',
+        notes:         'יובא אוטומטית מ-OCR תמונת מדידות',
+        created_at:    new Date().toISOString()
+      })
+    });
+    if (!res.ok) throw new Error('HTTP '+res.status);
+    showToast('✅ נשלח לטייקאוף בהצלחה','success');
+  } catch(e) {
+    showToast('שגיאה: '+e.message,'error');
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════════
+// THIRD-PARTY LIABILITY RAG + SUPPORT FUNCTIONS
+// Table: third_party_risks (loaded from Gemini CSV)
+// ══════════════════════════════════════════════════════════════════════
+
+var _tpRiskData = []; // loaded from Supabase third_party_risks table
+
+// ── LOAD THIRD-PARTY RAG DATA ─────────────────────────────────────────
+async function sibLoadTPRisks() {
+  if (_tpRiskData.length > 0) return _tpRiskData;
+  try {
+    var res = await sbQ('third_party_risks',
+      'select=id,category,scenario_he,legal_basis,severity,liable_party,prevention_measures,insurance_type,fine_range_ils,tags&order=severity.asc&limit=500');
+    if (res.data && res.data.length > 0) {
+      _tpRiskData = res.data;
+      return _tpRiskData;
+    }
+  } catch(e) { console.warn('third_party_risks not yet loaded:', e.message); }
+  return [];
+}
+
+// ── COMPONENT 1: EQUIPMENT LENDING LOGGER ────────────────────────────
+// Beni lends a ladder/cable → creates a timestamped record immediately
+function sibOpenEquipmentLog(id) {
+  var item = _sibItems.find(function(i){ return i.id === id; });
+  var panel = document.getElementById('sib-analysis-panel');
+  if (!panel) return;
+  if (id) sibSelectItem(id);
+
+  panel.innerHTML =
+    '<div style="background:#fff;border:2px solid #f97316;border-radius:12px;padding:16px;margin-bottom:10px;">' +
+      '<div style="font-size:14px;font-weight:900;color:#c2410c;margin-bottom:4px;">⚠️ רישום השאלת ציוד — הגנה משפטית</div>' +
+      '<div style="font-size:11px;color:#888;margin-bottom:14px;">כל השאלה חייבת תיעוד! חוק הנזיקין סעיף 35-36 — אחריות שילוחית</div>' +
+
+      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;">' +
+        '<div><div style="font-size:10px;font-weight:700;color:#c2410c;margin-bottom:3px;">סוג הציוד</div>' +
+          '<input id="eq-item" type="text" placeholder="סולם 6 מ\' / כבל 16A / פיגום..." style="width:100%;border:1px solid #fed7aa;border-radius:8px;padding:8px;font-family:Heebo,sans-serif;font-size:12px;direction:rtl;box-sizing:border-box;"></div>' +
+        '<div><div style="font-size:10px;font-weight:700;color:#c2410c;margin-bottom:3px;">מושאל ל</div>' +
+          '<input id="eq-to" type="text" placeholder="שם הקבלן / נגר / חשמלאי..." style="width:100%;border:1px solid #fed7aa;border-radius:8px;padding:8px;font-family:Heebo,sans-serif;font-size:12px;direction:rtl;box-sizing:border-box;"></div>' +
+        '<div><div style="font-size:10px;font-weight:700;color:#c2410c;margin-bottom:3px;">תאריך + שעה</div>' +
+          '<input id="eq-time" type="text" value="'+new Date().toLocaleString('he-IL')+'" style="width:100%;border:1px solid #fed7aa;border-radius:8px;padding:8px;font-family:Heebo,sans-serif;font-size:12px;direction:rtl;box-sizing:border-box;"></div>' +
+        '<div><div style="font-size:10px;font-weight:700;color:#c2410c;margin-bottom:3px;">מצב הציוד</div>' +
+          '<select id="eq-condition" style="width:100%;border:1px solid #fed7aa;border-radius:8px;padding:8px;font-family:Heebo,sans-serif;font-size:12px;direction:rtl;background:#fff;">' +
+            '<option value="תקין">תקין</option><option value="עם פגמים קלים">עם פגמים קלים</option><option value="דורש בדיקה">דורש בדיקה</option>' +
+          '</select></div>' +
+        '<div style="grid-column:span 2;"><div style="font-size:10px;font-weight:700;color:#c2410c;margin-bottom:3px;">הערות / תנאי השאלה</div>' +
+          '<input id="eq-notes" type="text" placeholder="מוחזר עד שישי / לא לעבוד בגובה / כבל רק לשימוש קרקעי..." style="width:100%;border:1px solid #fed7aa;border-radius:8px;padding:8px;font-family:Heebo,sans-serif;font-size:12px;direction:rtl;box-sizing:border-box;"></div>' +
+      '</div>' +
+
+      // Legal warning box
+      '<div style="background:#fff7ed;border:1px solid #fed7aa;border-radius:8px;padding:10px;margin-bottom:12px;">' +
+        '<div style="font-size:11px;font-weight:800;color:#c2410c;margin-bottom:6px;">⚖️ הגנה משפטית — מה הרישום הזה מספק:</div>' +
+        '<div style="font-size:11px;color:#7c2d12;line-height:1.8;">' +
+          '✅ תיעוד שהציוד היה תקין בעת המסירה<br>' +
+          '✅ הוכחה שהמשתמש ידע את תנאי השימוש<br>' +
+          '✅ הגדרת אחריות — הציוד עבר לאחריות המקבל<br>' +
+          '✅ טיימסטמפ שאי אפשר לערעור עליו<br>' +
+          '⚠️ אם אין רישום — אתה אחראי ל-100% בתביעה' +
+        '</div>' +
+      '</div>' +
+
+      '<div style="display:flex;gap:8px;">' +
+        '<button onclick="sibSaveEquipmentLog()" style="flex:1;padding:11px;background:linear-gradient(135deg,#c2410c,#ea580c);border:none;color:#fff;border-radius:10px;font-family:Heebo,sans-serif;font-size:13px;font-weight:900;cursor:pointer;">📋 שמור רישום + הפק מסמך</button>' +
+        '<button onclick="sibGenerateEquipmentPDF()" style="padding:11px 16px;background:#f5e9c4;border:1px solid #c9a84c;color:#7a5500;border-radius:10px;font-family:Heebo,sans-serif;font-size:12px;font-weight:700;cursor:pointer;">📄 PDF</button>' +
+      '</div>' +
+    '</div>';
+}
+
+async function sibSaveEquipmentLog() {
+  var eqItem  = (document.getElementById('eq-item')||{}).value||'';
+  var eqTo    = (document.getElementById('eq-to')||{}).value||'';
+  var eqTime  = (document.getElementById('eq-time')||{}).value||new Date().toLocaleString('he-IL');
+  var eqCond  = (document.getElementById('eq-condition')||{}).value||'תקין';
+  var eqNotes = (document.getElementById('eq-notes')||{}).value||'';
+
+  if (!eqItem || !eqTo) { showToast('מלא סוג ציוד ושם מקבל','error'); return; }
+
+  var record = {
+    equipment: eqItem, lent_to: eqTo, lent_at: eqTime,
+    condition_at_lending: eqCond, terms: eqNotes,
+    lent_by: (window.APP&&window.APP.config&&window.APP.config.manager_name)||'בני פרסקי',
+    created_at: new Date().toISOString()
+  };
+
+  try {
+    var res = await fetch(SB_URL+'/rest/v1/equipment_lending_log', {
+      method:'POST',
+      headers:{apikey:SB_KEY,Authorization:'Bearer '+SB_KEY,'Content-Type':'application/json',Prefer:'return=minimal'},
+      body:JSON.stringify(record)
+    });
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    showToast('✅ רישום נשמר — אתה מוגן','success');
+    sibGenerateEquipmentPDF(record);
+  } catch(e) { showToast('שגיאה: '+e.message,'error'); }
+}
+
+function sibGenerateEquipmentPDF(record) {
+  var r = record || {
+    equipment: (document.getElementById('eq-item')||{}).value||'',
+    lent_to:   (document.getElementById('eq-to')||{}).value||'',
+    lent_at:   (document.getElementById('eq-time')||{}).value||new Date().toLocaleString('he-IL'),
+    condition_at_lending: (document.getElementById('eq-condition')||{}).value||'תקין',
+    terms:     (document.getElementById('eq-notes')||{}).value||'',
+    lent_by:   (window.APP&&window.APP.config&&window.APP.config.manager_name)||'בני פרסקי'
+  };
+
+  var html = '<html dir="rtl"><head><meta charset="UTF-8">'+
+    '<style>body{font-family:Arial,sans-serif;direction:rtl;padding:40px;color:#1a1a1a;}'+
+    'h1{color:#c2410c;font-size:20px;border-bottom:3px solid #f97316;padding-bottom:10px;}'+
+    '.field{margin:12px 0;padding:10px 14px;background:#fff7ed;border-right:4px solid #f97316;border-radius:6px;}'+
+    '.label{font-size:11px;font-weight:700;color:#9a3412;margin-bottom:3px;}'+
+    '.value{font-size:14px;font-weight:600;}'+
+    '.warning{background:#fef2f2;border:2px solid #fca5a5;border-radius:8px;padding:14px;margin-top:20px;}'+
+    '.sig{margin-top:40px;display:grid;grid-template-columns:1fr 1fr;gap:40px;}'+
+    '.sig-box{border-top:2px solid #1a1a1a;padding-top:8px;font-size:12px;color:#666;}'+
+    '</style></head><body>'+
+    '<div style="text-align:center;margin-bottom:20px;">'+
+      '<div style="font-size:11px;color:#666;letter-spacing:2px;">טופס מסירת ציוד — הגנה מפני אחריות שילוחית</div>'+
+      '<h1>⚠️ אישור השאלת ציוד</h1>'+
+      '<div style="font-size:11px;color:#888;">מופק אוטומטית | '+new Date().toLocaleString('he-IL')+'</div>'+
+    '</div>'+
+    '<div class="field"><div class="label">ציוד מושאל</div><div class="value">'+r.equipment+'</div></div>'+
+    '<div class="field"><div class="label">מושאל לידי</div><div class="value">'+r.lent_to+'</div></div>'+
+    '<div class="field"><div class="label">תאריך ושעת מסירה</div><div class="value">'+r.lent_at+'</div></div>'+
+    '<div class="field"><div class="label">מצב הציוד בעת המסירה</div><div class="value">'+r.condition_at_lending+'</div></div>'+
+    '<div class="field"><div class="label">תנאי השימוש</div><div class="value">'+(r.terms||'ללא הגבלות מיוחדות')+'</div></div>'+
+    '<div class="warning">'+
+      '<div style="font-size:13px;font-weight:800;color:#c62828;margin-bottom:8px;">⚖️ הצהרת המקבל</div>'+
+      '<div style="font-size:12px;line-height:1.8;">'+
+        'אני החתום מטה מאשר שקיבלתי את הציוד הנ"ל במצב כמתואר לעיל, '+
+        'וכי אני נוטל על עצמי את מלוא האחריות לשימוש בטוח בציוד זה, '+
+        'לרבות אחריות לבטיחות עובדיי המשתמשים בו. '+
+        'הציוד מוחזר לאחריותי המלאה מרגע קבלתו.'+
+      '</div>'+
+    '</div>'+
+    '<div class="sig">'+
+      '<div class="sig-box">חתימת המוסר: '+r.lent_by+'<br><br>_________________</div>'+
+      '<div class="sig-box">חתימת המקבל: '+r.lent_to+'<br><br>_________________</div>'+
+    '</div>'+
+    '<div style="margin-top:30px;font-size:10px;color:#aaa;text-align:center;">'+
+      'מסמך זה הופק ב-'+new Date().toLocaleString('he-IL')+' | '+
+      'מהווה ראיה לפי חוק הנזיקין סעיף 35 | שמור עותק חתום'+
+    '</div>'+
+    '</body></html>';
+
+  var w = window.open('','_blank');
+  if (w) { w.document.write(html); w.document.close(); setTimeout(function(){ w.print(); }, 500); }
+}
+
+// ── COMPONENT 2: TIMELINE RISK SCORER ────────────────────────────────
+async function sibTimelineRisk(id, p1text) {
+  var apiKey = (window.APP&&window.APP.config&&window.APP.config.anthropic_key)||_sibApiKey;
+  if (!apiKey) return;
+
+  var raw = await claudeFetch({
+    _apiKey: apiKey,
+    model: 'claude-sonnet-4-20250514',
+    max_tokens: 600,
+    system: 'אתה יועץ סיכונים משפטי. ענה ONLY בעברית. קצר ומדויק.',
+    messages:[{role:'user',content:
+      'על בסיס הממצאים הבאים, מה הסיכון המשפטי שגדל עם הזמן?\n\n'+
+      p1text.substr(0,800)+'\n\n'+
+      'הפק טבלה:\n## ⏱️ ציר סיכונים בזמן\n'+
+      '[ממצא | מתי הופך קריטי | מה קורה אם לא מטופל]\n'+
+      '## פעולות דחופות 24 שעות\n## פעולות שבוע הבא'
+    }]
+  }, null);
+  var resp = raw&&typeof raw.json==='function'?await raw.json():raw;
+  return resp&&resp.content&&resp.content[0]?resp.content[0].text:'';
+}
+
+// ── COMPONENT 3: INSURANCE GAP DETECTOR ──────────────────────────────
+async function sibInsuranceGap(id, p1text) {
+  var apiKey = (window.APP&&window.APP.config&&window.APP.config.anthropic_key)||_sibApiKey;
+  if (!apiKey) return;
+
+  var raw = await claudeFetch({
+    _apiKey: apiKey,
+    model: 'claude-sonnet-4-20250514',
+    max_tokens: 500,
+    system: 'אתה מומחה ביטוח קבלנים ישראלי. זהה פערי ביטוח.',
+    messages:[{role:'user',content:
+      'על בסיס הממצאים:\n'+p1text.substr(0,800)+'\n\n'+
+      '## 🔍 פערי ביטוח זוהו\n'+
+      '[לכל פריט: מה לא מכוסה בפוליסה בסיסית + סוג ה-rider הנדרש]\n'+
+      '## ⚠️ חשיפות ספציפיות לביטוח קבלני משנה\n'+
+      '## 💡 המלצות לסוכן הביטוח'
+    }]
+  }, null);
+  var resp = raw&&typeof raw.json==='function'?await raw.json():raw;
+  return resp&&resp.content&&resp.content[0]?resp.content[0].text:'';
+}
+
+// ── COMPONENT 4: EVIDENCE DOCUMENTATION GENERATOR ────────────────────
+async function sibGenerateEvidenceDoc(id) {
+  var item = _sibItems.find(function(i){ return i.id === id; });
+  var analysis = _sibAnalysis[id];
+  if (!item) return;
+
+  var timestamp = new Date().toLocaleString('he-IL');
+  var projName = (window.allProjects||[]).find(function(p){ return p.id===item.project_id; });
+  projName = projName ? projName.project_name : 'לא ידוע';
+
+  var html = '<html dir="rtl"><head><meta charset="UTF-8">'+
+    '<style>body{font-family:Arial,sans-serif;direction:rtl;padding:40px;}'+
+    'h1{color:#1a3d5c;font-size:18px;}'+
+    '.stamp{background:#e8f5e9;border:2px solid #4caf50;border-radius:8px;padding:12px;margin-bottom:16px;}'+
+    '.findings{background:#fff3e0;border-right:4px solid #ff9800;padding:12px;margin:10px 0;border-radius:6px;}'+
+    '.actions{background:#e3f2fd;border-right:4px solid #2196f3;padding:12px;margin:10px 0;border-radius:6px;}'+
+    '</style></head><body>'+
+    '<div class="stamp">'+
+      '<div style="font-size:11px;color:#1b5e20;font-weight:800;">✅ מסמך תיעוד הגנתי — חסוי / לשימוש משפטי</div>'+
+      '<div style="font-size:13px;font-weight:700;margin:6px 0;">זיהינו וטיפלנו — '+timestamp+'</div>'+
+      '<div style="font-size:11px;color:#555;">פרויקט: '+sibEsc(projName)+' | קובץ: '+sibEsc(item.file_name||'')+' | נוצר ע"י: '+(window.APP&&window.APP.config&&window.APP.config.manager_name||'')+'</div>'+
+    '</div>'+
+    '<h1>📋 דוח ביקורת פנימית — לצרכי הגנה משפטית</h1>'+
+    '<div class="findings">'+
+      '<b>ממצאים שזוהו:</b><br>'+
+      (analysis ? analysis.text.replace(/\n/g,'<br>').substr(0,1500) : 'ראה קובץ מצורף')+
+    '</div>'+
+    '<div class="actions">'+
+      '<b>פעולות שננקטו / מתוכננות:</b><br>'+
+      '<br>1. ___________________________<br>'+
+      '<br>2. ___________________________<br>'+
+      '<br>3. ___________________________'+
+    '</div>'+
+    '<div style="margin-top:30px;display:grid;grid-template-columns:1fr 1fr;gap:40px;">'+
+      '<div style="border-top:2px solid #1a1a1a;padding-top:8px;font-size:12px;">חתימת מנהל הפרויקט<br><br>_____________</div>'+
+      '<div style="border-top:2px solid #1a1a1a;padding-top:8px;font-size:12px;">תאריך: '+timestamp+'<br><br>_____________</div>'+
+    '</div>'+
+    '<div style="margin-top:20px;font-size:10px;color:#aaa;text-align:center;">מסמך זה מהווה ראיה לביצוע ביקורת פנימית ונקיטת אמצעי זהירות</div>'+
+    '</body></html>';
+
+  var w = window.open('','_blank');
+  if (w) { w.document.write(html); w.document.close(); setTimeout(function(){ w.print(); }, 500); }
+  showToast('📄 מסמך הגנתי נפתח','success');
+}
+
+// ── COMPONENT 5: NEIGHBOR NOTIFICATION TEMPLATE ──────────────────────
+async function sibNeighborNotice(id) {
+  var item = _sibItems.find(function(i){ return i.id === id; });
+  var analysis = _sibAnalysis[id];
+  var panel = document.getElementById('sib-analysis-panel');
+  if (!panel) return;
+
+  var apiKey = (window.APP&&window.APP.config&&window.APP.config.anthropic_key)||_sibApiKey;
+  if (!apiKey) { showToast('אין מפתח API','error'); return; }
+
+  var projName = (window.allProjects||[]).find(function(p){ return item&&p.id===item.project_id; });
+  projName = projName ? projName.project_name : 'פרויקט';
+
+  var resultEl = document.getElementById('sib-p2-result');
+  if (resultEl) resultEl.innerHTML = '<div style="text-align:center;padding:20px;color:#1a3d5c;font-size:12px;">✉️ מנסח מכתב לשכנים...</div>';
+  sibStartMeter('מכתב שכנים');
+
+  var context = analysis ? analysis.text.substr(0,600) : (item ? (item.file_name||'') : '');
+
+  var raw = await claudeFetch({
+    _apiKey: apiKey,
+    model: 'claude-sonnet-4-20250514',
+    max_tokens: 800,
+    system: 'אתה עורך דין המתמחה בדיני קבלנות. נסח מכתב רשמי בעברית.',
+    messages:[{role:'user',content:
+      'על בסיס ממצאי הבנייה הבאים:\n'+context+'\n\n'+
+      'נסח מכתב רשמי לשכנים גובלים בפרויקט '+projName+'\n'+
+      'כלול: הודעה על העבודות הצפויות, אמצעי ההגנה שננקטים, '+
+      'פרטי איש קשר לתלונות, מסגרת זמן, '+
+      'ואזכור שהעבודות מבוצעות לפי היתר ובהתאם לתקנות. '+
+      'שמור על טון מכבד ומקצועי. כולל שורת נושא.'
+    }]
+  }, null);
+  var resp = raw&&typeof raw.json==='function'?await raw.json():raw;
+  var letter = resp&&resp.content&&resp.content[0]?resp.content[0].text:'';
+  sibStopMeter(resp&&resp.usage);
+
+  if (resultEl) resultEl.innerHTML =
+    '<div style="background:#fff;border:2px solid #1a3d5c;border-radius:10px;padding:16px;margin-bottom:10px;">' +
+      '<div style="font-size:13px;font-weight:800;color:#1a3d5c;margin-bottom:10px;">✉️ טיוטת מכתב לשכנים</div>' +
+      '<textarea style="width:100%;min-height:280px;border:1px solid rgba(180,140,60,0.3);border-radius:8px;padding:10px;font-family:Arial,sans-serif;font-size:12px;direction:rtl;box-sizing:border-box;line-height:1.8;" id="tp-letter">'+sibEsc(letter)+'</textarea>' +
+      '<div style="display:flex;gap:8px;margin-top:8px;">' +
+        '<button onclick="navigator.clipboard.writeText(document.getElementById(\'tp-letter\').value).then(function(){showToast(\'הועתק\',\'success\')})" style="flex:1;padding:9px;background:#1a3d5c;border:none;color:#fff;border-radius:8px;font-family:Heebo,sans-serif;font-size:12px;font-weight:800;cursor:pointer;">📋 העתק</button>' +
+        '<button onclick="sibPrintLetter()" style="padding:9px 14px;background:#f5e9c4;border:1px solid #c9a84c;color:#7a5500;border-radius:8px;font-family:Heebo,sans-serif;font-size:12px;font-weight:700;cursor:pointer;">🖨️ הדפס</button>' +
+      '</div>' +
+    '</div>';
+}
+
+function sibPrintLetter() {
+  var el = document.getElementById('tp-letter');
+  if (!el) return;
+  var w = window.open('','_blank');
+  if (w) {
+    w.document.write('<html dir="rtl"><head><meta charset="UTF-8"><style>body{font-family:Arial,sans-serif;direction:rtl;padding:40px;font-size:14px;line-height:1.9;}</style></head><body>');
+    w.document.write(el.value.replace(/\n/g,'<br>'));
+    w.document.write('</body></html>');
+    w.document.close();
+    setTimeout(function(){ w.print(); }, 300);
+  }
+}
+
+// ── WIRE COMPONENTS INTO THIRD-PARTY REPORT ──────────────────────────
+// Called after third-party report renders — adds action buttons
+function sibAddTPActions(id) {
+  var resultEl = document.getElementById('sib-p2-result');
+  if (!resultEl) return;
+
+  var actionsDiv = document.createElement('div');
+  actionsDiv.style.cssText = 'background:#fff7ed;border:2px solid #f97316;border-radius:10px;padding:14px;margin-top:10px;';
+  actionsDiv.innerHTML =
+    '<div style="font-size:12px;font-weight:800;color:#c2410c;margin-bottom:10px;">⚖️ כלי הגנה משפטית</div>' +
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">' +
+      '<button onclick="sibOpenEquipmentLog(\''+id+'\')" style="padding:9px;background:#c2410c;border:none;color:#fff;border-radius:8px;font-family:Heebo,sans-serif;font-size:11px;font-weight:800;cursor:pointer;">📋 רשום השאלת ציוד</button>' +
+      '<button onclick="sibGenerateEvidenceDoc(\''+id+'\')" style="padding:9px;background:#1a3d5c;border:none;color:#fff;border-radius:8px;font-family:Heebo,sans-serif;font-size:11px;font-weight:800;cursor:pointer;">🛡️ מסמך הגנתי</button>' +
+      '<button onclick="sibNeighborNotice(\''+id+'\')" style="padding:9px;background:#0f766e;border:none;color:#fff;border-radius:8px;font-family:Heebo,sans-serif;font-size:11px;font-weight:800;cursor:pointer;">✉️ מכתב לשכנים</button>' +
+      '<button onclick="sibInsuranceGapModal(\''+id+'\')" style="padding:9px;background:#4527a0;border:none;color:#fff;border-radius:8px;font-family:Heebo,sans-serif;font-size:11px;font-weight:800;cursor:pointer;">🔍 פערי ביטוח</button>' +
+    '</div>';
+
+  resultEl.appendChild(actionsDiv);
+}
+
+async function sibInsuranceGapModal(id) {
+  var analysis = _sibAnalysis[id];
+  if (!analysis) { showToast('הפעל ניתוח צד שלישי תחילה','error'); return; }
+  var resultEl = document.getElementById('sib-p2-result');
+  if (resultEl) resultEl.innerHTML += '<div style="text-align:center;padding:16px;color:#4527a0;font-size:12px;">🔍 מנתח פערי ביטוח...</div>';
+  sibStartMeter('ניתוח ביטוח');
+  var gapText = await sibInsuranceGap(id, analysis.text);
+  sibStopMeter();
+  if (resultEl && gapText) {
+    var d = document.createElement('div');
+    d.style.cssText = 'background:#ede7f6;border:2px solid #9c6fdd;border-radius:10px;padding:14px;margin-top:8px;';
+    d.innerHTML = '<div style="font-size:13px;font-weight:800;color:#4527a0;margin-bottom:8px;">🔍 פערי ביטוח שזוהו</div>' +
+      '<div style="font-size:12px;color:#1a1a1a;line-height:1.8;white-space:pre-wrap;direction:rtl;">' + sibEsc(gapText) + '</div>';
+    resultEl.appendChild(d);
+  }
 }
