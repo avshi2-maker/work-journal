@@ -43,10 +43,10 @@ async function sibInit() {
 
 // ── AI MODULE SELECTOR HELPERS ────────────────────────────────────────
 var _sibModuleDefaults = {
-  'mod-safety':true,'mod-engineering':true,'mod-standards':true,
-  'mod-thirdparty':true,'mod-financial':false,'mod-protocol':false,
+  'mod-safety':false,'mod-engineering':false,'mod-standards':false,
+  'mod-thirdparty':false,'mod-financial':false,'mod-protocol':false,
   'mod-ocr':false,'mod-equipment':false,'mod-neighbor':false,
-  'mod-evidence':false,'mod-general':true
+  'mod-evidence':false,'mod-general':false
 };
 var _sibModules = Object.assign({}, _sibModuleDefaults);
 
@@ -351,7 +351,13 @@ function sibActionButtons(item) {
     btns += sibBtn('🚀 שלב 2: נתח','sibShowPhase2Panel(\''+id+'\')','phase2');
   }
 
-  btns += sibBtn('✅ אשר → יומן','sibApprove(\''+id+'\')','approve');
+  // Approve button — smart guard
+  var hasAnalysis = !!(_sibAnalysis[id] || _sibPhase1[id]);
+  if(hasAnalysis){
+    btns += sibBtn('✅ אשר + שמור דוח','sibApproveWithReport(\''+id+'\')','approve');
+  } else {
+    btns += sibBtn('✅ אשר ללא ניתוח','sibApprove(\''+id+'\')','approve-grey');
+  }
   return btns;
 }
 
@@ -364,6 +370,7 @@ function sibBtn(label, onclick, style) {
     danger:  'background:#fff5f5;color:#c62828;border:1px solid #fca5a5;',
     enc:     'background:#ede7f6;color:#4527a0;border:1px solid #9c6fdd;',
     approve: 'background:#e8f5e9;color:#1b5e20;border:1px solid #a5d6a7;',
+    'approve-grey': 'background:#f5f5f5;color:#999;border:1px solid #ddd;',
   };
   return '<button onclick="'+onclick+';event.stopPropagation();" style="'+(styles[style]||styles.sec)+'border-radius:6px;padding:4px 9px;font-size:10px;font-weight:700;cursor:pointer;font-family:Heebo,sans-serif;white-space:nowrap;">'+label+'</button>';
 }
@@ -531,20 +538,33 @@ function sibShowPhase2Panel(id) {
   // Direction buttons
   // Build directions from active modules only
   var allDirections = [
-    {id:'safety',      mod:'mod-safety',      label:'⚠️ בטיחות',        color:'#c62828', bg:'#fff5f5', border:'#fca5a5', always:true},
-    {id:'engineering', mod:'mod-engineering', label:'🏗️ הנדסי',         color:'#1a3d5c', bg:'#e8f0fd', border:'#93c5fd', always:true},
-    {id:'standards',   mod:'mod-standards',   label:'📋 תקנים 838',      color:'#4527a0', bg:'#ede7f6', border:'#9c6fdd', always:true},
-    {id:'thirdparty',  mod:'mod-thirdparty',  label:'⚖️ צד שלישי',       color:'#7c2d12', bg:'#fff7ed', border:'#fb923c', always:true},
-    {id:'financial',   mod:'mod-financial',   label:'💰 רווח/הפסד',      color:'#1b5e20', bg:'#e8f5e9', border:'#a5d6a7', always:isFinancial},
-    {id:'protocol',    mod:'mod-protocol',    label:'📝 פרוטוקול',        color:'#7a5500', bg:'#fffde7', border:'#f59e0b', always:isAudio},
-    {id:'ocr',         mod:'mod-ocr',         label:'📐 מדידות OCR',      color:'#0f766e', bg:'#f0fdfb', border:'#5eead4', always:false},
-    {id:'equipment',   mod:'mod-equipment',   label:'🔧 השאלת ציוד',      color:'#92400e', bg:'#fef3c7', border:'#fcd34d', always:false},
-    {id:'general',     mod:'mod-general',     label:'📊 כללי',            color:'#555',    bg:'#f5f5f5', border:'#ccc',    always:true},
+    {id:'safety',      mod:'mod-safety',      label:'⚠️ בטיחות',        color:'#c62828', bg:'#fff5f5', border:'#fca5a5'},
+    {id:'engineering', mod:'mod-engineering', label:'🏗️ הנדסי',         color:'#1a3d5c', bg:'#e8f0fd', border:'#93c5fd'},
+    {id:'standards',   mod:'mod-standards',   label:'📋 תקנים 838',      color:'#4527a0', bg:'#ede7f6', border:'#9c6fdd'},
+    {id:'thirdparty',  mod:'mod-thirdparty',  label:'⚖️ צד שלישי',       color:'#7c2d12', bg:'#fff7ed', border:'#fb923c'},
+    {id:'financial',   mod:'mod-financial',   label:'💰 רווח/הפסד',      color:'#1b5e20', bg:'#e8f5e9', border:'#a5d6a7'},
+    {id:'protocol',    mod:'mod-protocol',    label:'📝 פרוטוקול',        color:'#7a5500', bg:'#fffde7', border:'#f59e0b'},
+    {id:'ocr',         mod:'mod-ocr',         label:'📐 מדידות OCR',      color:'#0f766e', bg:'#f0fdfb', border:'#5eead4'},
+    {id:'equipment',   mod:'mod-equipment',   label:'🔧 השאלת ציוד',      color:'#92400e', bg:'#fef3c7', border:'#fcd34d'},
+    {id:'general',     mod:'mod-general',     label:'📊 כללי',            color:'#555',    bg:'#f5f5f5', border:'#ccc'},
   ];
-  // Show direction if: module is ticked OR the direction is contextually relevant
+  // Show ONLY ticked modules — no forced defaults
   var directions = allDirections.filter(function(d){
-    return sibIsModuleActive(d.mod) || d.always;
+    return sibIsModuleActive(d.mod);
   });
+  // Guard: if nothing ticked, show a message instead of empty buttons
+  if(directions.length === 0){
+    var panel2 = document.getElementById('sib-analysis-panel');
+    if(panel2){
+      var hint = document.createElement('div');
+      hint.style.cssText = 'background:#fffbf0;border:2px dashed #c9a84c;border-radius:10px;padding:16px;text-align:center;margin-top:10px;';
+      hint.innerHTML = '<div style="font-size:24px;margin-bottom:8px;">🎛️</div>'+
+        '<div style="font-size:13px;font-weight:700;color:#9a6f00;">לא נבחרו מודולים</div>'+
+        '<div style="font-size:11px;color:#aaa;margin-top:4px;">בחר מודול בסרגל למעלה ולחץ שוב</div>';
+      panel2.appendChild(hint);
+    }
+    return;
+  }
 
   var dirBtns = directions.map(function(d){
     return '<button onclick="sibPhase2Run(\''+id+'\',\''+d.id+'\')" style="background:'+d.bg+';border:1px solid '+d.border+';color:'+d.color+';border-radius:8px;padding:7px 12px;font-size:11px;font-weight:800;cursor:pointer;font-family:Heebo,sans-serif;">'+d.label+'</button>';
@@ -831,10 +851,18 @@ function sibRenderReport(id, result, p1text) {
       '<div style="font-size:12px;color:#1a1a1a;line-height:1.9;direction:rtl;">'+html+'</div>' +
       usageBar +
     '</div>' +
-    '<div style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap;">' +
-      '<button onclick="sibCopyReport(\''+id+'\')" style="flex:1;padding:8px;background:#f5f0e8;border:1px solid rgba(180,140,60,0.3);color:#7a8a95;border-radius:7px;font-family:Heebo,sans-serif;font-size:11px;cursor:pointer;">📋 העתק דוח</button>' +
-      '<button onclick="sibSaveAnalysisAsNote(\''+id+'\')" style="flex:1;padding:8px;background:#f5e9c4;border:1px solid rgba(180,140,60,0.4);color:#9a6f00;border-radius:7px;font-family:Heebo,sans-serif;font-size:11px;font-weight:800;cursor:pointer;">💾 שמור ביומן</button>' +
+    // Row 1: Save actions
+    '<div style="display:flex;gap:6px;margin-bottom:6px;flex-wrap:wrap;">' +
+      '<button onclick="sibCopyReport(\''+id+'\')" style="flex:1;padding:8px;background:#f5f0e8;border:1px solid rgba(180,140,60,0.3);color:#7a8a95;border-radius:7px;font-family:Heebo,sans-serif;font-size:11px;cursor:pointer;">📋 העתק</button>' +
+      '<button onclick="sibSaveAnalysisAsNote(\''+id+'\')" style="flex:1;padding:8px;background:#f5e9c4;border:1px solid rgba(180,140,60,0.4);color:#9a6f00;border-radius:7px;font-family:Heebo,sans-serif;font-size:11px;font-weight:800;cursor:pointer;">💾 יומן</button>' +
       '<button onclick="sibSaveToEnc(\''+id+'\')" style="flex:1;padding:8px;background:#ede7f6;border:1px solid #9c6fdd;color:#4527a0;border-radius:7px;font-family:Heebo,sans-serif;font-size:11px;cursor:pointer;">📚 אנציקלופדיה</button>' +
+      '<button onclick="sibPrintReport(\''+id+'\')" style="flex:1;padding:8px;background:#e8f0fd;border:1px solid #93c5fd;color:#1a3d5c;border-radius:7px;font-family:Heebo,sans-serif;font-size:11px;cursor:pointer;">🖨️ הדפס</button>' +
+    '</div>' +
+    // Row 2: Share actions
+    '<div style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap;">' +
+      '<button onclick="sibEmailReport(\''+id+'\')" style="flex:1;padding:8px;background:#fff;border:1px solid #fca5a5;color:#c62828;border-radius:7px;font-family:Heebo,sans-serif;font-size:11px;font-weight:700;cursor:pointer;">✉️ מייל + קובץ</button>' +
+      '<button onclick="sibWhatsAppReport(\''+id+'\')" style="flex:1;padding:8px;background:#e8f5e9;border:1px solid #a5d6a7;color:#1b5e20;border-radius:7px;font-family:Heebo,sans-serif;font-size:11px;font-weight:700;cursor:pointer;">💬 WhatsApp</button>' +
+      '<button onclick="sibDownloadReportPDF(\''+id+'\')" style="flex:1;padding:8px;background:#fff7ed;border:1px solid #fb923c;color:#7c2d12;border-radius:7px;font-family:Heebo,sans-serif;font-size:11px;font-weight:700;cursor:pointer;">📥 PDF</button>' +
     '</div>';
 }
 
@@ -1149,6 +1177,47 @@ async function sibPhase1Url(id) {
     sibRefreshCard(id);
     sibShowPhase2Panel(id);
   } catch(e){ sibStopMeter(); sibShowError('שגיאה: '+e.message); }
+}
+
+
+// ── APPROVE + SAVE REPORT ─────────────────────────────────────────────
+async function sibApproveWithReport(id) {
+  var item     = _sibItems.find(function(i){ return i.id === id; });
+  var analysis = _sibAnalysis[id];
+  var p1text   = _sibPhase1[id] || '';
+  if (!item) return;
+
+  var sel = document.getElementById('sib-proj-sel-'+id);
+  var projectId = (sel && sel.value) ? sel.value : (item.project_id || null);
+
+  try {
+    // 1. Save analysis report to journal if exists
+    if (analysis && analysis.text) {
+      await sb.from('beni_notes').insert({
+        note_text: '📊 ' + (analysis.title||'דוח AI') + '\n\n' + analysis.text,
+        note_type: 'text',
+        photo_url: item.cloudinary_url || null,
+        project_id: projectId,
+        color: 'blue',
+        created_at: new Date().toISOString()
+      });
+    } else if (p1text) {
+      // Save phase 1 content if no analysis
+      await sb.from('beni_notes').insert({
+        note_text: '📋 ' + (item.file_name||'קובץ') + '\n\n' + p1text.substr(0,2000),
+        note_type: 'text',
+        photo_url: item.cloudinary_url || null,
+        project_id: projectId,
+        created_at: new Date().toISOString()
+      });
+    }
+
+    // 2. Approve in asset_inbox
+    await sibApprove(id, projectId);
+    showToast('✅ אושר + דוח נשמר ביומן', 'success');
+  } catch(e) {
+    showToast('שגיאה: ' + e.message, 'error');
+  }
 }
 
 // ── assetInboxLoad — no auto-rebuild ──────────────────────────────────
@@ -1777,4 +1846,224 @@ async function sibInsuranceGapModal(id) {
       '<div style="font-size:12px;color:#1a1a1a;line-height:1.8;white-space:pre-wrap;direction:rtl;">' + sibEsc(gapText) + '</div>';
     resultEl.appendChild(d);
   }
+}
+
+// ══════════════════════════════════════════════════════════════════════
+// UTILITY ACTIONS — Email / WhatsApp / Print / PDF
+// All support attaching the original scanned file
+// ══════════════════════════════════════════════════════════════════════
+
+// ── BUILD REPORT HTML (shared by print + PDF) ─────────────────────────
+function sibBuildReportHTML(id) {
+  var item     = _sibItems.find(function(i){ return i.id === id; });
+  var analysis = _sibAnalysis[id];
+  var p1text   = _sibPhase1[id] || '';
+  if (!analysis) return null;
+
+  var projName = (window.allProjects||[]).find(function(p){ return item && p.id === item.project_id; });
+  projName = projName ? projName.project_name : '';
+  var ts = new Date(analysis.timestamp).toLocaleString('he-IL');
+  var modeColors = {safety:'#c62828',engineering:'#1a3d5c',standards:'#4527a0',thirdparty:'#7c2d12',financial:'#1b5e20',protocol:'#7a5500',general:'#555'};
+  var color = modeColors[analysis.mode] || '#1a3d5c';
+
+  var bodyHTML = (analysis.text || '')
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/^## (.+)$/gm,'<h3 style="color:'+color+';border-bottom:2px solid '+color+'33;padding-bottom:4px;margin:16px 0 6px;">$1</h3>')
+    .replace(/\*\*([^*]+)\*\*/g,'<b>$1</b>')
+    .replace(/🔴/g,'<span style="color:#c62828;">🔴</span>')
+    .replace(/🟡/g,'<span style="color:#f59e0b;">🟡</span>')
+    .replace(/🟢/g,'<span style="color:#1b7a4a;">🟢</span>')
+    .replace(/\n/g,'<br>');
+
+  var usageStr = '';
+  if (analysis.usage) {
+    var iT = analysis.usage.input_tokens||0, oT = analysis.usage.output_tokens||0;
+    usageStr = '<div style="font-size:11px;color:#888;margin-top:12px;padding:8px;background:#fffbf0;border:1px solid #c9a84c;border-radius:6px;">'+
+      '🔢 '+(iT+oT).toLocaleString()+' טוקנים · 💰 $'+((iT*3+oT*15)/1000000).toFixed(4)+'</div>';
+  }
+
+  var fileLink = item && item.cloudinary_url
+    ? '<div style="margin-top:12px;padding:10px;background:#e8f0fd;border-radius:8px;font-size:12px;">'+
+      '📎 <b>קובץ מקור:</b> <a href="'+item.cloudinary_url+'" target="_blank" style="color:#1a3d5c;">'+sibEsc(item.file_name||'קובץ')+'</a></div>'
+    : '';
+
+  return '<!DOCTYPE html><html dir="rtl"><head><meta charset="UTF-8">'+
+    '<style>'+
+      'body{font-family:Arial,sans-serif;direction:rtl;padding:32px;color:#1a1a1a;font-size:13px;line-height:1.8;}'+
+      'h1{color:'+color+';font-size:18px;border-bottom:3px solid '+color+';padding-bottom:8px;margin-bottom:4px;}'+
+      'h3{margin:14px 0 6px;}'+
+      '.meta{font-size:11px;color:#888;margin-bottom:20px;}'+
+      '.phase1{background:#f0fdfb;border-right:4px solid #14b8a6;padding:12px;border-radius:6px;margin-bottom:16px;font-size:12px;white-space:pre-wrap;max-height:200px;overflow:auto;}'+
+      '@media print{.noprint{display:none!important}}'+
+    '</style></head><body>'+
+    '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px;">'+
+      '<div>'+
+        '<div style="font-size:9px;letter-spacing:2px;color:#888;text-transform:uppercase;">AI Site Intelligence</div>'+
+        '<h1>'+sibEsc(analysis.title||analysis.mode)+'</h1>'+
+      '</div>'+
+      '<div style="text-align:left;font-size:11px;color:#888;">'+
+        (projName?'<div><b>פרויקט:</b> '+sibEsc(projName)+'</div>':'')+
+        '<div><b>קובץ:</b> '+sibEsc((item&&item.file_name)||'')+'</div>'+
+        '<div><b>תאריך:</b> '+ts+'</div>'+
+      '</div>'+
+    '</div>'+
+    (p1text ? '<div class="phase1"><b>חומר גלם (שלב 1):</b><br>'+sibEsc(p1text.substr(0,600))+(p1text.length>600?'...':'')+'</div>' : '')+
+    '<div>'+bodyHTML+'</div>'+
+    usageStr + fileLink +
+    '<div style="margin-top:24px;font-size:10px;color:#aaa;border-top:1px solid #eee;padding-top:8px;">'+
+      'הופק ע"י מרכז נתונים שטח AI · '+ts+
+    '</div>'+
+    '</body></html>';
+}
+
+// ── PRINT ─────────────────────────────────────────────────────────────
+function sibPrintReport(id) {
+  var html = sibBuildReportHTML(id);
+  if (!html) { showToast('אין דוח להדפסה','error'); return; }
+  var w = window.open('','_blank','width=900,height=700');
+  if (w) { w.document.write(html); w.document.close(); setTimeout(function(){ w.print(); }, 400); }
+}
+
+// ── DOWNLOAD PDF ──────────────────────────────────────────────────────
+function sibDownloadReportPDF(id) {
+  // Open print dialog in new window — user saves as PDF from browser
+  var html = sibBuildReportHTML(id);
+  if (!html) { showToast('אין דוח להורדה','error'); return; }
+  // Add print-to-PDF instruction
+  html = html.replace('</body>',
+    '<div class="noprint" style="position:fixed;top:0;left:0;right:0;background:#1a3d5c;color:#fff;padding:12px 20px;font-family:Arial;font-size:13px;text-align:center;">'+
+    '📥 לשמירה כ-PDF: Ctrl+P (או Cmd+P) → שנה יעד ל"Save as PDF" → שמור &nbsp;&nbsp; <button onclick="window.print()" style="background:#c9a84c;border:none;color:#1a1a2e;border-radius:6px;padding:6px 16px;cursor:pointer;font-weight:800;">🖨️ פתח דיאלוג הדפסה</button></div>'+
+    '</body>');
+  var w = window.open('','_blank','width=900,height=700');
+  if (w) { w.document.write(html); w.document.close(); }
+}
+
+// ── EMAIL WITH ATTACHMENT ─────────────────────────────────────────────
+function sibEmailReport(id) {
+  var item     = _sibItems.find(function(i){ return i.id === id; });
+  var analysis = _sibAnalysis[id];
+  if (!analysis) { showToast('אין דוח לשליחה','error'); return; }
+
+  var projName = (window.allProjects||[]).find(function(p){ return item && p.id === item.project_id; });
+  projName = projName ? projName.project_name : '';
+
+  var subject = encodeURIComponent(
+    (analysis.title||'דוח AI') +
+    (projName ? ' — ' + projName : '') +
+    ' | ' + new Date().toLocaleDateString('he-IL')
+  );
+
+  // Build email body — plain text version of report
+  var body = (analysis.title||'דוח AI') + '\n';
+  body += (projName ? 'פרויקט: ' + projName + '\n' : '');
+  body += 'קובץ: ' + ((item&&item.file_name)||'') + '\n';
+  body += 'תאריך: ' + new Date(analysis.timestamp).toLocaleString('he-IL') + '\n';
+  body += '\n' + '─'.repeat(40) + '\n\n';
+  body += analysis.text;
+  if (item && item.cloudinary_url) {
+    body += '\n\n' + '─'.repeat(40) + '\n';
+    body += 'קובץ מקור: ' + item.cloudinary_url;
+  }
+
+  var encodedBody = encodeURIComponent(body);
+  var mailto = 'mailto:?subject=' + subject + '&body=' + encodedBody;
+
+  // Show modal with options
+  var panel = document.getElementById('sib-analysis-panel');
+  if (!panel) return;
+
+  var existing = document.getElementById('sib-email-modal');
+  if (existing) existing.remove();
+
+  var modal = document.createElement('div');
+  modal.id = 'sib-email-modal';
+  modal.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.6);z-index:9999;display:flex;align-items:center;justify-content:center;';
+  modal.innerHTML =
+    '<div style="background:#fff;border-radius:12px;padding:24px;max-width:440px;width:90%;direction:rtl;font-family:Heebo,sans-serif;">' +
+      '<div style="font-size:16px;font-weight:900;color:#1a3d5c;margin-bottom:16px;">✉️ שלח דוח במייל</div>' +
+      '<div style="font-size:12px;color:#555;margin-bottom:12px;">הדוח ישלח כטקסט בגוף המייל. הקובץ המקורי ישלח כקישור (Cloudinary).</div>' +
+      '<div style="background:#f0fdfb;border:1px solid #5eead4;border-radius:8px;padding:10px;margin-bottom:14px;font-size:11px;color:#0f766e;">' +
+        '📎 קישור לקובץ מקור יצורף אוטומטית לגוף המייל' +
+      '</div>' +
+      '<input id="sib-email-to" type="email" placeholder="כתובת מייל..." style="width:100%;border:1px solid rgba(180,140,60,0.3);border-radius:8px;padding:10px;font-family:Heebo,sans-serif;font-size:13px;box-sizing:border-box;margin-bottom:10px;">' +
+      '<div style="display:flex;gap:8px;">' +
+        '<button onclick="sibSendEmail(\'' + mailto + '\')" style="flex:1;padding:10px;background:#1a3d5c;border:none;color:#fff;border-radius:8px;font-family:Heebo,sans-serif;font-size:13px;font-weight:800;cursor:pointer;">📨 פתח אפליקציית מייל</button>' +
+        '<button onclick="document.getElementById(\'sib-email-modal\').remove()" style="padding:10px 16px;background:#f5f0e8;border:1px solid rgba(180,140,60,0.3);color:#7a8a95;border-radius:8px;font-family:Heebo,sans-serif;font-size:12px;cursor:pointer;">ביטול</button>' +
+      '</div>' +
+    '</div>';
+  document.body.appendChild(modal);
+  modal.onclick = function(e){ if(e.target===modal) modal.remove(); };
+}
+
+function sibSendEmail(baseMailto) {
+  var toEl = document.getElementById('sib-email-to');
+  var to = toEl ? toEl.value.trim() : '';
+  var finalMailto = to ? baseMailto.replace('mailto:?', 'mailto:' + encodeURIComponent(to) + '?') : baseMailto;
+  window.location.href = finalMailto;
+  var modal = document.getElementById('sib-email-modal');
+  if (modal) setTimeout(function(){ modal.remove(); }, 500);
+}
+
+// ── WHATSAPP ──────────────────────────────────────────────────────────
+function sibWhatsAppReport(id) {
+  var item     = _sibItems.find(function(i){ return i.id === id; });
+  var analysis = _sibAnalysis[id];
+  if (!analysis) { showToast('אין דוח לשליחה','error'); return; }
+
+  var projName = (window.allProjects||[]).find(function(p){ return item && p.id === item.project_id; });
+  projName = projName ? projName.project_name : '';
+
+  // WhatsApp has 4096 char limit — smart truncation
+  var header = '🏗️ *' + (analysis.title||'דוח AI') + '*' +
+    (projName ? '\n📁 פרויקט: ' + projName : '') +
+    '\n📎 קובץ: ' + ((item&&item.file_name)||'') +
+    '\n\n';
+
+  var maxBody = 3500 - header.length;
+  var body = analysis.text.substr(0, maxBody);
+  if (analysis.text.length > maxBody) body += '\n\n[... הדוח קוצר לווצאפ]';
+
+  var fileLink = (item && item.cloudinary_url)
+    ? '\n\n🔗 *קובץ מקור:*\n' + item.cloudinary_url
+    : '';
+
+  var msg = header + body + fileLink;
+
+  // Show phone input modal
+  var existing = document.getElementById('sib-wa-modal');
+  if (existing) existing.remove();
+
+  var modal = document.createElement('div');
+  modal.id = 'sib-wa-modal';
+  modal.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.6);z-index:9999;display:flex;align-items:center;justify-content:center;';
+  modal.innerHTML =
+    '<div style="background:#fff;border-radius:12px;padding:24px;max-width:440px;width:90%;direction:rtl;font-family:Heebo,sans-serif;">' +
+      '<div style="font-size:16px;font-weight:900;color:#1b5e20;margin-bottom:16px;">💬 שלח דוח ב-WhatsApp</div>' +
+      '<div style="font-size:12px;color:#555;margin-bottom:12px;">הדוח ישלח כהודעת טקסט. קישור לקובץ המקורי יצורף.</div>' +
+      '<div style="background:#e8f5e9;border:1px solid #a5d6a7;border-radius:8px;padding:10px;margin-bottom:14px;font-size:11px;color:#1b5e20;">' +
+        '📱 ניתן לשלוח לכל מספר — מספר ישראלי (050/052/054...) בלי 0' +
+      '</div>' +
+      '<div style="display:flex;gap:8px;margin-bottom:10px;">' +
+        '<span style="background:#f5f0e8;border:1px solid rgba(180,140,60,0.3);border-radius:8px 0 0 8px;padding:10px 12px;font-size:13px;color:#888;">+972</span>' +
+        '<input id="sib-wa-phone" type="tel" placeholder="501234567" style="flex:1;border:1px solid rgba(180,140,60,0.3);border-radius:0 8px 8px 0;padding:10px;font-family:Heebo,sans-serif;font-size:13px;">' +
+      '</div>' +
+      '<div style="font-size:10px;color:#aaa;margin-bottom:12px;">השאר ריק לפתיחת WhatsApp בלי מספר ספציפי</div>' +
+      '<div style="display:flex;gap:8px;">' +
+        '<button onclick="sibSendWhatsApp(\'' + encodeURIComponent(msg).replace(/'/g,"\\'") + '\')" style="flex:1;padding:10px;background:#25D366;border:none;color:#fff;border-radius:8px;font-family:Heebo,sans-serif;font-size:13px;font-weight:800;cursor:pointer;">📲 שלח WhatsApp</button>' +
+        '<button onclick="document.getElementById(\'sib-wa-modal\').remove()" style="padding:10px 16px;background:#f5f0e8;border:1px solid rgba(180,140,60,0.3);color:#7a8a95;border-radius:8px;font-family:Heebo,sans-serif;font-size:12px;cursor:pointer;">ביטול</button>' +
+      '</div>' +
+    '</div>';
+  document.body.appendChild(modal);
+  modal.onclick = function(e){ if(e.target===modal) modal.remove(); };
+}
+
+function sibSendWhatsApp(encodedMsg) {
+  var phoneEl = document.getElementById('sib-wa-phone');
+  var phone = phoneEl ? phoneEl.value.replace(/\D/g,'') : '';
+  var url = phone
+    ? 'https://wa.me/972' + phone.replace(/^0/,'') + '?text=' + encodedMsg
+    : 'https://wa.me/?text=' + encodedMsg;
+  window.open(url, '_blank');
+  var modal = document.getElementById('sib-wa-modal');
+  if (modal) setTimeout(function(){ modal.remove(); }, 300);
 }
