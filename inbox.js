@@ -1,4 +1,4 @@
-// inbox.js — תיבת נכנסים חכמה — Smart Inbox
+// inbox.js - Smart Inbox Module
 // Loaded dynamically by index.html via _fetchInboxModule()
 // Two-panel layout: incoming files (right) + AI analysis (left)
 
