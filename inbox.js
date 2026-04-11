@@ -486,8 +486,20 @@ async function sibTranscribe(id) {
       throw new Error('ElevenLabs HTTP ' + transcResp.status + (errBody ? ' — ' + errBody : ''));
     }
     var transcData = await transcResp.json();
+    console.log('[INBOX] ElevenLabs response keys:', Object.keys(transcData));
+    // scribe_v1 returns .text directly; with diarize=true also returns .words[]
     var transcript = transcData.text || '';
+    // If .text is empty but .words exist, build transcript from words
+    if (!transcript && transcData.words && transcData.words.length) {
+      transcript = transcData.words.map(function(w){
+        var spk = w.speaker_id ? '[דובר '+w.speaker_id+'] ' : '';
+        return (w.type === 'spacing' ? '' : spk + (w.text||''));
+      }).join(' ').replace(/\s+/g,' ').trim();
+    }
+    if (!transcript) transcript = '(לא זוהה טקסט — נסה קובץ אחר)';
+    console.log('[INBOX] transcript length:', transcript.length);
 
+    if (window.tkrunEnd) window.tkrunEnd(0, Math.ceil(transcript.length/4));
     var result = { mode: 'transcription', text: transcript, timestamp: new Date().toISOString() };
     _sibAnalysis[id] = result;
 
