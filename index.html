@@ -6614,8 +6614,7 @@ async function _fetchEncyclopedia() {
     if (!res.ok) throw new Error('HTTP ' + res.status);
     var code = await res.text();
     if (code.trim().startsWith('<')) throw new Error('Got HTML not JS');
-    var ns = document.createElement('script'); ns.textContent = code;
-    document.head.appendChild(ns);
+    try { (new Function(code))(); } catch(e2) { var ns=document.createElement('script'); ns.textContent=code; document.head.appendChild(ns); }
   } catch(e) { console.error('encyclopedia.js fetch failed:', e); _encyclopediaFetched = false; }
 }
 
@@ -8644,8 +8643,11 @@ async function _fetchEncyclopedia() {
     if (!res.ok) throw new Error('HTTP ' + res.status);
     var code = await res.text();
     if (code.trim().startsWith('<')) throw new Error('Got HTML not JS');
-    var ns = document.createElement('script'); ns.textContent = code;
-    document.head.appendChild(ns);
+    try { (new Function(code))(); } catch(evalErr) {
+      // fallback to script tag injection
+      var ns = document.createElement('script'); ns.textContent = code;
+      document.head.appendChild(ns);
+    }
   } catch(e) { console.error('encyclopedia.js fetch failed:', e); _encFetched = false; }
 }
 

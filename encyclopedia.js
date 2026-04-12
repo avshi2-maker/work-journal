@@ -8,6 +8,18 @@
 var _encItems     = [];
 var _encCatFilter = '';
 var _encViewMode  = 'grid';
+var _encActionMap = {}; // id -> item mapping for event handlers
+
+function _encAction(id, action) {
+  if (action === 'delete') encDelete(id);
+  else if (action === 'print') encPrint(id);
+  else if (action === 'mail')  encMail(id);
+  else if (action === 'wa')    encWA(id);
+  else if (action === 'report') encViewReport(id);
+  else if (action === 'printR') encPrint(id, true);
+  else if (action === 'mailR')  encMail(id, true);
+  else if (action === 'waR')    encWA(id, true);
+}
 
 async function encInit() {
   var grid = document.getElementById('enc-grid');
@@ -125,6 +137,94 @@ function encBuildCard(item) {
   var proj=(window.allProjects||[]).find(function(p){return p.id===item.source_project_id;});
   var dt=item.created_at?new Date(item.created_at).toLocaleDateString('he-IL'):'';
   var desc=item.description?(item.description.substring(0,120)+(item.description.length>120?'\u2026':'')):'';;
+  var card=document.createElement('div');
+  card.style.cssText='background:#1e1e35;border:1px solid '+(_sevBorder[sev]||'rgba(255,255,255,0.08)')+';border-radius:12px;padding:16px;direction:rtl;display:flex;flex-direction:column;gap:8px;';
+
+  // Title row
+  var topRow=document.createElement('div');
+  topRow.style.cssText='display:flex;align-items:flex-start;gap:8px;';
+  var dot=document.createElement('div');
+  dot.style.cssText='width:8px;height:8px;border-radius:50%;background:'+(_sevDot[sev]||'#888')+';margin-top:5px;flex-shrink:0;';
+  var titleEl=document.createElement('div');
+  titleEl.style.cssText='flex:1;font-size:13px;font-weight:800;color:#fff;line-height:1.4;';
+  titleEl.textContent=item.title||'';
+  var delBtn=document.createElement('button');
+  delBtn.textContent='🗑';
+  delBtn.title='מחק';
+  delBtn.style.cssText='background:none;border:none;color:#3a3a55;font-size:13px;cursor:pointer;padding:0 2px;';
+  delBtn.onmouseover=function(){this.style.color='#f87171';};
+  delBtn.onmouseout=function(){this.style.color='#3a3a55';};
+  delBtn.onclick=function(){ encDelete(item.id); };
+  topRow.appendChild(dot); topRow.appendChild(titleEl); topRow.appendChild(delBtn);
+  card.appendChild(topRow);
+
+  // Meta row
+  var metaRow=document.createElement('div');
+  metaRow.style.cssText='display:flex;gap:6px;align-items:center;flex-wrap:wrap;';
+  var catSpan=document.createElement('span');
+  catSpan.textContent=item.category||'כללי';
+  catSpan.style.cssText='font-size:11px;color:#c9a84c;background:rgba(201,168,76,0.08);border-radius:8px;padding:2px 8px;';
+  metaRow.appendChild(catSpan);
+  if (proj) {
+    var projSpan=document.createElement('span');
+    projSpan.textContent='🏗️ '+(proj.project_name||'');
+    projSpan.style.cssText='font-size:10px;color:#93c5fd;background:rgba(59,130,246,0.08);border:1px solid rgba(59,130,246,0.12);border-radius:8px;padding:2px 8px;';
+    metaRow.appendChild(projSpan);
+  }
+  var dtSpan=document.createElement('span');
+  dtSpan.textContent=dt;
+  dtSpan.style.cssText='font-size:10px;color:#444;margin-right:auto;';
+  metaRow.appendChild(dtSpan);
+  card.appendChild(metaRow);
+
+  // Description
+  if (desc) {
+    var descEl=document.createElement('div');
+    descEl.textContent=desc;
+    descEl.style.cssText='font-size:12px;color:#666;line-height:1.6;';
+    card.appendChild(descEl);
+  }
+
+  // AI report snippet
+  if (item.ai_report) {
+    var rdt=item.ai_report_date?new Date(item.ai_report_date).toLocaleDateString('he-IL'):'';
+    var snip=item.ai_report.substring(0,80)+(item.ai_report.length>80?'\u2026':'');
+    var rWrap=document.createElement('div');
+    rWrap.style.cssText='background:rgba(201,168,76,0.06);border-right:3px solid #c9a84c;padding:6px 10px;border-radius:0 6px 6px 0;cursor:pointer;';
+    rWrap.onclick=function(){ encViewReport(item.id); };
+    var rTitle=document.createElement('div');
+    rTitle.textContent='🧠 '+rdt;
+    rTitle.style.cssText='font-size:10px;color:#c9a84c;font-weight:700;margin-bottom:2px;';
+    var rText=document.createElement('div');
+    rText.textContent=snip;
+    rText.style.cssText='font-size:11px;color:#888;';
+    rWrap.appendChild(rTitle); rWrap.appendChild(rText);
+    card.appendChild(rWrap);
+  }
+
+  // Action bar
+  var actions=document.createElement('div');
+  actions.style.cssText='display:flex;gap:5px;padding-top:6px;border-top:1px solid rgba(255,255,255,0.05);';
+  var btns=[
+    {lbl:'🖨️ הדפס', fn:function(){encPrint(item.id);},  s:'rgba(26,61,92,0.25)','bc':'rgba(147,197,253,0.3)','c':'#93c5fd'},
+    {lbl:'✉️ מייל',  fn:function(){encMail(item.id);},   s:'rgba(198,40,40,0.1)', 'bc':'rgba(252,165,165,0.3)','c':'#fca5a5'},
+    {lbl:'💬 WA',    fn:function(){encWA(item.id);},     s:'rgba(37,211,102,0.1)','bc':'rgba(74,222,128,0.3)', 'c':'#4ade80'},
+  ];
+  if (item.ai_report) btns.push({lbl:'🧠 דוח',fn:function(){encViewReport(item.id);},s:'rgba(201,168,76,0.1)','bc':'rgba(201,168,76,0.3)','c':'#c9a84c'});
+  btns.forEach(function(b){
+    var btn=document.createElement('button');
+    btn.textContent=b.lbl;
+    btn.style.cssText='flex:1;padding:5px;background:'+b.s+';border:1px solid '+b.bc+';color:'+b.c+';border-radius:7px;cursor:pointer;font-family:Heebo,sans-serif;font-size:11px;font-weight:700;';
+    btn.onclick=b.fn;
+    actions.appendChild(btn);
+  });
+  card.appendChild(actions);
+  return card;
+}
+  var sev=item.severity||'important';
+  var proj=(window.allProjects||[]).find(function(p){return p.id===item.source_project_id;});
+  var dt=item.created_at?new Date(item.created_at).toLocaleDateString('he-IL'):'';
+  var desc=item.description?(item.description.substring(0,120)+(item.description.length>120?'\u2026':'')):'';;
   var reportSnip='';
   if(item.ai_report){
     var rs=item.ai_report.substring(0,80)+(item.ai_report.length>80?'\u2026':'');
@@ -136,58 +236,65 @@ function encBuildCard(item) {
   }
   var card=document.createElement('div');
   card.style.cssText='background:#1e1e35;border:1px solid '+(_sevBorder[sev]||'rgba(255,255,255,0.08)')+';border-radius:12px;padding:16px;direction:rtl;display:flex;flex-direction:column;gap:8px;';
-  card.innerHTML=
-    '<div style="display:flex;align-items:flex-start;gap:8px;">'+
-      '<div style="width:8px;height:8px;border-radius:50%;background:'+(_sevDot[sev]||'#888')+';margin-top:5px;flex-shrink:0;"></div>'+
-      '<div style="flex:1;font-size:13px;font-weight:800;color:#fff;line-height:1.4;">'+encEsc(item.title)+'</div>'+
-      '<button onclick="encDelete('"+item.id+"')" style="background:none;border:none;color:#3a3a55;font-size:13px;cursor:pointer;padding:0 2px;" onmouseover="this.style.color='#f87171'" onmouseout="this.style.color='#3a3a55'">\u{1F5D1}</button>'+
-    '</div>'+
-    '<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">'+
-      '<span style="font-size:11px;color:#c9a84c;background:rgba(201,168,76,0.08);border-radius:8px;padding:2px 8px;">'+encEsc(item.category||'כללי')+'</span>'+
-      (proj?'<span style="font-size:10px;color:#93c5fd;background:rgba(59,130,246,0.08);border:1px solid rgba(59,130,246,0.12);border-radius:8px;padding:2px 8px;">\u{1F3D7} '+encEsc(proj.project_name)+'</span>':'')+
-      '<span style="font-size:10px;color:#444;margin-right:auto;">'+dt+'</span>'+
-    '</div>'+
-    (desc?'<div style="font-size:12px;color:#666;line-height:1.6;">'+encEsc(desc)+'</div>':'')+
-    reportSnip+
-    '<div style="display:flex;gap:5px;padding-top:6px;border-top:1px solid rgba(255,255,255,0.05);">'+
-      '<button onclick="encPrint(''+item.id+'')" style="'+encActBtn('rgba(26,61,92,0.25)','rgba(147,197,253,0.3)','#93c5fd')+'">\uD83D\uDDB6 הדפס</button>'+
-      '<button onclick="encMail(''+item.id+'')" style="'+encActBtn('rgba(198,40,40,0.1)','rgba(252,165,165,0.3)','#fca5a5')+'">\u2709\uFE0F מייל</button>'+
-      '<button onclick="encWA(''+item.id+'')" style="'+encActBtn('rgba(37,211,102,0.1)','rgba(74,222,128,0.3)','#4ade80')+'">\uD83D\uDCAC WA</button>'+
-      (item.ai_report?'<button onclick="encViewReport(&quot;'+item.id+'&quot;)" style="'+encActBtn('rgba(201,168,76,0.1)','rgba(201,168,76,0.3)','#c9a84c')+'">\uD83E\uDDE0 דוח</button>':'')+
-    '</div>';
-  return card;
-}
 
-function encBuildList(items){
-  var rows=items.map(function(item){
-    var sev=item.severity||'important';
-    var proj=(window.allProjects||[]).find(function(p){return p.id===item.source_project_id;});
-    var dt=item.created_at?new Date(item.created_at).toLocaleDateString('he-IL'):'';
-    return '<tr style="border-bottom:1px solid rgba(255,255,255,0.05);" onmouseover="this.style.background='rgba(255,255,255,0.02)'" onmouseout="this.style.background=''">'+
+function encBuildList(items) {
+  var wrap = document.createElement('div');
+  var table = document.createElement('table');
+  table.style.cssText = 'width:100%;border-collapse:collapse;direction:rtl;font-size:12px;';
+  var thead = '<thead><tr style="border-bottom:1px solid rgba(255,255,255,0.08);">'+
+    '<th style="padding:8px;width:16px;"></th>'+
+    '<th style="padding:8px;text-align:right;color:#c9a84c;font-weight:700;">כותרת</th>'+
+    '<th style="padding:8px;text-align:right;color:#c9a84c;font-weight:700;">קטגוריה</th>'+
+    '<th style="padding:8px;text-align:right;color:#c9a84c;font-weight:700;">פרויקט</th>'+
+    '<th style="padding:8px;text-align:right;color:#c9a84c;font-weight:700;">תאריך</th>'+
+    '<th style="padding:8px;text-align:right;color:#c9a84c;font-weight:700;">פעולות</th>'+
+  '</tr></thead>';
+  table.innerHTML = thead + '<tbody id="enc-list-tbody"></tbody>';
+  wrap.appendChild(table);
+
+  var tbody = table.querySelector('#enc-list-tbody');
+  items.forEach(function(item){
+    var sev  = item.severity||'important';
+    var proj = (window.allProjects||[]).find(function(p){ return p.id===item.source_project_id; });
+    var dt   = item.created_at ? new Date(item.created_at).toLocaleDateString('he-IL') : '';
+
+    var tr = document.createElement('tr');
+    tr.style.borderBottom = '1px solid rgba(255,255,255,0.05)';
+    tr.onmouseover = function(){ this.style.background='rgba(255,255,255,0.02)'; };
+    tr.onmouseout  = function(){ this.style.background=''; };
+
+    tr.innerHTML =
       '<td style="padding:9px 8px;"><span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:'+(_sevDot[sev]||'#888')+'"></span></td>'+
       '<td style="padding:9px 8px;font-weight:700;color:#fff;font-size:12px;">'+encEsc(item.title)+'</td>'+
       '<td style="padding:9px 8px;font-size:11px;color:#c9a84c;">'+encEsc(item.category||'כללי')+'</td>'+
       '<td style="padding:9px 8px;font-size:11px;color:#93c5fd;">'+(proj?encEsc(proj.project_name):'—')+'</td>'+
       '<td style="padding:9px 8px;font-size:11px;color:#444;">'+dt+'</td>'+
-      '<td style="padding:9px 8px;white-space:nowrap;display:flex;gap:4px;">'+
-        '<button onclick="encPrint(''+item.id+'')" style="background:rgba(26,61,92,0.2);border:1px solid rgba(147,197,253,0.2);color:#93c5fd;border-radius:6px;padding:3px 8px;cursor:pointer;font-size:11px;">🖨</button>'+
-        '<button onclick="encMail(''+item.id+'')" style="background:rgba(198,40,40,0.08);border:1px solid rgba(252,165,165,0.2);color:#fca5a5;border-radius:6px;padding:3px 8px;cursor:pointer;font-size:11px;">✉</button>'+
-        '<button onclick="encWA(''+item.id+'')" style="background:rgba(37,211,102,0.08);border:1px solid rgba(74,222,128,0.2);color:#4ade80;border-radius:6px;padding:3px 8px;cursor:pointer;font-size:11px;">💬</button>'+
-        (item.ai_report?'<button onclick="encViewReport(&quot;'+item.id+'&quot;)" style="background:rgba(201,168,76,0.08);border:1px solid rgba(201,168,76,0.2);color:#c9a84c;border-radius:6px;padding:3px 8px;cursor:pointer;font-size:11px;">🧠</button>':'')+
-        '<button onclick="encDelete('"+item.id+"')" style="background:rgba(239,68,68,0.06);border:1px solid rgba(239,68,68,0.2);color:#f87171;border-radius:6px;padding:3px 8px;cursor:pointer;font-size:11px;">🗑</button>'+
-      '</td>'+
-    '</tr>';
-  }).join('');
-  return '<table style="width:100%;border-collapse:collapse;direction:rtl;font-size:12px;">'+
-    '<thead><tr style="border-bottom:1px solid rgba(255,255,255,0.08);">'+
-      '<th style="padding:8px;width:16px;"></th>'+
-      '<th style="padding:8px;text-align:right;color:#c9a84c;font-weight:700;">כותרת</th>'+
-      '<th style="padding:8px;text-align:right;color:#c9a84c;font-weight:700;">קטגוריה</th>'+
-      '<th style="padding:8px;text-align:right;color:#c9a84c;font-weight:700;">פרויקט</th>'+
-      '<th style="padding:8px;text-align:right;color:#c9a84c;font-weight:700;">תאריך</th>'+
-      '<th style="padding:8px;text-align:right;color:#c9a84c;font-weight:700;">פעולות</th>'+
-    '</tr></thead><tbody>'+rows+'</tbody></table>';
+      '<td style="padding:9px 8px;"></td>';
+
+    // Build action buttons with addEventListener
+    var actionTd = tr.querySelectorAll('td')[5];
+    actionTd.style.cssText = 'padding:9px 8px;white-space:nowrap;';
+    var btnDefs = [
+      {t:'🖨',  fn:function(){encPrint(item.id);},  s:'rgba(26,61,92,0.2)', bc:'rgba(147,197,253,0.2)', c:'#93c5fd'},
+      {t:'✉️',   fn:function(){encMail(item.id);},   s:'rgba(198,40,40,0.08)',bc:'rgba(252,165,165,0.2)',c:'#fca5a5'},
+      {t:'💬',  fn:function(){encWA(item.id);},     s:'rgba(37,211,102,0.08)',bc:'rgba(74,222,128,0.2)', c:'#4ade80'},
+    ];
+    if (item.ai_report) btnDefs.push({t:'🧠',fn:function(){encViewReport(item.id);},s:'rgba(201,168,76,0.08)',bc:'rgba(201,168,76,0.2)',c:'#c9a84c'});
+    btnDefs.push({t:'🗑',fn:function(){encDelete(item.id);},s:'rgba(239,68,68,0.06)',bc:'rgba(239,68,68,0.2)',c:'#f87171'});
+    btnDefs.forEach(function(b){
+      var btn=document.createElement('button');
+      btn.textContent=b.t;
+      btn.style.cssText='background:'+b.s+';border:1px solid '+b.bc+';color:'+b.c+';border-radius:6px;padding:3px 8px;cursor:pointer;font-size:11px;margin-left:4px;';
+      btn.onclick=b.fn;
+      actionTd.appendChild(btn);
+    });
+
+    tbody.appendChild(tr);
+  });
+
+  return wrap.outerHTML;
 }
+
 
 function encViewReport(id) {
   var item=_encItems.find(function(i){return i.id===id;});
@@ -205,13 +312,13 @@ function encViewReport(id) {
           '<div style="font-size:16px;font-weight:800;color:#fff;">'+encEsc(item.title)+'</div>'+
           '<div style="font-size:11px;color:#555;margin-top:3px;">'+(proj?'🏗️ '+encEsc(proj.project_name)+' · ':'')+dt+'</div>'+
         '</div>'+
-        '<button onclick="this.closest('div[style*=fixed]').remove()" style="background:rgba(255,255,255,0.08);border:none;color:#aaa;border-radius:8px;padding:6px 12px;cursor:pointer;">✕</button>'+
+        '<button onclick="this.closest(\"div[style*=fixed]\").remove()" style="background:rgba(255,255,255,0.08);border:none;color:#aaa;border-radius:8px;padding:6px 12px;cursor:pointer;">✕</button>'+
       '</div>'+
       '<div style="padding:20px;font-size:13px;color:#ccc;line-height:2;white-space:pre-wrap;max-height:55vh;overflow-y:auto;">'+encEsc(item.ai_report)+'</div>'+
       '<div style="padding:14px 20px;border-top:1px solid rgba(255,255,255,0.07);display:flex;gap:8px;">'+
-        '<button onclick="encPrint(''+id+'',true)" style="flex:1;padding:9px;background:rgba(26,61,92,0.3);border:1px solid rgba(147,197,253,0.3);color:#93c5fd;border-radius:8px;cursor:pointer;font-family:Heebo,sans-serif;font-size:12px;font-weight:700;">🖨️ הדפס</button>'+
-        '<button onclick="encMail(''+id+'',true)" style="flex:1;padding:9px;background:rgba(198,40,40,0.12);border:1px solid rgba(252,165,165,0.3);color:#fca5a5;border-radius:8px;cursor:pointer;font-family:Heebo,sans-serif;font-size:12px;font-weight:700;">✉️ מייל</button>'+
-        '<button onclick="encWA(''+id+'',true)" style="flex:1;padding:9px;background:rgba(37,211,102,0.1);border:1px solid rgba(74,222,128,0.3);color:#4ade80;border-radius:8px;cursor:pointer;font-family:Heebo,sans-serif;font-size:12px;font-weight:700;">💬 WA</button>'+
+        '<button onclick="_encAction(this.getAttribute(&quot;data-id&quot;),&quot;print&quot;)" style="flex:1;padding:9px;background:rgba(26,61,92,0.3);border:1px solid rgba(147,197,253,0.3);color:#93c5fd;border-radius:8px;cursor:pointer;font-family:Heebo,sans-serif;font-size:12px;font-weight:700;">🖨️ הדפס</button>'+
+        '<button onclick="_encAction(this.getAttribute(&quot;data-id&quot;),&quot;mail&quot;)" style="flex:1;padding:9px;background:rgba(198,40,40,0.12);border:1px solid rgba(252,165,165,0.3);color:#fca5a5;border-radius:8px;cursor:pointer;font-family:Heebo,sans-serif;font-size:12px;font-weight:700;">✉️ מייל</button>'+
+        '<button onclick="_encAction(this.getAttribute(&quot;data-id&quot;),&quot;wa&quot;)" style="flex:1;padding:9px;background:rgba(37,211,102,0.1);border:1px solid rgba(74,222,128,0.3);color:#4ade80;border-radius:8px;cursor:pointer;font-family:Heebo,sans-serif;font-size:12px;font-weight:700;">💬 WA</button>'+
       '</div>'+
     '</div>';
   document.body.appendChild(ov);
