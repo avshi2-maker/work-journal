@@ -1563,17 +1563,44 @@ async function sibRunMeasOCR(id) {
   sibStartMeter('OCR מדידות');
 
   try {
-  var _measPrompt = 'OCR \u05de\u05d3\u05d9\u05d3\u05d5\u05ea: \u05d7\u05dc\u05e5 \u05db\u05dc \u05d4\u05de\u05d3\u05d9\u05d3\u05d5\u05ea. JSON \u05d1\u05dc\u05d1\u05d3:\n{"rows":[{"item":"\u05e9\u05dd","length":4.5,"width":3.2,"area":14.4,"unit":"\u05de\"\u05e8","notes":""}],"total_area":14.4,"notes":""}';
-  var imageContent = item.cloudinary_url ? [
-    { type: 'image', source: { type: 'url', url: item.cloudinary_url } },
-    { type: 'text', text: _measPrompt }
-  ] : [{ type: 'text', text: '\u05d0\u05d9\u05df \u05ea\u05de\u05d5\u05e0\u05d4 \u05d6\u05de\u05d9\u05e0\u05d4' }];
+    var systemPrompt = [
+      'You are an expert OCR system for Israeli construction site field measurements.',
+      'You read handwritten Hebrew measurement notes from construction workers.',
+      'The notes are typically written in two columns: right side = room/area name (Hebrew), left side = dimensions.',
+      'Dimensions can be written in many formats: 3x2, 3X2, 3*2, 3.5x4, 300x200 (cm), 3/2, or just a single number.',
+      'If only one number given with no context, treat as length only.',
+      'Convert all cm to meters (divide by 100). Calculate area = length × width.',
+      'If area cannot be calculated (only one dimension), leave area as null.',
+      'ALWAYS return valid JSON only, no other text, no markdown, no explanation.',
+      'If you cannot read a word clearly, write your best guess in Hebrew.',
+      'Extract EVERY row you can see, even if partially readable.'
+    ].join(' ');
+
+    var userPrompt = [
+      'Read ALL handwritten measurements from this image.',
+      'This is a field measurement sheet from an Israeli construction site.',
+      'Return ONLY this JSON structure with no extra text:',
+      '{"rows":[{"item":"room name in Hebrew","length":4.5,"width":3.2,"area":14.4,"unit":"sq_m","notes":""}],"total_area":14.4,"notes":"any general note"}',
+      'Rules:',
+      '- item: Hebrew room/area name as written',
+      '- length and width: decimal numbers in METERS',
+      '- area: length × width (null if cannot calculate)',
+      '- unit: always "sq_m"',
+      '- Extract every row you see, minimum 1 row',
+      '- If you see a number like 322, check context: is it 3.22m or 322cm (=3.22m)?',
+      '- Do NOT return empty rows array'
+    ].join('\n');
+
+    var imageContent = item.cloudinary_url ? [
+      { type: 'image', source: { type: 'url', url: item.cloudinary_url } },
+      { type: 'text', text: userPrompt }
+    ] : [{ type: 'text', text: 'No image available' }];
 
     var raw = await claudeFetch({
       _apiKey: apiKey,
       model: 'claude-sonnet-4-20250514',
-      max_tokens: 1500,
-      system: 'אתה מומחה OCR למדידות בנייה. קרא כתב יד מדויק והחזר JSON מובנה בלבד. אל תוסיף הסברים.',
+      max_tokens: 2000,
+      system: systemPrompt,
       messages: [{ role: 'user', content: imageContent }]
     }, null);
 
@@ -1581,15 +1608,32 @@ async function sibRunMeasOCR(id) {
     sibStopMeter(resp && resp.usage);
 
     var rawText = resp && resp.content && resp.content[0] ? resp.content[0].text : '';
-    // Strip markdown fences if present
     rawText = rawText.replace(/```json\n?/g,'').replace(/```\n?/g,'').trim();
+
+    // If Claude returned explanation + JSON, extract just the JSON part
+    var jsonMatch = rawText.match(/\{[\s\S]*\}/);
+    if (jsonMatch) rawText = jsonMatch[0];
 
     var parsed;
     try { parsed = JSON.parse(rawText); }
-    catch(e) { throw new Error('Claude לא החזיר JSON תקין — נסה שוב או ערוך ידנית'); }
+    catch(e) {
+      // Last resort: show raw text in editable box so user can fix
+      _measItems = [{item:'לא זוהה אוטומטית',length:null,width:null,area:null,unit:'sq_m',notes:rawText.substr(0,200)}];
+      parsed = {rows:_measItems, total_area:0, notes:'OCR חלקי — ערוך ידנית'};
+    }
 
     _measItems = parsed.rows || [];
-    if (_measItems.length === 0) throw new Error('לא נמצאו מדידות בתמונה');
+
+    // Recalculate areas where missing
+    _measItems.forEach(function(r){
+      if(!r.area && r.length && r.width) r.area = Math.round(r.length * r.width * 100)/100;
+      if(!r.unit) r.unit = 'sq_m';
+    });
+
+    if (_measItems.length === 0) {
+      _measItems = [{item:'— ערוך ידנית —',length:null,width:null,area:null,unit:'sq_m',notes:''}];
+      parsed.rows = _measItems;
+    }
 
     sibRenderMeasTable(id, parsed);
 
@@ -1652,9 +1696,10 @@ function sibRenderMeasTable(id, parsed) {
 
     // Action buttons
     '<div style="display:flex;gap:8px;flex-wrap:wrap;">' +
-      '<button onclick="sibDownloadMeasCSV(\''+id+'\')" style="flex:1;padding:10px;background:#0f766e;border:none;color:#fff;border-radius:8px;font-family:Heebo,sans-serif;font-size:12px;font-weight:800;cursor:pointer;">⬇ הורד CSV</button>' +
-      '<button onclick="sibSaveMeasurements(\''+id+'\')" style="flex:1;padding:10px;background:linear-gradient(135deg,#1a3d5c,#2d6a9f);border:none;color:#fff;border-radius:8px;font-family:Heebo,sans-serif;font-size:12px;font-weight:800;cursor:pointer;">💾 שמור במאגר</button>' +
-      '<button onclick="sibSendMeasToTakeoff(\''+id+'\')" style="flex:1;padding:10px;background:#f5e9c4;border:1px solid #c9a84c;color:#7a5500;border-radius:8px;font-family:Heebo,sans-serif;font-size:12px;font-weight:700;cursor:pointer;">📐 שלח לטייקאוף</button>' +
+      '<button onclick="sibDownloadMeasCSV(\''+id+'\')" style="flex:1;padding:10px;background:#0f766e;border:none;color:#fff;border-radius:8px;font-family:Heebo,sans-serif;font-size:12px;font-weight:800;cursor:pointer;">⬇ CSV</button>' +
+      '<button onclick="sibExportMeasXLSX(\''+id+'\')" style="flex:1;padding:10px;background:#217346;border:none;color:#fff;border-radius:8px;font-family:Heebo,sans-serif;font-size:12px;font-weight:800;cursor:pointer;">📊 Excel</button>' +
+      '<button onclick="sibSaveMeasurements(\''+id+'\')" style="flex:1;padding:10px;background:linear-gradient(135deg,#1a3d5c,#2d6a9f);border:none;color:#fff;border-radius:8px;font-family:Heebo,sans-serif;font-size:12px;font-weight:800;cursor:pointer;">💾 שמור</button>' +
+      '<button onclick="sibSendMeasToTakeoff(\''+id+'\')" style="flex:1;padding:10px;background:#f5e9c4;border:1px solid #c9a84c;color:#7a5500;border-radius:8px;font-family:Heebo,sans-serif;font-size:12px;font-weight:700;cursor:pointer;">📐 טייקאוף</button>' +
     '</div>';
 }
 
@@ -2339,4 +2384,124 @@ function sibSendWhatsApp(encodedMsg) {
   window.open(url, '_blank');
   var modal = document.getElementById('sib-wa-modal');
   if (modal) setTimeout(function(){ modal.remove(); }, 300);
+}
+
+// ── EXPORT MEASUREMENTS TO XLSX ───────────────────────────────────────
+async function sibExportMeasXLSX(id) {
+  var item = _sibItems.find(function(i){ return i.id === id; });
+  var labelEl = document.getElementById('meas-label-'+id);
+  var projEl  = document.getElementById('meas-proj-'+id);
+  var label   = labelEl ? labelEl.value : 'מדידות שטח';
+  var projName = '';
+  if (projEl && projEl.value) {
+    var proj = (window.allProjects||[]).find(function(p){ return p.id===projEl.value; });
+    projName = proj ? proj.project_name : '';
+  }
+  var total = _measItems.reduce(function(s,r){ return s+(parseFloat(r.area)||0); }, 0);
+  var date  = new Date().toLocaleDateString('he-IL');
+
+  // Load SheetJS if not available
+  if (typeof XLSX === 'undefined') {
+    showToast('טוען SheetJS...','info');
+    await new Promise(function(res,rej){
+      var s = document.createElement('script');
+      s.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+      s.onload = res; s.onerror = rej;
+      document.head.appendChild(s);
+    });
+  }
+
+  var wb = XLSX.utils.book_new();
+
+  // ── Sheet 1: Measurements ────────────────────────────────────────
+  var wsData = [];
+
+  // Title rows
+  wsData.push(['מדידות שטח — ' + (label||'') + (projName?' | פרויקט: '+projName:'')]);
+  wsData.push(['תאריך: ' + date + '  |  נמדד ע"י: בני פרסקי']);
+  wsData.push([]); // blank row
+
+  // Headers
+  wsData.push(['פריט / חדר', 'אורך (מ\')', 'רוחב (מ\')', 'שטח (מ"ר)', 'יחידה', 'הערות']);
+
+  // Data rows
+  _measItems.forEach(function(r){
+    wsData.push([
+      r.item || '',
+      r.length !== null ? r.length : '',
+      r.width  !== null ? r.width  : '',
+      r.area   !== null ? r.area   : '',
+      r.unit   || 'מ"ר',
+      r.notes  || ''
+    ]);
+  });
+
+  // Totals row
+  var dataStart = 5; // header at row 4 (1-indexed), data from row 5
+  var dataEnd   = 4 + _measItems.length;
+  wsData.push([]);
+  wsData.push(['סה"כ שטח', '', '', { f: 'SUM(D'+dataStart+':D'+dataEnd+')' }, 'מ"ר', '']);
+
+  var ws = XLSX.utils.aoa_to_sheet(wsData);
+
+  // Column widths
+  ws['!cols'] = [
+    {wch:22}, // פריט
+    {wch:12}, // אורך
+    {wch:12}, // רוחב
+    {wch:12}, // שטח
+    {wch:8},  // יחידה
+    {wch:24}  // הערות
+  ];
+
+  // Merge title cell across A:F
+  ws['!merges'] = [
+    {s:{r:0,c:0}, e:{r:0,c:5}},
+    {s:{r:1,c:0}, e:{r:1,c:5}}
+  ];
+
+  // Styling via sheet properties (basic — full styling needs xlsx-style)
+  // Mark header row
+  var headerRow = 4; // 0-indexed row 3
+  ['A','B','C','D','E','F'].forEach(function(col){
+    var cell = ws[col + headerRow];
+    if (cell) {
+      cell.s = {
+        font: {bold:true, color:{rgb:'FFFFFF'}},
+        fill: {fgColor:{rgb:'1A3D5C'}},
+        alignment: {horizontal:'center', readingOrder:2}
+      };
+    }
+  });
+
+  XLSX.utils.book_append_sheet(wb, ws, 'מדידות שטח');
+
+  // ── Sheet 2: Summary ─────────────────────────────────────────────
+  var wsSummary = XLSX.utils.aoa_to_sheet([
+    ['סיכום מדידות'],
+    [],
+    ['פרויקט',    projName || '—'],
+    ['תווית',     label    || '—'],
+    ['תאריך',     date],
+    ['נמדד ע"י', 'בני פרסקי'],
+    [],
+    ['מספר פריטים', _measItems.length],
+    ['שטח כולל (מ"ר)', total.toFixed(2)],
+    [],
+    ['הנחות חומר (10% בזבוז)'],
+    ['שטח עם בזבוז (מ"ר)', +(total*1.1).toFixed(2)],
+    [],
+    ['הערות', labelEl&&labelEl.value ? '' : '—']
+  ]);
+
+  wsSummary['!cols'] = [{wch:22},{wch:20}];
+  XLSX.utils.book_append_sheet(wb, wsSummary, 'סיכום');
+
+  // ── Download ──────────────────────────────────────────────────────
+  var fname = (label||'מדידות')
+    .replace(/[\/\\:*?"<>|]/g,'_') + '_' +
+    new Date().toLocaleDateString('he-IL').replace(/\//g,'-') + '.xlsx';
+
+  XLSX.writeFile(wb, fname);
+  showToast('📊 קובץ Excel הורד: ' + fname, 'success');
 }
