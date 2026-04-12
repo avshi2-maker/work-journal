@@ -13,11 +13,21 @@ async function encInit() {
   var grid = document.getElementById('enc-grid');
   if (grid) grid.innerHTML = '<div style="color:#555;padding:40px;text-align:center;font-size:13px;">טוען ארכיון...</div>';
   try {
-    var { data } = await sbQ('field_encyclopedia',
-      'order=created_at.desc&limit=500&select=id,category,title,description,severity,tags,created_at,source_project_id,ai_report,ai_report_date,notes');
+    var { data } = await sbQ('field_encyclopedia', 'order=created_at.desc&limit=500');
     _encItems = data || [];
+    console.log('[ENC] loaded', _encItems.length, 'items');
   } catch(e) {
-    if (grid) grid.innerHTML = '<div style="color:#f87171;padding:20px;text-align:center;">שגיאה: '+e.message+'</div>';
+    console.error('[ENC] load error:', e);
+    if (grid) grid.innerHTML =
+      '<div style="padding:30px;text-align:center;direction:rtl;">' +
+        '<div style="font-size:32px;margin-bottom:12px;">⚠️</div>' +
+        '<div style="color:#f87171;font-size:13px;margin-bottom:8px;">שגיאה בטעינת הארכיון</div>' +
+        '<div style="color:#555;font-size:11px;">'+e.message+'</div>' +
+        '<button onclick="encInit()" style="margin-top:14px;background:rgba(201,168,76,0.15);border:1px solid rgba(201,168,76,0.3);color:#c9a84c;border-radius:8px;padding:8px 18px;cursor:pointer;font-family:Heebo,sans-serif;font-size:12px;">נסה שוב</button>' +
+      '</div>';
+    // Still render header so page is usable
+    encRenderHeader();
+    encRenderCats();
     return;
   }
   encRenderHeader();
