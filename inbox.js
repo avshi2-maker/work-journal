@@ -347,7 +347,7 @@ function sibActionButtons(item) {
     btns += sibBtn('👁 צפה','sibPlayMedia(\''+id+'\')','sec');
     btns += sibBtn('📊 חלץ נתונים','sibPhase1Doc(\''+id+'\')','phase1');
   } else if (type==='youtube') {
-    btns += sibBtn('🎬 חלץ תמלול','sibPhase1Url(\''+id+'\')','phase1');
+    btns += sibBtn('🎬 נתח סרטון','sibPhase1Url(\''+id+'\')','phase1');
     btns += sibBtn('📺 פתח','sibPlayMedia(\''+id+'\')','sec');
   } else if (type==='url') {
     btns += sibBtn('🌐 חלץ תוכן','sibPhase1Url(\''+id+'\')','phase1');
@@ -1309,110 +1309,172 @@ async function sibPhase1Url(id) {
 
   var extracted = '';
 
-  // ── YOUTUBE ─────────────────────────────────────────────────────────
+  // ── YOUTUBE — VISUAL FRAME ANALYSIS ──────────────────────────────────
   if (isYT) {
-    if (panel) panel.innerHTML = '<div style="text-align:center;padding:30px;color:#2563eb;font-size:13px;">🎬 מאחזר תמלול יוטיוב...</div>';
-    sibStartMeter('תמלול יוטיוב');
+    if (panel) panel.innerHTML = '<div style="text-align:center;padding:24px;color:#2563eb;font-size:13px;">🎬 מנתח סרטון יוטיוב עם Claude Vision...</div>';
+    sibStartMeter('ניתוח ויזואלי יוטיוב');
 
-    // Extract video ID — handles /watch?v=, youtu.be/, /shorts/
+    // Extract video ID
     var ytId = '';
     var ytM = url.match(/(?:v=|youtu\.be\/|shorts\/)([\w-]{11})/);
     if (ytM) ytId = ytM[1];
 
-    var transcript = '';
-
-    // Method 1: YouTube timedtext API via CORS proxy (no key needed)
-    if (ytId && !transcript) {
-      var ttProxies = ['https://api.allorigins.win/get?url=','https://corsproxy.io/?'];
-      var ttLangs = ['iw','he','en','en-US'];
-      outer: for (var pi=0; pi<ttProxies.length && !transcript; pi++) {
-        for (var li=0; li<ttLangs.length && !transcript; li++) {
-          try {
-            var ttEndpoint = 'https://www.youtube.com/api/timedtext?lang='+ttLangs[li]+'&v='+ytId;
-            var tr = await fetch(ttProxies[pi]+encodeURIComponent(ttEndpoint),{signal:AbortSignal.timeout(5000)});
-            if (!tr.ok) continue;
-            var td = await tr.json().catch(async function(){return {contents:await tr.text()};});
-            var xml = td.contents||td||'';
-            if (typeof xml !== 'string') xml = JSON.stringify(xml);
-            if (xml.includes('<text')) {
-              transcript = xml
-                .replace(/<text[^>]*>/g,'').replace(/<\/text>/g,' ')
-                .replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>')
-                .replace(/&#39;/g,"'").replace(/&quot;/g,'"')
-                .replace(/<[^>]+>/g,'').replace(/\s+/g,' ').trim();
-              break outer;
-            }
-          } catch(e) {}
-        }
-      }
-    }
-
-    // Method 2: Supadata.ai free transcript API
-    if (ytId && !transcript) {
-      try {
-        var sdR = await fetch('https://api.supadata.ai/v1/youtube/transcript?url='+encodeURIComponent(url)+'&text=true',
-          {signal:AbortSignal.timeout(8000)});
-        if (sdR.ok) {
-          var sdD = await sdR.json();
-          if (sdD && sdD.content) transcript = sdD.content;
-        }
-      } catch(e) {}
-    }
-
-    // Method 3: YouTube Data API v3 (needs youtube_api_key in app_config)
-    var ytApiKey = window.APP && window.APP.config && window.APP.config.youtube_api_key;
-    if (ytId && !transcript && ytApiKey) {
-      try {
-        var capR = await fetch('https://www.googleapis.com/youtube/v3/captions?part=snippet&videoId='+ytId+'&key='+ytApiKey,
-          {signal:AbortSignal.timeout(8000)});
-        if (capR.ok) {
-          var capD = await capR.json();
-          var capId = capD.items && capD.items[0] && capD.items[0].id;
-          if (capId) {
-            var capTxt = await fetch('https://www.googleapis.com/youtube/v3/captions/'+capId+'?tfmt=sbv&key='+ytApiKey,
-              {signal:AbortSignal.timeout(8000)});
-            if (capTxt.ok) transcript = await capTxt.text();
-          }
-        }
-      } catch(e) {}
-    }
-
-    sibStopMeter();
-
-    // Auto-proceed if transcript found
-    if (transcript && transcript.length > 50) {
-      _sibPhase1[id] = 'תמלול יוטיוב:\n\nURL: '+url+'\n\n'+transcript.substring(0,8000);
-      sibRefreshCard(id);
-      sibShowPhase2Panel(id);
-      showToast('✅ תמלול יוטיוב חולץ — '+transcript.length+' תווים','success');
+    if (!ytId) {
+      sibStopMeter();
+      if (panel) panel.innerHTML = '<div style="background:#fff5f5;border:1px solid #fca5a5;border-radius:8px;padding:14px;color:#c62828;font-size:12px;">לא זוהה מזהה סרטון יוטיוב תקין</div>';
       return;
     }
 
-    // All methods failed — show manual paste + API key instructions
+    // ── Step 1: Get YouTube thumbnails (multiple timestamps) ──────────
+    // YouTube provides thumbnails at standard resolutions — use maxresdefault or hqdefault
+    var thumbUrls = [
+      'https://img.youtube.com/vi/'+ytId+'/maxresdefault.jpg',
+      'https://img.youtube.com/vi/'+ytId+'/hqdefault.jpg',
+      'https://img.youtube.com/vi/'+ytId+'/mqdefault.jpg',
+      'https://img.youtube.com/vi/'+ytId+'/sddefault.jpg',
+    ];
+
+    // Convert thumbnail to base64 for Claude Vision
+    async function ytThumbToBase64(thumbUrl) {
+      try {
+        var proxies = ['https://api.allorigins.win/raw?url=','https://corsproxy.io/?'];
+        for (var pi=0; pi<proxies.length; pi++) {
+          try {
+            var r = await fetch(proxies[pi]+encodeURIComponent(thumbUrl), {signal:AbortSignal.timeout(8000)});
+            if (!r.ok) continue;
+            var blob = await r.blob();
+            if (blob.size < 500) continue; // too small = error image
+            return await new Promise(function(res){
+              var reader = new FileReader();
+              reader.onload = function(e){ res(e.target.result); };
+              reader.readAsDataURL(blob);
+            });
+          } catch(e) {}
+        }
+        // Direct fetch as last resort (may work if CORS allows)
+        var r2 = await fetch(thumbUrl, {signal:AbortSignal.timeout(6000)});
+        if (r2.ok) {
+          var blob2 = await r2.blob();
+          return await new Promise(function(res){
+            var reader = new FileReader();
+            reader.onload = function(e){ res(e.target.result); };
+            reader.readAsDataURL(blob2);
+          });
+        }
+      } catch(e) {}
+      return null;
+    }
+
+    if (panel) panel.innerHTML = '<div style="text-align:center;padding:20px;color:#2563eb;font-size:12px;">🖼️ מוריד פריימים מיוטיוב...</div>';
+
+    // Try thumbnails in order until one works
+    var thumbBase64 = null;
+    for (var ti=0; ti<thumbUrls.length && !thumbBase64; ti++) {
+      thumbBase64 = await ytThumbToBase64(thumbUrls[ti]);
+    }
+
+    // ── Step 2: Also try Cloudinary URL transform if video was already uploaded ──
+    var cloudinaryFrame = null;
+    if (item.cloudinary_url && item.cloudinary_url.includes('cloudinary.com')) {
+      cloudinaryFrame = await sibExtractFrameCanvas(item.cloudinary_url);
+    }
+
+    var frameBase64 = cloudinaryFrame || thumbBase64;
+
+    if (panel) panel.innerHTML = '<div style="text-align:center;padding:20px;color:#9333ea;font-size:12px;">🧠 Claude מנתח תמונה לבעיות בנייה...</div>';
+    sibStartMeter('Claude Vision — ניתוח בנייה');
+
+    try {
+      // ── Step 3: Build Claude Vision request ──────────────────────────
+      var systemPrompt = [
+        'אתה מומחה בטיחות ואיכות בנייה ישראלי עם 20 שנות ניסיון.',
+        'אתה מנתח תמונות מאתרי בנייה ומזהה בעיות, סכנות, וממצאים מקצועיים.',
+        'תמיד מחזיר דוח מובנה בעברית עם: ממצאים, חומרה, המלצות לתיקון.',
+        'התמקד ב: בטיחות עובדים, איכות חומרים, שיטות עבודה, תקני בנייה ישראליים.'
+      ].join(' ');
+
+      var userPrompt = [
+        'נתח את התמונה מאתר הבנייה.',
+        'זהה את כל הבעיות, הסכנות, וממצאי האיכות הנראים.',
+        '',
+        'ספק דוח מובנה עם הסעיפים הבאים:',
+        '1. 📋 תיאור הסצנה — מה רואים בתמונה',
+        '2. ⚠️ בעיות בטיחות — כל סכנה לעובדים',
+        '3. 🏗️ ממצאי איכות — בעיות בחומרים/שיטות',
+        '4. 📏 התאמה לתקנים — חריגות מתקני בנייה ישראליים',
+        '5. ✅ המלצות מיידיות — מה לתקן עכשיו',
+        '6. 📊 דירוג חומרה — קריטי/חשוב/הנחיה',
+        '',
+        'URL המקור: '+url
+      ].join('\n');
+
+      var msgContent = [];
+      if (frameBase64 && frameBase64.length > 1000) {
+        var b64data = frameBase64.split(',')[1] || frameBase64;
+        var mimeType = frameBase64.startsWith('data:image/png') ? 'image/png' : 'image/jpeg';
+        msgContent.push({type:'image', source:{type:'base64', media_type:mimeType, data:b64data}});
+      }
+      msgContent.push({type:'text', text: userPrompt});
+
+      var raw = await claudeFetch({
+        _apiKey: apiKey,
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 1500,
+        system: systemPrompt,
+        messages: [{role:'user', content: msgContent}]
+      }, null);
+
+      var resp = raw && typeof raw.json==='function' ? await raw.json() : raw;
+      sibStopMeter(resp && resp.usage);
+      var analysis = resp && resp.content && resp.content[0] ? resp.content[0].text : '';
+
+      if (!analysis) throw new Error('לא התקבלה תשובה מ-Claude');
+
+      // Store as phase 1 result
+      var thumbHtml = thumbBase64 ? '<img src="'+thumbBase64+'" style="width:100%;max-height:180px;object-fit:cover;border-radius:8px;margin-bottom:10px;">' : '';
+      _sibPhase1[id] = 'ניתוח ויזואלי יוטיוב — '+url+'\n\n\n'+analysis;
+
+      if (panel) {
+        panel.innerHTML =
+          '<div style="background:#fff;border:1px solid rgba(180,140,60,0.25);border-radius:10px;overflow:hidden;margin-bottom:10px;">' +
+            thumbHtml +
+            '<div style="padding:14px;">' +
+              '<div style="font-size:11px;color:#9a6f00;font-weight:800;margin-bottom:10px;">🎬 ניתוח ויזואלי — '+sibEsc(url.substr(0,50))+'...</div>' +
+              '<div style="font-size:12px;color:#333;line-height:1.8;white-space:pre-wrap;direction:rtl;">'+sibEsc(analysis)+'</div>' +
+            '</div>' +
+          '</div>' +
+          sibApprovePanel(item);
+      }
+
+      sibRefreshCard(id);
+      return;
+
+    } catch(e) {
+      sibStopMeter();
+    }
+
+    // ── Fallback: no image available — show thumbnail + manual note ───
+    var thumbHtmlFallback = thumbBase64
+      ? '<img src="'+thumbBase64+'" style="width:100%;max-height:200px;object-fit:cover;border-radius:8px;margin-bottom:12px;">'
+      : '<div style="background:#f0f0f0;border-radius:8px;padding:20px;text-align:center;font-size:24px;margin-bottom:12px;">🎬</div>';
+
     if (panel) {
       panel.innerHTML =
         '<div style="background:#fff7ed;border:1px solid #fb923c;border-radius:10px;padding:14px;margin:10px;direction:rtl;">' +
-          '<div style="font-size:13px;font-weight:800;color:#7c2d12;margin-bottom:10px;">🎬 יוטיוב — חילוץ תמלול</div>' +
-          '<div style="background:#fff;border:1px solid #e8ddb5;border-radius:8px;padding:10px;margin-bottom:10px;">' +
-            '<div style="font-size:11px;font-weight:800;color:#1a3d5c;margin-bottom:4px;">🔑 חבר יוטיוב לקבלת תמלול אוטומטי:</div>' +
-            '<div style="font-size:10px;color:#666;line-height:1.8;">'+
-              '1. <a href="https://console.cloud.google.com/apis/library/youtube.googleapis.com?hl=iw" target="_blank" style="color:#1a3d5c;font-weight:700;">הפעל שירות יוטיוב ←</a><br>'+
-              '2. צור מפתח גישה ב-קונסול Google<br>'+
-              '3. הוסף ל-Supabase: הגדרות המערכת'+
-            '</div>' +
+          thumbHtmlFallback +
+          '<div style="font-size:12px;font-weight:800;color:#7c2d12;margin-bottom:8px;">🎬 '+url.substr(0,50)+'...</div>' +
+          '<div style="font-size:11px;color:#555;line-height:1.8;margin-bottom:10px;">'+
+            'לא הצלחנו לחלץ פריים מהסרטון.<br>'+
+            '<a href="'+url+'" target="_blank" style="color:#dc2626;font-weight:700;">📺 פתח ב-YouTube ←</a>  '+
+            'צלם צילום מסך → שלח לתיבת הנכנסים'+
           '</div>' +
-          '<div style="font-size:11px;font-weight:800;color:#1a3d5c;margin-bottom:6px;">📋 או הדבק תמלול ידנית:</div>' +
-          '<div style="font-size:10px;color:#666;line-height:1.8;margin-bottom:8px;">'+
-            '<a href="'+url+'" target="_blank" style="color:#dc2626;font-weight:800;">📺 פתח סרטון ←</a>  '+
-            'לחץ ··· → Show transcript → בחר הכל → העתק'+
-          '</div>' +
-          '<textarea id="yt-paste-'+id+'" rows="6" placeholder="הדבק תמלול יוטיוב כאן..." '+
+          '<textarea id="yt-paste-'+id+'" rows="4" placeholder="הדבק תיאור ידני של מה שרואים בסרטון..." '+
             'style="width:100%;border:1.5px solid #c9a84c;border-radius:8px;padding:9px;'+
             'font-family:Heebo,sans-serif;font-size:12px;direction:rtl;box-sizing:border-box;background:#fffbf0;"></textarea>'+
-          '<button onclick="sibSubmitYTPaste(\''+id+'\')" '+
+          '<button onclick="sibSubmitYTPaste(\''+id+'\');" '+
             'style="width:100%;margin-top:8px;padding:11px;background:#dc2626;border:none;color:#fff;'+
             'border-radius:8px;font-family:Heebo,sans-serif;font-size:13px;font-weight:800;cursor:pointer;">'+
-            '🚀 נתח תמלול זה'+
+            '🚀 נתח תיאור זה'+
           '</button>'+
         '</div>';
     }
