@@ -2508,6 +2508,142 @@ function sibSendWhatsApp(encodedMsg) {
   if (modal) setTimeout(function(){ modal.remove(); }, 300);
 }
 
+
+// ══ YOUTUBE API KEY SETUP ══════════════════════════════════════════════
+async function ytSetupApiKey() {
+  var ov = document.createElement('div');
+  ov.id = 'yt-setup-overlay';
+  ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:99999;display:flex;align-items:center;justify-content:center;padding:20px;';
+  ov.addEventListener('click',function(e){if(e.target===ov)ov.remove();});
+
+  // Check if key already exists
+  var currentKey = window.APP && window.APP.config && window.APP.config.youtube_api_key;
+
+  ov.innerHTML =
+    '<div style="background:#fff;border-radius:16px;width:100%;max-width:520px;direction:rtl;font-family:Heebo,Arial,sans-serif;overflow:hidden;">' +
+      '<div style="background:linear-gradient(135deg,#dc2626,#b91c1c);padding:16px 20px;display:flex;justify-content:space-between;align-items:center;">' +
+        '<div>' +
+          '<div style="font-size:10px;letter-spacing:2px;color:rgba(255,255,255,0.6);text-transform:uppercase;">YouTube Integration</div>' +
+          '<div style="font-size:17px;font-weight:800;color:#fff;">🎬 הגדרת YouTube API Key</div>' +
+        '</div>' +
+        '<button onclick="document.getElementById(\"yt-setup-overlay\").remove()" style="background:rgba(255,255,255,0.15);border:none;color:#fff;border-radius:8px;padding:6px 12px;cursor:pointer;font-size:13px;">✕</button>' +
+      '</div>' +
+      '<div style="padding:20px;">' +
+
+        (currentKey ?
+          '<div style="background:#e8f5e9;border:1px solid #4caf50;border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:12px;color:#1b5e20;font-weight:700;">✅ API Key קיים: ...'+currentKey.slice(-6)+'</div>'
+          : ''
+        ) +
+
+        '<div style="font-size:12px;color:#555;margin-bottom:16px;line-height:1.9;">'+
+          'YouTube API Key מאפשר חילוץ תמלול אוטומטי מכל סרטון יוטיוב.<br>'+
+          'הגדרה חד-פעמית — חינמית עד 10,000 בקשות ביום.'+
+        '</div>' +
+
+        '<div style="background:#f8f9fc;border-radius:10px;padding:14px;margin-bottom:16px;">' +
+          '<div style="font-size:12px;font-weight:800;color:#1a3d5c;margin-bottom:10px;">שלבי הגדרה:</div>' +
+          '<div style="font-size:12px;color:#444;line-height:2.2;">' +
+            '<div>1. <a href="https://console.cloud.google.com/projectcreate" target="_blank" style="color:#1a3d5c;font-weight:700;">צור פרויקט Google Cloud ←</a></div>' +
+            '<div>2. <a href="https://console.cloud.google.com/apis/library/youtube.googleapis.com" target="_blank" style="color:#1a3d5c;font-weight:700;">הפעל YouTube Data API v3 ←</a></div>' +
+            '<div>3. <a href="https://console.cloud.google.com/apis/credentials" target="_blank" style="color:#1a3d5c;font-weight:700;">צור API Key (Credentials) ←</a></div>' +
+            '<div>4. הגבל את ה-Key ל-YouTube Data API v3 בלבד</div>' +
+            '<div>5. הדבק את ה-Key למטה ולחץ שמור</div>' +
+          '</div>' +
+        '</div>' +
+
+        '<div style="margin-bottom:14px;">' +
+          '<div style="font-size:11px;color:#888;margin-bottom:6px;font-weight:700;">YouTube API Key</div>' +
+          '<input id="yt-api-key-input" type="password" placeholder="AIzaSy..." '+
+            'style="width:100%;padding:10px 14px;border:1.5px solid #c9a84c;border-radius:8px;font-family:Heebo,sans-serif;font-size:13px;box-sizing:border-box;" '+
+            'value="'+(currentKey||'')+'">'+
+          '<div style="display:flex;align-items:center;gap:8px;margin-top:6px;">'+
+            '<input type="checkbox" id="yt-key-show" onchange="var i=document.getElementById(&quot;yt-api-key-input&quot;);i.type=this.checked?&quot;text&quot;:&quot;password&quot;">'+
+            '<label for="yt-key-show" style="font-size:11px;color:#888;cursor:pointer;">הצג מפתח</label>'+
+          '</div>'+
+        '</div>' +
+
+        '<div id="yt-setup-status" style="display:none;margin-bottom:12px;"></div>' +
+
+        '<div style="display:flex;gap:8px;">' +
+          '<button onclick="ytSaveApiKey()" style="flex:1;padding:12px;background:#dc2626;border:none;color:#fff;border-radius:10px;font-family:Heebo,sans-serif;font-size:14px;font-weight:800;cursor:pointer;">💾 שמור ב-Supabase</button>' +
+          '<button onclick="ytTestApiKey()" style="padding:12px 18px;background:#f5f7fa;border:1px solid #ddd;color:#444;border-radius:10px;font-family:Heebo,sans-serif;font-size:13px;cursor:pointer;">🧪 בדוק</button>' +
+        '</div>' +
+
+      '</div>' +
+    '</div>';
+
+  document.body.appendChild(ov);
+}
+
+async function ytSaveApiKey() {
+  var key = (document.getElementById('yt-api-key-input')||{}).value||'';
+  var statusEl = document.getElementById('yt-setup-status');
+  if (!key.trim()) { showToast('הכנס API Key','error'); return; }
+
+  try {
+    // Upsert into app_config
+    var res = await fetch(window.SB_URL+'/rest/v1/app_config', {
+      method: 'POST',
+      headers: {
+        apikey: window.SB_KEY,
+        Authorization: 'Bearer '+window.SB_KEY,
+        'Content-Type': 'application/json',
+        Prefer: 'resolution=merge-duplicates,return=minimal'
+      },
+      body: JSON.stringify({key:'youtube_api_key', value:key.trim()})
+    });
+
+    if (!res.ok) {
+      // Try PATCH if POST fails (row might exist)
+      var res2 = await fetch(window.SB_URL+'/rest/v1/app_config?key=eq.youtube_api_key', {
+        method: 'PATCH',
+        headers: {
+          apikey: window.SB_KEY, Authorization: 'Bearer '+window.SB_KEY,
+          'Content-Type': 'application/json', Prefer: 'return=minimal'
+        },
+        body: JSON.stringify({value: key.trim()})
+      });
+      if (!res2.ok) throw new Error('HTTP '+res2.status);
+    }
+
+    // Update local APP.config immediately
+    if (!window.APP) window.APP = {};
+    if (!window.APP.config) window.APP.config = {};
+    window.APP.config.youtube_api_key = key.trim();
+
+    if (statusEl) {
+      statusEl.style.display = 'block';
+      statusEl.innerHTML = '<div style="background:#e8f5e9;border:1px solid #4caf50;border-radius:8px;padding:10px;font-size:12px;color:#1b5e20;font-weight:700;">✅ נשמר! תמלול אוטומטי מופעל עכשיו</div>';
+    }
+    showToast('✅ YouTube API Key נשמר','success');
+
+    setTimeout(function(){ document.getElementById('yt-setup-overlay') && document.getElementById('yt-setup-overlay').remove(); }, 1500);
+
+  } catch(e) {
+    if (statusEl) {
+      statusEl.style.display = 'block';
+      statusEl.innerHTML = '<div style="background:#fff5f5;border:1px solid #fca5a5;border-radius:8px;padding:10px;font-size:12px;color:#c62828;">שגיאה: '+e.message+'</div>';
+    }
+  }
+}
+
+async function ytTestApiKey() {
+  var key = (document.getElementById('yt-api-key-input')||{}).value||'';
+  var statusEl = document.getElementById('yt-setup-status');
+  if (!key.trim()) { showToast('הכנס API Key קודם','error'); return; }
+  if (statusEl) { statusEl.style.display='block'; statusEl.innerHTML='<div style="font-size:12px;color:#2563eb;">🧪 בודק...</div>'; }
+  try {
+    // Test with a simple search query
+    var r = await fetch('https://www.googleapis.com/youtube/v3/videos?part=snippet&id=dQw4w9WgXcQ&key='+key.trim(),
+      {signal:AbortSignal.timeout(6000)});
+    var d = await r.json();
+    if (d.error) throw new Error(d.error.message);
+    if (statusEl) statusEl.innerHTML = '<div style="background:#e8f5e9;border:1px solid #4caf50;border-radius:8px;padding:10px;font-size:12px;color:#1b5e20;font-weight:700;">✅ מפתח תקין! YouTube API עובד</div>';
+  } catch(e) {
+    if (statusEl) statusEl.innerHTML = '<div style="background:#fff5f5;border:1px solid #fca5a5;border-radius:8px;padding:10px;font-size:12px;color:#c62828;">❌ '+e.message+'</div>';
+  }
+}
+
 // ── EXPORT MEASUREMENTS TO XLSX ───────────────────────────────────────
 async function sibExportMeasXLSX(id) {
   var item = _sibItems.find(function(i){ return i.id === id; });
