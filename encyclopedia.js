@@ -464,3 +464,22 @@ function encOpenAdd() {
 function encEsc(s) {
   return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
+
+// ── OPEN ENCYCLOPEDIA FILTERED BY PROJECT (called from projects table) ─
+function encFilterByProject(projectId) {
+  // Switch to encyclopedia tab first
+  if (typeof switchTab === 'function') switchTab('encyclopedia');
+
+  // Wait for encInit to finish then apply project filter
+  var attempts = 0;
+  var tryFilter = function() {
+    var sel = document.getElementById('enc-proj-filter');
+    if (sel) {
+      sel.value = projectId;
+      encApplyFilters();
+    } else if (attempts++ < 20) {
+      setTimeout(tryFilter, 200);
+    }
+  };
+  setTimeout(tryFilter, 300);
+}

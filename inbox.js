@@ -1639,9 +1639,30 @@ async function sibApproveWithReport(id) {
       });
     }
 
-    // 2. Approve in asset_inbox
+    // 2. Save to field_encyclopedia with project link
+    var encTitle = analysis ? (analysis.title || item.file_name || 'ממצא שטח') : (item.file_name || 'קובץ מאושר');
+    var encDesc  = analysis ? analysis.text : (p1text ? p1text.substr(0,1000) : '');
+    var encCat   = analysis ? (analysis.mode === 'safety' ? 'בטיחות' : analysis.mode === 'engineering' ? 'הנדסי' : 'שטח') : 'שטח';
+    var encSev   = analysis ? (analysis.mode === 'safety' ? 'critical' : 'important') : 'guideline';
+    if (encDesc) {
+      await sb.from('field_encyclopedia').insert({
+        title:             encTitle,
+        category:          encCat,
+        description:       encDesc.substr(0, 2000),
+        media_url:         item.cloudinary_url || null,
+        media_type:        item.file_type || 'image',
+        severity:          encSev,
+        source_project_id: projectId || null,
+        ai_report:         analysis ? analysis.text : null,
+        ai_report_date:    analysis ? new Date().toISOString() : null,
+        file_name:         item.file_name || null,
+        created_at:        new Date().toISOString()
+      });
+    }
+
+    // 3. Approve in asset_inbox
     await sibApprove(id, projectId);
-    showToast('✅ אושר + דוח נשמר ביומן', 'success');
+    showToast('✅ אושר + נשמר לאנציקלופדיה ולפרויקט', 'success');
   } catch(e) {
     showToast('שגיאה: ' + e.message, 'error');
   }
