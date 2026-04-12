@@ -51,7 +51,7 @@ var _sibModuleDefaults = {
 var _sibModules = Object.assign({}, _sibModuleDefaults);
 
 function sibModuleChip(id, label, color, bg, border, defaultOn) {
-  var on = (_sibModules[id] !== undefined) ? _sibModules[id] : defaultOn;
+  var on = false; // always start OFF — user must tick explicitly
   return '<label id="chip-'+id+'" onclick="sibToggleModule(\''+id+'\',this)" style="display:inline-flex;align-items:center;gap:5px;cursor:pointer;'+
     'background:'+(on?bg:'#f5f5f5')+';border:2px solid '+(on?border:'#ddd')+';'+
     'border-radius:20px;padding:5px 12px;font-size:11px;font-weight:800;'+
@@ -131,17 +131,17 @@ function sibHTML() {
     '</div>' +
     '<div style="display:flex;gap:8px;flex-wrap:wrap;">' +
       // Safety
-      sibModuleChip('mod-safety',    '⚠️ בטיחות',        '#c62828', '#fff5f5', '#fca5a5', true)  +
-      sibModuleChip('mod-engineering','🏗️ הנדסי',        '#1a3d5c', '#e8f0fd', '#93c5fd', true)  +
-      sibModuleChip('mod-standards',  '📋 תקנים 838',     '#4527a0', '#ede7f6', '#9c6fdd', true)  +
-      sibModuleChip('mod-thirdparty', '⚖️ צד שלישי',      '#7c2d12', '#fff7ed', '#fb923c', true)  +
+      sibModuleChip('mod-safety',    '⚠️ בטיחות',        '#c62828', '#fff5f5', '#fca5a5', false) +
+      sibModuleChip('mod-engineering','🏗️ הנדסי',        '#1a3d5c', '#e8f0fd', '#93c5fd', false) +
+      sibModuleChip('mod-standards',  '📋 תקנים 838',     '#4527a0', '#ede7f6', '#9c6fdd', false) +
+      sibModuleChip('mod-thirdparty', '⚖️ צד שלישי',      '#7c2d12', '#fff7ed', '#fb923c', false) +
       sibModuleChip('mod-financial',  '💰 רווח/הפסד',     '#1b5e20', '#e8f5e9', '#a5d6a7', false) +
       sibModuleChip('mod-protocol',   '📝 פרוטוקול שיחה', '#7a5500', '#fffde7', '#f59e0b', false) +
       sibModuleChip('mod-ocr',        '📐 מדידות OCR',    '#0f766e', '#f0fdfb', '#5eead4', false) +
       sibModuleChip('mod-equipment',  '🔧 השאלת ציוד',    '#92400e', '#fef3c7', '#fcd34d', false) +
       sibModuleChip('mod-neighbor',   '✉️ מכתב שכנים',   '#1e40af', '#eff6ff', '#93c5fd', false) +
       sibModuleChip('mod-evidence',   '🛡️ מסמך הגנתי',   '#374151', '#f9fafb', '#9ca3af', false) +
-      sibModuleChip('mod-general',    '📊 כללי',          '#555',    '#f5f5f5', '#ccc',    true)  +
+      sibModuleChip('mod-general',    '📊 כללי',          '#555',    '#f5f5f5', '#ccc',    false) +
     '</div>' +
   '</div>' +
 
@@ -555,19 +555,13 @@ function sibShowPhase2Panel(id) {
   var directions = allDirections.filter(function(d){
     return sibIsModuleActive(d.mod);
   });
-  // Guard: if nothing ticked, show a message instead of empty buttons
-  if(directions.length === 0){
-    var panel2 = document.getElementById('sib-analysis-panel');
-    if(panel2){
-      var hint = document.createElement('div');
-      hint.style.cssText = 'background:#fffbf0;border:2px dashed #c9a84c;border-radius:10px;padding:16px;text-align:center;margin-top:10px;';
-      hint.innerHTML = '<div style="font-size:24px;margin-bottom:8px;">🎛️</div>'+
-        '<div style="font-size:13px;font-weight:700;color:#9a6f00;">לא נבחרו מודולים</div>'+
-        '<div style="font-size:11px;color:#aaa;margin-top:4px;">בחר מודול בסרגל למעלה ולחץ שוב</div>';
-      panel2.appendChild(hint);
-    }
-    return;
-  }
+  // If no modules ticked — show hint inside the panel but still show Phase 1 textarea
+  var noModulesHint = directions.length === 0
+    ? '<div style="background:#fffbf0;border:2px dashed #c9a84c;border-radius:10px;padding:12px;text-align:center;margin-bottom:10px;">' +
+        '<div style="font-size:20px;margin-bottom:4px;">🎛️</div>' +
+        '<div style="font-size:12px;font-weight:700;color:#9a6f00;">בחר מודול בסרגל למעלה להפעלת ניתוח</div>' +
+      '</div>'
+    : '';
 
   var dirBtns = directions.map(function(d){
     return '<button onclick="sibPhase2Run(\''+id+'\',\''+d.id+'\')" style="background:'+d.bg+';border:1px solid '+d.border+';color:'+d.color+';border-radius:8px;padding:7px 12px;font-size:11px;font-weight:800;cursor:pointer;font-family:Heebo,sans-serif;">'+d.label+'</button>';
@@ -598,8 +592,9 @@ function sibShowPhase2Panel(id) {
     '</div>' +
     // Phase 2 direction selector
     '<div style="background:#fff;border:1px solid rgba(26,61,92,0.2);border-radius:10px;padding:14px;margin-bottom:10px;">' +
+      noModulesHint +
       '<div style="font-size:11px;font-weight:800;color:#1a3d5c;margin-bottom:10px;">🚀 שלב 2 — כיוון ניתוח</div>' +
-      '<div style="display:flex;gap:6px;flex-wrap:wrap;">'+dirBtns+'</div>' +
+      (directions.length > 0 ? '<div style="display:flex;gap:6px;flex-wrap:wrap;">'+dirBtns+'</div>' : '') +
       catHTML +
     '</div>' +
     '<div id="sib-p2-result"></div>' +
@@ -629,9 +624,23 @@ async function sibPhase2Run(id, direction) {
   // Get edited phase 1 text
   var p1el = document.getElementById('sib-p1-edit-'+id);
   var p1text = p1el?p1el.value:(_sibPhase1[id]||'');
-  if(!p1text){sibShowError('אין חומר גלם — הפעל שלב 1 תחילה');return;}
+  var isVideoVisual = (item.file_type==='video') && (direction==='safety'||direction==='engineering'||direction==='general'||direction==='thirdparty');
+  // For video visual analysis — frame is enough, no transcript needed
+  if(!p1text && !isVideoVisual){
+    // Ensure panel is showing Phase 2 UI first
+    if(!document.getElementById('sib-p2-result')) sibShowPhase2Panel(id);
+    sibShowError('הפעל שלב 1 תחילה לחילוץ תוכן');
+    return;
+  }
+  if(!p1text) p1text = '(ניתוח ויזואלי של וידאו — ללא תמלול)';
 
+  // Ensure sib-p2-result exists — create if needed
   var resultEl = document.getElementById('sib-p2-result');
+  if(!resultEl) {
+    sibShowPhase2Panel(id);
+    resultEl = document.getElementById('sib-p2-result');
+  }
+
   if(resultEl){
     resultEl.innerHTML='<div style="text-align:center;padding:30px;color:#1a3d5c;font-size:13px;">🧠 Claude מנתח...</div>';
     sibStartMeter('ניתוח '+direction+' — '+(item.file_name||id).substr(0,20));
