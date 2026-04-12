@@ -329,9 +329,10 @@ function sibActionButtons(item) {
     btns += sibBtn('📐 מדידות OCR','sibOpenMeasurements(\''+id+'\')','meas');
     btns += sibBtn('📋 שלב 1: תאר','sibPhase1Image(\''+id+'\')','phase1');
   } else if (type==='video') {
+    var isCloudVid = !!(item.cloudinary_url && item.cloudinary_url.includes('cloudinary.com'));
     btns += sibBtn('▶ נגן','sibPlayMedia(\''+id+'\')','sec');
     btns += sibBtn('🎙 תמלל','sibTranscribe(\''+id+'\')','phase1');
-    btns += sibBtn('🎞 פריים','sibExtractFrame(\''+id+'\')','sec');
+    if(isCloudVid) btns += sibBtn('🎞 פריים','sibExtractFrame(\''+id+'\')','sec');
   } else if (type==='audio') {
     btns += sibBtn('▶ נגן','sibPlayMedia(\''+id+'\')','sec');
     btns += sibBtn('🎙 תמלל','sibTranscribe(\''+id+'\')','phase1');
@@ -489,40 +490,145 @@ async function sibTranscribe(id) {
   if (!item) return;
   sibSelectItem(id);
   var panel = document.getElementById('sib-analysis-panel');
-  if (panel) {
-    panel.innerHTML='<div style="text-align:center;padding:60px 20px 20px;color:#1b7a4a;font-size:13px;">🎙️ '+(item.file_type==='video'?'מחלץ אודיו מהוידאו ומתמלל...':'מתמלל הקלטה...')+'</div>';
-    sibStartMeter('תמלול — '+(item.file_name||id).substr(0,25));
+  var isVid = (item.file_type==='video');
+
+  function showStatus(msg) {
+    if (panel) panel.innerHTML='<div style="text-align:center;padding:40px 20px 10px;color:#1b7a4a;font-size:13px;">'+msg+'</div>';
   }
+  showStatus(isVid ? '🎙️ מחלץ אודיו מהוידאו ומתמלל...' : '🎙️ מתמלל הקלטה...');
+  sibStartMeter('תמלול — '+(item.file_name||id).substr(0,25));
+
+  if(!item.cloudinary_url){sibStopMeter();sibShowError('אין URL לקובץ');return;}
+
+  // ── STEP 1: TRY ELEVENLABS TRANSCRIPTION ────────────────────────
+  var transcript = '';
+  var transcriptOk = false;
   var elevenlabsKey = null;
   try {
     if(window.APP&&window.APP.config&&window.APP.config.elevenlabs_key) { elevenlabsKey=window.APP.config.elevenlabs_key; }
     else { var cfg=await sbQ('app_config','select=key,value'); var row=(cfg.data||[]).find(function(r){return r.key==='elevenlabs_key';}); if(row) elevenlabsKey=row.value; }
   } catch(e){}
-  if(!elevenlabsKey){sibStopMeter();sibShowError('לא נמצא מפתח ElevenLabs');return;}
-  if(!item.cloudinary_url){sibStopMeter();sibShowError('אין URL לקובץ');return;}
-  try {
-    var audioResp=await fetch(item.cloudinary_url); var audioBlob=await audioResp.blob();
-    var fileName=item.file_name||'audio.m4a'; var mimeType=audioBlob.type;
-    if(!mimeType||mimeType==='application/octet-stream'||mimeType==='video/3gpp'||mimeType==='video/mp4'){
-      var ext2=fileName.split('.').pop().toLowerCase();
-      var mimeMap={m4a:'audio/mp4',mp3:'audio/mpeg',wav:'audio/wav',ogg:'audio/ogg',webm:'audio/webm',aac:'audio/aac','3gp':'audio/3gpp',flac:'audio/flac',mp4:'audio/mp4'};
-      mimeType=mimeMap[ext2]||'audio/mp4';
+
+  if(elevenlabsKey) {
+    try {
+      var audioResp = await fetch(item.cloudinary_url);
+      var audioBlob = await audioResp.blob();
+      var fileName  = item.file_name||'audio.m4a';
+      var mimeType  = audioBlob.type;
+      if(!mimeType||mimeType==='application/octet-stream'||mimeType==='video/3gpp'||mimeType==='video/mp4'){
+        var ext2 = fileName.split('.').pop().toLowerCase();
+        var mimeMap = {m4a:'audio/mp4',mp3:'audio/mpeg',wav:'audio/wav',ogg:'audio/ogg',webm:'audio/webm',aac:'audio/aac','3gp':'audio/3gpp',flac:'audio/flac',mp4:'audio/mp4'};
+        mimeType = mimeMap[ext2]||'audio/mp4';
+      }
+      if(fileName.toLowerCase().endsWith('.mp4')) fileName=fileName.replace(/\.mp4$/i,'.m4a');
+      var fixedBlob = new Blob([audioBlob],{type:mimeType});
+      var formData  = new FormData();
+      formData.append('file',fixedBlob,fileName);
+      formData.append('model_id','scribe_v1');
+      formData.append('language_code','he');
+      formData.append('diarize','true');
+      formData.append('tag_audio_events','false');
+      formData.append('timestamps_granularity','none');
+      var transcResp = await fetch('https://api.elevenlabs.io/v1/speech-to-text',{method:'POST',headers:{'xi-api-key':elevenlabsKey},body:formData});
+      if(transcResp.ok) {
+        var transcData = await transcResp.json();
+        transcript = transcData.text||'';
+        if(!transcript&&transcData.words&&transcData.words.length) {
+          transcript = transcData.words.map(function(w){
+            return w.type==='spacing'?'':(w.speaker_id?'[דובר '+w.speaker_id+'] ':'')+w.text;
+          }).join(' ').replace(/\s+/g,' ').trim();
+        }
+        if(transcript && transcript.length > 5) transcriptOk = true;
+      }
+    } catch(te){ /* ElevenLabs failed — will try visual fallback */ }
+  }
+
+  // ── STEP 2: IF NO AUDIO / EMPTY TRANSCRIPT — TRY VISUAL FRAME ───
+  if(!transcriptOk && isVid) {
+    showStatus('🔇 אין אודיו — מחלץ פריים ויזואלי...');
+    var frameDataUrl = await sibExtractFrameCanvas(item.cloudinary_url);
+    if(frameDataUrl) {
+      // Send frame to Claude Vision for description
+      var apiKey = (window.APP&&window.APP.config&&window.APP.config.anthropic_key)||_sibApiKey;
+      if(apiKey) {
+        showStatus('🖼️ Claude מנתח פריים ויזואלי...');
+        try {
+          var base64data = frameDataUrl.split(',')[1];
+          var mtype = 'image/jpeg';
+          var raw = await claudeFetch({
+            _apiKey: apiKey,
+            model: 'claude-sonnet-4-20250514',
+            max_tokens: 800,
+            system: 'אתה מהנדס שטח. תאר בעברית מה שאתה רואה בצילום מסגרת מוידאו באתר בנייה.',
+            messages:[{role:'user',content:[
+              {type:'image',source:{type:'base64',media_type:mtype,data:base64data}},
+              {type:'text',text:'תאר את מה שאתה רואה בפריים זה מהוידאו: '+sibEsc(item.file_name||'')+'. פרט כל אלמנט נראה.'}
+            ]}]
+          }, null);
+          var resp = raw&&typeof raw.json==='function'?await raw.json():raw;
+          var desc = resp&&resp.content&&resp.content[0]?resp.content[0].text:'';
+          if(desc) {
+            transcript = '[וידאו ללא אודיו — תיאור ויזואלי]\n\n' + desc;
+            transcriptOk = true;
+          }
+        } catch(ve){}
+      }
     }
-    if(fileName.toLowerCase().endsWith('.mp4')) fileName=fileName.replace(/\.mp4$/i,'.m4a');
-    var fixedBlob=new Blob([audioBlob],{type:mimeType});
-    var formData=new FormData(); formData.append('file',fixedBlob,fileName); formData.append('model_id','scribe_v1');
-    formData.append('language_code','he'); formData.append('diarize','true'); formData.append('tag_audio_events','false'); formData.append('timestamps_granularity','none');
-    var transcResp=await fetch('https://api.elevenlabs.io/v1/speech-to-text',{method:'POST',headers:{'xi-api-key':elevenlabsKey},body:formData});
-    if(!transcResp.ok){var errJ=await transcResp.json().catch(function(){return{};});throw new Error('ElevenLabs '+transcResp.status+' — '+(errJ.detail||JSON.stringify(errJ)).substr(0,100));}
-    var transcData=await transcResp.json();
-    var transcript=transcData.text||'';
-    if(!transcript&&transcData.words&&transcData.words.length){transcript=transcData.words.map(function(w){return w.type==='spacing'?'':(w.speaker_id?'[דובר '+w.speaker_id+'] ':'')+w.text;}).join(' ').replace(/\s+/g,' ').trim();}
-    if(!transcript) transcript='(לא זוהה טקסט)';
-    sibStopMeter({input_tokens:0,output_tokens:Math.ceil(transcript.length/4)});
-    _sibPhase1[id] = transcript;
-    sibRefreshCard(id);
-    sibShowPhase2Panel(id);
-  } catch(e){sibStopMeter();sibShowError('שגיאת תמלול: '+e.message);}
+  }
+
+  // ── STEP 3: FINAL RESULT ──────────────────────────────────────────
+  sibStopMeter({input_tokens:0,output_tokens:Math.ceil((transcript||'').length/4)});
+
+  if(!transcriptOk && !transcript) {
+    // Both failed — store minimal context and let user type manually
+    transcript = '[לא זוהה תוכן אוטומטי — הכנס תיאור ידני]';
+    if(panel) {
+      panel.innerHTML +=
+        '<div style="background:#fff7ed;border:1px solid #fb923c;border-radius:8px;padding:12px;margin:10px;font-size:12px;color:#7c2d12;">' +
+          '⚠️ לא זוהה אודיו ולא הצלחנו לחלץ פריים.<br>' +
+          'הכנס תיאור ידני בתיבת הטקסט שתיפתח.' +
+        '</div>';
+    }
+  }
+
+  _sibPhase1[id] = transcript;
+  sibRefreshCard(id);
+  sibShowPhase2Panel(id);
+}
+
+// ── CANVAS FRAME EXTRACTOR (works for any video URL) ─────────────────
+async function sibExtractFrameCanvas(videoUrl) {
+  return new Promise(function(resolve) {
+    try {
+      var video = document.createElement('video');
+      video.crossOrigin = 'anonymous';
+      video.preload = 'metadata';
+      video.muted = true;
+      var timeout = setTimeout(function(){ resolve(null); }, 12000);
+
+      video.onloadeddata = function() {
+        video.currentTime = Math.min(2, video.duration * 0.1 || 2);
+      };
+
+      video.onseeked = function() {
+        try {
+          var canvas = document.createElement('canvas');
+          canvas.width  = Math.min(video.videoWidth,  1280);
+          canvas.height = Math.min(video.videoHeight, 720);
+          var ctx = canvas.getContext('2d');
+          ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+          var dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+          clearTimeout(timeout);
+          video.src = '';
+          resolve(dataUrl.length > 1000 ? dataUrl : null);
+        } catch(ce){ clearTimeout(timeout); resolve(null); }
+      };
+
+      video.onerror = function(){ clearTimeout(timeout); resolve(null); };
+      video.src = videoUrl;
+      video.load();
+    } catch(e){ resolve(null); }
+  });
 }
 
 // ── PHASE 2: SHOW ANALYSIS PANEL ─────────────────────────────────────
@@ -624,8 +730,10 @@ async function sibPhase2Run(id, direction) {
   // Get edited phase 1 text
   var p1el = document.getElementById('sib-p1-edit-'+id);
   var p1text = p1el?p1el.value:(_sibPhase1[id]||'');
-  var isVideoVisual = (item.file_type==='video') && (direction==='safety'||direction==='engineering'||direction==='general'||direction==='thirdparty');
-  // For video visual analysis — frame is enough, no transcript needed
+  var isCloudinaryVid = (item.file_type==='video') && item.cloudinary_url && item.cloudinary_url.includes('cloudinary.com');
+  var isVideoVisual = isCloudinaryVid && (direction==='safety'||direction==='engineering'||direction==='general'||direction==='thirdparty');
+  // For Cloudinary videos — frame analysis works without transcript
+  // For direct uploads — must have transcript from Phase 1
   if(!p1text && !isVideoVisual){
     // Ensure panel is showing Phase 2 UI first
     if(!document.getElementById('sib-p2-result')) sibShowPhase2Panel(id);
@@ -648,11 +756,17 @@ async function sibPhase2Run(id, direction) {
 
   // For video + visual directions (safety/engineering) — use frame image, not transcript
   var isVideo = (item.file_type==='video');
-  var isVisualDirection = (direction==='safety'||direction==='engineering'||direction==='general');
-  var useImageAnalysis = isVideo && isVisualDirection && item.cloudinary_url;
-  var frameUrl = useImageAnalysis
-    ? item.cloudinary_url.replace('/upload/','/upload/so_2,w_1200/').replace(/\.(mp4|mov|avi|webm)$/i,'.jpg')
-    : null;
+  var isVisualDirection = (direction==='safety'||direction==='engineering'||direction==='general'||direction==='thirdparty');
+  // Frame analysis ONLY for Cloudinary-hosted videos (Beni mobile via Cloudinary)
+  // Direct uploads from PC/Android to Supabase storage — use transcript only
+  var isCloudinaryVideo = isVideo && item.cloudinary_url && item.cloudinary_url.includes('cloudinary.com');
+  var useImageAnalysis = isCloudinaryVideo && isVisualDirection;
+  var frameUrl = null;
+  if(useImageAnalysis) {
+    frameUrl = item.cloudinary_url
+      .replace('/upload/','/upload/so_2,w_1200,f_jpg/')
+      .replace(/\.(mp4|mov|avi|webm|3gp)$/i,'.jpg');
+  }
 
   // Build direction-specific prompt
   var systemPrompt = '';
@@ -798,13 +912,26 @@ async function sibPhase2Run(id, direction) {
       return;
     }
 
-    // For video + visual analysis — send frame image to Claude Vision
+    // For video + visual analysis — try frame image, fall back to text-only
     var messages;
     if(useImageAnalysis && frameUrl) {
-      messages = [{role:'user', content:[
-        {type:'image', source:{type:'url', url:frameUrl}},
-        {type:'text', text: userPrompt + '\n\n(הערה: זוהי תמונת מסגרת מתוך הסרטון ' + sibEsc(item.file_name||'') + ')'}
-      ]}];
+      var frameOk = false;
+      try {
+        var testRes = await fetch(frameUrl, {method:'HEAD', signal:AbortSignal.timeout(4000)});
+        frameOk = testRes.ok;
+      } catch(fe) { frameOk = false; }
+
+      if(frameOk) {
+        if(resultEl) resultEl.innerHTML='<div style="text-align:center;padding:20px;color:#1a3d5c;font-size:12px;">🖼️ מנתח פריים מהוידאו...</div>';
+        messages = [{role:'user', content:[
+          {type:'image', source:{type:'url', url:frameUrl}},
+          {type:'text', text: userPrompt + '\n\n(ניתוח ויזואלי: ' + sibEsc(item.file_name||'') + ')'}
+        ]}];
+      } else {
+        if(resultEl) resultEl.innerHTML='<div style="text-align:center;padding:20px;color:#7a5500;font-size:12px;">🎥 מנתח על בסיס שם הקובץ...</div>';
+        var videoNote = '\n\n[קובץ וידאו: ' + sibEsc(item.file_name||'') + ']';
+        messages = [{role:'user', content: userPrompt + videoNote}];
+      }
     } else {
       messages = [{role:'user', content:userPrompt}];
     }
