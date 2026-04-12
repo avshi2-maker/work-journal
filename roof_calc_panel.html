@@ -1,0 +1,219 @@
+<!-- ══ ROOF TILE CALCULATOR PANEL ═══════════════════════════════════════
+     Paste this block inside the מחשבון הנדסי tab panel
+     Load roof_calc.js alongside other module JS files
+     Required Supabase table: roof_calculations (SQL below)
+ ══════════════════════════════════════════════════════════════════════ -->
+
+<div id="rc-panel" style="font-family:Heebo,sans-serif;direction:rtl;max-width:1100px;margin:0 auto;padding:20px;">
+
+  <!-- ── Header ──────────────────────────────────────────────────── -->
+  <div style="background:linear-gradient(135deg,#1a3d5c,#2d6a9f);border-radius:14px;padding:20px 24px;margin-bottom:20px;color:#fff;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">
+    <div>
+      <div style="font-size:9px;letter-spacing:3px;color:#c9a84c;text-transform:uppercase;margin-bottom:4px;">מחשבון הנדסי</div>
+      <div style="font-size:22px;font-weight:900;">📐 חישוב גג רעפים</div>
+      <div style="font-size:11px;color:rgba(255,255,255,0.6);margin-top:4px;">שיפוע · ראפטר · שטח · כמות רעפים · בטון · חלוקים</div>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;">
+      <button onclick="rcPrintReport()" style="background:#c9a84c;border:none;color:#1a1a2e;border-radius:8px;padding:9px 16px;font-family:Heebo,sans-serif;font-size:12px;font-weight:800;cursor:pointer;">🖨️ הדפס דוח</button>
+      <button onclick="rcEmailReport()" style="background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.3);color:#fff;border-radius:8px;padding:9px 16px;font-family:Heebo,sans-serif;font-size:12px;font-weight:700;cursor:pointer;">✉️ מייל</button>
+      <button onclick="rcWhatsApp()" style="background:#25D366;border:none;color:#fff;border-radius:8px;padding:9px 16px;font-family:Heebo,sans-serif;font-size:12px;font-weight:700;cursor:pointer;">💬 WhatsApp</button>
+      <button onclick="if(window._rcLastCalc)rcSaveCalc(window._rcLastCalc);" style="background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);color:#fff;border-radius:8px;padding:9px 16px;font-family:Heebo,sans-serif;font-size:12px;cursor:pointer;">💾 שמור</button>
+    </div>
+  </div>
+
+  <!-- ── Formula explanation box ─────────────────────────────────── -->
+  <div style="background:#e8f0fd;border:1px solid #93c5fd;border-radius:10px;padding:14px 18px;margin-bottom:16px;font-size:11px;color:#1a3d5c;line-height:2;">
+    <div style="font-weight:800;margin-bottom:6px;font-size:12px;">📐 נוסחאות החישוב:</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+      <div><b>זווית שיפוע (α)</b> = arctan(שיפוע% ÷ 100)</div>
+      <div><b>עלייה (H)</b> = גובה שליל − גובה מרזב</div>
+      <div><b>מרחק אופקי (R)</b> = H ÷ tan(α)</div>
+      <div><b>אורך ראפטר</b> = √(H² + R²) — פיתגורס</div>
+      <div><b>מקדם שיפוע</b> = 1 ÷ cos(α)</div>
+      <div><b>שטח גג</b> = שטח תוכנית × מקדם שיפוע</div>
+      <div><b>רעפים</b> = שטח גג ÷ כיסוי רעף × (1 + %בזבוז)</div>
+      <div><b>בטון</b> = שטח גג × עובי (מ')</div>
+    </div>
+    <div style="margin-top:8px;padding-top:8px;border-top:1px solid rgba(26,61,92,0.15);font-size:10px;color:#4a6fa5;" id="rc-formula-txt">— לחץ חשב לעדכון —</div>
+  </div>
+
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;">
+
+    <!-- ── Left: Inputs ────────────────────────────────────────── -->
+    <div style="display:flex;flex-direction:column;gap:12px;">
+
+      <!-- Project + Label -->
+      <div style="background:#fff;border:1px solid rgba(26,61,92,0.12);border-radius:10px;padding:14px;">
+        <div style="font-size:11px;font-weight:800;color:#1a3d5c;margin-bottom:10px;">📁 פרויקט</div>
+        <select id="rc-project" onchange="" style="width:100%;border:1px solid rgba(26,61,92,0.2);border-radius:6px;padding:8px;font-family:Heebo,sans-serif;font-size:12px;direction:rtl;margin-bottom:8px;background:#fff;">
+          <option value="">— בחר פרויקט —</option>
+        </select>
+        <input id="rc-label" type="text" placeholder="תווית / שם הגג" oninput="" style="width:100%;border:1px solid rgba(26,61,92,0.2);border-radius:6px;padding:8px;font-family:Heebo,sans-serif;font-size:12px;direction:rtl;box-sizing:border-box;">
+      </div>
+
+      <!-- Pitch + Elevations -->
+      <div style="background:#fff;border:1px solid rgba(26,61,92,0.12);border-radius:10px;padding:14px;">
+        <div style="font-size:11px;font-weight:800;color:#1a3d5c;margin-bottom:10px;">📏 שיפוע וגבהים</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;">
+          <div>
+            <div style="font-size:10px;color:#888;margin-bottom:4px;">שיפוע %</div>
+            <input id="rc-pitch-pct" type="number" min="0" max="100" step="1" value="35" oninput="rcCalculate()" style="width:100%;border:1px solid rgba(26,61,92,0.2);border-radius:6px;padding:8px;font-family:Heebo,sans-serif;font-size:14px;font-weight:800;text-align:center;box-sizing:border-box;" title="שיפוע באחוזים — 35% = 35 ס&quot;מ לכל מטר">
+          </div>
+          <div>
+            <div style="font-size:10px;color:#888;margin-bottom:4px;">גובה שליל +m</div>
+            <input id="rc-ridge-elev" type="number" min="0" step="0.01" value="8.25" oninput="rcCalculate()" style="width:100%;border:1px solid rgba(26,61,92,0.2);border-radius:6px;padding:8px;font-family:Heebo,sans-serif;font-size:13px;text-align:center;box-sizing:border-box;" title="גובה פסגת הגג (שליל) מפני הים">
+          </div>
+          <div>
+            <div style="font-size:10px;color:#888;margin-bottom:4px;">גובה מרזב +m</div>
+            <input id="rc-eave-elev" type="number" min="0" step="0.01" value="7.15" oninput="rcCalculate()" style="width:100%;border:1px solid rgba(26,61,92,0.2);border-radius:6px;padding:8px;font-family:Heebo,sans-serif;font-size:13px;text-align:center;box-sizing:border-box;" title="גובה שפת הגג התחתונה (מרזב) מפני הים">
+          </div>
+        </div>
+
+        <!-- Live pitch display -->
+        <div style="margin-top:10px;background:#f5f0e8;border-radius:8px;padding:10px;display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:6px;text-align:center;">
+          <div><div style="font-size:16px;font-weight:900;color:#1a3d5c;" id="rc-res-alpha">—</div><div style="font-size:9px;color:#888;">זווית</div></div>
+          <div><div style="font-size:16px;font-weight:900;color:#c9a84c;" id="rc-res-rise">—</div><div style="font-size:9px;color:#888;">עלייה H</div></div>
+          <div><div style="font-size:16px;font-weight:900;color:#c9a84c;" id="rc-res-run">—</div><div style="font-size:9px;color:#888;">מרחק R</div></div>
+          <div><div style="font-size:16px;font-weight:900;color:#c62828;" id="rc-res-rafter">—</div><div style="font-size:9px;color:#888;">ראפטר</div></div>
+        </div>
+      </div>
+
+      <!-- Tile settings -->
+      <div style="background:#fff;border:1px solid rgba(26,61,92,0.12);border-radius:10px;padding:14px;">
+        <div style="font-size:11px;font-weight:800;color:#1a3d5c;margin-bottom:10px;">🏠 סוג רעף וחומרים</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;">
+          <div>
+            <div style="font-size:10px;color:#888;margin-bottom:4px;">סוג רעף</div>
+            <select id="rc-tile-type" onchange="rcUpdateTileCover()" style="width:100%;border:1px solid rgba(26,61,92,0.2);border-radius:6px;padding:8px;font-family:Heebo,sans-serif;font-size:12px;direction:rtl;background:#fff;">
+              <option value="roman">רומי (Roman) — 34 דמ"ר</option>
+              <option value="marseille">מרסיי — 30 דמ"ר</option>
+              <option value="flat">שטוח (Flat) — 32 דמ"ר</option>
+              <option value="concrete">בטון — 32 דמ"ר</option>
+              <option value="slate">פצלת — 20 דמ"ר</option>
+              <option value="custom">מותאם אישית</option>
+            </select>
+          </div>
+          <div>
+            <div style="font-size:10px;color:#888;margin-bottom:4px;">כיסוי רעף (מ"ר לרעף)</div>
+            <input id="rc-tile-cover" type="number" min="0.01" step="0.001" value="0.034" oninput="rcCalculate()" style="width:100%;border:1px solid rgba(26,61,92,0.2);border-radius:6px;padding:8px;font-family:Heebo,sans-serif;font-size:13px;text-align:center;box-sizing:border-box;" title="שטח כיסוי של רעף אחד במטר רבוע">
+          </div>
+          <div>
+            <div style="font-size:10px;color:#888;margin-bottom:4px;">% בזבוז / חיתוך</div>
+            <input id="rc-waste" type="number" min="0" max="50" step="1" value="10" oninput="rcCalculate()" style="width:100%;border:1px solid rgba(26,61,92,0.2);border-radius:6px;padding:8px;font-family:Heebo,sans-serif;font-size:13px;text-align:center;box-sizing:border-box;">
+          </div>
+          <div>
+            <div style="font-size:10px;color:#888;margin-bottom:4px;">מרווח חלוקים (מ')</div>
+            <input id="rc-batten-sp" type="number" min="0.1" step="0.01" value="0.34" oninput="rcCalculate()" style="width:100%;border:1px solid rgba(26,61,92,0.2);border-radius:6px;padding:8px;font-family:Heebo,sans-serif;font-size:13px;text-align:center;box-sizing:border-box;" title="מרווח בין לוחות ריצוף האורכיים">
+          </div>
+          <div>
+            <div style="font-size:10px;color:#888;margin-bottom:4px;">עובי בטון (ס"מ)</div>
+            <input id="rc-concrete-th" type="number" min="0" step="1" value="6" oninput="rcCalculate()" style="width:100%;border:1px solid rgba(26,61,92,0.2);border-radius:6px;padding:8px;font-family:Heebo,sans-serif;font-size:13px;text-align:center;box-sizing:border-box;" title="עובי שכבת הבטון / שכבת ייצוב תחת הרעפים">
+          </div>
+          <div>
+            <div style="font-size:10px;color:#888;margin-bottom:4px;">מקדם שיפוע</div>
+            <div id="rc-res-sfactor" style="border:1px solid rgba(26,61,92,0.15);border-radius:6px;padding:8px;font-size:13px;font-weight:800;text-align:center;color:#1a3d5c;background:#f5f0e8;">—</div>
+          </div>
+        </div>
+        <textarea id="rc-notes" rows="2" placeholder="הערות (אופציונלי)" style="width:100%;border:1px solid rgba(26,61,92,0.15);border-radius:6px;padding:8px;font-family:Heebo,sans-serif;font-size:12px;direction:rtl;box-sizing:border-box;resize:none;"></textarea>
+      </div>
+    </div>
+
+    <!-- ── Right: Sections + Totals ────────────────────────────── -->
+    <div style="display:flex;flex-direction:column;gap:12px;">
+
+      <!-- Sections -->
+      <div style="background:#fff;border:1px solid rgba(26,61,92,0.12);border-radius:10px;padding:14px;flex:1;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+          <div style="font-size:11px;font-weight:800;color:#1a3d5c;">🗂️ מדורי גג (קטעים)</div>
+          <button onclick="rcAddSection('','','')" style="background:#e8f0fd;border:1px solid #93c5fd;color:#1a3d5c;border-radius:6px;padding:5px 12px;font-size:11px;font-weight:700;cursor:pointer;font-family:Heebo,sans-serif;">+ הוסף מדור</button>
+        </div>
+        <div style="display:grid;grid-template-columns:2fr 1fr 1fr auto;gap:4px;margin-bottom:6px;">
+          <div style="font-size:10px;color:#888;padding-right:4px;">שם מדור</div>
+          <div style="font-size:10px;color:#888;text-align:center;">רוחב מ'</div>
+          <div style="font-size:10px;color:#888;text-align:center;">אורך מ'</div>
+          <div></div>
+        </div>
+        <div id="rc-sections"></div>
+        <div style="margin-top:8px;padding-top:8px;border-top:1px solid rgba(26,61,92,0.08);font-size:10px;color:#aaa;">
+          * מידות תוכנית (הטלה אופקית) — לא אורך שיפועי
+        </div>
+      </div>
+
+      <!-- Totals -->
+      <div style="background:linear-gradient(135deg,#1a3d5c,#16324f);border-radius:10px;padding:16px;color:#fff;">
+        <div style="font-size:11px;font-weight:800;color:#c9a84c;margin-bottom:12px;">📊 סיכום כמויות</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+          <div style="background:rgba(255,255,255,0.08);border-radius:8px;padding:12px;text-align:center;">
+            <div style="font-size:22px;font-weight:900;color:#c9a84c;" id="rc-res-plan">—</div>
+            <div style="font-size:10px;color:rgba(255,255,255,0.5);margin-top:2px;">שטח תוכנית</div>
+          </div>
+          <div style="background:rgba(255,255,255,0.08);border-radius:8px;padding:12px;text-align:center;">
+            <div style="font-size:22px;font-weight:900;color:#4ade80;" id="rc-res-slope">—</div>
+            <div style="font-size:10px;color:rgba(255,255,255,0.5);margin-top:2px;">שטח גג בפועל</div>
+          </div>
+          <div style="background:rgba(255,255,255,0.08);border-radius:8px;padding:12px;text-align:center;">
+            <div style="font-size:20px;font-weight:900;color:#fbbf24;" id="rc-res-tiles">—</div>
+            <div style="font-size:10px;color:rgba(255,255,255,0.5);margin-top:2px;">רעפים לרכישה</div>
+          </div>
+          <div style="background:rgba(255,255,255,0.08);border-radius:8px;padding:12px;text-align:center;">
+            <div style="font-size:20px;font-weight:900;color:#93c5fd;" id="rc-res-concrete">—</div>
+            <div style="font-size:10px;color:rgba(255,255,255,0.5);margin-top:2px;">בטון מ"ק</div>
+          </div>
+          <div style="grid-column:span 2;background:rgba(255,255,255,0.08);border-radius:8px;padding:12px;text-align:center;">
+            <div style="font-size:20px;font-weight:900;color:#f9a8d4;" id="rc-res-battens">—</div>
+            <div style="font-size:10px;color:rgba(255,255,255,0.5);margin-top:2px;">חלוקים (לוחות ריצוף) מ'ר</div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ── Section breakdown table ─────────────────────────────────── -->
+  <div style="background:#fff;border:1px solid rgba(26,61,92,0.12);border-radius:10px;overflow:hidden;">
+    <div style="background:#1a3d5c;padding:10px 16px;font-size:11px;font-weight:800;color:#c9a84c;">📋 פירוט לפי מדורים</div>
+    <div style="overflow-x:auto;">
+      <table style="width:100%;border-collapse:collapse;font-size:12px;">
+        <thead>
+          <tr style="background:rgba(26,61,92,0.06);">
+            <th style="padding:10px;text-align:right;font-weight:800;color:#1a3d5c;">מדור</th>
+            <th style="padding:10px;text-align:center;font-weight:700;color:#1a3d5c;">מידות תוכנית</th>
+            <th style="padding:10px;text-align:center;font-weight:700;color:#1a3d5c;">שטח תוכנית מ"ר</th>
+            <th style="padding:10px;text-align:center;font-weight:700;color:#1a3d5c;">שטח גג מ"ר</th>
+            <th style="padding:10px;text-align:center;font-weight:700;color:#7c3aed;">רעפים</th>
+            <th style="padding:10px;text-align:center;font-weight:700;color:#1a3d5c;">בטון מ"ק</th>
+            <th style="padding:10px;text-align:center;font-weight:700;color:#1a3d5c;">חלוקים מ'ר</th>
+          </tr>
+        </thead>
+        <tbody id="rc-sec-tbody">
+          <tr><td colspan="7" style="padding:20px;text-align:center;color:#aaa;">הוסף מדורים לחישוב</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ── Load demo button ─────────────────────────────────────────── -->
+  <div style="margin-top:12px;text-align:left;">
+    <button onclick="rcLoadBergerDemo();rcCalculate();" style="background:#f5f0e8;border:1px solid #c9a84c;color:#7a5500;border-radius:8px;padding:8px 16px;font-family:Heebo,sans-serif;font-size:11px;font-weight:700;cursor:pointer;">
+      📄 טען נתוני ברגר נועה וליאור (ממסמך PDF — 03.07.2025)
+    </button>
+    <span style="font-size:10px;color:#aaa;margin-right:8px;">שיפוע 35% | שליל +8.25מ' | מרזב +7.15מ' | 3 מדורים</span>
+  </div>
+
+</div>
+
+<script>
+// Tile cover presets
+var _rcTileCovers = {
+  roman: 0.034, marseille: 0.030, flat: 0.032,
+  concrete: 0.032, slate: 0.020, custom: null
+};
+function rcUpdateTileCover() {
+  var type = document.getElementById('rc-tile-type')?.value;
+  var cover = _rcTileCovers[type];
+  if (cover) {
+    document.getElementById('rc-tile-cover').value = cover;
+    rcCalculate();
+  }
+}
+</script>
