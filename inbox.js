@@ -725,7 +725,7 @@ async function sibPhase2Run(id, direction) {
 
   var apiKey = (window.APP&&window.APP.config&&window.APP.config.anthropic_key)||_sibApiKey;
   if(!apiKey){try{var cfgP=await sbQ('app_config','select=key,value');var rowP=(cfgP.data||[]).find(function(r){return r.key==='anthropic_key';});if(rowP){apiKey=rowP.value;_sibApiKey=rowP.value;}}catch(e){}}
-  if(!apiKey){sibShowError('אין מפתח API — הגדר anthropic_key ב-app_config');return;}
+  if(!apiKey){sibShowError('אין מפתח Claude — פנה למנהל המערכת');return;}
 
   // Get edited phase 1 text
   var p1el = document.getElementById('sib-p1-edit-'+id);
@@ -1387,11 +1387,11 @@ async function sibPhase1Url(id) {
         '<div style="background:#fff7ed;border:1px solid #fb923c;border-radius:10px;padding:14px;margin:10px;direction:rtl;">' +
           '<div style="font-size:13px;font-weight:800;color:#7c2d12;margin-bottom:10px;">🎬 יוטיוב — חילוץ תמלול</div>' +
           '<div style="background:#fff;border:1px solid #e8ddb5;border-radius:8px;padding:10px;margin-bottom:10px;">' +
-            '<div style="font-size:11px;font-weight:800;color:#1a3d5c;margin-bottom:4px;">🔑 הוסף YouTube API Key לקבל תמלול אוטומטי:</div>' +
+            '<div style="font-size:11px;font-weight:800;color:#1a3d5c;margin-bottom:4px;">🔑 חבר יוטיוב לקבלת תמלול אוטומטי:</div>' +
             '<div style="font-size:10px;color:#666;line-height:1.8;">'+
-              '1. <a href="https://console.cloud.google.com/apis/library/youtube.googleapis.com" target="_blank" style="color:#1a3d5c;font-weight:700;">הפעל YouTube Data API v3 ←</a><br>'+
-              '2. צור API Key ב-Google Cloud Console<br>'+
-              '3. הוסף ל-Supabase: app_config → youtube_api_key'+
+              '1. <a href="https://console.cloud.google.com/apis/library/youtube.googleapis.com?hl=iw" target="_blank" style="color:#1a3d5c;font-weight:700;">הפעל שירות יוטיוב ←</a><br>'+
+              '2. צור מפתח גישה ב-קונסול Google<br>'+
+              '3. הוסף ל-Supabase: הגדרות המערכת'+
             '</div>' +
           '</div>' +
           '<div style="font-size:11px;font-weight:800;color:#1a3d5c;margin-bottom:6px;">📋 או הדבק תמלול ידנית:</div>' +
@@ -2523,50 +2523,50 @@ async function ytSetupApiKey() {
     '<div style="background:#fff;border-radius:16px;width:100%;max-width:520px;direction:rtl;font-family:Heebo,Arial,sans-serif;overflow:hidden;">' +
       '<div style="background:linear-gradient(135deg,#dc2626,#b91c1c);padding:16px 20px;display:flex;justify-content:space-between;align-items:center;">' +
         '<div>' +
-          '<div style="font-size:10px;letter-spacing:2px;color:rgba(255,255,255,0.6);text-transform:uppercase;">YouTube Integration</div>' +
-          '<div style="font-size:17px;font-weight:800;color:#fff;">🎬 הגדרת YouTube API Key</div>' +
+          '<div style="font-size:10px;letter-spacing:2px;color:rgba(255,255,255,0.6);text-transform:uppercase;">אינטגרציית יוטיוב</div>' +
+          '<div style="font-size:17px;font-weight:800;color:#fff;">🎬 הגדרת חיבור יוטיוב</div>' +
         '</div>' +
         '<button onclick="document.getElementById(\"yt-setup-overlay\").remove()" style="background:rgba(255,255,255,0.15);border:none;color:#fff;border-radius:8px;padding:6px 12px;cursor:pointer;font-size:13px;">✕</button>' +
       '</div>' +
       '<div style="padding:20px;">' +
 
         (currentKey ?
-          '<div style="background:#e8f5e9;border:1px solid #4caf50;border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:12px;color:#1b5e20;font-weight:700;">✅ API Key קיים: ...'+currentKey.slice(-6)+'</div>'
+          '<div style="background:#e8f5e9;border:1px solid #4caf50;border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:12px;color:#1b5e20;font-weight:700;">✅ מחובר: ...'+currentKey.slice(-6)+'</div>'
           : ''
         ) +
 
         '<div style="font-size:12px;color:#555;margin-bottom:16px;line-height:1.9;">'+
-          'YouTube API Key מאפשר חילוץ תמלול אוטומטי מכל סרטון יוטיוב.<br>'+
-          'הגדרה חד-פעמית — חינמית עד 10,000 בקשות ביום.'+
+          'חיבור יוטיוב מאפשר חילוץ תמלול אוטומטי מכל סרטון יוטיוב.<br>'+
+          'הגדרה חד-פעמית — חינם עד 10,000 סרטונים ביום.'+
         '</div>' +
 
         '<div style="background:#f8f9fc;border-radius:10px;padding:14px;margin-bottom:16px;">' +
-          '<div style="font-size:12px;font-weight:800;color:#1a3d5c;margin-bottom:10px;">שלבי הגדרה:</div>' +
+          '<div style="font-size:12px;font-weight:800;color:#1a3d5c;margin-bottom:10px;">5 שלבים — פעם אחת בלבד:</div>' +
           '<div style="font-size:12px;color:#444;line-height:2.2;">' +
-            '<div>1. <a href="https://console.cloud.google.com/projectcreate" target="_blank" style="color:#1a3d5c;font-weight:700;">צור פרויקט Google Cloud ←</a></div>' +
-            '<div>2. <a href="https://console.cloud.google.com/apis/library/youtube.googleapis.com" target="_blank" style="color:#1a3d5c;font-weight:700;">הפעל YouTube Data API v3 ←</a></div>' +
-            '<div>3. <a href="https://console.cloud.google.com/apis/credentials" target="_blank" style="color:#1a3d5c;font-weight:700;">צור API Key (Credentials) ←</a></div>' +
-            '<div>4. הגבל את ה-Key ל-YouTube Data API v3 בלבד</div>' +
-            '<div>5. הדבק את ה-Key למטה ולחץ שמור</div>' +
+            '<div>1. <a href="https://console.cloud.google.com/projectcreate?hl=iw" target="_blank" style="color:#1a3d5c;font-weight:700;">צור פרויקט חדש ←</a></div>' +
+            '<div>2. <a href="https://console.cloud.google.com/apis/library/youtube.googleapis.com?hl=iw" target="_blank" style="color:#1a3d5c;font-weight:700;">הפעל שירות יוטיוב ←</a></div>' +
+            '<div>3. <a href="https://console.cloud.google.com/apis/credentials?hl=iw" target="_blank" style="color:#1a3d5c;font-weight:700;">צור מפתח גישה (לחץ + Create Credentials) ←</a></div>' +
+            '<div>4. הגבל את המפתח לשירות יוטיוב בלבד (מומלץ)</div>' +
+            '<div>5. הדבק את המפתח למטה ולחץ שמור</div>' +
           '</div>' +
         '</div>' +
 
         '<div style="margin-bottom:14px;">' +
-          '<div style="font-size:11px;color:#888;margin-bottom:6px;font-weight:700;">YouTube API Key</div>' +
-          '<input id="yt-api-key-input" type="password" placeholder="AIzaSy..." '+
+          '<div style="font-size:11px;color:#888;margin-bottom:6px;font-weight:700;">מפתח הגישה</div>' +
+          '<input id="yt-api-key-input" type="password" placeholder="הדבק כאן את המפתח..." '+
             'style="width:100%;padding:10px 14px;border:1.5px solid #c9a84c;border-radius:8px;font-family:Heebo,sans-serif;font-size:13px;box-sizing:border-box;" '+
             'value="'+(currentKey||'')+'">'+
           '<div style="display:flex;align-items:center;gap:8px;margin-top:6px;">'+
             '<input type="checkbox" id="yt-key-show" onchange="var i=document.getElementById(&quot;yt-api-key-input&quot;);i.type=this.checked?&quot;text&quot;:&quot;password&quot;">'+
-            '<label for="yt-key-show" style="font-size:11px;color:#888;cursor:pointer;">הצג מפתח</label>'+
+            '<label for="yt-key-show" style="font-size:11px;color:#888;cursor:pointer;">הצג / הסתר</label>'+
           '</div>'+
         '</div>' +
 
         '<div id="yt-setup-status" style="display:none;margin-bottom:12px;"></div>' +
 
         '<div style="display:flex;gap:8px;">' +
-          '<button onclick="ytSaveApiKey()" style="flex:1;padding:12px;background:#dc2626;border:none;color:#fff;border-radius:10px;font-family:Heebo,sans-serif;font-size:14px;font-weight:800;cursor:pointer;">💾 שמור ב-Supabase</button>' +
-          '<button onclick="ytTestApiKey()" style="padding:12px 18px;background:#f5f7fa;border:1px solid #ddd;color:#444;border-radius:10px;font-family:Heebo,sans-serif;font-size:13px;cursor:pointer;">🧪 בדוק</button>' +
+          '<button onclick="ytSaveApiKey()" style="flex:1;padding:12px;background:#dc2626;border:none;color:#fff;border-radius:10px;font-family:Heebo,sans-serif;font-size:14px;font-weight:800;cursor:pointer;">💾 שמור</button>' +
+          '<button onclick="ytTestApiKey()" style="padding:12px 18px;background:#f5f7fa;border:1px solid #ddd;color:#444;border-radius:10px;font-family:Heebo,sans-serif;font-size:13px;cursor:pointer;">🧪 בדיקה</button>' +
         '</div>' +
 
       '</div>' +
@@ -2578,7 +2578,7 @@ async function ytSetupApiKey() {
 async function ytSaveApiKey() {
   var key = (document.getElementById('yt-api-key-input')||{}).value||'';
   var statusEl = document.getElementById('yt-setup-status');
-  if (!key.trim()) { showToast('הכנס API Key','error'); return; }
+  if (!key.trim()) { showToast('הכנס מפתח גישה','error'); return; }
 
   try {
     // Upsert into app_config
@@ -2613,9 +2613,9 @@ async function ytSaveApiKey() {
 
     if (statusEl) {
       statusEl.style.display = 'block';
-      statusEl.innerHTML = '<div style="background:#e8f5e9;border:1px solid #4caf50;border-radius:8px;padding:10px;font-size:12px;color:#1b5e20;font-weight:700;">✅ נשמר! תמלול אוטומטי מופעל עכשיו</div>';
+      statusEl.innerHTML = '<div style="background:#e8f5e9;border:1px solid #4caf50;border-radius:8px;padding:10px;font-size:12px;color:#1b5e20;font-weight:700;">✅ נשמר — תמלול יוטיוב אוטומטי פעיל</div>';
     }
-    showToast('✅ YouTube API Key נשמר','success');
+    showToast('✅ המפתח נשמר — חיבור יוטיוב פעיל','success');
 
     setTimeout(function(){ document.getElementById('yt-setup-overlay') && document.getElementById('yt-setup-overlay').remove(); }, 1500);
 
@@ -2630,7 +2630,7 @@ async function ytSaveApiKey() {
 async function ytTestApiKey() {
   var key = (document.getElementById('yt-api-key-input')||{}).value||'';
   var statusEl = document.getElementById('yt-setup-status');
-  if (!key.trim()) { showToast('הכנס API Key קודם','error'); return; }
+  if (!key.trim()) { showToast('הכנס מפתח קודם','error'); return; }
   if (statusEl) { statusEl.style.display='block'; statusEl.innerHTML='<div style="font-size:12px;color:#2563eb;">🧪 בודק...</div>'; }
   try {
     // Test with a simple search query
@@ -2638,7 +2638,7 @@ async function ytTestApiKey() {
       {signal:AbortSignal.timeout(6000)});
     var d = await r.json();
     if (d.error) throw new Error(d.error.message);
-    if (statusEl) statusEl.innerHTML = '<div style="background:#e8f5e9;border:1px solid #4caf50;border-radius:8px;padding:10px;font-size:12px;color:#1b5e20;font-weight:700;">✅ מפתח תקין! YouTube API עובד</div>';
+    if (statusEl) statusEl.innerHTML = '<div style="background:#e8f5e9;border:1px solid #4caf50;border-radius:8px;padding:10px;font-size:12px;color:#1b5e20;font-weight:700;">✅ המפתח תקין — יוטיוב מחובר</div>';
   } catch(e) {
     if (statusEl) statusEl.innerHTML = '<div style="background:#fff5f5;border:1px solid #fca5a5;border-radius:8px;padding:10px;font-size:12px;color:#c62828;">❌ '+e.message+'</div>';
   }
