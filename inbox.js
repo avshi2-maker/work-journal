@@ -346,6 +346,12 @@ function sibActionButtons(item) {
   } else if (type==='spreadsheet'||type==='csv') {
     btns += sibBtn('👁 צפה','sibPlayMedia(\''+id+'\')','sec');
     btns += sibBtn('📊 חלץ נתונים','sibPhase1Doc(\''+id+'\')','phase1');
+  } else if (type==='youtube') {
+    btns += sibBtn('🎬 חלץ תמלול','sibPhase1Url(\''+id+'\')','phase1');
+    btns += sibBtn('📺 פתח','sibPlayMedia(\''+id+'\')','sec');
+  } else if (type==='url') {
+    btns += sibBtn('🌐 חלץ תוכן','sibPhase1Url(\''+id+'\')','phase1');
+    btns += sibBtn('🔗 פתח','sibPlayMedia(\''+id+'\')','sec');
   } else {
     btns += sibBtn('👁 צפה','sibPlayMedia(\''+id+'\')','sec');
     btns += sibBtn('📋 חלץ','sibPhase1Doc(\''+id+'\')','phase1');
