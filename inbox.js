@@ -1264,7 +1264,7 @@ async function sibAddUrl() {
   if(!url.startsWith('http://') && !url.startsWith('https://')) url = 'https://' + url;
   if(inp) inp.value = url;
 
-  var isYT = /youtube\.com\/watch|youtu\.be\//.test(url);
+  var isYT = /youtube\.com\/watch|youtu\.be\/|youtube\.com\/shorts/.test(url);
   var fname = isYT ? 'YouTube: '+url.substr(0,60) : 'URL: '+url.substr(0,60);
   var ftype = isYT ? 'youtube' : 'url';
 
@@ -1289,7 +1289,7 @@ async function sibPhase1Url(id) {
   sibSelectItem(id);
   var panel = document.getElementById('sib-analysis-panel');
   var url   = item.cloudinary_url || '';
-  var isYT  = /youtube\.com\/watch|youtu\.be\//.test(url);
+  var isYT  = /youtube\.com\/watch|youtu\.be\/|youtube\.com\/shorts/.test(url);
   var apiKey = (window.APP&&window.APP.config&&window.APP.config.anthropic_key)||_sibApiKey;
   if (!apiKey) {
     try {
@@ -1304,27 +1304,112 @@ async function sibPhase1Url(id) {
 
   // ── YOUTUBE ─────────────────────────────────────────────────────────
   if (isYT) {
+    if (panel) panel.innerHTML = '<div style="text-align:center;padding:30px;color:#2563eb;font-size:13px;">🎬 מאחזר תמלול יוטיוב...</div>';
+    sibStartMeter('תמלול יוטיוב');
+
+    // Extract video ID — handles /watch?v=, youtu.be/, /shorts/
+    var ytId = '';
+    var ytM = url.match(/(?:v=|youtu\.be\/|shorts\/)([\w-]{11})/);
+    if (ytM) ytId = ytM[1];
+
+    var transcript = '';
+
+    // Method 1: YouTube timedtext API via CORS proxy (no key needed)
+    if (ytId && !transcript) {
+      var ttProxies = ['https://api.allorigins.win/get?url=','https://corsproxy.io/?'];
+      var ttLangs = ['iw','he','en','en-US'];
+      outer: for (var pi=0; pi<ttProxies.length && !transcript; pi++) {
+        for (var li=0; li<ttLangs.length && !transcript; li++) {
+          try {
+            var ttEndpoint = 'https://www.youtube.com/api/timedtext?lang='+ttLangs[li]+'&v='+ytId;
+            var tr = await fetch(ttProxies[pi]+encodeURIComponent(ttEndpoint),{signal:AbortSignal.timeout(5000)});
+            if (!tr.ok) continue;
+            var td = await tr.json().catch(async function(){return {contents:await tr.text()};});
+            var xml = td.contents||td||'';
+            if (typeof xml !== 'string') xml = JSON.stringify(xml);
+            if (xml.includes('<text')) {
+              transcript = xml
+                .replace(/<text[^>]*>/g,'').replace(/<\/text>/g,' ')
+                .replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>')
+                .replace(/&#39;/g,"'").replace(/&quot;/g,'"')
+                .replace(/<[^>]+>/g,'').replace(/\s+/g,' ').trim();
+              break outer;
+            }
+          } catch(e) {}
+        }
+      }
+    }
+
+    // Method 2: Supadata.ai free transcript API
+    if (ytId && !transcript) {
+      try {
+        var sdR = await fetch('https://api.supadata.ai/v1/youtube/transcript?url='+encodeURIComponent(url)+'&text=true',
+          {signal:AbortSignal.timeout(8000)});
+        if (sdR.ok) {
+          var sdD = await sdR.json();
+          if (sdD && sdD.content) transcript = sdD.content;
+        }
+      } catch(e) {}
+    }
+
+    // Method 3: YouTube Data API v3 (needs youtube_api_key in app_config)
+    var ytApiKey = window.APP && window.APP.config && window.APP.config.youtube_api_key;
+    if (ytId && !transcript && ytApiKey) {
+      try {
+        var capR = await fetch('https://www.googleapis.com/youtube/v3/captions?part=snippet&videoId='+ytId+'&key='+ytApiKey,
+          {signal:AbortSignal.timeout(8000)});
+        if (capR.ok) {
+          var capD = await capR.json();
+          var capId = capD.items && capD.items[0] && capD.items[0].id;
+          if (capId) {
+            var capTxt = await fetch('https://www.googleapis.com/youtube/v3/captions/'+capId+'?tfmt=sbv&key='+ytApiKey,
+              {signal:AbortSignal.timeout(8000)});
+            if (capTxt.ok) transcript = await capTxt.text();
+          }
+        }
+      } catch(e) {}
+    }
+
+    sibStopMeter();
+
+    // Auto-proceed if transcript found
+    if (transcript && transcript.length > 50) {
+      _sibPhase1[id] = 'תמלול יוטיוב:\n\nURL: '+url+'\n\n'+transcript.substring(0,8000);
+      sibRefreshCard(id);
+      sibShowPhase2Panel(id);
+      showToast('✅ תמלול יוטיוב חולץ — '+transcript.length+' תווים','success');
+      return;
+    }
+
+    // All methods failed — show manual paste + API key instructions
     if (panel) {
-      panel.innerHTML = '<div style="text-align:center;padding:40px 20px 10px;color:#dc2626;font-size:13px;">🎬 יוטיוב — לא ניתן לגשת ישירות</div>' +
-        '<div style="background:#fff7ed;border:1px solid #fb923c;border-radius:10px;padding:14px;margin:10px;">' +
-          '<div style="font-size:12px;font-weight:700;color:#7c2d12;margin-bottom:8px;">📋 כיצד לקבל תמלול יוטיוב:</div>' +
-          '<div style="font-size:11px;color:#555;line-height:2;">'+
-            '1. פתח את הסרטון: <a href="'+url+'" target="_blank" style="color:#1a3d5c;font-weight:700;">לחץ כאן לפתיחה ←</a><br>'+
-            '2. לחץ על <b>...</b> מתחת לסרטון<br>'+
-            '3. בחר <b>"Show transcript"</b> / <b>"הצג תמלול"</b><br>'+
-            '4. בחר הכל → העתק → הדבק בתיבה למטה'+
+      panel.innerHTML =
+        '<div style="background:#fff7ed;border:1px solid #fb923c;border-radius:10px;padding:14px;margin:10px;direction:rtl;">' +
+          '<div style="font-size:13px;font-weight:800;color:#7c2d12;margin-bottom:10px;">🎬 יוטיוב — חילוץ תמלול</div>' +
+          '<div style="background:#fff;border:1px solid #e8ddb5;border-radius:8px;padding:10px;margin-bottom:10px;">' +
+            '<div style="font-size:11px;font-weight:800;color:#1a3d5c;margin-bottom:4px;">🔑 הוסף YouTube API Key לקבל תמלול אוטומטי:</div>' +
+            '<div style="font-size:10px;color:#666;line-height:1.8;">'+
+              '1. <a href="https://console.cloud.google.com/apis/library/youtube.googleapis.com" target="_blank" style="color:#1a3d5c;font-weight:700;">הפעל YouTube Data API v3 ←</a><br>'+
+              '2. צור API Key ב-Google Cloud Console<br>'+
+              '3. הוסף ל-Supabase: app_config → youtube_api_key'+
+            '</div>' +
           '</div>' +
-          '<textarea id="yt-paste-'+id+'" rows="6" placeholder="הדבק כאן את התמלול מיוטיוב..." '+
-            'style="width:100%;margin-top:10px;border:1px solid rgba(180,140,60,0.3);border-radius:8px;'+
-            'padding:10px;font-family:Heebo,sans-serif;font-size:12px;direction:rtl;box-sizing:border-box;"></textarea>'+
+          '<div style="font-size:11px;font-weight:800;color:#1a3d5c;margin-bottom:6px;">📋 או הדבק תמלול ידנית:</div>' +
+          '<div style="font-size:10px;color:#666;line-height:1.8;margin-bottom:8px;">'+
+            '<a href="'+url+'" target="_blank" style="color:#dc2626;font-weight:800;">📺 פתח סרטון ←</a>  '+
+            'לחץ ··· → Show transcript → בחר הכל → העתק'+
+          '</div>' +
+          '<textarea id="yt-paste-'+id+'" rows="6" placeholder="הדבק תמלול יוטיוב כאן..." '+
+            'style="width:100%;border:1.5px solid #c9a84c;border-radius:8px;padding:9px;'+
+            'font-family:Heebo,sans-serif;font-size:12px;direction:rtl;box-sizing:border-box;background:#fffbf0;"></textarea>'+
           '<button onclick="sibSubmitYTPaste(\''+id+'\')" '+
-            'style="width:100%;margin-top:8px;padding:10px;background:#dc2626;border:none;color:#fff;'+
+            'style="width:100%;margin-top:8px;padding:11px;background:#dc2626;border:none;color:#fff;'+
             'border-radius:8px;font-family:Heebo,sans-serif;font-size:13px;font-weight:800;cursor:pointer;">'+
             '🚀 נתח תמלול זה'+
           '</button>'+
         '</div>';
     }
-    return; // wait for user to paste
+    return;
 
   // ── WEBSITE SCRAPE ───────────────────────────────────────────────────
   } else {
@@ -1624,9 +1709,13 @@ async function sibRunMeasOCR(id) {
 
     _measItems = parsed.rows || [];
 
-    // Recalculate areas where missing
+    // Auto-fix cm values and recalculate areas
     _measItems.forEach(function(r){
-      if(!r.area && r.length && r.width) r.area = Math.round(r.length * r.width * 100)/100;
+      // Convert cm to metres if clearly in cm (>50 likely means cm not metres for a room)
+      if(r.length > 50) r.length = Math.round(r.length/100*100)/100;
+      if(r.width  > 50) r.width  = Math.round(r.width /100*100)/100;
+      // Recalculate area
+      if(r.length && r.width) r.area = Math.round(r.length * r.width * 100)/100;
       if(!r.unit) r.unit = 'sq_m';
     });
 
@@ -1801,32 +1890,65 @@ async function sibSendMeasToTakeoff(id) {
   var projEl  = document.getElementById('meas-proj-'+id);
   var label   = labelEl ? labelEl.value : '';
   var projId  = projEl  ? projEl.value  : (item.project_id||null);
-  var total   = _measItems.reduce(function(s,r){ return s+(parseFloat(r.area)||0); }, 0);
+  var proj    = projId && window.allProjects
+    ? (window.allProjects.find(function(p){return p.id===projId;})||null) : null;
+  var projName = proj ? proj.project_name : '';
 
-  // Map to site_takeoffs rows format
-  var takeoffRows = _measItems.map(function(r){
-    return { room: r.item||'', length: r.length||0, width: r.width||0, area: r.area||0 };
+  // Validate and auto-fix measurements before sending
+  var fixedRows = _measItems.map(function(r){
+    var length = parseFloat(r.length)||0;
+    var width  = parseFloat(r.width)||0;
+    var area   = parseFloat(r.area)||0;
+    // Auto-detect cm values (>100) and convert to metres
+    if (length > 100) length = Math.round(length/100*100)/100;
+    if (width  > 100) width  = Math.round(width /100*100)/100;
+    // Recalculate area
+    if (length && width) area = Math.round(length*width*100)/100;
+    return { room: r.item||'', length: length, width: width, area: area };
   });
 
+  var total = fixedRows.reduce(function(s,r){ return s+(r.area||0); }, 0);
+
   try {
+    var payload = {
+      session_label: label || ('OCR — '+new Date().toLocaleDateString('he-IL')),
+      rows:          JSON.stringify(fixedRows),
+      total_area:    Math.round(total*100)/100,
+      takeoff_type:  'standard',
+      submitted_by:  'בני',
+      takeoff_date:  new Date().toISOString().split('T')[0],
+      notes:         'יובא אוטומטית מ-OCR תמונת מדידות — '+sibEsc(item.file_name||''),
+      created_at:    new Date().toISOString()
+    };
+    if (projId)   payload.project_id   = projId;
+    if (projName) payload.project_name = projName;
+
     var res = await fetch(SB_URL+'/rest/v1/site_takeoffs', {
       method: 'POST',
-      headers: { apikey:SB_KEY, Authorization:'Bearer '+SB_KEY, 'Content-Type':'application/json', Prefer:'return=minimal' },
-      body: JSON.stringify({
-        project_id:    projId||null,
-        session_label: label || ('מדידת שטח — '+new Date().toLocaleDateString('he-IL')),
-        rows:          JSON.stringify(takeoffRows),
-        total_area:    Math.round(total*100)/100,
-        takeoff_type:  'standard',
-        submitted_by:  'בני',
-        notes:         'יובא אוטומטית מ-OCR תמונת מדידות',
-        created_at:    new Date().toISOString()
-      })
+      headers: {
+        apikey:         SB_KEY,
+        Authorization:  'Bearer '+SB_KEY,
+        'Content-Type': 'application/json',
+        Prefer:         'return=minimal'
+      },
+      body: JSON.stringify(payload)
     });
-    if (!res.ok) throw new Error('HTTP '+res.status);
-    showToast('✅ נשלח לטייקאוף בהצלחה','success');
+
+    if (!res.ok) {
+      var errText = await res.text().catch(function(){return res.status;});
+      throw new Error('HTTP '+res.status+' — '+String(errText).substr(0,120));
+    }
+
+    showToast('✅ נשלח לטייקאוף בהצלחה | '+fixedRows.length+' שורות, '+total.toFixed(2)+' מ"ר','success');
+
+    // Refresh takeoff tab if visible
+    if (typeof loadTakeoffs === 'function') {
+      try { loadTakeoffs(); } catch(e2){}
+    }
+
   } catch(e) {
-    showToast('שגיאה: '+e.message,'error');
+    showToast('שגיאה בשליחה לטייקאוף: '+e.message,'error');
+    console.error('sibSendMeasToTakeoff error:', e);
   }
 }
 

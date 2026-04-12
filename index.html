@@ -6614,7 +6614,13 @@ async function _fetchEncyclopedia() {
     if (!res.ok) throw new Error('HTTP ' + res.status);
     var code = await res.text();
     if (code.trim().startsWith('<')) throw new Error('Got HTML not JS');
-    try { (new Function(code))(); } catch(e2) { var ns=document.createElement('script'); ns.textContent=code; document.head.appendChild(ns); }
+    await new Promise(function(resolve, reject) {
+      var s = document.createElement('script');
+      s.src = 'encyclopedia.js?v=' + Date.now();
+      s.onload = resolve;
+      s.onerror = function() { reject(new Error('Failed to load encyclopedia.js')); };
+      document.head.appendChild(s);
+    });
   } catch(e) { console.error('encyclopedia.js fetch failed:', e); _encyclopediaFetched = false; }
 }
 
@@ -8639,15 +8645,13 @@ async function _fetchEncyclopedia() {
   if (_encFetched) return;
   _encFetched = true;
   try {
-    var res = await fetch('encyclopedia.js?v=' + Date.now());
-    if (!res.ok) throw new Error('HTTP ' + res.status);
-    var code = await res.text();
-    if (code.trim().startsWith('<')) throw new Error('Got HTML not JS');
-    try { (new Function(code))(); } catch(evalErr) {
-      // fallback to script tag injection
-      var ns = document.createElement('script'); ns.textContent = code;
-      document.head.appendChild(ns);
-    }
+    await new Promise(function(resolve, reject) {
+      var s = document.createElement('script');
+      s.src = 'encyclopedia.js?v=' + Date.now();
+      s.onload = resolve;
+      s.onerror = function() { _encFetched = false; reject(new Error('Failed to load encyclopedia.js')); };
+      document.head.appendChild(s);
+    });
   } catch(e) { console.error('encyclopedia.js fetch failed:', e); _encFetched = false; }
 }
 
@@ -9622,26 +9626,25 @@ window.luClosePreview = function() {
 
 
 <div class="app-panel" id="encyclopedia-panel">
-  <div style="padding:20px 24px;padding-top:70px;direction:rtl;font-family:Heebo,Arial,sans-serif;min-height:100vh;background:#1a1a2e;">
+  <div style="padding:20px 24px;padding-top:70px;direction:rtl;font-family:Heebo,Arial,sans-serif;min-height:100vh;background:#f5f0e8;">
 
     <!-- Header -->
     <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px;flex-wrap:wrap;gap:12px;">
       <div>
-        <div style="font-size:9px;letter-spacing:3px;color:#c9a84c;text-transform:uppercase;margin-bottom:4px;">Field Knowledge Base</div>
-        <div style="font-size:22px;font-weight:900;color:#fff;">📚 אנציקלופדיית שטח</div>
-        <div style="font-size:12px;color:#555;margin-top:3px;">ידע מהשטח · מקרי בוחן · הנחיות לקבלני משנה</div>
+        <div style="font-size:9px;letter-spacing:3px;color:#9a6f00;text-transform:uppercase;margin-bottom:4px;font-weight:800;">Field Knowledge Base</div>
+        <div style="font-size:22px;font-weight:900;color:#1a3d5c;">📚 אנציקלופדיית שטח</div>
+        <div style="font-size:12px;color:#888;margin-top:3px;font-weight:700;">ידע מהשטח · מקרי בוחן · הנחיות לקבלני משנה</div>
       </div>
-      <!-- Archive note — adding happens in מרכז נתונים שטח -->
-      <div style="background:rgba(201,168,76,0.08);border:1px solid rgba(201,168,76,0.25);border-radius:10px;padding:9px 16px;font-family:Heebo,sans-serif;font-size:12px;color:#c9a84c;direction:rtl;">
-        ➕ להוספה: <b>מרכז נתונים שטח AI</b> → אשר + שמור
+      <div style="background:#fff8e8;border:2px solid #c9a84c;border-radius:10px;padding:10px 18px;font-family:Heebo,sans-serif;font-size:12px;color:#7a5500;direction:rtl;font-weight:700;">
+        ➕ להוספה: <b>מרכז נתונים שטח AI</b> → אשר + שמור לאנציקלופדיה
       </div>
     </div>
 
     <!-- Filters row -->
-    <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);border-radius:12px;padding:12px 16px;margin-bottom:14px;">
+    <div style="background:#fff;border:1px solid #e8ddb5;border-radius:12px;padding:12px 16px;margin-bottom:14px;box-shadow:0 1px 4px rgba(0,0,0,0.06);">
       <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px;">
         <input id="enc-search" type="text" placeholder="🔍 חפש כותרת, קטגוריה, תגיות..." oninput="encFilter()"
-          style="flex:1;min-width:180px;background:#242438;border:1px solid rgba(255,255,255,0.1);color:#fff;padding:9px 14px;border-radius:8px;font-family:Heebo,sans-serif;font-size:13px;direction:rtl;">
+          style="flex:1;min-width:180px;background:#fffbf0;border:1.5px solid #c9a84c;color:#1a1a1a;padding:9px 14px;border-radius:8px;font-family:Heebo,sans-serif;font-size:13px;direction:rtl;font-weight:700;">
         <div id="enc-header-controls"></div>
       </div>
       <div id="enc-cat-filters" style="display:flex;gap:6px;flex-wrap:wrap;"></div>
