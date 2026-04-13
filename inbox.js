@@ -146,11 +146,18 @@ function sibHTML() {
     '</div>' +
   '</div>' +
 
-  // URL / YOUTUBE INPUT BAR
+  // URL INPUT — TWO DEDICATED ROWS
+  // Row 1: YouTube
+  '<div style="background:#fce4e4;border-bottom:1px solid #fca5a5;padding:8px 20px;display:flex;gap:8px;align-items:center;">' +
+    '<span style="font-size:11px;font-weight:800;color:#c62828;white-space:nowrap;">🎬 יוטיוב:</span>' +
+    '<input id="sib-yt-input" type="text" placeholder="https://youtube.com/watch?v=... או /shorts/..." style="flex:1;border:1px solid rgba(198,40,40,0.3);border-radius:8px;padding:7px 12px;font-family:Heebo,sans-serif;font-size:12px;direction:ltr;background:#fff;">' +
+    '<button onclick="sibAddYT()" style="background:#dc2626;border:none;color:#fff;border-radius:8px;padding:7px 14px;font-size:11px;font-weight:800;cursor:pointer;font-family:Heebo,sans-serif;white-space:nowrap;">➕ נתח</button>' +
+  '</div>' +
+  // Row 2: Website
   '<div style="background:#e8f0fd;border-bottom:1px solid #c3d4f0;padding:8px 20px;display:flex;gap:8px;align-items:center;">' +
-    '<span style="font-size:11px;font-weight:800;color:#1a3d5c;white-space:nowrap;">🌐 נתח URL / יוטיוב + אתרים:</span>' +
-    '<input id="sib-url-input" type="text" placeholder="https://youtube.com/watch?v=... או כתובת אתר לסריקה..." style="flex:1;border:1px solid rgba(26,61,92,0.3);border-radius:8px;padding:7px 12px;font-family:Heebo,sans-serif;font-size:12px;direction:ltr;">' +
-    '<button onclick="sibAddUrl()" style="background:#1a3d5c;border:none;color:#fff;border-radius:8px;padding:7px 14px;font-size:11px;font-weight:800;cursor:pointer;font-family:Heebo,sans-serif;white-space:nowrap;">➕ הוסף לתיבה</button>' +
+    '<span style="font-size:11px;font-weight:800;color:#1a3d5c;white-space:nowrap;">🌐 אתר אינטרנט:</span>' +
+    '<input id="sib-url-input" type="text" placeholder="https://www.topcret.com או כל אתר בנייה/ספק..." style="flex:1;border:1px solid rgba(26,61,92,0.3);border-radius:8px;padding:7px 12px;font-family:Heebo,sans-serif;font-size:12px;direction:ltr;background:#fff;">' +
+    '<button onclick="sibAddUrl()" style="background:#1a3d5c;border:none;color:#fff;border-radius:8px;padding:7px 14px;font-size:11px;font-weight:800;cursor:pointer;font-family:Heebo,sans-serif;white-space:nowrap;">➕ סרוק</button>' +
   '</div>' +
 
   // STATS + BATCH BAR
@@ -1263,6 +1270,27 @@ function sibPopulateProjects() {
 
 
 // ── URL / YOUTUBE HANDLER ─────────────────────────────────────────────
+async function sibAddYT() {
+  var inp = document.getElementById('sib-yt-input');
+  var url = inp ? inp.value.trim() : '';
+  if (!url) { showToast('הכנס קישור יוטיוב','error'); return; }
+  if (!/youtube\.com|youtu\.be/i.test(url)) { showToast('זה לא קישור יוטיוב תקין','error'); return; }
+  // Add https if missing
+  if (!/^https?:\/\//i.test(url)) url = 'https://'+url;
+  if (inp) inp.value = '';
+  // Reuse sibAddUrl logic but force youtube type
+  try {
+    var res = await fetch(SB_URL+'/rest/v1/asset_inbox', {
+      method: 'POST',
+      headers: {apikey:SB_KEY, Authorization:'Bearer '+SB_KEY, 'Content-Type':'application/json', Prefer:'return=representation'},
+      body: JSON.stringify({cloudinary_url:url, file_name:'YouTube: '+url.substr(0,60), file_type:'youtube', status:'pending', created_at:new Date().toISOString()})
+    });
+    if (!res.ok) throw new Error('HTTP '+res.status);
+    showToast('🎬 סרטון יוטיוב נוסף','success');
+    await sibLoad();
+  } catch(e) { showToast('שגיאה: '+e.message,'error'); }
+}
+
 async function sibAddUrl() {
   var inp = document.getElementById('sib-url-input');
   var url = inp ? inp.value.trim() : '';
@@ -1487,43 +1515,84 @@ async function sibPhase1Url(id) {
       sibStartMeter('סריקת אתר');
     }
 
-    // Try multiple CORS proxies in order
-    var proxies = [
-      'https://api.allorigins.win/get?url=',
-      'https://corsproxy.io/?',
-      'https://api.codetabs.com/v1/proxy?quest=',
-      'https://thingproxy.freeboard.io/fetch/',
-      'https://cors-anywhere.herokuapp.com/'
-    ];
-
+    // Method 1: Try Supabase claude-proxy edge function (our own — no CORS)
     var pageText = '';
     var fetchOk  = false;
 
-    for (var pi = 0; pi < proxies.length; pi++) {
+    try {
+      var sbProxyRes = await fetch(window.SB_URL+'/functions/v1/claude-proxy', {
+        method: 'POST',
+        headers: {
+          'Authorization': 'Bearer '+window.SB_KEY,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          action: 'fetch_url',
+          url: url
+        }),
+        signal: AbortSignal.timeout(12000)
+      });
+      if (sbProxyRes.ok) {
+        var sbData = await sbProxyRes.json();
+        if (sbData && sbData.text && sbData.text.length > 100) {
+          pageText = sbData.text;
+          fetchOk = true;
+        }
+      }
+    } catch(e) {}
+
+    // Method 2: Public proxies fallback
+    if (!fetchOk) {
+      var proxies = [
+        'https://api.allorigins.win/get?url=',
+        'https://corsproxy.io/?',
+        'https://api.codetabs.com/v1/proxy?quest='
+      ];
+      for (var pi = 0; pi < proxies.length && !fetchOk; pi++) {
+        try {
+          var proxyUrl = proxies[pi] + encodeURIComponent(url);
+          var res = await fetch(proxyUrl, { signal: AbortSignal.timeout(8000) });
+          if (!res.ok) continue;
+          var data = await res.json().catch(async function() {
+            return { contents: await res.text() };
+          });
+          var rawHtml = data.contents || data || '';
+          if (typeof rawHtml !== 'string') rawHtml = JSON.stringify(rawHtml);
+          pageText = rawHtml
+            .replace(/<script[\s\S]*?<\/script>/gi, ' ')
+            .replace(/<style[\s\S]*?<\/style>/gi, ' ')
+            .replace(/<[^>]+>/g, ' ')
+            .replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&')
+            .replace(/&lt;/g, '<').replace(/&gt;/g, '>')
+            .replace(/\s{3,}/g, '\n').trim();
+          if (pageText.length > 200) fetchOk = true;
+        } catch(pe) {}
+      }
+    }
+
+    // Method 3: Ask Claude to search for the URL content directly
+    if (!fetchOk) {
       try {
-        var proxyUrl = proxies[pi] + encodeURIComponent(url);
-        var res = await fetch(proxyUrl, { signal: AbortSignal.timeout(8000) });
-        if (!res.ok) continue;
-        var data = await res.json().catch(async function() {
-          return { contents: await res.text() };
-        });
-        var html = data.contents || data || '';
-        if (typeof html !== 'string') html = JSON.stringify(html);
-
-        // Strip HTML tags, scripts, styles → clean text
-        pageText = html
-          .replace(/<script[\s\S]*?<\/script>/gi, ' ')
-          .replace(/<style[\s\S]*?<\/style>/gi, ' ')
-          .replace(/<[^>]+>/g, ' ')
-          .replace(/&nbsp;/g, ' ')
-          .replace(/&amp;/g, '&')
-          .replace(/&lt;/g, '<')
-          .replace(/&gt;/g, '>')
-          .replace(/\s{3,}/g, '\n')
-          .trim();
-
-        if (pageText.length > 200) { fetchOk = true; break; }
-      } catch(pe) { /* try next proxy */ }
+        var searchRaw = await claudeFetch({
+          _apiKey: apiKey,
+          model: 'claude-sonnet-4-20250514',
+          max_tokens: 1500,
+          system: 'אתה עוזר המחפש מידע מקצועי על אתרי בנייה ונדל"ן.',
+          messages: [{role:'user', content:
+            'חפש ותסכם את המידע המקצועי הזמין על האתר: '+url+'\n'+
+            'ספק מידע על: מה החברה עושה, מוצרים/שירותים, מפרטים טכניים, מחירים אם זמינים.'
+          }],
+          tools: [{type:'web_search_20250305', name:'web_search'}]
+        }, null);
+        var searchResp = searchRaw && typeof searchRaw.json==='function' ? await searchRaw.json() : searchRaw;
+        var searchText = searchResp && searchResp.content
+          ? searchResp.content.filter(function(b){return b.type==='text';}).map(function(b){return b.text;}).join('\n')
+          : '';
+        if (searchText.length > 100) {
+          pageText = searchText;
+          fetchOk = true;
+        }
+      } catch(e) {}
     }
 
     if (!fetchOk || pageText.length < 100) {
