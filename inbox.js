@@ -335,6 +335,7 @@ function sibActionButtons(item) {
     btns += sibBtn('👁 צפה','sibPlayMedia(\''+id+'\')','sec');
     btns += sibBtn('📐 מדידות OCR','sibOpenMeasurements(\''+id+'\')','meas');
     btns += sibBtn('📋 שלב 1: תאר','sibPhase1Image(\''+id+'\')','phase1');
+    btns += sibBtn('🔴 חלץ גבהים','sibPhase1Gavoim(\''+id+'\')','laser');
   } else if (type==='video') {
     var isCloudVid = !!(item.cloudinary_url && item.cloudinary_url.includes('cloudinary.com'));
     btns += sibBtn('▶ נגן','sibPlayMedia(\''+id+'\')','sec');
@@ -416,6 +417,175 @@ function sibSelectItem(id) {
       '</div>' +
       '<div style="font-size:11px;color:#8a9aa5;text-align:center;padding:10px;">לחץ על כפתורי הניתוח בכרטיס הקובץ</div>' +
     '</div>' + sibApprovePanel(item);
+}
+
+
+// ── PHASE 1: GAVOIM — Laser leveling sheet OCR ───────────────────────
+async function sibPhase1Gavoim(id) {
+  var item = _sibItems.find(function(i){return i.id===id;});
+  if (!item) return;
+  sibSelectItem(id);
+  var panel = document.getElementById('sib-analysis-panel');
+  if (panel) {
+    panel.innerHTML = '<div style="text-align:center;padding:40px 20px;color:#ef4444;font-size:13px;">🔴 Claude מנתח גיליון מדידת גבהים...</div>';
+    sibStartMeter('חילוץ מדידות גבהים');
+  }
+
+  var apiKey = (window.APP&&window.APP.config&&window.APP.config.anthropic_key)||_sibApiKey;
+  if (!apiKey) {
+    try {
+      var cfg = await sbQ('app_config','select=key,value');
+      var row = (cfg.data||[]).find(function(r){ return r.key==='anthropic_key'; });
+      if (row) { apiKey = row.value; _sibApiKey = row.value; }
+    } catch(e) {}
+  }
+  if (!apiKey) { sibStopMeter(); sibShowError('אין מפתח API'); return; }
+
+  try {
+    var raw = await claudeFetch({
+      _apiKey: apiKey,
+      model: 'claude-sonnet-4-20250514',
+      max_tokens: 2000,
+      system: [
+        'אתה מומחה מדידות בנייה ישראלי.',
+        'אתה מנתח גיליונות מדידת גבהים לייזר הכתובים ביד.',
+        'חלץ את כל הנקודות: שם נקודה, קואורדינטות X ו-Y, קריאת לייזר.',
+        'גם אם הכתב קשה לקריאה — נסה לזהות ערכים מספריים.',
+        'החזר JSON בלבד, ללא טקסט נוסף.'
+      ].join(' '),
+      messages: [{
+        role: 'user',
+        content: [
+          {
+            type: 'image',
+            source: {
+              type: 'url',
+              url: item.cloudinary_url
+            }
+          },
+          {
+            type: 'text',
+            text: [
+              'זהו גיליון מדידת גבהים לייזר מאתר בנייה.',
+              'חלץ את כל הנקודות הרשומות בגיליון.',
+              '',
+              'החזר JSON בפורמט הבא בלבד:',
+              '{',
+              '  "room": "שם החדר / האזור",',
+              '  "date": "תאריך המדידה",',
+              '  "benchmark": {"value": 0.000, "note": "תיאור נקודת הייחוס"},',
+              '  "points": [',
+              '    {"name": "P1", "x": 0, "y": 0, "reading": 1.450, "notes": ""}',
+              '  ]',
+              '}',
+              '',
+              'אם שדה לא קריא — השתמש ב-null.',
+              'אם אין קואורדינטות — שים 0.',
+              'החזר JSON בלבד ללא הסברים.'
+            ].join('\n')
+          }
+        ]
+      }]
+    }, null);
+
+    var resp = raw && typeof raw.json === 'function' ? await raw.json() : raw;
+    var txt  = resp && resp.content && resp.content[0] ? resp.content[0].text : '';
+    sibStopMeter(resp && resp.usage);
+
+    // Parse JSON
+    var parsed = null;
+    try {
+      parsed = JSON.parse(txt.replace(/```json|```/g,'').trim());
+    } catch(e) {
+      sibShowError('לא הצלחנו לחלץ נקודות — נסה שוב עם תמונה ברורה יותר');
+      return;
+    }
+
+    var pts = parsed.points || [];
+    if (!pts.length) {
+      sibShowError('לא זוהו נקודות מדידה בגיליון');
+      return;
+    }
+
+    // Store as phase1
+    _sibPhase1[id] = 'מדידת גבהים OCR:\n\n' + JSON.stringify(parsed, null, 2);
+    sibRefreshCard(id);
+
+    // Show preview + route to gavoim
+    if (panel) {
+      var projSel = document.getElementById('sib-proj-sel-'+id);
+      var projectId = projSel ? projSel.value : (item.project_id||null);
+      var proj = projectId ? (window.allProjects||[]).find(function(p){return p.id===projectId;}) : null;
+
+      panel.innerHTML =
+        '<div style="background:#fff5f5;border:1.5px solid #ef4444;border-radius:10px;padding:14px;margin-bottom:10px;direction:rtl;">' +
+          '<div style="font-size:13px;font-weight:900;color:#c62828;margin-bottom:10px;">🔴 חולץ '+pts.length+' נקודות מדידה</div>' +
+          '<div style="font-size:12px;color:#555;margin-bottom:8px;">' +
+            (parsed.room ? '📍 חדר: <b>'+gvEsc(parsed.room)+'</b><br>' : '') +
+            (parsed.date ? '📅 תאריך: '+gvEsc(parsed.date)+'<br>' : '') +
+            (parsed.benchmark&&parsed.benchmark.value ? '📏 BM: <b>'+parsed.benchmark.value+'</b> מ׳<br>' : '') +
+          '</div>' +
+          '<div style="max-height:160px;overflow-y:auto;margin-bottom:12px;">' +
+            '<table style="width:100%;border-collapse:collapse;font-size:11px;">' +
+              '<tr style="background:#fff0f0;"><th style="padding:5px;text-align:right;">נקודה</th><th style="padding:5px;">X</th><th style="padding:5px;">Y</th><th style="padding:5px;color:#c9a84c;">קריאה</th></tr>' +
+              pts.slice(0,10).map(function(p){
+                return '<tr style="border-bottom:1px solid #fee;"><td style="padding:4px 6px;">'+gvEsc(p.name||'')+'</td><td style="padding:4px;text-align:center;">'+(p.x||0)+'</td><td style="padding:4px;text-align:center;">'+(p.y||0)+'</td><td style="padding:4px;text-align:center;font-weight:700;">'+(p.reading||'—')+'</td></tr>';
+              }).join('') +
+              (pts.length>10?'<tr><td colspan="4" style="padding:4px;text-align:center;color:#888;">...ועוד '+(pts.length-10)+' נקודות</td></tr>':'') +
+            '</table>' +
+          '</div>' +
+          '<div style="display:flex;gap:8px;">' +
+            '<button onclick="sibRouteToGavoim(this)" data-id="'+id+'" data-pts="'+encodeURIComponent(JSON.stringify(parsed))+'" '+
+              'style="flex:1;padding:11px;background:#ef4444;border:none;color:#fff;border-radius:10px;font-family:Heebo,sans-serif;font-size:13px;font-weight:800;cursor:pointer;">🔴 פתח במודול גבהים + 3D</button>' +
+          '</div>' +
+        '</div>' +
+        sibApprovePanel(item);
+    }
+
+  } catch(e) {
+    sibStopMeter();
+    sibShowError('שגיאת OCR: ' + e.message);
+  }
+}
+
+function gvEsc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+// ── ROUTE OCR RESULT TO GAVOIM MODULE ─────────────────────────────────
+function sibRouteToGavoim(btn) {
+  var id = btn ? btn.getAttribute("data-id") : null;
+  var parsedJson = btn ? decodeURIComponent(btn.getAttribute("data-pts")||"{}") : "{}";
+  var parsed;
+  try { parsed = JSON.parse(parsedJson); } catch(e) { return; }
+
+  var item = _sibItems.find(function(i){return i.id===id;});
+  var projectId = item ? item.project_id : null;
+
+  // Switch to takeoff tab → gavoim
+  if (typeof switchTab === 'function') switchTab('takeoff');
+  setTimeout(function(){
+    if (typeof gvTabClicked === 'function') gvTabClicked();
+    setTimeout(function(){
+      if (typeof gvRenderModeC === 'function') {
+        window._gvPoints = parsed.points || [];
+        window._gvMode   = 'c';
+        var area = document.getElementById('gv-form-area');
+        if (area) {
+          gvRenderModeC(area, parsed.points, parsed.benchmark);
+          // Pre-fill project
+          var projSel = document.getElementById('gv-c-proj');
+          if (projSel && projectId) projSel.value = projectId;
+          var roomInp = document.getElementById('gv-c-room');
+          if (roomInp && parsed.room) roomInp.value = parsed.room;
+          var bmInp = document.getElementById('gv-c-bm');
+          if (bmInp && parsed.benchmark && parsed.benchmark.value) bmInp.value = parsed.benchmark.value;
+          // Auto-calculate
+          setTimeout(function(){
+            if (typeof gvCalculateAndReport === 'function') gvCalculateAndReport();
+          }, 200);
+        }
+      }
+    }, 300);
+  }, 400);
 }
 
 // ── PHASE 1: IMAGE DESCRIPTION ────────────────────────────────────────
