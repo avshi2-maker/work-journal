@@ -373,6 +373,56 @@ function gvRenderModeC(area, prefillPoints, prefillBM) {
         '<div style="margin-top:10px;background:#fff;border:1px solid #e8ddb5;border-radius:8px;padding:10px;font-size:11px;color:#7a5500;">' +
           '💡 <b>טיפ SOLO:</b> צלם את הגיליון הממולא ← העלה למרכז נתונים ← לחץ 🔴 חלץ גבהים ← הכל נטען אוטומטית' +
         '</div>' +
+
+        '<div style="margin-top:12px;background:#fff;border:1.5px solid #1a3d5c;border-radius:10px;padding:14px;">' +
+          '<div style="font-size:12px;font-weight:900;color:#1a3d5c;margin-bottom:10px;">🗺️ I. מערכת קואורדינטות — איפה לשים את המוט?</div>' +
+          '<div style="font-size:11px;color:#444;line-height:1.9;margin-bottom:10px;">' +
+            '• עמוד בפתח החדר ופנה פנימה<br>' +
+            '• <b>פינה שמאל-תחתון = (0,0)</b> — נקודת האפס שלך<br>' +
+            '• <b>X</b> = כמה מטרים ימינה לאורך הקיר התחתון<br>' +
+            '• <b>Y</b> = כמה מטרים פנימה מהקיר התחתון<br>' +
+            '• לפני שמתחילים: <b>סמן קוים בגיר כל 3 מטר</b> לאורך ולרוחב<br>' +
+            '• כל צומת של קוי גיר = נקודת מדידה<br>' +
+          '</div>' +
+          '<pre style="font-family:monospace;font-size:10px;color:#1a3d5c;background:#f0f4fa;border-radius:8px;padding:10px;overflow-x:auto;line-height:1.7;direction:ltr;">' +
+            'Y=15  ●──●──●──●──●──●──●──●  (קיר צפון)
+' +
+            '      |  |  |  |  |  |  |  |
+' +
+            'Y=12  ●──●──●──●──●──●──●──●
+' +
+            '      |  |  |  |  |  |  |  |
+' +
+            'Y=9   ●──●──●──●──●──●──●──●
+' +
+            '      |  |  |  |  |  |  |  |
+' +
+            'Y=6   ●──●──●──●──●──●──●──●
+' +
+            '      |  |  |  |  |  |  |  |
+' +
+            'Y=3   ●──●──●──●──●──●──●──●
+' +
+            '      |  |  |  |  |  |  |  |
+' +
+            'Y=0   ●──●──●──●──●──●──●──●  (קיר דרום)
+' +
+            '     X=0  3  6  9 12 15 18 20
+' +
+            '     (0,0)↑              ↑(20,0)
+' +
+            '      נקודת האפס       פינה ימין' +
+          '</pre>' +
+          '<div style="font-size:11px;color:#444;line-height:1.9;margin-top:8px;">' +
+            '• <b>אין צורך לכתוב מיקום</b> — X ו-Y מספיקים<br>' +
+            '• סרוק שורה-שורה: Y=0 כל הדרך ← Y=3 כל הדרך ← וכן הלאה<br>' +
+            '• <b>רק כותבים את הקריאה</b> — X ו-Y ידועים מהגריד<br>' +
+          '</div>' +
+          '<div style="margin-top:8px;background:#f0f4fa;border-radius:6px;padding:8px;font-size:10px;color:#555;">' +
+            '<b>דוגמה — 3 נקודות ראשונות:</b><br>' +
+            'שורה 1: X=0, Y=0, קריאה=1.452 &nbsp;|&nbsp; שורה 2: X=3, Y=0, קריאה=1.461 &nbsp;|&nbsp; שורה 3: X=6, Y=0, קריאה=1.448' +
+          '</div>' +
+        '</div>' +
       '</div>' +
 
       '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:14px;">' +
