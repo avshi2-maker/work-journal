@@ -1429,7 +1429,14 @@ window.addEventListener('unhandledrejection', function(e) {
     <div class="form-group"><label>כותרת פקודת השינוי *</label><input type="text" id="co-title" placeholder="לדוגמה: תוספות ריצוף קומה 2"></div>
     <div class="form-group"><label>קבלן</label><select id="co-contractor"><option value="">בחר קבלן...</option></select></div>
     <div class="form-group"><label>הסבר / נימוק הקבלן</label><textarea id="co-contractor-notes" rows="3" placeholder="מה טוען הקבלן כסיבה לתוספת..."></textarea></div>
-    <div class="form-group"><label>סטטוס</label><select id="co-status"><option value="open">פתוח למשא ומתן</option><option value="negotiating">במשא ומתן</option><option value="approved">אושר</option><option value="rejected">נדחה</option></select></div>
+    <div class="form-group"><label>סטטוס</label><select id="co-status" onchange="coStatusChanged()"><option value="open">פתוח למשא ומתן</option><option value="negotiating">במשא ומתן</option><option value="sent">נשלחה הצעה ללקוח</option><option value="approved">✅ אושר — מוסיף לגאנט</option><option value="rejected">נדחה</option></select></div>
+    <div id="co-dates-wrap" style="display:none;background:#fff8e1;border:1px solid #f59e0b;border-radius:10px;padding:14px;margin-top:8px;">
+      <div style="font-size:12px;font-weight:800;color:#7a5500;margin-bottom:10px;">📅 תאריכי ביצוע — יופיעו בגאנט כסרגל כתום</div>
+      <div class="form-grid" style="grid-template-columns:1fr 1fr;gap:10px;">
+        <div class="form-group" style="margin:0"><label>תחילת עבודה</label><input type="date" id="co-start-date"></div>
+        <div class="form-group" style="margin:0"><label>סיום עבודה</label><input type="date" id="co-end-date"></div>
+      </div>
+    </div>
     <div class="modal-footer"><button class="btn btn-ghost" onclick="closeModal('modal-new-co')">ביטול</button><button class="btn btn-primary" style="background:#c9860a;" onclick="saveNewCO()">⚡ צור פקודת שינוי</button></div>
   </div>
 </div>
@@ -6617,13 +6624,13 @@ async function _fetchSmartJournal() {
   if (_smartJournalFetched) return;
   _smartJournalFetched = true;
   try {
-    var res = await fetch('smartjournal_28032026.js?v=' + Date.now());
+    var res = await fetch('smartjournal_01042026.js?v=' + Date.now());
     if (!res.ok) throw new Error('HTTP ' + res.status);
     var code = await res.text();
     if (code.trim().startsWith('<')) throw new Error('Got HTML not JS');
     var ns = document.createElement('script'); ns.textContent = code;
     document.head.appendChild(ns);
-  } catch(e) { console.error('smartjournal.js fetch failed:', e); _smartJournalFetched = false; }
+  } catch(e) { console.warn('[smartjournal] not loaded:', e.message); _smartJournalFetched = false; }
 }
 
 // ══ LOADER: journal_ocr.js ═════════════════════════════════════════════
@@ -7048,13 +7055,132 @@ function renderCOCards(qid){const cos=window._allCOs.filter(c=>c.quote_id===qid)
 function renderCOCard(co,qid){const items=window._allCOItems.filter(i=>i.change_order_id===co.id);const qItems=(window._quoteItemsAll||[]).filter(i=>i.quote_id===qid);const contr=(allContractors||[]).find(c=>c.id===co.contractor_id);const demand=items.reduce((a,i)=>a+(parseFloat(i.unit_cost||0)*parseFloat(i.quantity||1)),0);const approved=items.reduce((a,i)=>i.approved?(a+parseFloat(i.approved_amount||0)):a,0);const origTotal=qItems.reduce((a,i)=>a+(parseFloat(i.unit_cost||0)*parseFloat(i.quantity||1)),0);const finalPrice=origTotal+approved;const statusCss=CO_STATUS_CSS[co.status]||'costatus-open';const statusHe=CO_STATUS_HE[co.status]||co.status;return`<div class="co-card" id="cocard-${co.id}"><div class="co-card-hdr" onclick="toggleCOCard('${co.id}')"><div class="co-card-title">⚡ ${esc(co.title||'פקודת שינוי')}</div>${contr?`<span style="font-size:12px;color:#666;">👷 ${esc(contr.company_name)}</span>`:''}  <span class="co-status ${statusCss}">${statusHe}</span><span style="font-size:13px;font-weight:800;color:#c9860a;">₪${fmtMoney(demand)}</span><span style="font-size:13px;font-weight:800;color:#1e6b30;">₪${fmtMoney(approved)} מאושר</span><span style="font-size:14px;color:#888;" id="cotoggle-${co.id}">▼</span></div><div class="co-body" id="cobody-${co.id}"><div class="co-add-bar"><select onchange="updateCOStatus('${co.id}','${qid}',this.value)" style="padding:6px 10px;border:1.5px solid #f0d080;border-radius:7px;font-size:12px;font-family:inherit;background:#fffdf4;"><option value="open" ${co.status==='open'?'selected':''}>פתוח</option><option value="negotiating" ${co.status==='negotiating'?'selected':''}>במו"מ</option><option value="approved" ${co.status==='approved'?'selected':''}>אושר</option><option value="rejected" ${co.status==='rejected'?'selected':''}>נדחה</option></select><button class="btn-co-add" onclick="addCOItem('${co.id}','${qid}')">➕ הוסף דרישה</button><button onclick="deleteCO('${co.id}','${qid}')" style="background:#fee;color:#c00;border:1px solid #fcc;border-radius:7px;padding:6px 12px;font-size:12px;cursor:pointer;font-family:inherit;">🗑️ מחק</button></div></div></div>`;}
 function toggleCOCard(coid){const body=document.getElementById('cobody-'+coid);const toggle=document.getElementById('cotoggle-'+coid);const isOpen=body.classList.contains('open');body.classList.toggle('open',!isOpen);if(toggle)toggle.textContent=isOpen?'▼':'▲';}
 function openNewCOModal(qid,projectId){window._newCOquoteId=qid;window._newCOprojectId=projectId;document.getElementById('co-title').value='';document.getElementById('co-contractor-notes').value='';document.getElementById('co-status').value='open';const sel=document.getElementById('co-contractor');sel.innerHTML='<option value="">בחר קבלן...</option>'+(allContractors||[]).filter(c=>c.is_active).map(c=>`<option value="${c.id}">${esc(c.company_name)}</option>`).join('');document.getElementById('modal-new-co').style.display='flex';}
-async function saveNewCO(){const title=document.getElementById('co-title').value.trim();if(!title){showToast('יש להזין כותרת', 'error'); return;}const{data:co,error}=await sb.from('change_orders').insert({quote_id:window._newCOquoteId,project_id:window._newCOprojectId,contractor_id:document.getElementById('co-contractor').value||null,title,contractor_notes:document.getElementById('co-contractor-notes').value.trim(),status:document.getElementById('co-status').value}).select().single();if(error||!co){showToast('שגיאה', 'error'); return;}window._allCOs.unshift(co);closeModal('modal-new-co');const body=document.getElementById('co-body-'+co.quote_id);if(body&&!body.classList.contains('open'))toggleCOSection(co.quote_id);else renderCOCards(co.quote_id);}
+function coStatusChanged() {
+  var s = document.getElementById('co-status');
+  var wrap = document.getElementById('co-dates-wrap');
+  if (!s || !wrap) return;
+  wrap.style.display = s.value === 'approved' ? 'block' : 'none';
+  // Pre-fill today as start date
+  if (s.value === 'approved') {
+    var sd = document.getElementById('co-start-date');
+    if (sd && !sd.value) sd.value = new Date().toISOString().split('T')[0];
+  }
+}
+
+async function saveNewCO(){
+  const title=document.getElementById('co-title').value.trim();
+  if(!title){showToast('יש להזין כותרת', 'error'); return;}
+  const status=document.getElementById('co-status').value;
+  const startDate=document.getElementById('co-start-date')?.value||null;
+  const endDate=document.getElementById('co-end-date')?.value||null;
+  if(status==='approved'&&(!startDate||!endDate)){showToast('נא להזין תאריכי התחלה וסיום לגאנט','error');return;}
+  const payload={
+    quote_id:window._newCOquoteId,
+    project_id:window._newCOprojectId,
+    contractor_id:document.getElementById('co-contractor').value||null,
+    title,
+    contractor_notes:document.getElementById('co-contractor-notes').value.trim(),
+    status,
+    start_date:startDate||null,
+    end_date:endDate||null,
+    gantt_visible:status==='approved',
+    approved_at:status==='approved'?new Date().toISOString():null
+  };
+  const{data:co,error}=await sb.from('change_orders').insert(payload).select().single();
+  if(error||!co){showToast('שגיאה: '+(error?.message||''), 'error'); return;}
+  window._allCOs.unshift(co);
+  // If approved — add to gantt_tasks as CO bar
+  if(status==='approved'&&startDate&&endDate){
+    await coAddToGantt(co);
+  }
+  closeModal('modal-new-co');
+  const body=document.getElementById('co-body-'+co.quote_id);
+  if(body&&!body.classList.contains('open'))toggleCOSection(co.quote_id);
+  else renderCOCards(co.quote_id);
+}
 window._coPending={};
 function coItemChange(itemId,field,value){if(!window._coPending[itemId])window._coPending[itemId]={};window._coPending[itemId][field]=value;const cached=window._allCOItems.find(i=>i.id===itemId);if(cached)cached[field]=value;clearTimeout(window._coPending[itemId]._t);window._coPending[itemId]._t=setTimeout(async()=>{const ch={...window._coPending[itemId]};delete ch._t;if(Object.keys(ch).length)await sb.from('change_order_items').update(ch).eq('id',itemId);delete window._coPending[itemId];},800);}
 async function coBeniApprove(itemId,coId,qid,checked){window._allCOItems.find(i=>i.id===itemId).approved=checked;await sb.from('change_order_items').update({approved:checked}).eq('id',itemId);rebuildCoApprovedSum();renderCOCards(qid);}
 async function addCOItem(coId,qid){const maxOrd=Math.max(0,...window._allCOItems.filter(i=>i.change_order_id===coId).map(i=>i.sort_order||0));const{data:item,error}=await sb.from('change_order_items').insert({change_order_id:coId,description:'',unit_cost:0,quantity:1,sort_order:maxOrd+1}).select().single();if(error||!item)return;window._allCOItems.push(item);const co=window._allCOs.find(c=>c.id===coId);if(co)renderCOCards(co.quote_id);}
 async function deleteCOItem(itemId,coId,qid){if(!confirm('מחק שורה זו?'))return;await sb.from('change_order_items').delete().eq('id',itemId);window._allCOItems=window._allCOItems.filter(i=>i.id!==itemId);const co=window._allCOs.find(c=>c.id===coId);if(co)renderCOCards(co.quote_id);}
-async function updateCOStatus(coId,qid,status){await sb.from('change_orders').update({status}).eq('id',coId);const co=window._allCOs.find(c=>c.id===coId);if(co)co.status=status;}
+async function coAddToGantt(co) {
+  try {
+    const proj = allProjects.find(p=>p.id===co.project_id);
+    const contractor = (allContractors||[]).find(c=>c.id===co.contractor_id);
+    const taskName = '⚡ ' + co.title;
+    await sb.from('gantt_tasks').insert({
+      task_name:     taskName,
+      project_id:    co.project_id||null,
+      contractor_id: co.contractor_id||null,
+      start_date:    co.start_date,
+      end_date:      co.end_date,
+      status:        'co',
+      progress:      0,
+      notes:         'פקודת שינוי מאושרת | ' + (proj?proj.project_name:''),
+      co_id:         co.id
+    });
+    showToast('⚡ פקודת שינוי נוספה לגאנט!','success');
+    if(typeof loadGantt==='function') setTimeout(loadGantt, 300);
+  } catch(e) {
+    console.warn('coAddToGantt error:', e);
+  }
+}
+
+async function updateCOStatus(coId,qid,status){
+  const co=window._allCOs.find(c=>c.id===coId);
+  // If approving and has dates — prompt for dates if missing
+  if(status==='approved'&&co&&(!co.start_date||!co.end_date)){
+    coPendingApproval = {coId,qid,co};
+    coShowApprovalDates(coId,qid);
+    return;
+  }
+  const updates={status};
+  if(status==='approved'){ updates.gantt_visible=true; updates.approved_at=new Date().toISOString(); }
+  await sb.from('change_orders').update(updates).eq('id',coId);
+  if(co){ Object.assign(co,updates); }
+  if(status==='approved'&&co&&co.start_date&&co.end_date) await coAddToGantt(co);
+}
+
+var coPendingApproval=null;
+function coShowApprovalDates(coId,qid){
+  var co=window._allCOs.find(c=>c.id===coId);
+  if(!co) return;
+  var ov=document.createElement('div');
+  ov.id='co-approve-overlay';
+  ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:99999;display:flex;align-items:center;justify-content:center;padding:20px;';
+  ov.innerHTML=
+    '<div style="background:#fff;border-radius:14px;width:100%;max-width:420px;direction:rtl;font-family:Heebo,Arial,sans-serif;overflow:hidden;">'+
+      '<div style="background:linear-gradient(135deg,#c9860a,#7a4f00);padding:14px 20px;color:#fff;font-size:15px;font-weight:800;">⚡ אישור פקודת שינוי — '+esc(co.title)+'</div>'+
+      '<div style="padding:20px;">'+
+        '<div style="font-size:12px;color:#666;margin-bottom:14px;">הגדר תאריכי ביצוע — יופיעו בגאנט כסרגל כתום</div>'+
+        '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;">'+
+          '<div><div style="font-size:11px;color:#888;margin-bottom:4px;font-weight:700;">תחילת עבודה</div>'+
+            '<input type="date" id="co-app-start" value="'+new Date().toISOString().split('T')[0]+'" style="width:100%;padding:9px;border:1.5px solid #c9a84c;border-radius:8px;font-family:Heebo,sans-serif;box-sizing:border-box;"></div>'+
+          '<div><div style="font-size:11px;color:#888;margin-bottom:4px;font-weight:700;">סיום עבודה</div>'+
+            '<input type="date" id="co-app-end" style="width:100%;padding:9px;border:1.5px solid #c9a84c;border-radius:8px;font-family:Heebo,sans-serif;box-sizing:border-box;"></div>'+
+        '</div>'+
+        '<div style="display:flex;gap:8px;">'+
+          '<button onclick="coConfirmApproval(&quot;"+coId+"&quot;,&quot;"+qid+"&quot;)" style="flex:1;padding:11px;background:#c9860a;border:none;color:#fff;border-radius:10px;font-family:Heebo,sans-serif;font-size:13px;font-weight:800;cursor:pointer;">✅ אשר + הוסף לגאנט</button>'+
+          '<button onclick="document.getElementById(\"co-approve-overlay\").remove()" style="padding:11px 16px;background:#f5f0e8;border:1px solid #c9a84c;color:#7a5500;border-radius:10px;font-family:Heebo,sans-serif;cursor:pointer;">ביטול</button>'+
+        '</div>'+
+      '</div>'+
+    '</div>';
+  document.body.appendChild(ov);
+}
+
+async function coConfirmApproval(coId,qid){
+  var startDate=document.getElementById('co-app-start')?.value;
+  var endDate=document.getElementById('co-app-end')?.value;
+  if(!startDate||!endDate){showToast('נא למלא תאריכי התחלה וסיום','error');return;}
+  var ov=document.getElementById('co-approve-overlay');
+  if(ov) ov.remove();
+  var co=window._allCOs.find(c=>c.id===coId);
+  if(co){co.status='approved';co.start_date=startDate;co.end_date=endDate;co.gantt_visible=true;co.approved_at=new Date().toISOString();}
+  await sb.from('change_orders').update({status:'approved',start_date:startDate,end_date:endDate,gantt_visible:true,approved_at:new Date().toISOString()}).eq('id',coId);
+  if(co) await coAddToGantt(co);
+  renderCOCards(qid);
+  showToast('⚡ פקודת שינוי אושרה ונוספה לגאנט!','success');
+}
 async function deleteCO(coId,qid){if(!confirm('מחק פקודת שינוי זו?'))return;await sb.from('change_order_items').delete().eq('change_order_id',coId);await sb.from('change_orders').delete().eq('id',coId);window._allCOs=window._allCOs.filter(c=>c.id!==coId);window._allCOItems=window._allCOItems.filter(i=>i.change_order_id!==coId);renderCOCards(qid);}
 function printCOReport(coId,qid){showToast('הדפסת דוח CO...');/* simplified - full version in original */}
 
@@ -7268,13 +7394,36 @@ async function renderForecast(){
 async function saveForecast(){const sel=document.getElementById('forecast-project-sel');const id=sel&&sel.value;if(!id)return;const budget=parseFloat(document.getElementById('forecast-budget').value)||0;window.showLoading&&window.showLoading(true);const{error}=await sb.from('projects').update({total_budget:budget}).eq('id',id);window.showLoading&&window.showLoading(false);if(error){showToast('שגיאה: '+error.message);return;}showToast('תחזית עודכנה');await loadProjects();renderForecast();}
 
 // ── GANTT ─────────────────────────────────────────────────
-const GANTT_COLORS={planned:{bar:'#3b82f6',light:'#dbeafe',label:'מתוכנן'},active:{bar:'#22c55e',light:'#dcfce7',label:'בביצוע'},done:{bar:'#64748b',light:'#f1f5f9',label:'הושלם'},delayed:{bar:'#ef4444',light:'#fee2e2',label:'מאחר'},blocked:{bar:'#f97316',light:'#ffedd5',label:'חסום'}};
+const GANTT_COLORS={co:{bar:'#f97316',light:'#fff7ed',label:'⚡ פקודת שינוי'},planned:{bar:'#3b82f6',light:'#dbeafe',label:'מתוכנן'},active:{bar:'#22c55e',light:'#dcfce7',label:'בביצוע'},done:{bar:'#64748b',light:'#f1f5f9',label:'הושלם'},delayed:{bar:'#ef4444',light:'#fee2e2',label:'מאחר'},blocked:{bar:'#f97316',light:'#ffedd5',label:'חסום'}};
 const CONTRACTOR_PALETTE=['#6366f1','#0ea5e9','#10b981','#f59e0b','#ef4444','#8b5cf6','#06b6d4','#84cc16','#f43f5e','#14b8a6'];
 ganttTasks=[];let ganttView='combined',ganttProjectFilter='',ganttContractorFilter='',ganttScale='month';
 
 async function loadGantt(){
   window.showLoading&&window.showLoading(true);
-  try{const{data,error}=await sbQ('gantt_tasks','select=*,projects(project_name),contractors_master(company_name,contact_name)&order=start_date.asc');if(error)throw error;ganttTasks=data||[];populateGanttFilters();renderGantt();}
+  try{
+    const{data,error}=await sbQ('gantt_tasks','select=*,projects(project_name),contractors_master(company_name,contact_name)&order=start_date.asc');
+    if(error)throw error;
+    ganttTasks=data||[];
+    // Also load approved COs that have dates but no gantt_task yet
+    const{data:coData}=await sbQ('change_orders','status=eq.approved&gantt_visible=eq.true&start_date=not.is.null&end_date=not.is.null&select=*');
+    (coData||[]).forEach(function(co){
+      // Check if already added as gantt task
+      var exists=ganttTasks.some(function(t){return t.co_id===co.id;});
+      if(!exists){
+        var proj=allProjects.find(function(p){return p.id===co.project_id;});
+        ganttTasks.push({
+          id:'co-'+co.id, co_id:co.id,
+          task_name:'⚡ '+co.title,
+          project_id:co.project_id,
+          start_date:co.start_date, end_date:co.end_date,
+          status:'co', progress:0,
+          projects:proj?{project_name:proj.project_name}:null,
+          contractors_master:null
+        });
+      }
+    });
+    populateGanttFilters();renderGantt();
+  }
   catch(e){showToast('שגיאה בגאנט: '+e.message);}
   finally{window.showLoading&&window.showLoading(false);}
 }
@@ -8644,17 +8793,18 @@ async function _fetchSmartJournal() {
   if (_sjFetched) return;
   _sjFetched = true;
   try {
-    var res = await fetch('smartjournal_28032026.js?v=' + Date.now());
+    var res = await fetch('smartjournal_01042026.js?v=' + Date.now());
     if (!res.ok) throw new Error('HTTP ' + res.status);
     var code = await res.text();
     if (code.trim().startsWith('<')) throw new Error('Got HTML not JS');
     var ns = document.createElement('script'); ns.textContent = code;
     document.head.appendChild(ns);
-  } catch(e) { console.error('smartjournal.js fetch failed:', e); _sjFetched = false; }
+  } catch(e) { console.warn('[smartjournal] not loaded:', e.message); _sjFetched = false; }
 }
 // Safety stubs — prevent ReferenceError if module not yet loaded
 if (typeof loadNotesWall === 'undefined') window.loadNotesWall = function(){ _fetchSmartJournal().then(function(){ if(typeof loadNotesWall==='function') setTimeout(loadNotesWall,100); }); };
-if (typeof sjPopulateProjectFilter === 'undefined') window.sjPopulateProjectFilter = function(){};
+if (typeof switchSmartTab === 'undefined' || switchSmartTab.toString().indexOf('_switchSmartTabReal')===-1) { window.switchSmartTab = function(tab){ if(typeof _switchSmartTabReal==='function') _switchSmartTabReal(tab); else _fetchSmartJournal().then(function(){ if(typeof _switchSmartTabReal==='function') _switchSmartTabReal(tab); }); }; }
+window.sjPopulateProjectFilter = function(){ if(typeof _sjPopulateProjectFilterReal==='function') _sjPopulateProjectFilterReal(); };
 
 // makeDeleteBtn — used by smartjournal.js photo/video grid cards
 // signature: makeDeleteBtn(id, cardEl, reloadFn)
