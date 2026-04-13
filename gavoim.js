@@ -384,43 +384,15 @@ function gvRenderModeC(area, prefillPoints, prefillBM) {
             '• לפני שמתחילים: <b>סמן קוים בגיר כל 3 מטר</b> לאורך ולרוחב<br>' +
             '• כל צומת של קוי גיר = נקודת מדידה<br>' +
           '</div>' +
-          '<pre style="font-family:monospace;font-size:10px;color:#1a3d5c;background:#f0f4fa;border-radius:8px;padding:10px;overflow-x:auto;line-height:1.7;direction:ltr;">' +
-            'Y=15  ●──●──●──●──●──●──●──●  (קיר צפון)
-' +
-            '      |  |  |  |  |  |  |  |
-' +
-            'Y=12  ●──●──●──●──●──●──●──●
-' +
-            '      |  |  |  |  |  |  |  |
-' +
-            'Y=9   ●──●──●──●──●──●──●──●
-' +
-            '      |  |  |  |  |  |  |  |
-' +
-            'Y=6   ●──●──●──●──●──●──●──●
-' +
-            '      |  |  |  |  |  |  |  |
-' +
-            'Y=3   ●──●──●──●──●──●──●──●
-' +
-            '      |  |  |  |  |  |  |  |
-' +
-            'Y=0   ●──●──●──●──●──●──●──●  (קיר דרום)
-' +
-            '     X=0  3  6  9 12 15 18 20
-' +
-            '     (0,0)↑              ↑(20,0)
-' +
-            '      נקודת האפס       פינה ימין' +
-          '</pre>' +
+          '<pre style="font-family:monospace;font-size:10px;color:#1a3d5c;background:#f0f4fa;border-radius:8px;padding:10px;overflow-x:auto;line-height:1.7;direction:ltr;">Y=15  O--O--O--O--O--O--O--O  (קיר צפון)\n      |  |  |  |  |  |  |  |\nY=12  O--O--O--O--O--O--O--O\n      |  |  |  |  |  |  |  |\nY=9   O--O--O--O--O--O--O--O\n      |  |  |  |  |  |  |  |\nY=6   O--O--O--O--O--O--O--O\n      |  |  |  |  |  |  |  |\nY=3   O--O--O--O--O--O--O--O\n      |  |  |  |  |  |  |  |\nY=0   O--O--O--O--O--O--O--O  (קיר דרום)\n     X=0  3  6  9 12 15 18 20\n     (0,0) = נקודת האפס / פינה שמאל-תחתון</pre>' +
           '<div style="font-size:11px;color:#444;line-height:1.9;margin-top:8px;">' +
             '• <b>אין צורך לכתוב מיקום</b> — X ו-Y מספיקים<br>' +
-            '• סרוק שורה-שורה: Y=0 כל הדרך ← Y=3 כל הדרך ← וכן הלאה<br>' +
+            '• סרוק שורה-שורה: Y=0 כל הדרך ← Y=3 כל הדרך ← וכן הלאה<br>\n' +
             '• <b>רק כותבים את הקריאה</b> — X ו-Y ידועים מהגריד<br>' +
           '</div>' +
           '<div style="margin-top:8px;background:#f0f4fa;border-radius:6px;padding:8px;font-size:10px;color:#555;">' +
             '<b>דוגמה — 3 נקודות ראשונות:</b><br>' +
-            'שורה 1: X=0, Y=0, קריאה=1.452 &nbsp;|&nbsp; שורה 2: X=3, Y=0, קריאה=1.461 &nbsp;|&nbsp; שורה 3: X=6, Y=0, קריאה=1.448' +
+            'שורה 1: X=0, Y=0, קריאה=1.452 &nbsp;|&nbsp; שורה 2: X=3, Y=0, קריאה=1.461 &nbsp;|&nbsp; שורה 3: X=6, Y=0, קריאה=1.448\n' +
           '</div>' +
         '</div>' +
       '</div>' +
