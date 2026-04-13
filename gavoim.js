@@ -266,6 +266,10 @@ function gvRenderModeB(area) {
           '<input id="gv-b-area" type="number" value="300" style="'+gvInp()+'"></div>' +
       '</div>' +
 
+      '<div style="margin-bottom:14px;">' +
+        '<div style="font-size:12px;font-weight:800;color:#1a3d5c;margin-bottom:8px;">🗺️ מפת גבהים — ' + points.length + ' נקודות (גריד 3×3 מ׳)</div>' +
+        gvRenderHeatmap(points, benchmark) +
+      '</div>' +
       gvRenderPointsTable(points, benchmark, 5, false) +
 
       '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px;">' +
@@ -375,6 +379,276 @@ function gvRemoveRow(i) {
   var area = document.getElementById('gv-form-area');
   gvRenderModeC(area, _gvPoints);
 }
+
+
+// ── 3D FLOOR MAP ──────────────────────────────────────────────────────
+function gvRenderHeatmap(points, bm) {
+  if (!points || !points.length) return '';
+  var canvasId = 'gv-3d-canvas-' + Date.now();
+  var containerId = 'gv-3d-container-' + Date.now();
+
+  // Serialize points for inline script
+  var ptsJson = JSON.stringify(points.map(function(p){
+    return {x:parseFloat(p.x)||0, y:parseFloat(p.y)||0, r:parseFloat(p.reading)||0, n:p.name||''};
+  }));
+  var bmVal = parseFloat(bm)||0;
+
+  var html =
+    '<div id="'+containerId+'" style="position:relative;width:100%;height:340px;border:1px solid #e8ddb5;border-radius:10px;overflow:hidden;background:#1a1a2e;margin-bottom:10px;">' +
+      '<canvas id="'+canvasId+'" style="width:100%;height:100%;display:block;"></canvas>' +
+      '<div style="position:absolute;top:8px;right:10px;font-size:10px;color:rgba(255,255,255,0.5);font-family:Heebo,sans-serif;">גרור לסיבוב · גלגל לזום</div>' +
+      '<div id="gv-3d-legend-'+containerId+'" style="position:absolute;bottom:8px;left:8px;display:flex;gap:4px;align-items:center;">' +
+        '<div style="width:60px;height:10px;background:linear-gradient(to right,#0000ff,#00ff88,#ffff00,#ff0000);border-radius:3px;"></div>' +
+        '<span style="font-size:9px;color:#aaa;font-family:Heebo,sans-serif;">נמוך → גבוה</span>' +
+      '</div>' +
+    '</div>' +
+    '<script>(function(){' +
+      'var pts='+ptsJson+';' +
+      'var bm='+bmVal+';' +
+      'var canvas=document.getElementById("'+canvasId+'");' +
+      'if(!canvas)return;' +
+      'var W=canvas.offsetWidth||420,H=canvas.offsetHeight||340;' +
+      'canvas.width=W*window.devicePixelRatio||W;' +
+      'canvas.height=H*window.devicePixelRatio||H;' +
+      'var gl=canvas.getContext("webgl")||canvas.getContext("experimental-webgl");' +
+      'if(!gl){' +
+        // WebGL not available — fallback to Canvas 2D isometric view
+        'var ctx=canvas.getContext("2d");' +
+        'if(!ctx)return;' +
+        'gv3dFallback(ctx,canvas,pts,bm);' +
+        'return;' +
+      '}' +
+      'gv3dWebGL(gl,canvas,pts,bm,W,H);' +
+    '})();<\/script>';
+
+  return html;
+}
+
+// Called after DOM render to init 3D — also used by Mode C view
+function gv3dFallback(ctx, canvas, pts, bm) {
+  // Isometric projection fallback (Canvas 2D)
+  var W = canvas.width, H = canvas.height;
+  ctx.fillStyle = "#1a1a2e";
+  ctx.fillRect(0, 0, W, H);
+
+  if (!pts.length) return;
+
+  var xs = pts.map(function(p){return p.x;}), ys = pts.map(function(p){return p.y;});
+  var minX=Math.min.apply(null,xs), maxX=Math.max.apply(null,xs);
+  var minY=Math.min.apply(null,ys), maxY=Math.max.apply(null,ys);
+  var devs = pts.map(function(p){return (p.r - bm)*1000;});
+  var minD=Math.min.apply(null,devs), maxD=Math.max.apply(null,devs);
+  var rangeD = Math.max(Math.abs(minD),Math.abs(maxD)) || 1;
+
+  function devToRGB(d) {
+    var t = (d - minD)/(maxD-minD+0.001);
+    var r,g,b;
+    if(t<0.25){r=0;g=Math.round(t*4*255);b=255;}
+    else if(t<0.5){r=0;g=255;b=Math.round((0.5-t)*4*255);}
+    else if(t<0.75){r=Math.round((t-0.5)*4*255);g=255;b=0;}
+    else{r=255;g=Math.round((1-t)*4*255);b=0;}
+    return [r,g,b];
+  }
+
+  // Isometric transform
+  var isoScale = Math.min(W,H) * 0.028;
+  var cx = W*0.35, cy = H*0.65;
+  function iso(x,y,z){
+    var ix = (x-y)*isoScale;
+    var iy = (x+y)*0.5*isoScale - z*isoScale*1.5;
+    return [cx+ix, cy-iy];
+  }
+
+  // Sort points for painter's algorithm
+  var sorted = pts.slice().sort(function(a,b){ return (a.x+a.y)-(b.x+b.y); });
+
+  sorted.forEach(function(pt){
+    var d = (pt.r - bm)*1000;
+    var h = (d - minD)/rangeD * 0.8 + 0.1;
+    var rgb = devToRGB(d);
+    var col = "rgb("+rgb[0]+","+rgb[1]+","+rgb[2]+")";
+    var darkCol = "rgb("+Math.round(rgb[0]*0.5)+","+Math.round(rgb[1]*0.5)+","+Math.round(rgb[2]*0.5)+")";
+    var s = 1.4; // grid size
+    var zH = h * 2;
+
+    // Top face
+    var tl=iso(pt.x,     pt.y,     zH);
+    var tr=iso(pt.x+s,   pt.y,     zH);
+    var br=iso(pt.x+s,   pt.y+s,   zH);
+    var bl=iso(pt.x,     pt.y+s,   zH);
+    ctx.beginPath();
+    ctx.moveTo(tl[0],tl[1]); ctx.lineTo(tr[0],tr[1]);
+    ctx.lineTo(br[0],br[1]); ctx.lineTo(bl[0],bl[1]);
+    ctx.closePath();
+    ctx.fillStyle = col;
+    ctx.fill();
+    ctx.strokeStyle = "rgba(255,255,255,0.08)";
+    ctx.lineWidth = 0.5;
+    ctx.stroke();
+
+    // Right face
+    var br0=iso(pt.x+s, pt.y+s, 0);
+    var tr0=iso(pt.x+s, pt.y,   0);
+    ctx.beginPath();
+    ctx.moveTo(tr[0],tr[1]); ctx.lineTo(tr0[0],tr0[1]);
+    ctx.lineTo(br0[0],br0[1]); ctx.lineTo(br[0],br[1]);
+    ctx.closePath();
+    ctx.fillStyle = darkCol;
+    ctx.fill();
+
+    // Front face
+    var bl0=iso(pt.x, pt.y+s, 0);
+    ctx.beginPath();
+    ctx.moveTo(br[0],br[1]); ctx.lineTo(br0[0],br0[1]);
+    ctx.lineTo(bl0[0],bl0[1]); ctx.lineTo(bl[0],bl[1]);
+    ctx.closePath();
+    ctx.fillStyle = "rgba("+rgb[0]+","+rgb[1]+","+rgb[2]+",0.7)";
+    ctx.fill();
+
+    // Point label for fails
+    if(Math.abs(d) > 5) {
+      ctx.fillStyle = "#fff";
+      ctx.font = "bold 7px Heebo,Arial";
+      ctx.textAlign = "center";
+      ctx.fillText((d>=0?"+":"")+d.toFixed(1), br[0]-4, br[1]-2);
+    }
+  });
+
+  // Axis labels
+  ctx.fillStyle = "rgba(255,255,255,0.4)";
+  ctx.font = "10px Heebo,Arial";
+  ctx.textAlign = "center";
+  var p0=iso(minX, minY, 0), px=iso(maxX+1, minY, 0), py=iso(minX, maxY+1, 0);
+  ctx.fillText("X →", px[0]+8, px[1]);
+  ctx.fillText("Y →", py[0]-12, py[1]+4);
+}
+
+function gv3dWebGL(gl,canvas,pts,bm,W,H) {
+  // WebGL is available but complex — use Three.js CDN
+  if (!window.THREE) {
+    var s=document.createElement("script");
+    s.src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js";
+    s.onload=function(){ gv3dThree(canvas,pts,bm,W,H); };
+    document.head.appendChild(s);
+  } else {
+    gv3dThree(canvas,pts,bm,W,H);
+  }
+}
+
+function gv3dThree(canvas, pts, bm, W, H) {
+  if (!window.THREE) { return; }
+  var THREE = window.THREE;
+
+  // Clean up old renderer if any
+  if (canvas._threeRenderer) {
+    canvas._threeRenderer.dispose();
+  }
+
+  var renderer = new THREE.WebGLRenderer({canvas:canvas, antialias:true, alpha:true});
+  renderer.setSize(W, H);
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio,2));
+  renderer.setClearColor(0x1a1a2e, 1);
+  canvas._threeRenderer = renderer;
+
+  var scene  = new THREE.Scene();
+  var camera = new THREE.PerspectiveCamera(45, W/H, 0.1, 1000);
+
+  var xs=pts.map(function(p){return p.x;}), ys=pts.map(function(p){return p.y;});
+  var minX=Math.min.apply(null,xs), maxX=Math.max.apply(null,xs);
+  var minY=Math.min.apply(null,ys), maxY=Math.max.apply(null,ys);
+  var devs=pts.map(function(p){return (p.r-bm)*1000;});
+  var minD=Math.min.apply(null,devs), maxD=Math.max.apply(null,devs);
+  var rangeD=Math.max(Math.abs(minD),Math.abs(maxD))||1;
+  var cx=(minX+maxX)/2, cy=(minY+maxY)/2;
+
+  function devToColor(d) {
+    var t=(d-minD)/(maxD-minD+0.001);
+    var r,g,b;
+    if(t<0.25){r=0;g=Math.round(t*4*255);b=255;}
+    else if(t<0.5){r=0;g=255;b=Math.round((0.5-t)*4*255);}
+    else if(t<0.75){r=Math.round((t-0.5)*4*255);g=255;b=0;}
+    else{r=255;g=Math.round((1-t)*4*255);b=0;}
+    return new THREE.Color(r/255,g/255,b/255);
+  }
+
+  // Ambient + directional light
+  scene.add(new THREE.AmbientLight(0xffffff, 0.6));
+  var dLight = new THREE.DirectionalLight(0xffffff, 0.8);
+  dLight.position.set(5,10,5);
+  scene.add(dLight);
+
+  // Build pillars for each point
+  pts.forEach(function(pt){
+    var d=(pt.r-bm)*1000;
+    var normH=Math.max(0.05,(d-minD)/rangeD*3+0.1);
+    var geo=new THREE.BoxGeometry(2.2,normH,2.2);
+    var mat=new THREE.MeshPhongMaterial({color:devToColor(d), transparent:true, opacity:0.9});
+    var mesh=new THREE.Mesh(geo,mat);
+    mesh.position.set(pt.x-cx, normH/2-1, pt.y-cy);
+    scene.add(mesh);
+
+    // Wireframe outline
+    var edges=new THREE.EdgesGeometry(geo);
+    var line=new THREE.LineSegments(edges, new THREE.LineBasicMaterial({color:0xffffff,opacity:0.15,transparent:true}));
+    line.position.copy(mesh.position);
+    scene.add(line);
+  });
+
+  // Ground plane
+  var gGeo=new THREE.PlaneGeometry(maxX-minX+4, maxY-minY+4);
+  var gMat=new THREE.MeshPhongMaterial({color:0x2a2a4a,side:THREE.DoubleSide});
+  var ground=new THREE.Mesh(gGeo,gMat);
+  ground.rotation.x=-Math.PI/2; ground.position.y=-1;
+  scene.add(ground);
+
+  var span=Math.max(maxX-minX, maxY-minY);
+  camera.position.set(span*0.8, span*0.7, span*1.1);
+  camera.lookAt(0,0,0);
+
+  // Orbit controls (manual)
+  var isDragging=false, lastX=0, lastY=0;
+  var theta=0.5, phi=0.8, radius=camera.position.length();
+
+  function updateCamera(){
+    camera.position.x=radius*Math.sin(phi)*Math.sin(theta);
+    camera.position.y=radius*Math.cos(phi);
+    camera.position.z=radius*Math.sin(phi)*Math.cos(theta);
+    camera.lookAt(0,0,0);
+  }
+
+  canvas.addEventListener("mousedown",function(e){isDragging=true;lastX=e.clientX;lastY=e.clientY;});
+  canvas.addEventListener("mouseup",function(){isDragging=false;});
+  canvas.addEventListener("mousemove",function(e){
+    if(!isDragging)return;
+    theta+=(e.clientX-lastX)*0.01;
+    phi=Math.max(0.1,Math.min(Math.PI-0.1,phi-(e.clientY-lastY)*0.01));
+    lastX=e.clientX;lastY=e.clientY;
+    updateCamera();
+  });
+  canvas.addEventListener("wheel",function(e){
+    radius=Math.max(5,Math.min(80,radius+e.deltaY*0.05));
+    updateCamera();
+    e.preventDefault();
+  },{passive:false});
+
+  // Touch support
+  var lastTouchX=0, lastTouchY=0;
+  canvas.addEventListener("touchstart",function(e){lastTouchX=e.touches[0].clientX;lastTouchY=e.touches[0].clientY;e.preventDefault();},{passive:false});
+  canvas.addEventListener("touchmove",function(e){
+    theta+=(e.touches[0].clientX-lastTouchX)*0.012;
+    phi=Math.max(0.1,Math.min(Math.PI-0.1,phi-(e.touches[0].clientY-lastTouchY)*0.012));
+    lastTouchX=e.touches[0].clientX;lastTouchY=e.touches[0].clientY;
+    updateCamera();
+    e.preventDefault();
+  },{passive:false});
+
+  function animate(){
+    requestAnimationFrame(animate);
+    renderer.render(scene,camera);
+  }
+  animate();
+}
+
 
 // ── POINTS TABLE RENDER (for display/report) ──────────────────────────
 function gvRenderPointsTable(points, bm, tol, editable) {
@@ -529,7 +803,7 @@ function gvBuildSessionCard(s) {
         '<div style="font-size:14px;font-weight:900;color:#1a3d5c;">🔴 '+gvEsc(s.room_name||'מדידה')+'</div>' +
         '<div style="font-size:11px;color:#888;margin-top:2px;">' +
           (s.project_name?'🏗️ '+gvEsc(s.project_name)+' · ':'') +
-          date + ' · ' + pts.length + ' נקודות' +
+          '📅 ' + date + ' · ' + pts.length + ' נקודות' +
         '</div>' +
       '</div>' +
       '<div style="text-align:left;">' +
@@ -540,12 +814,12 @@ function gvBuildSessionCard(s) {
 
     // Action buttons
     '<div style="display:flex;gap:6px;flex-wrap:wrap;">' +
-      '<button onclick="gvViewSession(\''+s.id+'\')" style="padding:7px 12px;background:#e8f0fd;border:1px solid #1a3d5c;color:#1a3d5c;border-radius:8px;font-family:Heebo,sans-serif;font-size:12px;font-weight:800;cursor:pointer;">👁️ צפה</button>' +
-      '<button onclick="gvPrintSession(\''+s.id+'\')" style="padding:7px 12px;background:#fff8e0;border:1px solid #c9a84c;color:#7a5500;border-radius:8px;font-family:Heebo,sans-serif;font-size:12px;font-weight:800;cursor:pointer;">🖨️ PDF</button>' +
-      '<button onclick="gvMailSession(\''+s.id+'\')" style="padding:7px 10px;background:#fff0f0;border:1px solid rgba(198,40,40,0.3);color:#c62828;border-radius:8px;font-size:12px;cursor:pointer;font-family:Heebo,sans-serif;font-weight:700;">✉️</button>' +
-      '<button onclick="gvWASession(\''+s.id+'\')" style="padding:7px 10px;background:#e8faf0;border:1px solid rgba(27,107,53,0.3);color:#1b6b35;border-radius:8px;font-size:12px;cursor:pointer;font-family:Heebo,sans-serif;font-weight:700;">💬</button>' +
-      (s.file_url ? '<button onclick="tkViewFile(\''+s.file_url+'\',\''+((s.file_type)||'image')+'\')" style="padding:7px 10px;background:#e8f0fd;border:1px solid rgba(26,61,92,0.3);color:#1a3d5c;border-radius:8px;font-size:12px;cursor:pointer;font-family:Heebo,sans-serif;font-weight:700;">👁️ קובץ</button>' : '<button onclick="gvAttachFile(\''+s.id+'\')" style="padding:7px 10px;background:#f5f0e8;border:1px solid rgba(201,168,76,0.4);color:#7a5500;border-radius:8px;font-size:12px;cursor:pointer;font-family:Heebo,sans-serif;font-weight:700;">📎</button>') +
-      '<button id="gv-del-'+s.id+'" onclick="gvDeleteConfirm(\''+s.id+'\',this)" style="padding:7px 10px;background:#fff0f0;border:1px solid rgba(239,68,68,0.3);color:#c62828;border-radius:8px;font-size:12px;cursor:pointer;font-family:Heebo,sans-serif;font-weight:700;">🗑️</button>' +
+      '<button onclick="gvViewSession(\''+s.id+'\')" title="צפה בטבלת הסטיות המלאה" style="padding:7px 12px;background:#e8f0fd;border:1px solid #1a3d5c;color:#1a3d5c;border-radius:8px;font-family:Heebo,sans-serif;font-size:12px;font-weight:800;cursor:pointer;">👁️ צפה</button>' +
+      '<button onclick="gvPrintSession(\''+s.id+'\')" title="הפק דוח PDF מלא להדפסה" style="padding:7px 12px;background:#fff8e0;border:1px solid #c9a84c;color:#7a5500;border-radius:8px;font-family:Heebo,sans-serif;font-size:12px;font-weight:800;cursor:pointer;">🖨️ PDF</button>' +
+      '<button onclick="gvMailSession(\''+s.id+'\')" style="padding:7px 10px;background:#fff0f0;border:1px solid rgba(198,40,40,0.3);color:#c62828;border-radius:8px;font-size:12px;cursor:pointer;font-family:Heebo,sans-serif;font-weight:700;" title="שלח דוח במייל">✉️</button>' +
+      '<button onclick="gvWASession(\''+s.id+'\')" style="padding:7px 10px;background:#e8faf0;border:1px solid rgba(27,107,53,0.3);color:#1b6b35;border-radius:8px;font-size:12px;cursor:pointer;font-family:Heebo,sans-serif;font-weight:700;" title="שלח סיכום בוואטסאפ">💬</button>' +
+      (s.file_url ? '<button onclick="tkViewFile(\''+s.file_url+'\',\''+((s.file_type)||'image')+'\')" style="padding:7px 10px;background:#e8f0fd;border:1px solid rgba(26,61,92,0.3);color:#1a3d5c;border-radius:8px;font-size:12px;cursor:pointer;font-family:Heebo,sans-serif;font-weight:700;">👁️ קובץ</button>' : '<button onclick="gvAttachFile(\''+s.id+'\')" title="צרף תמונה או PDF לסשן" style="padding:7px 10px;background:#f5f0e8;border:1px solid rgba(201,168,76,0.4);color:#7a5500;border-radius:8px;font-size:12px;cursor:pointer;font-family:Heebo,sans-serif;font-weight:700;">📎</button>') +
+      '<button id="gv-del-'+s.id+'" onclick="gvDeleteConfirm(\''+s.id+'\',this)" title="מחק סשן (3 שניות לביטול)" style="padding:7px 10px;background:#fff0f0;border:1px solid rgba(239,68,68,0.3);color:#c62828;border-radius:8px;font-size:12px;cursor:pointer;font-family:Heebo,sans-serif;font-weight:700;">🗑️</button>' +
     '</div>' +
   '</div>';
 }
