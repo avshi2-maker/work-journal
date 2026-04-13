@@ -90,12 +90,12 @@ function gvRenderModeA(area) {
       '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;">' +
         '<div><div style="font-size:11px;color:#888;font-weight:700;margin-bottom:4px;">פרויקט</div>'+
           '<select id="gv-a-proj" style="'+gvInp()+'">'+projOpts+'</select></div>' +
-        '<div><div style="font-size:11px;color:#888;font-weight:700;margin-bottom:4px;">חדר / אזור</div>'+
-          '<input id="gv-a-room" type="text" placeholder="לדוגמה: סלון קומה 1" style="'+gvInp()+'"></div>' +
+        '<div style="grid-column:span 2"><div style="font-size:11px;color:#888;font-weight:700;margin-bottom:4px;">חדר / אזור (שם מלא)</div>'+
+          '<input id="gv-a-room" type="text" placeholder="לדוגמה: סלון + פינת אוכל + מטבח קומה 1 — Villa 2026" style="'+gvInp()+'"></div>' +
         '<div><div style="font-size:11px;color:#888;font-weight:700;margin-bottom:4px;">תאריך</div>'+
           '<input id="gv-a-date" type="date" value="'+new Date().toISOString().split('T')[0]+'" style="'+gvInp()+'"></div>' +
-        '<div><div style="font-size:11px;color:#888;font-weight:700;margin-bottom:4px;">שטח משוער (מ"ר)</div>'+
-          '<input id="gv-a-area" type="number" placeholder="לדוגמה: 300" style="'+gvInp()+'"></div>' +
+        '<div><div style="font-size:11px;color:#888;font-weight:700;margin-bottom:4px;">שטח כולל (מ"ר)</div>'+
+          '<input id="gv-a-area" type="number" placeholder="300" style="'+gvInp()+'"></div>' +
       '</div>' +
       '<div style="display:flex;gap:8px;flex-wrap:wrap;">' +
         '<button onclick="gvPrintBlankSheet()" style="flex:1;padding:11px;background:#1a3d5c;border:none;color:#FFD700;border-radius:10px;font-family:Heebo,sans-serif;font-size:13px;font-weight:800;cursor:pointer;">🖨️ הדפס גיליון ריק</button>' +
@@ -112,7 +112,7 @@ function gvPrintBlankSheet() {
   var proj = projId ? ((window.allProjects||[]).find(function(p){return p.id===projId;})||{}).project_name||'': '';
 
   var rows = '';
-  for (var i=1; i<=20; i++) {
+  for (var i=1; i<=25; i++) {
     rows += '<tr style="height:32px;">' +
       '<td style="border:1px solid #ccc;padding:4px 8px;text-align:center;color:#999;font-size:12px;">'+i+'</td>' +
       '<td style="border:1px solid #ccc;padding:4px 8px;"></td>' +
@@ -141,29 +141,34 @@ function gvPrintBlankSheet() {
       '<b>שטח:</b> '+area+' מ"ר' +
     '</div>' +
     '<div style="background:#fff8e0;border:1px solid #c9a84c;border-radius:6px;padding:8px 12px;font-size:11px;margin-bottom:10px;">' +
-      '📐 הוראות: מקם לייזר במרכז | גריד 3×3 מ׳ | הזן קריאה + X/Y לכל נקודה | BM = Benchmark (נקודת ייחוס)' +
+      '📐 הוראות: אין צורך לכתוב P — מספר השורה הוא שם הנקודה | BM = קריאה ראשונה (נקודת ייחוס) | גריד 3×3 מ׳ | הזן X/Y + קריאת לייזר לכל נקודה' +
     '</div>' +
     '<table>' +
       '<tr>' +
-        '<th style="width:40px;">מס׳</th>' +
-        '<th>שם נקודה / מיקום</th>' +
-        '<th>X (מ׳)</th>' +
-        '<th>Y (מ׳)</th>' +
-        '<th>קריאת לייזר (מ׳)</th>' +
-        '<th>הערות</th>' +
+        '<th style="width:32px;">מס׳</th>' +
+        '<th style="width:35%;">שם נקודה / מיקום בחדר</th>' +
+        '<th style="width:10%;">X (מ׳)</th>' +
+        '<th style="width:10%;">Y (מ׳)</th>' +
+        '<th style="width:18%;">קריאת לייזר (מ׳)</th>' +
+        '<th>הערות / סטייה</th>' +
       '</tr>' +
       rows +
     '</table>' +
-    '<div style="margin-top:14px;display:grid;grid-template-columns:1fr 1fr;gap:12px;">' +
-      '<div style="border:1px solid #ccc;border-radius:8px;padding:10px;">' +
-        '<b style="font-size:12px;">Benchmark (BM):</b><br>' +
-        '<div style="height:28px;border-bottom:1px solid #ddd;margin-top:6px;"></div>' +
-        '<div style="font-size:10px;color:#888;margin-top:4px;">נקודת ייחוס קבועה — לא להזיז!</div>' +
+    '<div style="margin-top:14px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;">' +
+      '<div style="border:1.5px solid #1a3d5c;border-radius:8px;padding:12px;">' +
+        '<b style="font-size:12px;color:#1a3d5c;">📏 Benchmark (BM):</b><br>' +
+        '<div style="height:32px;border-bottom:1.5px solid #1a3d5c;margin-top:8px;"></div>' +
+        '<div style="font-size:10px;color:#888;margin-top:4px;">קריאת ייחוס קבועה (מ׳) — לא להזיז מוט!</div>' +
       '</div>' +
-      '<div style="border:1px solid #ccc;border-radius:8px;padding:10px;">' +
-        '<b style="font-size:12px;">מפעיל מכשיר:</b><br>' +
-        '<div style="height:28px;border-bottom:1px solid #ddd;margin-top:6px;"></div>' +
-        '<div style="font-size:10px;color:#888;margin-top:4px;">חתימה ושם</div>' +
+      '<div style="border:1px solid #ccc;border-radius:8px;padding:12px;">' +
+        '<b style="font-size:12px;">🔧 מיקום לייזר:</b><br>' +
+        '<div style="height:32px;border-bottom:1px solid #ddd;margin-top:8px;"></div>' +
+        '<div style="font-size:10px;color:#888;margin-top:4px;">מיקום החצובה (X, Y)</div>' +
+      '</div>' +
+      '<div style="border:1px solid #ccc;border-radius:8px;padding:12px;">' +
+        '<b style="font-size:12px;">✍️ מפעיל:</b><br>' +
+        '<div style="height:32px;border-bottom:1px solid #ddd;margin-top:8px;"></div>' +
+        '<div style="font-size:10px;color:#888;margin-top:4px;">שם וחתימה</div>' +
       '</div>' +
     '</div>' +
     '<div class="footer">Stonhard Israel | מדידת גבהים לייזר | הופק: '+new Date().toLocaleDateString('he-IL')+'</div>' +
@@ -307,7 +312,68 @@ function gvRenderModeC(area, prefillPoints, prefillBM) {
 
   area.innerHTML =
     '<div style="background:#fff;border:1.5px solid #22c55e;border-radius:14px;padding:20px;margin-bottom:20px;">' +
-      '<div style="font-size:14px;font-weight:900;color:#1a3d5c;margin-bottom:14px;">⌨️ C — הזנת קריאות ידנית</div>' +
+      '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">' +
+        '<div style="font-size:14px;font-weight:900;color:#1a3d5c;">⌨️ C — הזנת קריאות ידנית</div>' +
+        '<button onclick="gvToggleInstructions()" title="הצג הוראות שימוש" style="background:#fff8e0;border:1.5px solid #c9a84c;color:#7a5500;border-radius:8px;padding:5px 12px;font-family:Heebo,sans-serif;font-size:11px;font-weight:800;cursor:pointer;">📖 הוראות A–Z</button>' +
+      '</div>' +
+      '<div id="gv-instructions-box" style="display:none;background:#fffbf0;border:1.5px solid #c9a84c;border-radius:12px;padding:16px;margin-bottom:16px;direction:rtl;">' +
+        '<div style="font-size:12px;font-weight:900;color:#1a3d5c;margin-bottom:10px;">📖 הוראות — הזנת גבהים SOLO באתר</div>' +
+        '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:11px;color:#444;line-height:1.9;">' +
+          '<div>' +
+            '<b style="color:#1a3d5c;">A. הכנה לפני יציאה לשטח</b><br>' +
+            '• הדפס גיליון ריק (לחץ A למעלה)<br>' +
+            '• קח עיפרון, מטר, מוט מדידה<br>' +
+            '• שמור גיליון ממולא לאחר מדידה<br><br>' +
+
+            '<b style="color:#1a3d5c;">B. מיקום הלייזר</b><br>' +
+            '• מרכז החדר — לא יותר מ-10מ לכל נקודה<br>' +
+            '• חצובה על משטח יציב — "דרוך" הרגליים<br>' +
+            '• ודא שאין עמודים חוסמים את קרן הלייזר<br><br>' +
+
+            '<b style="color:#1a3d5c;">C. קביעת Benchmark (BM)</b><br>' +
+            '• הנח המוט בנקודה יציבה ומרכזית<br>' +
+            '• קרא את המספר מהמוט — לדוגמה: 1.450<br>' +
+            '• זה ה-BM שלך — הכנס לשדה BM למעלה<br>' +
+            '• <b>לא להזיז את המוט עד שהקלטת BM!</b><br><br>' +
+
+            '<b style="color:#1a3d5c;">D. גריד מדידה מומלץ</b><br>' +
+            '• כל 3 מטר — גריד 3×3<br>' +
+            '• חדר 20×15 מ׳ ≈ 42 נקודות<br>' +
+            '• תמיד מדוד את 4 הפינות + מרכז<br>' +
+            '• סמן כל נקודה בגיר לפני הקריאה<br><br>' +
+          '</div>' +
+          '<div>' +
+            '<b style="color:#1a3d5c;">E. הזנת נתונים כאן</b><br>' +
+            '• שם נקודה: מספר שורה מהגיליון (1, 2, 3...)<br>' +
+            '• X = מרחק ממנ הצד השמאלי (מ׳)<br>' +
+            '• Y = מרחק מהקיר הקדמי (מ׳)<br>' +
+            '• קריאה = המספר שראית על המוט (מ׳)<br>' +
+            '• לחץ + הוסף נקודה לכל שורה<br><br>' +
+
+            '<b style="color:#1a3d5c;">F. העברת לייזר (Turning Point)</b><br>' +
+            '• אם הזהות — בחר BM חדש (נקודה קבועה)<br>' +
+            '• קרא BM מהמיקום הישן → הזז לייזר<br>' +
+            '• קרא BM מהמיקום החדש<br>' +
+            '• הפרש = האופסט — הכנס בהערות<br><br>' +
+
+            '<b style="color:#1a3d5c;">G. חישוב סטיות</b><br>' +
+            '• לחץ 📊 חשב + דוח<br>' +
+            '• ירוק = תקין (±5מ"מ)<br>' +
+            '• אדום = חריגה — מצריך טיפול<br>' +
+            '• ±3מ"מ = מצוין לריצוף יוקרתי<br>' +
+            '• ±5מ"מ = תקני לריצוף רגיל<br><br>' +
+
+            '<b style="color:#1a3d5c;">H. שמירה ודיווח</b><br>' +
+            '• לחץ 💾 שמור לפני סגירה<br>' +
+            '• לחץ 📄 PDF לדוח מלא<br>' +
+            '• שלח 💬 WA לקבלן / לקוח<br>' +
+            '• נשמר גם לאנציקלופדיה<br>' +
+          '</div>' +
+        '</div>' +
+        '<div style="margin-top:10px;background:#fff;border:1px solid #e8ddb5;border-radius:8px;padding:10px;font-size:11px;color:#7a5500;">' +
+          '💡 <b>טיפ SOLO:</b> צלם את הגיליון הממולא ← העלה למרכז נתונים ← לחץ 🔴 חלץ גבהים ← הכל נטען אוטומטית' +
+        '</div>' +
+      '</div>' +
 
       '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:14px;">' +
         '<div><div style="font-size:11px;color:#888;font-weight:700;margin-bottom:4px;">פרויקט</div>'+
@@ -405,20 +471,18 @@ function gvRenderHeatmap(points, bm) {
     '<script>(function(){' +
       'var pts='+ptsJson+';' +
       'var bm='+bmVal+';' +
-      'var canvas=document.getElementById("'+canvasId+'");' +
-      'if(!canvas)return;' +
-      'var W=canvas.offsetWidth||420,H=canvas.offsetHeight||340;' +
-      'canvas.width=W*window.devicePixelRatio||W;' +
-      'canvas.height=H*window.devicePixelRatio||H;' +
-      'var gl=canvas.getContext("webgl")||canvas.getContext("experimental-webgl");' +
-      'if(!gl){' +
-        // WebGL not available — fallback to Canvas 2D isometric view
-        'var ctx=canvas.getContext("2d");' +
-        'if(!ctx)return;' +
-        'gv3dFallback(ctx,canvas,pts,bm);' +
-        'return;' +
+      'function tryInit(){' +
+        'var canvas=document.getElementById("'+canvasId+'");' +
+        'if(!canvas)return;' +
+        'var W=canvas.getBoundingClientRect().width||canvas.parentElement&&canvas.parentElement.getBoundingClientRect().width||520;' +
+        'var H=340;' +
+        'canvas.width=Math.round(W*(window.devicePixelRatio||1));' +
+        'canvas.height=Math.round(H*(window.devicePixelRatio||1));' +
+        'canvas.style.width=W+"px";canvas.style.height=H+"px";' +
+        'gv3dWebGL(null,canvas,pts,bm,Math.round(W),H);' +
       '}' +
-      'gv3dWebGL(gl,canvas,pts,bm,W,H);' +
+      'if(document.readyState==="complete"){setTimeout(tryInit,80);}' +
+      'else{window.addEventListener("load",function(){setTimeout(tryInit,80);});}' +
     '})();<\/script>';
 
   return html;
@@ -524,12 +588,20 @@ function gv3dFallback(ctx, canvas, pts, bm) {
 }
 
 function gv3dWebGL(gl,canvas,pts,bm,W,H) {
-  // WebGL is available but complex — use Three.js CDN
+  W = W || canvas.getBoundingClientRect().width || 520;
+  H = H || 340;
   if (!window.THREE) {
-    var s=document.createElement("script");
-    s.src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js";
-    s.onload=function(){ gv3dThree(canvas,pts,bm,W,H); };
-    document.head.appendChild(s);
+    var existing = document.querySelector('script[src*="three.min.js"]');
+    if (existing) {
+      var wait = setInterval(function(){
+        if(window.THREE){ clearInterval(wait); gv3dThree(canvas,pts,bm,W,H); }
+      }, 100);
+    } else {
+      var s=document.createElement("script");
+      s.src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js";
+      s.onload=function(){ gv3dThree(canvas,pts,bm,W,H); };
+      document.head.appendChild(s);
+    }
   } else {
     gv3dThree(canvas,pts,bm,W,H);
   }
@@ -695,6 +767,20 @@ function gvRenderPointsTable(points, bm, tol, editable) {
       '<span style="color:#888;">סה"כ: '+points.length+' נקודות</span>' +
     '</div>' +
   '</div>';
+}
+
+
+function gvToggleInstructions() {
+  var box = document.getElementById('gv-instructions-box');
+  if (!box) return;
+  var btn = box.previousElementSibling && box.previousElementSibling.querySelector('button');
+  if (box.style.display === 'none') {
+    box.style.display = 'block';
+    if (btn) btn.textContent = '✕ סגור הוראות';
+  } else {
+    box.style.display = 'none';
+    if (btn) btn.textContent = '📖 הוראות A–Z';
+  }
 }
 
 // ── CALCULATE + SHOW REPORT ────────────────────────────────────────────
