@@ -470,6 +470,26 @@ function gvRemoveRow(i) {
 }
 
 
+
+// ── PROCESS 3D QUEUE ──────────────────────────────────────────────────
+function gv3dInitQueued() {
+  if (!window._gv3dQueue || !window._gv3dQueue.length) return;
+  var queue = window._gv3dQueue.slice();
+  window._gv3dQueue = [];
+  queue.forEach(function(item) {
+    var canvas = document.getElementById(item.canvasId);
+    if (!canvas) return;
+    var rect = canvas.parentElement ? canvas.parentElement.getBoundingClientRect() : null;
+    var W = (rect && rect.width > 50) ? rect.width : canvas.offsetWidth || 520;
+    var H = 340;
+    canvas.width  = Math.round(W * (window.devicePixelRatio || 1));
+    canvas.height = Math.round(H * (window.devicePixelRatio || 1));
+    canvas.style.width  = W + 'px';
+    canvas.style.height = H + 'px';
+    gv3dWebGL(null, canvas, item.pts, item.bm, Math.round(W), H);
+  });
+}
+
 // ── 3D FLOOR MAP ──────────────────────────────────────────────────────
 function gvRenderHeatmap(points, bm) {
   if (!points || !points.length) return '';
@@ -482,31 +502,22 @@ function gvRenderHeatmap(points, bm) {
   }));
   var bmVal = parseFloat(bm)||0;
 
+  // Store in global registry — init called after DOM paint
+  if (!window._gv3dQueue) window._gv3dQueue = [];
+  window._gv3dQueue.push({canvasId: canvasId, pts: points, bm: bmVal});
+
   var html =
     '<div id="'+containerId+'" style="position:relative;width:100%;height:340px;border:1px solid #e8ddb5;border-radius:10px;overflow:hidden;background:#1a1a2e;margin-bottom:10px;">' +
-      '<canvas id="'+canvasId+'" style="width:100%;height:100%;display:block;"></canvas>' +
+      '<canvas id="'+canvasId+'" style="width:100%;height:340px;display:block;"></canvas>' +
       '<div style="position:absolute;top:8px;right:10px;font-size:10px;color:rgba(255,255,255,0.5);font-family:Heebo,sans-serif;">גרור לסיבוב · גלגל לזום</div>' +
-      '<div id="gv-3d-legend-'+containerId+'" style="position:absolute;bottom:8px;left:8px;display:flex;gap:4px;align-items:center;">' +
+      '<div style="position:absolute;bottom:8px;left:8px;display:flex;gap:4px;align-items:center;">' +
         '<div style="width:60px;height:10px;background:linear-gradient(to right,#0000ff,#00ff88,#ffff00,#ff0000);border-radius:3px;"></div>' +
         '<span style="font-size:9px;color:#aaa;font-family:Heebo,sans-serif;">נמוך → גבוה</span>' +
       '</div>' +
-    '</div>' +
-    '<script>(function(){' +
-      'var pts='+ptsJson+';' +
-      'var bm='+bmVal+';' +
-      'function tryInit(){' +
-        'var canvas=document.getElementById("'+canvasId+'");' +
-        'if(!canvas)return;' +
-        'var W=canvas.getBoundingClientRect().width||canvas.parentElement&&canvas.parentElement.getBoundingClientRect().width||520;' +
-        'var H=340;' +
-        'canvas.width=Math.round(W*(window.devicePixelRatio||1));' +
-        'canvas.height=Math.round(H*(window.devicePixelRatio||1));' +
-        'canvas.style.width=W+"px";canvas.style.height=H+"px";' +
-        'gv3dWebGL(null,canvas,pts,bm,Math.round(W),H);' +
-      '}' +
-      'if(document.readyState==="complete"){setTimeout(tryInit,80);}' +
-      'else{window.addEventListener("load",function(){setTimeout(tryInit,80);});}' +
-    '})();<\/script>';
+    '</div>';
+
+  // Trigger init after this HTML is inserted into DOM
+  setTimeout(function() { gv3dInitQueued(); }, 150);
 
   return html;
 }
@@ -523,6 +534,8 @@ function gv3dFallback(ctx, canvas, pts, bm) {
   var xs = pts.map(function(p){return p.x;}), ys = pts.map(function(p){return p.y;});
   var minX=Math.min.apply(null,xs), maxX=Math.max.apply(null,xs);
   var minY=Math.min.apply(null,ys), maxY=Math.max.apply(null,ys);
+  pts = pts.map(function(p){ return {x:parseFloat(p.x)||0,y:parseFloat(p.y)||0,r:parseFloat(p.r||p.reading)||0,name:p.name||''}; }).filter(function(p){return p.r>0;});
+  if(!pts.length) return '<div style="padding:20px;text-align:center;color:#888;">אין נקודות לתצוגה</div>';
   var devs = pts.map(function(p){return (p.r - bm)*1000;});
   var minD=Math.min.apply(null,devs), maxD=Math.max.apply(null,devs);
   var rangeD = Math.max(Math.abs(minD),Math.abs(maxD)) || 1;
@@ -648,12 +661,18 @@ function gv3dThree(canvas, pts, bm, W, H) {
   var scene  = new THREE.Scene();
   var camera = new THREE.PerspectiveCamera(45, W/H, 0.1, 1000);
 
+  // Normalize: accept both p.r and p.reading
+  pts = pts.map(function(p){
+    return {x:parseFloat(p.x)||0, y:parseFloat(p.y)||0, r:parseFloat(p.r||p.reading)||0, name:p.name||''};
+  }).filter(function(p){ return !isNaN(p.r) && p.r > 0; });
+  if (!pts.length) { console.warn('gv3dThree: no valid points'); return; }
+
   var xs=pts.map(function(p){return p.x;}), ys=pts.map(function(p){return p.y;});
   var minX=Math.min.apply(null,xs), maxX=Math.max.apply(null,xs);
   var minY=Math.min.apply(null,ys), maxY=Math.max.apply(null,ys);
   var devs=pts.map(function(p){return (p.r-bm)*1000;});
   var minD=Math.min.apply(null,devs), maxD=Math.max.apply(null,devs);
-  var rangeD=Math.max(Math.abs(minD),Math.abs(maxD))||1;
+  var rangeD=(maxD-minD) > 0.001 ? (maxD-minD) : 1;
   var cx=(minX+maxX)/2, cy=(minY+maxY)/2;
 
   function devToColor(d) {
