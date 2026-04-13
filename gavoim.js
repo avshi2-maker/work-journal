@@ -1,694 +1,762 @@
 // ══════════════════════════════════════════════════════════════════════
-// GAVOIM.JS — גבהים: Heights Deviation Module
-// 3-Step wizard: Upload sketch → AI extracts elevations (DRAFT) →
-//   Beni enters site readings → Deviation report → Save/Print/Mail/WA/Excel
+// gavoim.js — מדידת גבהים לייזר
+// 3 modes: A=blank CSV printout, B=42-point simulation, C=manual entry
+// Table: gavoim_sessions
 // ══════════════════════════════════════════════════════════════════════
 
-var _gvStep      = 1;          // current wizard step 1-3
-var _gvDraft     = [];         // AI-extracted elevation points (draft)
-var _gvActual    = [];         // Beni's site readings
-var _gvImageUrl  = null;       // uploaded sketch URL
-var _gvProjectId = null;
-var _gvLabel     = '';
-var _gvTolerance = 5;          // mm tolerance default
-var _gvInited    = false;
+var _gvSessions   = [];
+var _gvActive     = null;  // active session being edited
+var _gvMode       = null;  // 'a' | 'b' | 'c'
+var _gvPoints     = [];    // current session points
 
-// ── PUBLIC: init called when laser tab clicked ────────────────────────
-function gvInit() {
-  if (_gvInited) return;
-  _gvInited = true;
-
-  // Inject wizard panel into takeoff-content IF laser tab is active
-  var content = document.getElementById('takeoff-content');
-  if (!content) return;
-
-  // Add "New Heights Session" button to tab header
-  var tabEl = document.getElementById('tk-tab-laser');
-  if (tabEl && !document.getElementById('gv-new-btn')) {
-    var btn = document.createElement('button');
-    btn.id = 'gv-new-btn';
-    btn.textContent = '+ מדידה חדשה';
-    btn.style.cssText = 'background:#ef4444;border:none;color:#fff;border-radius:8px;padding:6px 14px;font-family:Heebo,sans-serif;font-size:12px;font-weight:700;cursor:pointer;margin-right:8px;position:absolute;left:8px;top:8px;';
-    btn.onclick = gvOpenWizard;
-    tabEl.style.position = 'relative';
-    tabEl.parentElement.style.position = 'relative';
-    // Insert after the sub-tabs row
-    var filterRow = document.querySelector('#takeoff-search');
-    if (filterRow && filterRow.parentElement) {
-      var newBtn2 = document.createElement('button');
-      newBtn2.id = 'gv-new-btn2';
-      newBtn2.innerHTML = '+ מדידת גבהים חדשה';
-      newBtn2.style.cssText = 'background:#ef4444;border:none;color:#fff;border-radius:8px;padding:8px 16px;font-family:Heebo,sans-serif;font-size:13px;font-weight:700;cursor:pointer;flex-shrink:0;';
-      newBtn2.onclick = gvOpenWizard;
-      filterRow.parentElement.insertBefore(newBtn2, filterRow.parentElement.firstChild);
-    }
-  }
+// ── INIT ──────────────────────────────────────────────────────────────
+async function gvInit() {
+  gvRenderShell();
+  await gvLoadSessions();
 }
 
-// ── OPEN WIZARD ───────────────────────────────────────────────────────
-function gvOpenWizard() {
-  _gvStep = 1; _gvDraft = []; _gvActual = [];
-  _gvImageUrl = null; _gvLabel = ''; _gvProjectId = null;
-
-  var overlay = document.createElement('div');
-  overlay.id = 'gv-overlay';
-  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:9999;overflow-y:auto;display:flex;align-items:flex-start;justify-content:center;padding:20px;';
-  overlay.innerHTML = gvWizardHTML();
-  document.body.appendChild(overlay);
-
-  // Populate project dropdown
-  var sel = document.getElementById('gv-proj-sel');
-  if (sel && window.allProjects) {
-    window.allProjects.forEach(function(p){
-      var o = document.createElement('option');
-      o.value = p.id; o.textContent = p.project_name;
-      sel.appendChild(o);
-    });
-  }
-}
-
-function gvClose() {
-  var o = document.getElementById('gv-overlay');
-  if (o) o.remove();
-}
-
-// ── WIZARD HTML ───────────────────────────────────────────────────────
-function gvWizardHTML() {
-  return '<div style="background:#fff;border-radius:16px;width:100%;max-width:780px;direction:rtl;font-family:Heebo,Arial,sans-serif;overflow:hidden;">' +
+function gvRenderShell() {
+  var panel = document.getElementById('gavoim-wrap');
+  if (!panel) return;
+  panel.innerHTML =
+    '<div style="padding:20px 24px;padding-top:20px;direction:rtl;font-family:Heebo,Arial,sans-serif;background:#f5f0e8;min-height:100vh;">' +
 
     // Header
-    '<div style="background:linear-gradient(135deg,#1a3d5c,#c62828);padding:16px 20px;display:flex;align-items:center;justify-content:space-between;">' +
+    '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:10px;">' +
       '<div>' +
-        '<div style="font-size:10px;letter-spacing:2px;color:rgba(255,255,255,0.6);text-transform:uppercase;">מדידת גבהים</div>' +
-        '<div style="font-size:18px;font-weight:800;color:#fff;">🔴 אשף מדידת גבהים — 3 שלבים</div>' +
+        '<div style="font-size:9px;letter-spacing:2px;color:#9a6f00;font-weight:800;text-transform:uppercase;margin-bottom:2px;">Laser Leveling</div>' +
+        '<div style="font-size:22px;font-weight:900;color:#1a3d5c;">🔴 מדידת גבהים לייזר</div>' +
       '</div>' +
-      '<button onclick="gvClose()" style="background:rgba(255,255,255,0.15);border:none;color:#fff;border-radius:8px;padding:6px 14px;cursor:pointer;font-size:13px;">✕ סגור</button>' +
+      '<button onclick="gvNewSession()" style="background:#1a3d5c;border:none;color:#FFD700;padding:10px 18px;border-radius:10px;font-family:Heebo,sans-serif;font-size:13px;font-weight:900;cursor:pointer;">+ מדידה חדשה</button>' +
     '</div>' +
 
-    // Step indicators
-    '<div style="display:flex;background:#f8f9fc;border-bottom:1px solid #e8e8e8;">' +
-      '<div id="gv-si-1" style="flex:1;padding:12px;text-align:center;font-size:12px;font-weight:700;border-bottom:3px solid #ef4444;color:#ef4444;">שלב 1<br>העלאת תרשים</div>' +
-      '<div id="gv-si-2" style="flex:1;padding:12px;text-align:center;font-size:12px;font-weight:700;border-bottom:3px solid transparent;color:#aaa;">שלב 2<br>טיוטת AI + קריאות שטח</div>' +
-      '<div id="gv-si-3" style="flex:1;padding:12px;text-align:center;font-size:12px;font-weight:700;border-bottom:3px solid transparent;color:#aaa;">שלב 3<br>דוח סטיות + שמירה</div>' +
+    // 3 template buttons
+    '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:24px;">' +
+
+      // A - Blank field sheet
+      '<div style="background:#fff;border:1.5px solid #c9a84c;border-radius:12px;padding:16px;cursor:pointer;" onclick="gvStartMode(\'a\')">' +
+        '<div style="font-size:24px;margin-bottom:8px;">📋</div>' +
+        '<div style="font-size:13px;font-weight:900;color:#1a3d5c;margin-bottom:6px;">A — גיליון שטח ריק</div>' +
+        '<div style="font-size:11px;color:#888;line-height:1.7;">הדפס גיליון עם 20 שורות ריקות<br>מלא בעפרון בשטח<br>צלם ← OCR ← שמור</div>' +
+      '</div>' +
+
+      // B - 42-point simulation
+      '<div style="background:#fff;border:1.5px solid #ef4444;border-radius:12px;padding:16px;cursor:pointer;" onclick="gvStartMode(\'b\')">' +
+        '<div style="font-size:24px;margin-bottom:8px;">🗺️</div>' +
+        '<div style="font-size:13px;font-weight:900;color:#1a3d5c;margin-bottom:6px;">B — סימולציה 42 נקודות</div>' +
+        '<div style="font-size:11px;color:#888;line-height:1.7;">גריד 3×3 מ׳ לחדר 20×15 מ׳<br>נתוני דוגמה אמיתיים<br>צור דוח + מפה + PDF</div>' +
+      '</div>' +
+
+      // C - Manual entry
+      '<div style="background:#fff;border:1.5px solid #22c55e;border-radius:12px;padding:16px;cursor:pointer;" onclick="gvStartMode(\'c\')">' +
+        '<div style="font-size:24px;margin-bottom:8px;">⌨️</div>' +
+        '<div style="font-size:13px;font-weight:900;color:#1a3d5c;margin-bottom:6px;">C — הזנה ידנית</div>' +
+        '<div style="font-size:11px;color:#888;line-height:1.7;">הזן קריאות לייזר ישירות<br>ללא צילום ו-OCR<br>שמור → דוח מיידי</div>' +
+      '</div>' +
+
     '</div>' +
 
-    // Step panels
-    '<div id="gv-step-1" style="padding:20px;">' + gvStep1HTML() + '</div>' +
-    '<div id="gv-step-2" style="padding:20px;display:none;">' + gvStep2HTML() + '</div>' +
-    '<div id="gv-step-3" style="padding:20px;display:none;">' + gvStep3HTML() + '</div>' +
+    // Active form area
+    '<div id="gv-form-area"></div>' +
 
-  '</div>';
-}
+    // Sessions list
+    '<div id="gv-sessions-list"></div>' +
 
-function gvStep1HTML() {
-  return '<div style="font-size:14px;font-weight:700;color:#1a3d5c;margin-bottom:16px;">העלה תרשים עם סימוני גבהים</div>' +
-
-    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">' +
-      '<div><div style="font-size:12px;color:#666;margin-bottom:6px;">פרויקט</div>' +
-        '<select id="gv-proj-sel" style="width:100%;padding:9px;border:1px solid #ddd;border-radius:8px;font-family:Heebo,sans-serif;font-size:13px;direction:rtl;"><option value="">— בחר פרויקט —</option></select></div>' +
-      '<div><div style="font-size:12px;color:#666;margin-bottom:6px;">תווית / שם הסשן</div>' +
-        '<input id="gv-label" type="text" placeholder="למשל: יציקת רצפת קומה 1" style="width:100%;padding:9px;border:1px solid #ddd;border-radius:8px;font-family:Heebo,sans-serif;font-size:13px;box-sizing:border-box;"></div>' +
-    '</div>' +
-
-    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">' +
-      '<div><div style="font-size:12px;color:#666;margin-bottom:6px;">סבילות (מ"מ) — ברירת מחדל ±5</div>' +
-        '<input id="gv-tolerance" type="number" value="5" min="1" max="50" step="1" style="width:100%;padding:9px;border:1px solid #ddd;border-radius:8px;font-family:Heebo,sans-serif;font-size:13px;box-sizing:border-box;"></div>' +
-      '<div><div style="font-size:12px;color:#666;margin-bottom:6px;">נקודת ייחוס (datum)</div>' +
-        '<input id="gv-datum" type="text" value="±0.00" placeholder="±0.00 = רצפת קומה" style="width:100%;padding:9px;border:1px solid #ddd;border-radius:8px;font-family:Heebo,sans-serif;font-size:13px;box-sizing:border-box;"></div>' +
-    '</div>' +
-
-    // Upload area
-    '<div id="gv-upload-area" onclick="document.getElementById(\'gv-file-input\').click()" ' +
-      'style="border:2px dashed #ef4444;border-radius:12px;padding:32px;text-align:center;cursor:pointer;background:#fff5f5;margin-bottom:16px;transition:all .2s;" ' +
-      'ondragover="event.preventDefault();this.style.background=\'#fee2e2\'" ' +
-      'ondrop="gvHandleDrop(event)">' +
-      '<div style="font-size:36px;margin-bottom:8px;">🖼️</div>' +
-      '<div style="font-size:14px;font-weight:700;color:#c62828;margin-bottom:4px;">לחץ להעלאת תרשים</div>' +
-      '<div style="font-size:12px;color:#888;">או גרור תמונה לכאן · JPG / PNG / PDF</div>' +
-    '</div>' +
-    '<input type="file" id="gv-file-input" accept="image/*,.pdf" style="display:none" onchange="gvHandleFileSelect(this)">' +
-
-    '<div id="gv-preview-wrap" style="display:none;margin-bottom:16px;">' +
-      '<div style="font-size:12px;font-weight:700;color:#1a3d5c;margin-bottom:8px;">תצוגה מקדימה:</div>' +
-      '<img id="gv-preview-img" style="max-width:100%;border-radius:8px;border:1px solid #e8e8e8;max-height:300px;">' +
-    '</div>' +
-
-    // OR manual entry
-    '<div style="text-align:center;color:#aaa;font-size:12px;margin-bottom:12px;">— או —</div>' +
-    '<button onclick="gvSkipToManual()" style="width:100%;padding:10px;background:#f5f7fa;border:1px solid #ddd;border-radius:8px;font-family:Heebo,sans-serif;font-size:13px;cursor:pointer;color:#555;">' +
-      'הכנס נקודות ידנית ללא תרשים' +
-    '</button>' +
-
-    '<div id="gv-step1-error" style="display:none;background:#fff5f5;border:1px solid #fca5a5;border-radius:8px;padding:10px;margin-top:12px;font-size:12px;color:#c62828;"></div>' +
-
-    '<div style="display:flex;justify-content:flex-left;margin-top:20px;">' +
-      '<button id="gv-btn-step1" onclick="gvRunStep1()" style="background:#ef4444;border:none;color:#fff;border-radius:10px;padding:12px 28px;font-family:Heebo,sans-serif;font-size:14px;font-weight:800;cursor:pointer;">🧠 נתח תרשים עם AI ←</button>' +
     '</div>';
 }
 
-function gvStep2HTML() {
-  return '<div id="gv-step2-content">' +
-    '<div style="font-size:14px;font-weight:700;color:#1a3d5c;margin-bottom:4px;">שלב 2 — בדוק טיוטת AI + הכנס קריאות שטח</div>' +
-    '<div style="font-size:12px;color:#888;margin-bottom:16px;">Claude חילץ את נקודות הגובה מהתרשים. ערוך לפי הצורך, הוסף קריאות בני מהלייזר.</div>' +
-    '<div id="gv-draft-table-wrap"></div>' +
-    '<button onclick="gvAddRow()" style="background:#e8f0fd;border:1px solid #93c5fd;color:#1a3d5c;border-radius:8px;padding:7px 14px;font-family:Heebo,sans-serif;font-size:12px;font-weight:700;cursor:pointer;margin-bottom:16px;">+ הוסף נקודה</button>' +
-    '<div style="display:flex;gap:8px;margin-top:16px;">' +
-      '<button onclick="gvGoStep(1)" style="background:#f5f7fa;border:1px solid #ddd;border-radius:10px;padding:11px 20px;font-family:Heebo,sans-serif;font-size:13px;cursor:pointer;">← חזור</button>' +
-      '<button onclick="gvRunStep3()" style="flex:1;background:#1a3d5c;border:none;color:#fff;border-radius:10px;padding:11px 20px;font-family:Heebo,sans-serif;font-size:14px;font-weight:800;cursor:pointer;">חשב סטיות ← צור דוח</button>' +
-    '</div>' +
-  '</div>';
+// ── MODE STARTER ──────────────────────────────────────────────────────
+function gvStartMode(mode) {
+  _gvMode   = mode;
+  _gvActive = null;
+  _gvPoints = [];
+  var area = document.getElementById('gv-form-area');
+  if (!area) return;
+
+  if (mode === 'a') gvRenderModeA(area);
+  if (mode === 'b') gvRenderModeB(area);
+  if (mode === 'c') gvRenderModeC(area);
+  area.scrollIntoView({behavior:'smooth'});
 }
 
-function gvStep3HTML() {
-  return '<div id="gv-step3-content">' +
-    '<div style="font-size:14px;font-weight:700;color:#1a3d5c;margin-bottom:16px;">שלב 3 — דוח סטיות</div>' +
-    '<div id="gv-deviation-report"></div>' +
+// ══ MODE A — Blank Field Sheet ═════════════════════════════════════════
+function gvRenderModeA(area) {
+  var projOpts = '<option value="">— בחר פרויקט —</option>';
+  (window.allProjects||[]).forEach(function(p){ projOpts += '<option value="'+p.id+'">'+gvEsc(p.project_name)+'</option>'; });
 
-    // Action bar
-    '<div style="background:#f8f9fc;border:1px solid #e8e8e8;border-radius:10px;padding:14px;margin-top:16px;">' +
-      '<div style="font-size:12px;font-weight:700;color:#1a3d5c;margin-bottom:10px;">שמור ושתף:</div>' +
+  area.innerHTML =
+    '<div style="background:#fff;border:1.5px solid #c9a84c;border-radius:14px;padding:20px;margin-bottom:20px;">' +
+      '<div style="font-size:14px;font-weight:900;color:#1a3d5c;margin-bottom:14px;">📋 A — גיליון שטח ריק להדפסה</div>' +
+      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;">' +
+        '<div><div style="font-size:11px;color:#888;font-weight:700;margin-bottom:4px;">פרויקט</div>'+
+          '<select id="gv-a-proj" style="'+gvInp()+'">'+projOpts+'</select></div>' +
+        '<div><div style="font-size:11px;color:#888;font-weight:700;margin-bottom:4px;">חדר / אזור</div>'+
+          '<input id="gv-a-room" type="text" placeholder="לדוגמה: סלון קומה 1" style="'+gvInp()+'"></div>' +
+        '<div><div style="font-size:11px;color:#888;font-weight:700;margin-bottom:4px;">תאריך</div>'+
+          '<input id="gv-a-date" type="date" value="'+new Date().toISOString().split('T')[0]+'" style="'+gvInp()+'"></div>' +
+        '<div><div style="font-size:11px;color:#888;font-weight:700;margin-bottom:4px;">שטח משוער (מ"ר)</div>'+
+          '<input id="gv-a-area" type="number" placeholder="לדוגמה: 300" style="'+gvInp()+'"></div>' +
+      '</div>' +
       '<div style="display:flex;gap:8px;flex-wrap:wrap;">' +
-        '<button onclick="gvSaveToSupabase()" style="flex:1;min-width:100px;padding:10px;background:linear-gradient(135deg,#1a3d5c,#2d6a9f);border:none;color:#fff;border-radius:8px;font-family:Heebo,sans-serif;font-size:12px;font-weight:700;cursor:pointer;">💾 שמור לפרויקט</button>' +
-        '<button onclick="gvPrintReport()" style="flex:1;min-width:100px;padding:10px;background:#1a3d5c;border:none;color:#FFD700;border-radius:8px;font-family:Heebo,sans-serif;font-size:12px;font-weight:700;cursor:pointer;">🖨️ הדפס</button>' +
-        '<button onclick="gvMailReport()" style="flex:1;min-width:100px;padding:10px;background:#c62828;border:none;color:#fff;border-radius:8px;font-family:Heebo,sans-serif;font-size:12px;font-weight:700;cursor:pointer;">✉️ מייל</button>' +
-        '<button onclick="gvWAReport()" style="flex:1;min-width:100px;padding:10px;background:#25D366;border:none;color:#fff;border-radius:8px;font-family:Heebo,sans-serif;font-size:12px;font-weight:700;cursor:pointer;">💬 WhatsApp</button>' +
-        '<button onclick="gvExcelReport()" style="flex:1;min-width:100px;padding:10px;background:#217346;border:none;color:#fff;border-radius:8px;font-family:Heebo,sans-serif;font-size:12px;font-weight:700;cursor:pointer;">📊 Excel</button>' +
+        '<button onclick="gvPrintBlankSheet()" style="flex:1;padding:11px;background:#1a3d5c;border:none;color:#FFD700;border-radius:10px;font-family:Heebo,sans-serif;font-size:13px;font-weight:800;cursor:pointer;">🖨️ הדפס גיליון ריק</button>' +
+        '<button onclick="gvOpenOCR(\'a\')" style="flex:1;padding:11px;background:#c9a84c;border:none;color:#fff;border-radius:10px;font-family:Heebo,sans-serif;font-size:13px;font-weight:800;cursor:pointer;">📷 צלם גיליון מלא → OCR</button>' +
+      '</div>' +
+    '</div>';
+}
+
+function gvPrintBlankSheet() {
+  var room = (document.getElementById('gv-a-room')||{}).value||'___________';
+  var date = (document.getElementById('gv-a-date')||{}).value||'___________';
+  var area = (document.getElementById('gv-a-area')||{}).value||'___';
+  var projId = (document.getElementById('gv-a-proj')||{}).value||'';
+  var proj = projId ? ((window.allProjects||[]).find(function(p){return p.id===projId;})||{}).project_name||'': '';
+
+  var rows = '';
+  for (var i=1; i<=20; i++) {
+    rows += '<tr style="height:32px;">' +
+      '<td style="border:1px solid #ccc;padding:4px 8px;text-align:center;color:#999;font-size:12px;">'+i+'</td>' +
+      '<td style="border:1px solid #ccc;padding:4px 8px;"></td>' +
+      '<td style="border:1px solid #ccc;padding:4px 8px;"></td>' +
+      '<td style="border:1px solid #ccc;padding:4px 8px;"></td>' +
+      '<td style="border:1px solid #ccc;padding:4px 8px;"></td>' +
+      '<td style="border:1px solid #ccc;padding:4px 8px;"></td>' +
+      '</tr>';
+  }
+
+  var html = '<html><head><meta charset="utf-8"><style>' +
+    'body{font-family:Heebo,Arial,sans-serif;direction:rtl;padding:16px;font-size:13px;}' +
+    'table{width:100%;border-collapse:collapse;margin-top:12px;}' +
+    'th{background:#1a3d5c;color:#FFD700;padding:8px;text-align:center;font-size:12px;}' +
+    'td{border:1px solid #ccc;padding:6px;}' +
+    'h2{color:#1a3d5c;margin:0 0 4px 0;font-size:18px;}' +
+    '.meta{font-size:12px;color:#555;margin-bottom:12px;}' +
+    '.footer{margin-top:16px;font-size:10px;color:#aaa;text-align:center;border-top:1px solid #eee;padding-top:8px;}' +
+    '@media print{button{display:none!important;}}' +
+    '</style></head><body>' +
+    '<h2>🔴 גיליון מדידת גבהים לייזר</h2>' +
+    '<div class="meta">' +
+      (proj ? '<b>פרויקט:</b> '+gvEsc(proj)+' &nbsp;|&nbsp; ' : '') +
+      '<b>חדר / אזור:</b> '+gvEsc(room)+' &nbsp;|&nbsp; ' +
+      '<b>תאריך:</b> '+date+' &nbsp;|&nbsp; ' +
+      '<b>שטח:</b> '+area+' מ"ר' +
+    '</div>' +
+    '<div style="background:#fff8e0;border:1px solid #c9a84c;border-radius:6px;padding:8px 12px;font-size:11px;margin-bottom:10px;">' +
+      '📐 הוראות: מקם לייזר במרכז | גריד 3×3 מ׳ | הזן קריאה + X/Y לכל נקודה | BM = Benchmark (נקודת ייחוס)' +
+    '</div>' +
+    '<table>' +
+      '<tr>' +
+        '<th style="width:40px;">מס׳</th>' +
+        '<th>שם נקודה / מיקום</th>' +
+        '<th>X (מ׳)</th>' +
+        '<th>Y (מ׳)</th>' +
+        '<th>קריאת לייזר (מ׳)</th>' +
+        '<th>הערות</th>' +
+      '</tr>' +
+      rows +
+    '</table>' +
+    '<div style="margin-top:14px;display:grid;grid-template-columns:1fr 1fr;gap:12px;">' +
+      '<div style="border:1px solid #ccc;border-radius:8px;padding:10px;">' +
+        '<b style="font-size:12px;">Benchmark (BM):</b><br>' +
+        '<div style="height:28px;border-bottom:1px solid #ddd;margin-top:6px;"></div>' +
+        '<div style="font-size:10px;color:#888;margin-top:4px;">נקודת ייחוס קבועה — לא להזיז!</div>' +
+      '</div>' +
+      '<div style="border:1px solid #ccc;border-radius:8px;padding:10px;">' +
+        '<b style="font-size:12px;">מפעיל מכשיר:</b><br>' +
+        '<div style="height:28px;border-bottom:1px solid #ddd;margin-top:6px;"></div>' +
+        '<div style="font-size:10px;color:#888;margin-top:4px;">חתימה ושם</div>' +
       '</div>' +
     '</div>' +
+    '<div class="footer">Stonhard Israel | מדידת גבהים לייזר | הופק: '+new Date().toLocaleDateString('he-IL')+'</div>' +
+    '</body></html>';
 
-    '<div style="display:flex;gap:8px;margin-top:12px;">' +
-      '<button onclick="gvGoStep(2)" style="background:#f5f7fa;border:1px solid #ddd;border-radius:10px;padding:10px 20px;font-family:Heebo,sans-serif;font-size:13px;cursor:pointer;">← ערוך שוב</button>' +
-      '<button onclick="gvClose()" style="background:#f5f7fa;border:1px solid #ddd;border-radius:10px;padding:10px 20px;font-family:Heebo,sans-serif;font-size:13px;cursor:pointer;">סגור</button>' +
-    '</div>' +
-  '</div>';
+  var w = window.open('','_blank','width=800,height=900');
+  if (w) { w.document.write(html); w.document.close(); setTimeout(function(){ w.print(); }, 400); }
 }
 
-// ── STEP NAVIGATION ───────────────────────────────────────────────────
-function gvGoStep(n) {
-  _gvStep = n;
-  [1,2,3].forEach(function(i){
-    var panel = document.getElementById('gv-step-'+i);
-    var si    = document.getElementById('gv-si-'+i);
-    if (panel) panel.style.display = i===n ? 'block' : 'none';
-    if (si) {
-      si.style.borderBottomColor = i===n ? '#ef4444' : 'transparent';
-      si.style.color = i===n ? '#ef4444' : (i<n ? '#1a3d5c' : '#aaa');
-    }
-  });
-}
-
-// ── FILE HANDLING ─────────────────────────────────────────────────────
-function gvHandleDrop(e) {
-  e.preventDefault();
-  var file = e.dataTransfer.files[0];
-  if (file) gvLoadFile(file);
-}
-
-function gvHandleFileSelect(input) {
-  var file = input.files[0];
-  if (file) gvLoadFile(file);
-}
-
-function gvLoadFile(file) {
-  var reader = new FileReader();
-  reader.onload = function(e) {
-    _gvImageUrl = e.target.result; // base64 data URL
-    var preview = document.getElementById('gv-preview-img');
-    var wrap    = document.getElementById('gv-preview-wrap');
-    if (preview && file.type.startsWith('image/')) {
-      preview.src = _gvImageUrl;
-      if (wrap) wrap.style.display = 'block';
-    }
-    var uploadArea = document.getElementById('gv-upload-area');
-    if (uploadArea) {
-      uploadArea.style.background = '#f0fdf4';
-      uploadArea.style.borderColor = '#4caf50';
-      uploadArea.innerHTML = '<div style="font-size:24px;">✅</div><div style="font-size:13px;font-weight:700;color:#1b5e20;">'+file.name+'</div>';
-    }
+function gvOpenOCR(mode) {
+  var inp = document.createElement('input');
+  inp.type = 'file'; inp.accept = 'image/*';
+  inp.onchange = function(){
+    var file = inp.files[0]; if(!file) return;
+    var reader = new FileReader();
+    reader.onload = function(e){ gvRunOCR(e.target.result, mode); };
+    reader.readAsDataURL(file);
   };
-  reader.readAsDataURL(file);
+  inp.click();
 }
 
-// ── STEP 1: RUN AI ON SKETCH ──────────────────────────────────────────
-async function gvRunStep1() {
-  var labelEl    = document.getElementById('gv-label');
-  var projSel    = document.getElementById('gv-proj-sel');
-  var tolEl      = document.getElementById('gv-tolerance');
-  var datumEl    = document.getElementById('gv-datum');
-  var errorEl    = document.getElementById('gv-step1-error');
-  var btn        = document.getElementById('gv-btn-step1');
-
-  _gvLabel     = labelEl  ? labelEl.value  : '';
-  _gvProjectId = projSel  ? projSel.value  : null;
-  _gvTolerance = tolEl    ? parseFloat(tolEl.value)||5 : 5;
-  var datum    = datumEl  ? datumEl.value  : '±0.00';
-
-  if (errorEl) errorEl.style.display = 'none';
-
-  // If no image — skip to manual
-  if (!_gvImageUrl) { gvSkipToManual(); return; }
+async function gvRunOCR(imageB64, mode) {
+  var area = document.getElementById('gv-form-area');
+  if (area) area.innerHTML = '<div style="text-align:center;padding:40px;color:#2563eb;font-size:13px;">🔍 מנתח גיליון מדידות...</div>';
 
   var apiKey = window.APP && window.APP.config && window.APP.config.anthropic_key;
-  if (!apiKey) { if(errorEl){errorEl.style.display='block';errorEl.textContent='אין מפתח API';} return; }
-
-  if (btn) { btn.disabled = true; btn.textContent = '⏳ Claude מנתח...'; }
+  if (!apiKey) { showToast('אין מפתח Claude','error'); return; }
 
   try {
-    var base64 = _gvImageUrl.split(',')[1];
-    var mime   = _gvImageUrl.split(';')[0].split(':')[1] || 'image/jpeg';
-
-    var prompt = [
-      'This is an architectural drawing with elevation/height marks scattered across it.',
-      'Extract ALL elevation marks visible (numbers with +, -, or ± prefix, in metres).',
-      'For each mark identify: what element it refers to (floor, ceiling, slab, wall top, beam bottom, foundation, ridge, etc.),',
-      'its approximate location on the drawing (describe position: e.g. "floor level north section"),',
-      'and the numeric value in metres.',
-      'Also identify the datum reference (±0.00 point) if visible.',
-      'Return ONLY valid JSON, no other text:',
-      '{"datum":"' + datum + '","points":[{"name":"element name in Hebrew","stated":1.20,"location":"description","element_type":"floor/ceiling/slab/wall/beam/other"}],"notes":"any general observation"}'
-    ].join(' ');
-
-    var raw = await claudeFetch({
-      _apiKey: apiKey,
-      model: 'claude-sonnet-4-20250514',
-      max_tokens: 2000,
-      system: 'You are an expert at reading Israeli architectural drawings and elevation marks. Extract ALL numerical elevation data. Return only valid JSON.',
-      messages: [{role:'user', content:[
-        {type:'image', source:{type:'base64', media_type:mime, data:base64}},
-        {type:'text',  text: prompt}
-      ]}]
-    }, null);
-
-    var resp    = raw && typeof raw.json==='function' ? await raw.json() : raw;
-    var rawText = resp && resp.content && resp.content[0] ? resp.content[0].text : '';
-    rawText = rawText.replace(/```json\n?/g,'').replace(/```\n?/g,'').trim();
-    var jsonMatch = rawText.match(/\{[\s\S]*\}/);
-    if (jsonMatch) rawText = jsonMatch[0];
-
-    var parsed = JSON.parse(rawText);
-    _gvDraft = parsed.points || [];
-
-    // Pre-populate actual readings with stated values (Beni will overwrite with real readings)
-    _gvActual = _gvDraft.map(function(p, i){
-      return {
-        id: i,
-        name: p.name || ('נקודה '+(i+1)),
-        location: p.location || '',
-        element_type: p.element_type || 'other',
-        stated: p.stated,
-        actual: null  // Beni fills this
-      };
+    var resp = await fetch(window.SB_URL+'/functions/v1/claude-proxy', {
+      method:'POST',
+      headers:{Authorization:'Bearer '+window.SB_KEY,'Content-Type':'application/json'},
+      body: JSON.stringify({
+        model:'claude-sonnet-4-20250514', max_tokens:1500,
+        system:'אתה מנתח גיליונות מדידת גבהים לייזר מישראל. חלץ את כל הנקודות, הקריאות, והערכים.',
+        messages:[{role:'user', content:[
+          {type:'image', source:{type:'base64', media_type:'image/jpeg', data:imageB64.split(',')[1]||imageB64}},
+          {type:'text', text:'חלץ מהגיליון הזה את כל נקודות המדידה.\n\nהחזר JSON בפורמט:\n{"points":[{"name":"שם הנקודה","x":0,"y":0,"reading":0.00,"notes":""}],"benchmark":{"value":0.00,"note":""}}\n\nאם אין נקודות מזוהות, החזר {"points":[],"benchmark":null}\nהחזר JSON בלבד ללא טקסט נוסף.'}
+        ]}]
+      })
     });
-
-    gvRenderDraftTable();
-    gvGoStep(2);
-
+    var data = await resp.json();
+    var text = data.content && data.content[0] ? data.content[0].text : '';
+    var parsed = JSON.parse(text.replace(/```json|```/g,'').trim());
+    _gvPoints = parsed.points || [];
+    gvRenderModeC(area, _gvPoints, parsed.benchmark);
+    showToast('✅ חולץ '+_gvPoints.length+' נקודות מהגיליון','success');
   } catch(e) {
-    if (errorEl) {
-      errorEl.style.display = 'block';
-      errorEl.textContent = 'שגיאה: ' + e.message + ' — אנא נסה שוב או הכנס ידנית';
-    }
-    // Fall back to manual with empty table
-    _gvActual = [];
-    gvRenderDraftTable();
-    gvGoStep(2);
+    showToast('שגיאת OCR: '+e.message,'error');
+    gvRenderModeC(area);
   }
-
-  if (btn) { btn.disabled = false; btn.textContent = '🧠 נתח תרשים עם AI ←'; }
 }
 
-function gvSkipToManual() {
-  _gvDraft  = [];
-  _gvActual = [{id:0, name:'', location:'', element_type:'floor', stated:null, actual:null}];
-  var labelEl = document.getElementById('gv-label');
-  var projSel = document.getElementById('gv-proj-sel');
-  var tolEl   = document.getElementById('gv-tolerance');
-  _gvLabel     = labelEl ? labelEl.value  : '';
-  _gvProjectId = projSel ? projSel.value  : null;
-  _gvTolerance = tolEl   ? parseFloat(tolEl.value)||5 : 5;
-  gvRenderDraftTable();
-  gvGoStep(2);
-}
-
-// ── DRAFT TABLE ───────────────────────────────────────────────────────
-function gvRenderDraftTable() {
-  var wrap = document.getElementById('gv-draft-table-wrap');
-  if (!wrap) return;
-
-  if (_gvActual.length === 0) {
-    _gvActual = [{id:0, name:'', location:'', element_type:'floor', stated:null, actual:null}];
-  }
-
-  var html = '<div style="background:#fff8e1;border:1px solid #f59e0b;border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:12px;color:#7a5500;">' +
-    '<b>טיוטת AI — ערוך לפי הצורך</b><br>' +
-    'גובה מתוכנן = מה שרשום בתרשים | קריאת בני = מה שמדד בלייזר בשטח' +
-  '</div>' +
-  '<div style="overflow-x:auto;">' +
-  '<table style="width:100%;border-collapse:collapse;font-size:12px;">' +
-  '<thead><tr style="background:#1a3d5c;">' +
-    '<th style="padding:8px 6px;text-align:right;color:#FFD700;font-weight:700;">שם נקודה</th>' +
-    '<th style="padding:8px 6px;text-align:center;color:#FFD700;font-weight:700;">סוג אלמנט</th>' +
-    '<th style="padding:8px 6px;text-align:center;color:#FFD700;font-weight:700;">גובה מתוכנן (מ\')</th>' +
-    '<th style="padding:8px 6px;text-align:center;color:#c9a84c;font-weight:700;background:#1e4a6e;">קריאת בני (מ\')</th>' +
-    '<th style="padding:8px 4px;text-align:center;color:#FFD700;font-weight:700;width:32px;"></th>' +
-  '</tr></thead>' +
-  '<tbody>';
-
-  _gvActual.forEach(function(row, i){
-    var types = ['floor','ceiling','slab','wall','beam','ridge','other'];
-    var typeLabels = {floor:'רצפה',ceiling:'תקרה',slab:'יציקה',wall:'קיר',beam:'קורה',ridge:'שליל',other:'אחר'};
-    var typeOpts = types.map(function(t){
-      return '<option value="'+t+'"'+(row.element_type===t?' selected':'')+'>'+typeLabels[t]+'</option>';
-    }).join('');
-
-    html +=
-      '<tr style="border-bottom:1px solid #f0f0f0;">' +
-        '<td style="padding:6px 4px;">' +
-          '<input type="text" value="'+gvEsc(row.name||'')+'" placeholder="שם / תיאור" ' +
-            'onchange="_gvActual['+i+'].name=this.value" ' +
-            'style="width:100%;border:1px solid #ddd;border-radius:6px;padding:5px 7px;font-family:Heebo,sans-serif;font-size:12px;box-sizing:border-box;">' +
-        '</td>' +
-        '<td style="padding:6px 4px;">' +
-          '<select onchange="_gvActual['+i+'].element_type=this.value" ' +
-            'style="width:100%;border:1px solid #ddd;border-radius:6px;padding:5px;font-family:Heebo,sans-serif;font-size:11px;direction:rtl;">' +
-            typeOpts + '</select>' +
-        '</td>' +
-        '<td style="padding:6px 4px;">' +
-          '<input type="number" step="0.01" value="'+(row.stated!==null?row.stated:'')+'" placeholder="+0.00" ' +
-            'onchange="_gvActual['+i+'].stated=parseFloat(this.value)||null" ' +
-            'style="width:80px;border:1px solid #ddd;border-radius:6px;padding:5px;font-family:Heebo,sans-serif;font-size:12px;text-align:center;box-sizing:border-box;">' +
-        '</td>' +
-        '<td style="padding:6px 4px;background:rgba(201,168,76,0.06);">' +
-          '<input type="number" step="0.001" value="'+(row.actual!==null?row.actual:'')+'" placeholder="הכנס כאן" ' +
-            'onchange="_gvActual['+i+'].actual=parseFloat(this.value)||null" ' +
-            'style="width:90px;border:2px solid #c9a84c;border-radius:6px;padding:5px;font-family:Heebo,sans-serif;font-size:12px;text-align:center;box-sizing:border-box;background:#fffbf0;">' +
-        '</td>' +
-        '<td style="padding:6px 2px;text-align:center;">' +
-          '<button onclick="gvDeleteRow('+i+')" style="background:#fee2e2;border:none;color:#c62828;border-radius:6px;padding:4px 8px;cursor:pointer;font-size:12px;">×</button>' +
-        '</td>' +
-      '</tr>';
+// ══ MODE B — 42-point simulation ══════════════════════════════════════
+function gvRenderModeB(area) {
+  // Generate realistic 42-point grid: 8 cols × 6 rows (some missing = 42)
+  var points = [];
+  var benchmark = 1.450;
+  var xs = [0,3,6,9,12,15,18,20];
+  var ys = [0,3,6,9,12,15];
+  var n = 1;
+  // Simulate a floor with a slight slope + a high spot near center
+  ys.forEach(function(y){
+    xs.forEach(function(x){
+      if (n > 42) return;
+      var base = 1.450;
+      // Gentle slope from corner + bump in center
+      var slope  = 0.002 * x + 0.003 * y;
+      var bump   = (x > 8 && x < 14 && y > 4 && y < 11) ? 0.008 : 0;
+      var noise  = (Math.random() - 0.5) * 0.004;
+      var reading = parseFloat((base + slope + bump + noise).toFixed(4));
+      points.push({name:'P'+n, x:x, y:y, reading:reading, notes:''});
+      n++;
+    });
   });
 
-  html += '</tbody></table></div>';
-  wrap.innerHTML = html;
+  _gvPoints = points;
+  _gvMode = 'b';
+
+  var projOpts = '<option value="">— בחר פרויקט —</option>';
+  (window.allProjects||[]).forEach(function(p){ projOpts += '<option value="'+p.id+'">'+gvEsc(p.project_name)+'</option>'; });
+
+  area.innerHTML =
+    '<div style="background:#fff;border:1.5px solid #ef4444;border-radius:14px;padding:20px;margin-bottom:20px;">' +
+      '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">' +
+        '<div style="font-size:14px;font-weight:900;color:#1a3d5c;">🗺️ B — סימולציה 42 נקודות (גריד 3×3 מ׳, חדר 20×15 מ׳)</div>' +
+        '<span style="background:#ef4444;color:#fff;border-radius:8px;padding:4px 10px;font-size:11px;font-weight:800;">דוגמה בלבד</span>' +
+      '</div>' +
+
+      '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:14px;">' +
+        '<div><div style="font-size:11px;color:#888;font-weight:700;margin-bottom:4px;">פרויקט</div>'+
+          '<select id="gv-b-proj" style="'+gvInp()+'">'+projOpts+'</select></div>' +
+        '<div><div style="font-size:11px;color:#888;font-weight:700;margin-bottom:4px;">חדר</div>'+
+          '<input id="gv-b-room" type="text" value="סלון ראשי" style="'+gvInp()+'"></div>' +
+        '<div><div style="font-size:11px;color:#888;font-weight:700;margin-bottom:4px;">Benchmark (מ׳)</div>'+
+          '<input id="gv-b-bm" type="number" step="0.001" value="'+benchmark+'" style="'+gvInp()+'"></div>' +
+        '<div><div style="font-size:11px;color:#888;font-weight:700;margin-bottom:4px;">סבילות (מ"מ)</div>'+
+          '<input id="gv-b-tol" type="number" value="5" style="'+gvInp()+'"></div>' +
+        '<div><div style="font-size:11px;color:#888;font-weight:700;margin-bottom:4px;">שטח (מ"ר)</div>'+
+          '<input id="gv-b-area" type="number" value="300" style="'+gvInp()+'"></div>' +
+      '</div>' +
+
+      gvRenderPointsTable(points, benchmark, 5, false) +
+
+      '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px;">' +
+        '<button onclick="gvSaveSession(\'b\')" style="flex:1;padding:11px;background:#1a3d5c;border:none;color:#FFD700;border-radius:10px;font-family:Heebo,sans-serif;font-size:13px;font-weight:800;cursor:pointer;">💾 שמור סשן</button>' +
+        '<button onclick="gvPrintReport(\'b\')" style="flex:1;padding:11px;background:#ef4444;border:none;color:#fff;border-radius:10px;font-family:Heebo,sans-serif;font-size:13px;font-weight:800;cursor:pointer;">📄 הפק דוח PDF</button>' +
+        '<button onclick="gvWAReport(\'b\')" style="padding:11px 16px;background:#e8faf0;border:1.5px solid #1b6b35;color:#1b6b35;border-radius:10px;font-family:Heebo,sans-serif;font-size:13px;font-weight:800;cursor:pointer;">💬 WA</button>' +
+        '<button onclick="gvMailReport(\'b\')" style="padding:11px 16px;background:#fff0f0;border:1.5px solid #c62828;color:#c62828;border-radius:10px;font-family:Heebo,sans-serif;font-size:13px;font-weight:800;cursor:pointer;">✉️ מייל</button>' +
+      '</div>' +
+    '</div>';
+}
+
+// ══ MODE C — Manual Entry ═════════════════════════════════════════════
+function gvRenderModeC(area, prefillPoints, prefillBM) {
+  if (!area) area = document.getElementById('gv-form-area');
+  if (!area) return;
+
+  var pts = prefillPoints || _gvPoints || [];
+  var bm  = prefillBM || null;
+  var tol = 5;
+
+  var projOpts = '<option value="">— בחר פרויקט —</option>';
+  (window.allProjects||[]).forEach(function(p){ projOpts += '<option value="'+p.id+'">'+gvEsc(p.project_name)+'</option>'; });
+
+  // Build editable rows
+  var rowsHtml = pts.map(function(pt, i){
+    return '<tr id="gv-row-'+i+'">' +
+      '<td style="padding:5px 6px;"><input type="text" value="'+gvEsc(pt.name||'P'+(i+1))+'" onchange="gvUpdatePoint('+i+',\'name\',this.value)" style="width:70px;border:1px solid #ddd;border-radius:4px;padding:4px;font-family:Heebo,sans-serif;font-size:12px;"></td>' +
+      '<td style="padding:5px 6px;"><input type="number" step="0.1" value="'+(pt.x||0)+'" onchange="gvUpdatePoint('+i+',\'x\',this.value)" style="width:55px;border:1px solid #ddd;border-radius:4px;padding:4px;font-size:12px;"></td>' +
+      '<td style="padding:5px 6px;"><input type="number" step="0.1" value="'+(pt.y||0)+'" onchange="gvUpdatePoint('+i+',\'y\',this.value)" style="width:55px;border:1px solid #ddd;border-radius:4px;padding:4px;font-size:12px;"></td>' +
+      '<td style="padding:5px 6px;"><input type="number" step="0.001" value="'+(pt.reading||'')+'" onchange="gvUpdatePoint('+i+',\'reading\',this.value)" style="width:75px;border:1px solid #c9a84c;border-radius:4px;padding:4px;font-size:12px;font-weight:700;"></td>' +
+      '<td style="padding:5px 6px;"><input type="text" value="'+gvEsc(pt.notes||'')+'" onchange="gvUpdatePoint('+i+',\'notes\',this.value)" style="width:100%;border:1px solid #ddd;border-radius:4px;padding:4px;font-size:11px;"></td>' +
+      '<td style="padding:5px 6px;text-align:center;"><button onclick="gvRemoveRow('+i+')" style="background:none;border:none;color:#ccc;cursor:pointer;font-size:13px;" onmouseover="this.style.color=\'#c62828\'" onmouseout="this.style.color=\'#ccc\'">✕</button></td>' +
+    '</tr>';
+  }).join('');
+
+  area.innerHTML =
+    '<div style="background:#fff;border:1.5px solid #22c55e;border-radius:14px;padding:20px;margin-bottom:20px;">' +
+      '<div style="font-size:14px;font-weight:900;color:#1a3d5c;margin-bottom:14px;">⌨️ C — הזנת קריאות ידנית</div>' +
+
+      '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:14px;">' +
+        '<div><div style="font-size:11px;color:#888;font-weight:700;margin-bottom:4px;">פרויקט</div>'+
+          '<select id="gv-c-proj" style="'+gvInp()+'">'+projOpts+'</select></div>' +
+        '<div><div style="font-size:11px;color:#888;font-weight:700;margin-bottom:4px;">חדר / אזור</div>'+
+          '<input id="gv-c-room" type="text" placeholder="לדוגמה: סלון" style="'+gvInp()+'"></div>' +
+        '<div><div style="font-size:11px;color:#888;font-weight:700;margin-bottom:4px;">Benchmark (מ׳)</div>'+
+          '<input id="gv-c-bm" type="number" step="0.001" placeholder="לדוגמה: 1.450" value="'+(bm&&bm.value||'')+'" style="'+gvInp()+'"></div>' +
+        '<div><div style="font-size:11px;color:#888;font-weight:700;margin-bottom:4px;">סבילות מותרת (מ"מ)</div>'+
+          '<input id="gv-c-tol" type="number" value="5" style="'+gvInp()+'"></div>' +
+        '<div><div style="font-size:11px;color:#888;font-weight:700;margin-bottom:4px;">שטח (מ"ר)</div>'+
+          '<input id="gv-c-area" type="number" placeholder="300" style="'+gvInp()+'"></div>' +
+        '<div><div style="font-size:11px;color:#888;font-weight:700;margin-bottom:4px;">הערות כלליות</div>'+
+          '<input id="gv-c-notes" type="text" placeholder="הערות..." style="'+gvInp()+'"></div>' +
+      '</div>' +
+
+      // Points table
+      '<div style="overflow-x:auto;margin-bottom:10px;">' +
+        '<table style="width:100%;border-collapse:collapse;font-size:12px;">' +
+          '<thead><tr style="background:#f5f0e8;">' +
+            '<th style="padding:7px;text-align:right;font-weight:800;">נקודה</th>' +
+            '<th style="padding:7px;text-align:center;font-weight:800;">X (מ׳)</th>' +
+            '<th style="padding:7px;text-align:center;font-weight:800;">Y (מ׳)</th>' +
+            '<th style="padding:7px;text-align:center;font-weight:800;color:#c9a84c;">קריאה (מ׳)</th>' +
+            '<th style="padding:7px;text-align:right;font-weight:800;">הערות</th>' +
+            '<th style="padding:7px;width:30px;"></th>' +
+          '</tr></thead>' +
+          '<tbody id="gv-c-rows">'+rowsHtml+'</tbody>' +
+        '</table>' +
+      '</div>' +
+
+      '<button onclick="gvAddRow()" style="width:100%;padding:9px;background:#f5f0e8;border:1.5px dashed #c9a84c;color:#7a5500;border-radius:8px;font-family:Heebo,sans-serif;font-size:13px;font-weight:800;cursor:pointer;margin-bottom:14px;">+ הוסף נקודה</button>' +
+
+      '<div style="display:flex;gap:8px;flex-wrap:wrap;">' +
+        '<button onclick="gvSaveSession(\'c\')" style="flex:1;padding:11px;background:#1a3d5c;border:none;color:#FFD700;border-radius:10px;font-family:Heebo,sans-serif;font-size:13px;font-weight:800;cursor:pointer;">💾 שמור</button>' +
+        '<button onclick="gvCalculateAndReport()" style="flex:1;padding:11px;background:#22c55e;border:none;color:#fff;border-radius:10px;font-family:Heebo,sans-serif;font-size:13px;font-weight:800;cursor:pointer;">📊 חשב + דוח</button>' +
+        '<button onclick="gvPrintReport(\'c\')" style="padding:11px 16px;background:#ef4444;border:none;color:#fff;border-radius:10px;font-family:Heebo,sans-serif;font-size:13px;font-weight:800;cursor:pointer;">📄 PDF</button>' +
+        '<button onclick="gvWAReport(\'c\')" style="padding:11px 14px;background:#e8faf0;border:1.5px solid #1b6b35;color:#1b6b35;border-radius:10px;font-family:Heebo,sans-serif;font-size:13px;font-weight:800;cursor:pointer;">💬 WA</button>' +
+        '<button onclick="gvMailReport(\'c\')" style="padding:11px 14px;background:#fff0f0;border:1.5px solid #c62828;color:#c62828;border-radius:10px;font-family:Heebo,sans-serif;font-size:13px;font-weight:800;cursor:pointer;">✉️ מייל</button>' +
+        '<button onclick="gvOpenOCR(\'c\')" style="padding:11px 14px;background:#fff8e0;border:1.5px solid #c9a84c;color:#7a5500;border-radius:10px;font-family:Heebo,sans-serif;font-size:13px;font-weight:800;cursor:pointer;">📷 OCR</button>' +
+      '</div>' +
+    '</div>';
+}
+
+function gvUpdatePoint(i, field, val) {
+  if (!_gvPoints[i]) _gvPoints[i] = {};
+  _gvPoints[i][field] = field === 'reading' || field === 'x' || field === 'y' ? parseFloat(val)||0 : val;
 }
 
 function gvAddRow() {
-  _gvActual.push({id:_gvActual.length, name:'', location:'', element_type:'floor', stated:null, actual:null});
-  gvRenderDraftTable();
+  var i = _gvPoints.length;
+  _gvPoints.push({name:'P'+(i+1), x:0, y:0, reading:'', notes:''});
+  var tbody = document.getElementById('gv-c-rows');
+  if (!tbody) return;
+  var tr = document.createElement('tr');
+  tr.id = 'gv-row-'+i;
+  tr.innerHTML =
+    '<td style="padding:5px 6px;"><input type="text" value="P'+(i+1)+'" onchange="gvUpdatePoint('+i+',\'name\',this.value)" style="width:70px;border:1px solid #ddd;border-radius:4px;padding:4px;font-family:Heebo,sans-serif;font-size:12px;"></td>' +
+    '<td style="padding:5px 6px;"><input type="number" step="0.1" value="0" onchange="gvUpdatePoint('+i+',\'x\',this.value)" style="width:55px;border:1px solid #ddd;border-radius:4px;padding:4px;font-size:12px;"></td>' +
+    '<td style="padding:5px 6px;"><input type="number" step="0.1" value="0" onchange="gvUpdatePoint('+i+',\'y\',this.value)" style="width:55px;border:1px solid #ddd;border-radius:4px;padding:4px;font-size:12px;"></td>' +
+    '<td style="padding:5px 6px;"><input type="number" step="0.001" placeholder="1.450" onchange="gvUpdatePoint('+i+',\'reading\',this.value)" style="width:75px;border:1px solid #c9a84c;border-radius:4px;padding:4px;font-size:12px;font-weight:700;"></td>' +
+    '<td style="padding:5px 6px;"><input type="text" onchange="gvUpdatePoint('+i+',\'notes\',this.value)" style="width:100%;border:1px solid #ddd;border-radius:4px;padding:4px;font-size:11px;"></td>' +
+    '<td style="padding:5px 6px;text-align:center;"><button onclick="gvRemoveRow('+i+')" style="background:none;border:none;color:#ccc;cursor:pointer;font-size:13px;">✕</button></td>';
+  tbody.appendChild(tr);
 }
 
-function gvDeleteRow(i) {
-  _gvActual.splice(i,1);
-  gvRenderDraftTable();
+function gvRemoveRow(i) {
+  _gvPoints.splice(i, 1);
+  var area = document.getElementById('gv-form-area');
+  gvRenderModeC(area, _gvPoints);
 }
 
-// ── STEP 3: DEVIATION REPORT ──────────────────────────────────────────
-function gvRunStep3() {
-  gvGoStep(3);
-  gvRenderDeviationReport();
-}
+// ── POINTS TABLE RENDER (for display/report) ──────────────────────────
+function gvRenderPointsTable(points, bm, tol, editable) {
+  if (!points || !points.length) return '<div style="text-align:center;padding:20px;color:#888;">אין נקודות</div>';
+  var bmVal = parseFloat(bm) || 0;
+  var tolMm = parseFloat(tol) || 5;
 
-function gvRenderDeviationReport() {
-  var wrap = document.getElementById('gv-deviation-report');
-  if (!wrap) return;
+  var rows = points.map(function(pt){
+    var reading = parseFloat(pt.reading)||0;
+    var devM   = reading - bmVal;
+    var devMm  = devM * 1000;
+    var fail   = Math.abs(devMm) > tolMm;
+    var color  = fail ? '#c62828' : (Math.abs(devMm) > tolMm*0.6 ? '#d97706' : '#1b6b35');
+    var icon   = fail ? '🔴' : '🟢';
+    return '<tr style="border-bottom:1px solid #f0e8d0;background:'+(fail?'rgba(239,68,68,0.04)':'')+';">' +
+      '<td style="padding:6px 8px;font-weight:700;">'+gvEsc(pt.name||'')+'</td>' +
+      '<td style="padding:6px 8px;text-align:center;color:#666;">'+(pt.x||0)+'</td>' +
+      '<td style="padding:6px 8px;text-align:center;color:#666;">'+(pt.y||0)+'</td>' +
+      '<td style="padding:6px 8px;text-align:center;font-weight:800;font-size:13px;">'+(reading?reading.toFixed(4):'—')+'</td>' +
+      '<td style="padding:6px 8px;text-align:center;font-weight:800;color:'+color+';">'+(reading?(devMm>=0?'+':'')+devMm.toFixed(1):' — ')+' מ"מ</td>' +
+      '<td style="padding:6px 8px;text-align:center;font-size:16px;">'+icon+'</td>' +
+    '</tr>';
+  }).join('');
 
-  var tol   = _gvTolerance;
-  var rows  = _gvActual.filter(function(r){ return r.stated!==null && r.actual!==null; });
-  var skipped = _gvActual.filter(function(r){ return r.stated===null || r.actual===null; });
+  var fails = points.filter(function(pt){
+    return Math.abs((parseFloat(pt.reading)||0 - bmVal)*1000) > tolMm;
+  }).length;
 
-  if (rows.length === 0) {
-    wrap.innerHTML = '<div style="text-align:center;padding:30px;color:#888;font-size:13px;">אין נקודות עם גובה מתוכנן וקריאה — חזור ומלא נתונים</div>';
-    return;
-  }
-
-  // Calculate deviations
-  var computed = rows.map(function(r){
-    var dev_m  = r.actual - r.stated;           // metres deviation
-    var dev_mm = Math.round(dev_m * 1000);       // mm
-    var absDev = Math.abs(dev_mm);
-    var status = absDev <= tol ? 'pass' : (absDev <= tol*3 ? 'warn' : 'fail');
-    return Object.assign({}, r, {dev_mm: dev_mm, absDev: absDev, status: status});
-  });
-
-  var fails = computed.filter(function(r){ return r.status==='fail'; }).length;
-  var warns = computed.filter(function(r){ return r.status==='warn'; }).length;
-  var maxDev = Math.max.apply(null, computed.map(function(r){ return r.absDev; }));
-  var avgDev = Math.round(computed.reduce(function(s,r){return s+r.absDev;},0)/computed.length);
-  var verdict = fails>0 ? 'fail' : warns>0 ? 'warn' : 'pass';
-  var verdictColor = verdict==='fail'?'#c62828':verdict==='warn'?'#f59e0b':'#1b5e20';
-  var verdictBg    = verdict==='fail'?'#fff5f5':verdict==='warn'?'#fffbf0':'#e8f5e9';
-  var verdictText  = verdict==='fail'
-    ? '⚠️ נמצאו '+fails+' חריגות קריטיות — נדרשת בדיקת מהנדס'
-    : verdict==='warn'
-    ? '🟡 נמצאו '+warns+' נקודות אזהרה — בדוק לפני המשך'
-    : '✅ כל הנקודות בתוך הסבילות (±'+tol+' מ"מ) — תקין להמשך';
-
-  // Store for sharing
-  window._gvReportData = {computed:computed, skipped:skipped, tol:tol, maxDev:maxDev, avgDev:avgDev, fails:fails, warns:warns, verdict:verdict, label:_gvLabel};
-
-  var html =
-    // Summary cards
-    '<div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px;margin-bottom:16px;">' +
-      '<div style="background:#f5f7fa;border-radius:8px;padding:10px;text-align:center;">' +
-        '<div style="font-size:20px;font-weight:800;color:#1a3d5c;">'+rows.length+'</div>' +
-        '<div style="font-size:10px;color:#888;">נקודות מדידה</div>' +
-      '</div>' +
-      '<div style="background:'+(fails>0?'#fff5f5':'#e8f5e9')+';border-radius:8px;padding:10px;text-align:center;">' +
-        '<div style="font-size:20px;font-weight:800;color:'+(fails>0?'#c62828':'#1b5e20')+';">'+maxDev+'</div>' +
-        '<div style="font-size:10px;color:#888;">סטייה מקס\' מ"מ</div>' +
-      '</div>' +
-      '<div style="background:#f5f7fa;border-radius:8px;padding:10px;text-align:center;">' +
-        '<div style="font-size:20px;font-weight:800;color:#1a3d5c;">'+avgDev+'</div>' +
-        '<div style="font-size:10px;color:#888;">סטייה ממוצעת מ"מ</div>' +
-      '</div>' +
-      '<div style="background:'+(fails>0?'#fff5f5':warns>0?'#fffbf0':'#e8f5e9')+';border-radius:8px;padding:10px;text-align:center;">' +
-        '<div style="font-size:20px;font-weight:800;color:'+verdictColor+';">'+(fails+warns||'✓')+'</div>' +
-        '<div style="font-size:10px;color:#888;">חריגות</div>' +
-      '</div>' +
-    '</div>' +
-
-    // Verdict banner
-    '<div style="background:'+verdictBg+';border:2px solid '+verdictColor+';border-radius:10px;padding:12px 16px;margin-bottom:16px;font-size:13px;font-weight:700;color:'+verdictColor+';">' +
-      verdictText +
-    '</div>' +
-
-    // Table
-    '<div style="overflow-x:auto;margin-bottom:12px;">' +
+  return '<div style="overflow-x:auto;">' +
     '<table style="width:100%;border-collapse:collapse;font-size:12px;">' +
-    '<thead><tr style="background:#1a3d5c;">' +
-      '<th style="padding:8px 8px;text-align:right;color:#FFD700;">#</th>' +
-      '<th style="padding:8px 8px;text-align:right;color:#FFD700;">נקודה</th>' +
-      '<th style="padding:8px 8px;text-align:center;color:#FFD700;">סוג</th>' +
-      '<th style="padding:8px 8px;text-align:center;color:#FFD700;">תוכנן (מ\')</th>' +
-      '<th style="padding:8px 8px;text-align:center;color:#c9a84c;">נמדד (מ\')</th>' +
-      '<th style="padding:8px 8px;text-align:center;color:#FFD700;">סטייה (מ"מ)</th>' +
-      '<th style="padding:8px 8px;text-align:center;color:#FFD700;">סטטוס</th>' +
-    '</tr></thead><tbody>';
-
-  var typeLabels = {floor:'רצפה',ceiling:'תקרה',slab:'יציקה',wall:'קיר',beam:'קורה',ridge:'שליל',other:'אחר'};
-
-  computed.forEach(function(r, i){
-    var rowBg = r.status==='fail'?'rgba(239,68,68,0.06)':r.status==='warn'?'rgba(245,158,11,0.06)':'';
-    var devColor = r.status==='fail'?'#c62828':r.status==='warn'?'#f59e0b':'#1b5e20';
-    var statusIcon = r.status==='fail'?'🔴 חריגה':r.status==='warn'?'🟡 אזהרה':'🟢 תקין';
-    html +=
-      '<tr style="border-bottom:1px solid #f0f0f0;background:'+rowBg+';">' +
-        '<td style="padding:7px 8px;color:#888;">'+(i+1)+'</td>' +
-        '<td style="padding:7px 8px;font-weight:700;">'+gvEsc(r.name)+'</td>' +
-        '<td style="padding:7px 8px;text-align:center;color:#888;">'+(typeLabels[r.element_type]||r.element_type)+'</td>' +
-        '<td style="padding:7px 8px;text-align:center;">'+r.stated.toFixed(3)+'</td>' +
-        '<td style="padding:7px 8px;text-align:center;font-weight:700;color:#c9a84c;">'+r.actual.toFixed(3)+'</td>' +
-        '<td style="padding:7px 8px;text-align:center;font-weight:800;color:'+devColor+';">'+(r.dev_mm>=0?'+':'')+r.dev_mm+'</td>' +
-        '<td style="padding:7px 8px;text-align:center;font-size:11px;font-weight:700;color:'+devColor+';">'+statusIcon+'</td>' +
-      '</tr>';
-  });
-
-  html += '</tbody></table></div>';
-
-  if (skipped.length > 0) {
-    html += '<div style="font-size:11px;color:#aaa;margin-top:6px;">'+skipped.length+' נקודות ללא נתונים מלאים — לא נכללות בדוח</div>';
-  }
-
-  wrap.innerHTML = html;
+      '<thead><tr style="background:#f5f0e8;">' +
+        '<th style="padding:7px 8px;text-align:right;font-weight:800;">נקודה</th>' +
+        '<th style="padding:7px 8px;text-align:center;font-weight:800;">X (מ׳)</th>' +
+        '<th style="padding:7px 8px;text-align:center;font-weight:800;">Y (מ׳)</th>' +
+        '<th style="padding:7px 8px;text-align:center;font-weight:800;color:#c9a84c;">קריאה (מ׳)</th>' +
+        '<th style="padding:7px 8px;text-align:center;font-weight:800;">סטייה</th>' +
+        '<th style="padding:7px 8px;text-align:center;font-weight:800;">סטטוס</th>' +
+      '</tr></thead>' +
+      '<tbody>'+rows+'</tbody>' +
+    '</table>' +
+    '<div style="margin-top:8px;display:flex;gap:16px;font-size:12px;font-weight:700;">' +
+      '<span style="color:#1b6b35;">✅ תקין: '+(points.length-fails)+'</span>' +
+      '<span style="color:#c62828;">🔴 חריגות: '+fails+'</span>' +
+      '<span style="color:#888;">סה"כ: '+points.length+' נקודות</span>' +
+    '</div>' +
+  '</div>';
 }
 
-// ── SAVE TO SUPABASE ──────────────────────────────────────────────────
-async function gvSaveToSupabase() {
-  var d = window._gvReportData;
-  if (!d || !d.computed || d.computed.length === 0) { showToast('אין נתונים לשמירה','error'); return; }
+// ── CALCULATE + SHOW REPORT ────────────────────────────────────────────
+function gvCalculateAndReport() {
+  var bm  = parseFloat((document.getElementById('gv-c-bm')||{}).value)||0;
+  var tol = parseFloat((document.getElementById('gv-c-tol')||{}).value)||5;
+  var pts = _gvPoints.filter(function(p){ return p.reading; });
+  if (!pts.length) { showToast('הזן קריאות תחילה','error'); return; }
 
-  var rows = d.computed.map(function(r){
-    return {
-      point:     r.name,
-      reading:   r.actual,
-      stated:    r.stated,
-      deviation: r.dev_mm,
-      status:    r.status==='fail'?'red':r.status==='warn'?'yellow':'green',
-      element_type: r.element_type
-    };
-  });
+  // Insert table into form area below inputs
+  var area = document.getElementById('gv-form-area');
+  var existing = area.querySelector('#gv-report-preview');
+  if (existing) existing.remove();
 
-  var total = d.computed.reduce(function(s,r){ return s+(r.actual||0); }, 0);
-  var proj = _gvProjectId && window.allProjects
-    ? (window.allProjects.find(function(p){ return p.id===_gvProjectId; })||null) : null;
+  var preview = document.createElement('div');
+  preview.id = 'gv-report-preview';
+  preview.style.cssText = 'background:#fff;border:1.5px solid #22c55e;border-radius:12px;padding:16px;margin-top:12px;';
+  preview.innerHTML =
+    '<div style="font-size:13px;font-weight:900;color:#1a3d5c;margin-bottom:10px;">📊 תצוגה מקדימה — '+pts.length+' נקודות</div>' +
+    gvRenderPointsTable(pts, bm, tol, false);
+  area.appendChild(preview);
+  preview.scrollIntoView({behavior:'smooth'});
+}
+
+// ── SAVE SESSION ───────────────────────────────────────────────────────
+async function gvSaveSession(mode) {
+  var projId, projName, room, bm, tol, area_sqm, notes;
+
+  if (mode === 'b') {
+    projId   = (document.getElementById('gv-b-proj')||{}).value||null;
+    room     = (document.getElementById('gv-b-room')||{}).value||'';
+    bm       = parseFloat((document.getElementById('gv-b-bm')||{}).value)||0;
+    tol      = parseFloat((document.getElementById('gv-b-tol')||{}).value)||5;
+    area_sqm = parseFloat((document.getElementById('gv-b-area')||{}).value)||300;
+    notes    = 'סימולציה — 42 נקודות';
+  } else {
+    projId   = (document.getElementById('gv-c-proj')||{}).value||null;
+    room     = (document.getElementById('gv-c-room')||{}).value||'';
+    bm       = parseFloat((document.getElementById('gv-c-bm')||{}).value)||0;
+    tol      = parseFloat((document.getElementById('gv-c-tol')||{}).value)||5;
+    area_sqm = parseFloat((document.getElementById('gv-c-area')||{}).value)||null;
+    notes    = (document.getElementById('gv-c-notes')||{}).value||'';
+  }
+
+  var proj = projId ? (window.allProjects||[]).find(function(p){return p.id===projId;}) : null;
+  projName = proj ? proj.project_name : '';
+
+  if (!room) { showToast('הזן שם חדר / אזור','error'); return; }
+  var pts = _gvPoints.filter(function(p){ return p.reading; });
+  if (!pts.length) { showToast('אין נקודות מדידה לשמור','error'); return; }
 
   try {
-    var payload = {
-      session_label: _gvLabel || ('מדידת גבהים — '+new Date().toLocaleDateString('he-IL')),
-      rows:          JSON.stringify(rows),
-      total_area:    0,
-      takeoff_type:  'laser',
-      tolerance:     _gvTolerance,
+    var res = await window.sb.from('gavoim_sessions').insert({
+      project_id:    projId || null,
+      project_name:  projName,
+      room_name:     room,
+      benchmark:     bm,
+      tolerance_mm:  tol,
+      area_sqm:      area_sqm,
+      notes:         notes,
+      points:        JSON.stringify(pts),
       submitted_by:  'בני',
-      takeoff_date:  new Date().toISOString().split('T')[0],
-      notes:         'סטייה מקס: '+d.maxDev+' מ"מ | חריגות: '+d.fails,
       created_at:    new Date().toISOString()
-    };
-    if (_gvProjectId)       payload.project_id   = _gvProjectId;
-    if (proj)               payload.project_name = proj.project_name;
+    }).select().single();
 
-    var res = await fetch(window.SB_URL+'/rest/v1/site_takeoffs', {
-      method: 'POST',
-      headers: {
-        apikey: window.SB_KEY, Authorization: 'Bearer '+window.SB_KEY,
-        'Content-Type': 'application/json', Prefer: 'return=minimal'
-      },
-      body: JSON.stringify(payload)
-    });
-    if (!res.ok) { var et=await res.text(); throw new Error('HTTP '+res.status+' '+et.substr(0,80)); }
-    showToast('✅ נשמר לטאב גבהים בפרויקט','success');
-    if (typeof loadTakeoffs === 'function') setTimeout(loadTakeoffs, 500);
-  } catch(e) {
-    showToast('שגיאה: '+e.message,'error');
+    if (res.error) throw res.error;
+    _gvSessions.unshift(res.data);
+    showToast('✅ מדידה נשמרה','success');
+    document.getElementById('gv-form-area').innerHTML = '';
+    gvRenderSessions();
+  } catch(e) { showToast('שגיאה: '+e.message,'error'); }
+}
+
+// ── LOAD + RENDER SESSIONS ────────────────────────────────────────────
+async function gvLoadSessions() {
+  try {
+    var res = await window.sbQ('gavoim_sessions','is_deleted=not.is.true&order=created_at.desc&limit=50');
+    _gvSessions = res.data || [];
+  } catch(e) { _gvSessions = []; }
+  gvRenderSessions();
+}
+
+function gvRenderSessions() {
+  var el = document.getElementById('gv-sessions-list');
+  if (!el) return;
+  if (!_gvSessions.length) {
+    el.innerHTML = '<div style="text-align:center;padding:40px;color:#aaa;font-size:13px;">אין מדידות שמורות</div>';
+    return;
   }
+  el.innerHTML = '<div style="font-size:13px;font-weight:800;color:#1a3d5c;margin-bottom:12px;">📋 מדידות שמורות ('+_gvSessions.length+')</div>' +
+    _gvSessions.map(function(s){ return gvBuildSessionCard(s); }).join('');
 }
 
-// ── SHARE FUNCTIONS ───────────────────────────────────────────────────
-function gvPrintReport() {
-  var d = window._gvReportData;
-  if (!d) return;
-  var html = gvBuildPrintHTML(d);
-  var w = window.open('','_blank','width=900,height:700');
-  if (w) { w.document.write(html); w.document.close(); }
+function gvBuildSessionCard(s) {
+  var pts = [];
+  try { pts = JSON.parse(s.points||'[]'); } catch(e){}
+  var bm  = parseFloat(s.benchmark)||0;
+  var tol = parseFloat(s.tolerance_mm)||5;
+  var fails = pts.filter(function(p){ return Math.abs((parseFloat(p.reading)||0 - bm)*1000) > tol; }).length;
+  var date  = s.created_at ? new Date(s.created_at).toLocaleDateString('he-IL') : '';
+  var borderColor = fails > 0 ? '#ef4444' : '#22c55e';
+
+  return '<div style="background:#fff;border:1px solid #e8ddb5;border-right:4px solid '+borderColor+';border-radius:12px;padding:16px;margin-bottom:14px;">' +
+    '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;">' +
+      '<div>' +
+        '<div style="font-size:14px;font-weight:900;color:#1a3d5c;">🔴 '+gvEsc(s.room_name||'מדידה')+'</div>' +
+        '<div style="font-size:11px;color:#888;margin-top:2px;">' +
+          (s.project_name?'🏗️ '+gvEsc(s.project_name)+' · ':'') +
+          date + ' · ' + pts.length + ' נקודות' +
+        '</div>' +
+      '</div>' +
+      '<div style="text-align:left;">' +
+        '<div style="font-size:18px;font-weight:900;color:'+(fails>0?'#ef4444':'#22c55e')+';">'+(fails>0?fails+' חריגות':'✅ תקין')+'</div>' +
+        (s.area_sqm ? '<div style="font-size:10px;color:#888;">'+s.area_sqm+' מ"ר</div>' : '') +
+      '</div>' +
+    '</div>' +
+
+    // Action buttons
+    '<div style="display:flex;gap:6px;flex-wrap:wrap;">' +
+      '<button onclick="gvViewSession(\''+s.id+'\')" style="padding:7px 12px;background:#e8f0fd;border:1px solid #1a3d5c;color:#1a3d5c;border-radius:8px;font-family:Heebo,sans-serif;font-size:12px;font-weight:800;cursor:pointer;">👁️ צפה</button>' +
+      '<button onclick="gvPrintSession(\''+s.id+'\')" style="padding:7px 12px;background:#fff8e0;border:1px solid #c9a84c;color:#7a5500;border-radius:8px;font-family:Heebo,sans-serif;font-size:12px;font-weight:800;cursor:pointer;">🖨️ PDF</button>' +
+      '<button onclick="gvMailSession(\''+s.id+'\')" style="padding:7px 10px;background:#fff0f0;border:1px solid rgba(198,40,40,0.3);color:#c62828;border-radius:8px;font-size:12px;cursor:pointer;font-family:Heebo,sans-serif;font-weight:700;">✉️</button>' +
+      '<button onclick="gvWASession(\''+s.id+'\')" style="padding:7px 10px;background:#e8faf0;border:1px solid rgba(27,107,53,0.3);color:#1b6b35;border-radius:8px;font-size:12px;cursor:pointer;font-family:Heebo,sans-serif;font-weight:700;">💬</button>' +
+      (s.file_url ? '<button onclick="tkViewFile(\''+s.file_url+'\',\''+((s.file_type)||'image')+'\')" style="padding:7px 10px;background:#e8f0fd;border:1px solid rgba(26,61,92,0.3);color:#1a3d5c;border-radius:8px;font-size:12px;cursor:pointer;font-family:Heebo,sans-serif;font-weight:700;">👁️ קובץ</button>' : '<button onclick="gvAttachFile(\''+s.id+'\')" style="padding:7px 10px;background:#f5f0e8;border:1px solid rgba(201,168,76,0.4);color:#7a5500;border-radius:8px;font-size:12px;cursor:pointer;font-family:Heebo,sans-serif;font-weight:700;">📎</button>') +
+      '<button id="gv-del-'+s.id+'" onclick="gvDeleteConfirm(\''+s.id+'\',this)" style="padding:7px 10px;background:#fff0f0;border:1px solid rgba(239,68,68,0.3);color:#c62828;border-radius:8px;font-size:12px;cursor:pointer;font-family:Heebo,sans-serif;font-weight:700;">🗑️</button>' +
+    '</div>' +
+  '</div>';
 }
 
-function gvMailReport() {
-  var d = window._gvReportData;
-  if (!d) return;
-  var nl = '\n';
-  var body = 'דוח מדידת גבהים — '+(_gvLabel||'')+nl+
-    '========================'+nl+
-    'סבילות: ±'+d.tol+' מ"מ | סטייה מקסימלית: '+d.maxDev+' מ"מ | חריגות: '+d.fails+nl+nl;
-  d.computed.forEach(function(r,i){
-    body += (i+1)+'. '+r.name+' | תוכנן: '+r.stated.toFixed(3)+' | נמדד: '+r.actual.toFixed(3)+' | סטייה: '+(r.dev_mm>=0?'+':'')+r.dev_mm+' מ"מ | '+(r.status==='fail'?'חריגה':r.status==='warn'?'אזהרה':'תקין')+nl;
-  });
-  window.location.href = 'mailto:?subject='+encodeURIComponent('דוח גבהים — '+(_gvLabel||'')+'  — '+d.fails+' חריגות')+'&body='+encodeURIComponent(body);
+// ── SESSION ACTIONS ────────────────────────────────────────────────────
+function gvViewSession(id) {
+  var s = _gvSessions.find(function(x){ return x.id===id; });
+  if (!s) return;
+  var pts = []; try { pts = JSON.parse(s.points||'[]'); } catch(e){}
+  var bm  = parseFloat(s.benchmark)||0;
+  var tol = parseFloat(s.tolerance_mm)||5;
+
+  var ov = document.createElement('div');
+  ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:99999;overflow-y:auto;display:flex;align-items:flex-start;justify-content:center;padding:20px;';
+  ov.onclick = function(e){ if(e.target===ov) ov.remove(); };
+  ov.innerHTML =
+    '<div style="background:#fff;border-radius:14px;width:100%;max-width:700px;direction:rtl;font-family:Heebo,Arial,sans-serif;overflow:hidden;">' +
+      '<div style="background:linear-gradient(135deg,#1a3d5c,#2d6a9f);padding:16px 20px;display:flex;justify-content:space-between;align-items:center;">' +
+        '<div style="color:#fff;">' +
+          '<div style="font-size:16px;font-weight:900;">🔴 '+gvEsc(s.room_name||'מדידה')+'</div>' +
+          '<div style="font-size:11px;opacity:0.7;">'+(s.project_name||'')+'</div>' +
+        '</div>' +
+        '<button onclick="this.closest(\'div[style*=fixed]\').remove()" style="background:rgba(255,255,255,0.15);border:none;color:#fff;border-radius:8px;padding:6px 12px;cursor:pointer;">✕</button>' +
+      '</div>' +
+      '<div style="padding:20px;">' +
+        '<div style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:14px;font-size:12px;color:#555;">' +
+          '<span>📅 '+new Date(s.created_at).toLocaleDateString('he-IL')+'</span>' +
+          '<span>BM: '+bm+'</span>' +
+          '<span>סבילות: ±'+tol+' מ"מ</span>' +
+          (s.area_sqm?'<span>שטח: '+s.area_sqm+' מ"ר</span>':'') +
+        '</div>' +
+        gvRenderPointsTable(pts, bm, tol, false) +
+      '</div>' +
+    '</div>';
+  document.body.appendChild(ov);
 }
 
-function gvWAReport() {
-  var d = window._gvReportData;
-  if (!d) return;
-  var nl = '\n';
-  var msg = '*דוח מדידת גבהים*'+nl+(_gvLabel?_gvLabel+nl:'')+
-    'סבילות: ±'+d.tol+' מ"מ'+nl+
-    'סטייה מקס: *'+d.maxDev+' מ"מ*'+nl+
-    'חריגות: *'+d.fails+'*'+nl+nl;
-  d.computed.slice(0,10).forEach(function(r){
-    var icon = r.status==='fail'?'🔴':r.status==='warn'?'🟡':'🟢';
-    msg += icon+' '+r.name+': '+(r.dev_mm>=0?'+':'')+r.dev_mm+' מ"מ'+nl;
-  });
-  if (d.computed.length > 10) msg += '... ועוד '+(d.computed.length-10)+' נקודות'+nl;
+function gvDeleteConfirm(id, btn) {
+  if (btn._confirmed) { gvDeleteSession(id); return; }
+  btn._confirmed = true;
+  var count = 3;
+  btn.style.background = '#c62828'; btn.style.color = '#fff';
+  btn.innerHTML = '❗ '+count;
+  var timer = setInterval(function(){
+    count--;
+    if (count > 0) { btn.innerHTML = '❗ '+count; }
+    else { clearInterval(timer); gvDeleteSession(id); }
+  }, 1000);
+  btn.onclick = function(){
+    clearInterval(timer);
+    btn._confirmed = false;
+    btn.innerHTML = '🗑️';
+    btn.style.background = '#fff0f0'; btn.style.color = '#c62828';
+    btn.onclick = function(){ gvDeleteConfirm(id, btn); };
+  };
+}
+
+async function gvDeleteSession(id) {
+  try {
+    await window.sb.from('gavoim_sessions').update({is_deleted:true}).eq('id',id);
+    showToast('🗑️ נמחק','success');
+    _gvSessions = _gvSessions.filter(function(s){ return s.id!==id; });
+    gvRenderSessions();
+  } catch(e) { showToast('שגיאה: '+e.message,'error'); }
+}
+
+// ── ATTACH FILE ────────────────────────────────────────────────────────
+function gvAttachFile(id) {
+  var inp = document.createElement('input');
+  inp.type = 'file'; inp.accept = 'image/*,.pdf';
+  inp.onchange = async function(){
+    var file = inp.files[0]; if (!file) return;
+    showToast('⬆️ מעלה...','success');
+    try {
+      var cloudName   = window.APP&&window.APP.config&&window.APP.config.cloudinary_cloud||'';
+      var uploadPreset= window.APP&&window.APP.config&&window.APP.config.cloudinary_preset||'';
+      var fd = new FormData();
+      fd.append('file', file);
+      fd.append('upload_preset', uploadPreset);
+      var r = await fetch('https://api.cloudinary.com/v1_1/'+cloudName+'/auto/upload',{method:'POST',body:fd});
+      if (!r.ok) throw new Error('HTTP '+r.status);
+      var d = await r.json();
+      var ftype = file.type.startsWith('image') ? 'image' : 'pdf';
+      await window.sb.from('gavoim_sessions').update({file_url:d.secure_url, file_type:ftype}).eq('id',id);
+      var s = _gvSessions.find(function(x){ return x.id===id; });
+      if (s) { s.file_url = d.secure_url; s.file_type = ftype; }
+      showToast('✅ קובץ הועלה','success');
+      gvRenderSessions();
+    } catch(e) { showToast('שגיאה: '+e.message,'error'); }
+  };
+  inp.click();
+}
+
+// ── PRINT / MAIL / WA ─────────────────────────────────────────────────
+function gvPrintSession(id) {
+  var s = _gvSessions.find(function(x){ return x.id===id; });
+  if (!s) return;
+  var pts = []; try { pts = JSON.parse(s.points||'[]'); } catch(e){}
+  gvGeneratePDFHtml(s, pts);
+}
+
+function gvPrintReport(mode) {
+  var bm   = parseFloat((document.getElementById('gv-'+mode+'-bm')||{}).value)||0;
+  var room = (document.getElementById('gv-'+mode+'-room')||{}).value||'מדידה';
+  gvGeneratePDFHtml({room_name:room, benchmark:bm, tolerance_mm:5}, _gvPoints);
+}
+
+function gvGeneratePDFHtml(s, pts) {
+  var bm  = parseFloat(s.benchmark)||0;
+  var tol = parseFloat(s.tolerance_mm)||5;
+  var fails = pts.filter(function(p){ return Math.abs((parseFloat(p.reading)||0 - bm)*1000) > tol; });
+
+  var rowsHtml = pts.map(function(pt){
+    var r   = parseFloat(pt.reading)||0;
+    var dev = (r - bm) * 1000;
+    var fail= Math.abs(dev) > tol;
+    return '<tr style="background:'+(fail?'#fff5f5':'')+';border-bottom:1px solid #eee;">' +
+      '<td style="padding:6px 8px;">'+gvEsc(pt.name||'')+'</td>' +
+      '<td style="padding:6px 8px;text-align:center;">'+(pt.x||0)+'</td>' +
+      '<td style="padding:6px 8px;text-align:center;">'+(pt.y||0)+'</td>' +
+      '<td style="padding:6px 8px;text-align:center;font-weight:700;">'+(r?r.toFixed(4):'—')+'</td>' +
+      '<td style="padding:6px 8px;text-align:center;font-weight:700;color:'+(fail?'#c62828':'#1b6b35')+';">'+(r?(dev>=0?'+':'')+dev.toFixed(1)+' מ"מ':'—')+'</td>' +
+      '<td style="padding:6px 8px;text-align:center;">'+(fail?'🔴':'🟢')+'</td>' +
+    '</tr>';
+  }).join('');
+
+  var html = '<html><head><meta charset="utf-8"><style>' +
+    'body{font-family:Heebo,Arial,sans-serif;direction:rtl;padding:20px;font-size:13px;}' +
+    'h2{color:#1a3d5c;font-size:20px;margin:0 0 4px 0;}' +
+    'table{width:100%;border-collapse:collapse;margin:14px 0;}' +
+    'th{background:#1a3d5c;color:#FFD700;padding:8px;text-align:center;font-size:12px;}' +
+    '.summary{background:#f5f0e8;border-radius:8px;padding:12px;margin:12px 0;display:flex;gap:20px;}' +
+    '.fail-list{background:#fff5f5;border:1px solid #fca5a5;border-radius:8px;padding:12px;margin-top:10px;}' +
+    '@media print{.no-print{display:none!important;}}' +
+    '</style></head><body>' +
+    '<h2>🔴 דוח מדידת גבהים לייזר</h2>' +
+    '<div style="font-size:12px;color:#555;margin-bottom:12px;">' +
+      '<b>חדר:</b> '+gvEsc(s.room_name||'')+'&nbsp;|&nbsp;' +
+      '<b>פרויקט:</b> '+gvEsc(s.project_name||'—')+'&nbsp;|&nbsp;' +
+      '<b>תאריך:</b> '+new Date(s.created_at||Date.now()).toLocaleDateString('he-IL')+'&nbsp;|&nbsp;' +
+      '<b>BM:</b> '+bm+' מ׳&nbsp;|&nbsp;<b>סבילות:</b> ±'+tol+' מ"מ' +
+    '</div>' +
+    '<div class="summary">' +
+      '<div><div style="font-size:22px;font-weight:900;color:'+(fails.length>0?'#c62828':'#1b6b35')+';">'+(fails.length>0?fails.length+' ❌':pts.length+' ✅')+'</div><div style="font-size:11px;color:#888;">'+(fails.length>0?'חריגות':'כל הנקודות תקינות')+'</div></div>' +
+      '<div><div style="font-size:22px;font-weight:900;color:#1a3d5c;">'+pts.length+'</div><div style="font-size:11px;color:#888;">סה"כ נקודות</div></div>' +
+      '<div><div style="font-size:22px;font-weight:900;color:#1b6b35;">'+(pts.length-fails.length)+'</div><div style="font-size:11px;color:#888;">נקודות תקינות</div></div>' +
+    '</div>' +
+    '<table>' +
+      '<tr><th>נקודה</th><th>X (מ׳)</th><th>Y (מ׳)</th><th>קריאה (מ׳)</th><th>סטייה (מ"מ)</th><th>סטטוס</th></tr>' +
+      rowsHtml +
+    '</table>' +
+    (fails.length ? '<div class="fail-list"><b style="color:#c62828;">⚠️ נקודות חורגות מהסבילות:</b><br>' +
+      fails.map(function(p){ return gvEsc(p.name)+' ('+((parseFloat(p.reading)||0 - bm)*1000).toFixed(1)+' מ"מ)'; }).join(' · ') +
+    '</div>' : '') +
+    '<div style="margin-top:16px;font-size:10px;color:#aaa;text-align:center;border-top:1px solid #eee;padding-top:8px;">Stonhard Israel | מדידת גבהים לייזר | '+new Date().toLocaleDateString('he-IL')+'</div>' +
+    '</body></html>';
+
+  var w = window.open('','_blank','width=900,height=700');
+  if (w) { w.document.write(html); w.document.close(); setTimeout(function(){ w.print(); }, 400); }
+}
+
+function gvMailSession(id) {
+  var s = _gvSessions.find(function(x){ return x.id===id; });
+  if (!s) return;
+  var pts = []; try { pts = JSON.parse(s.points||'[]'); } catch(e){}
+  var bm  = parseFloat(s.benchmark)||0;
+  var tol = parseFloat(s.tolerance_mm)||5;
+  var fails = pts.filter(function(p){ return Math.abs((parseFloat(p.reading)||0 - bm)*1000) > tol; });
+  var body = 'דוח מדידת גבהים — '+s.room_name+'\n'+(s.project_name?'פרויקט: '+s.project_name+'\n':'')+
+    'תאריך: '+new Date(s.created_at||Date.now()).toLocaleDateString('he-IL')+'\n'+
+    'נקודות: '+pts.length+' | חריגות: '+fails.length+'\n\n'+
+    pts.slice(0,15).map(function(p){ var d=((parseFloat(p.reading)||0)-bm)*1000; return p.name+': '+(parseFloat(p.reading)||0).toFixed(4)+' ('+d.toFixed(1)+' מ"מ)'; }).join('\n');
+  window.location.href = 'mailto:?subject='+encodeURIComponent('דוח גבהים — '+s.room_name)+'&body='+encodeURIComponent(body);
+}
+
+function gvWASession(id) {
+  var s = _gvSessions.find(function(x){ return x.id===id; });
+  if (!s) return;
+  var pts = []; try { pts = JSON.parse(s.points||'[]'); } catch(e){}
+  var bm  = parseFloat(s.benchmark)||0;
+  var tol = parseFloat(s.tolerance_mm)||5;
+  var fails = pts.filter(function(p){ return Math.abs((parseFloat(p.reading)||0 - bm)*1000) > tol; });
+  var msg = '🔴 *דוח מדידת גבהים — '+s.room_name+'*\n'+(s.project_name?'🏗️ '+s.project_name+'\n':'')+
+    '📅 '+new Date(s.created_at||Date.now()).toLocaleDateString('he-IL')+'\n'+
+    '📍 '+pts.length+' נקודות | ⚠️ '+fails.length+' חריגות\n\n'+
+    (fails.length ? '🔴 חורגות:\n'+fails.map(function(p){ return '• '+p.name+': '+((parseFloat(p.reading)||0 - bm)*1000).toFixed(1)+' מ"מ'; }).join('\n') : '✅ כל הנקודות תקינות');
   window.open('https://wa.me/?text='+encodeURIComponent(msg),'_blank');
 }
 
-async function gvExcelReport() {
-  var d = window._gvReportData;
-  if (!d || !d.computed.length) { showToast('אין נתונים','error'); return; }
-  if (typeof XLSX === 'undefined') {
-    await new Promise(function(res,rej){
-      var s=document.createElement('script');
-      s.src='https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
-      s.onload=res; s.onerror=rej; document.head.appendChild(s);
-    });
-  }
-  var wb = XLSX.utils.book_new();
-  var wsData = [];
-  wsData.push(['דוח מדידת גבהים — '+(_gvLabel||''), '', '', '', '', '', '']);
-  wsData.push(['תאריך: '+new Date().toLocaleDateString('he-IL')+'  |  סבילות: ±'+d.tol+' מ"מ  |  נמדד: בני פרסקי']);
-  wsData.push([]);
-  wsData.push(['#', 'שם נקודה', 'סוג אלמנט', 'גובה תוכנן (מ\')', 'גובה נמדד (מ\')', 'סטייה (מ"מ)', 'סטטוס']);
-  var typeLabels = {floor:'רצפה',ceiling:'תקרה',slab:'יציקה',wall:'קיר',beam:'קורה',ridge:'שליל',other:'אחר'};
-  d.computed.forEach(function(r,i){
-    wsData.push([
-      i+1, r.name, typeLabels[r.element_type]||r.element_type,
-      r.stated, r.actual,
-      r.dev_mm,
-      r.status==='fail'?'חריגה קריטית':r.status==='warn'?'אזהרה':'תקין'
-    ]);
-  });
-  wsData.push([]);
-  wsData.push(['סיכום', '', '', '', '', '', '']);
-  wsData.push(['נקודות שנמדדו', d.computed.length]);
-  wsData.push(['סטייה מקסימלית (מ"מ)', d.maxDev]);
-  wsData.push(['סטייה ממוצעת (מ"מ)', d.avgDev]);
-  wsData.push(['חריגות קריטיות', d.fails]);
-  wsData.push(['אזהרות', d.warns]);
-  wsData.push(['תוצאה כללית', d.verdict==='fail'?'נדרש תיקון':d.verdict==='warn'?'דורש בדיקה':'תקין']);
-  var ws = XLSX.utils.aoa_to_sheet(wsData);
-  ws['!cols'] = [{wch:4},{wch:22},{wch:12},{wch:16},{wch:16},{wch:14},{wch:16}];
-  ws['!merges'] = [{s:{r:0,c:0},e:{r:0,c:6}},{s:{r:1,c:0},e:{r:1,c:6}}];
-  XLSX.utils.book_append_sheet(wb, ws, 'מדידת גבהים');
-  var fname = ('גבהים_'+(_gvLabel||'דוח')).replace(/[\/\\:*?"<>|]/g,'_')+'_'+new Date().toLocaleDateString('he-IL').replace(/\//g,'-')+'.xlsx';
-  XLSX.writeFile(wb, fname);
-  showToast('📊 Excel הורד','success');
+function gvMailReport(mode) { showToast('מכין מייל...','success'); setTimeout(function(){ gvMailSession({room_name:'מדידה', project_name:'', created_at:new Date().toISOString(), benchmark:0, tolerance_mm:5, points:JSON.stringify(_gvPoints)}).id; },100); }
+function gvWAReport(mode) {
+  var bm = parseFloat((document.getElementById('gv-'+mode+'-bm')||{}).value)||0;
+  var tol = 5;
+  var fails = _gvPoints.filter(function(p){ return Math.abs((parseFloat(p.reading)||0 - bm)*1000) > tol; });
+  var msg = '🔴 *דוח מדידת גבהים*\n'+_gvPoints.length+' נקודות | '+fails.length+' חריגות';
+  window.open('https://wa.me/?text='+encodeURIComponent(msg),'_blank');
 }
 
-function gvBuildPrintHTML(d) {
-  var typeLabels = {floor:'רצפה',ceiling:'תקרה',slab:'יציקה',wall:'קיר',beam:'קורה',ridge:'שליל',other:'אחר'};
-  var verdictColor = d.verdict==='fail'?'#c62828':d.verdict==='warn'?'#f59e0b':'#1b5e20';
-  var verdictText  = d.verdict==='fail'?'נמצאו '+d.fails+' חריגות קריטיות — נדרשת בדיקת מהנדס':d.verdict==='warn'?'נמצאו '+d.warns+' נקודות אזהרה':'כל הנקודות תקינות';
-  var rows = d.computed.map(function(r,i){
-    var fail = r.status==='fail', warn=r.status==='warn';
-    return '<tr style="background:'+(fail?'#fff5f5':warn?'#fffbf0':'')+';border-bottom:1px solid #eee;">'+
-      '<td>'+(i+1)+'</td>'+
-      '<td>'+r.name+'</td>'+
-      '<td style="text-align:center">'+(typeLabels[r.element_type]||'')+'</td>'+
-      '<td style="text-align:center">'+r.stated.toFixed(3)+'</td>'+
-      '<td style="text-align:center;font-weight:700;color:#c9a84c">'+r.actual.toFixed(3)+'</td>'+
-      '<td style="text-align:center;font-weight:800;color:'+(fail?'#c62828':warn?'#f59e0b':'#1b5e20')+'">'+(r.dev_mm>=0?'+':'')+r.dev_mm+'</td>'+
-      '<td style="text-align:center">'+(fail?'🔴 חריגה':warn?'🟡 אזהרה':'🟢 תקין')+'</td>'+
-    '</tr>';
-  }).join('');
-  return '<!DOCTYPE html><html dir="rtl"><head><meta charset="UTF-8"><title>דוח גבהים</title>'+
-    '<style>body{font-family:Arial,sans-serif;direction:rtl;padding:30px;color:#222}'+
-    'h1{color:#1a3d5c;border-bottom:3px solid #ef4444;padding-bottom:8px}'+
-    '.summary{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:16px 0}'+
-    '.sum-box{border:1px solid #e5e7eb;border-radius:8px;padding:12px;text-align:center}'+
-    '.sum-val{font-size:22px;font-weight:900;color:#1a3d5c}'+
-    'table{width:100%;border-collapse:collapse;font-size:12px}'+
-    'th{background:#1a3d5c;color:#FFD700;padding:9px 8px;text-align:right}'+
-    '@media print{.noprint{display:none}}</style></head><body>'+
-    '<div class="noprint" style="margin-bottom:16px">'+
-      '<button onclick="window.print()" style="background:#1a3d5c;color:#FFD700;border:none;border-radius:8px;padding:8px 18px;font-size:13px;font-weight:700;cursor:pointer">🖨️ הדפס</button>'+
-      '<button onclick="window.close()" style="background:#888;color:#fff;border:none;border-radius:8px;padding:8px 14px;font-size:13px;cursor:pointer;margin-right:8px">סגור</button>'+
-    '</div>'+
-    '<h1>🔴 דוח מדידת גבהים — '+gvEsc(_gvLabel||'')+'</h1>'+
-    '<div style="font-size:12px;color:#666;margin-bottom:16px">תאריך: '+new Date().toLocaleDateString('he-IL')+' | סבילות: ±'+d.tol+' מ"מ | נמדד: בני פרסקי</div>'+
-    '<div class="summary">'+
-      '<div class="sum-box"><div class="sum-val">'+d.computed.length+'</div><div style="font-size:11px;color:#666">נקודות</div></div>'+
-      '<div class="sum-box"><div class="sum-val" style="color:'+(d.fails?'#c62828':'#1b5e20')+'">'+d.maxDev+'</div><div style="font-size:11px;color:#666">סטייה מקס\' מ"מ</div></div>'+
-      '<div class="sum-box"><div class="sum-val">'+d.avgDev+'</div><div style="font-size:11px;color:#666">ממוצע מ"מ</div></div>'+
-      '<div class="sum-box"><div class="sum-val" style="color:'+verdictColor+'">'+d.fails+'</div><div style="font-size:11px;color:#666">חריגות</div></div>'+
-    '</div>'+
-    '<div style="background:'+(d.verdict==='fail'?'#fff5f5':d.verdict==='warn'?'#fffbf0':'#e8f5e9')+';border:2px solid '+verdictColor+';border-radius:8px;padding:12px;margin-bottom:16px;font-weight:700;color:'+verdictColor+'">'+verdictText+'</div>'+
-    '<table><thead><tr><th>#</th><th>נקודה</th><th>סוג</th><th>תוכנן (מ\')</th><th>נמדד (מ\')</th><th>סטייה (מ"מ)</th><th>סטטוס</th></tr></thead>'+
-    '<tbody>'+rows+'</tbody></table>'+
-    '<div style="margin-top:20px;font-size:10px;color:#999;text-align:center;border-top:1px solid #eee;padding-top:10px">בני פרסקי ניהול פרויקטים | '+new Date().toLocaleDateString('he-IL')+'</div>'+
-    '</body></html>';
+// ── HELPERS ───────────────────────────────────────────────────────────
+function gvInp() {
+  return 'width:100%;padding:9px 12px;border:1.5px solid #c9a84c;border-radius:8px;font-family:Heebo,sans-serif;font-size:13px;direction:rtl;background:#fffbf0;box-sizing:border-box;';
 }
 
-// ── UTIL ──────────────────────────────────────────────────────────────
 function gvEsc(s) {
   return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function gvNewSession() {
+  var area = document.getElementById('gv-form-area');
+  if (area) area.innerHTML = '';
+  _gvPoints = [];
+  _gvMode   = null;
+  document.querySelector('[onclick="gvStartMode(\'a\')"]') && window.scrollTo({top:0,behavior:'smooth'});
 }

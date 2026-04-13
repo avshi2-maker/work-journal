@@ -116,7 +116,6 @@ function sibHTML() {
       '</button>' +
       '<button onclick="if(window.openLocalUpload)window.openLocalUpload();" style="background:#f5e9c4;border:1px solid #c9a84c;color:#7a5500;border-radius:8px;padding:8px 14px;font-size:11px;font-weight:700;cursor:pointer;font-family:Heebo,sans-serif;">💻 העלה מהמחשב</button>' +
       '<button onclick="sibLoad()" style="background:#f5f0e8;border:1px solid rgba(180,140,60,0.3);color:#5a6f7c;border-radius:8px;padding:8px 12px;font-size:11px;cursor:pointer;font-family:Heebo,sans-serif;">🔄 רענן</button>' +
-      '<button onclick="ytSetupApiKey()" style="background:#dc2626;border:none;color:#fff;border-radius:8px;padding:8px 12px;font-size:11px;font-weight:700;cursor:pointer;font-family:Heebo,sans-serif;">🎬 חיבור יוטיוב</button>' +
       '<select id="sib-proj-filter" onchange="sibFilterByProject(this.value)" style="background:#fff;border:1px solid rgba(180,140,60,0.3);color:#2c4a6e;border-radius:8px;padding:8px 12px;font-size:11px;font-family:Heebo,sans-serif;direction:rtl;">' +
         '<option value="">כל הפרויקטים</option>' +
       '</select>' +
