@@ -44,7 +44,7 @@ async function sibInit() {
 // ── AI MODULE SELECTOR HELPERS ────────────────────────────────────────
 var _sibModuleDefaults = {
   'mod-safety':false,'mod-engineering':false,'mod-standards':false,
-  'mod-thirdparty':false,'mod-financial':false,'mod-protocol':false,'mod-hazmat':false,
+  'mod-thirdparty':false,'mod-financial':false,'mod-protocol':false,'mod-hazmat':false,'mod-packaging':false,
   'mod-ocr':false,'mod-equipment':false,'mod-neighbor':false,
   'mod-evidence':false,'mod-general':false
 };
@@ -73,6 +73,7 @@ function sibToggleModule(id, labelEl) {
     'mod-financial': {color:'#1b5e20',bg:'#e8f5e9',border:'#a5d6a7'},
     'mod-protocol':  {color:'#7a5500',bg:'#fffde7',border:'#f59e0b'},
     'mod-hazmat':   {color:'#b71c1c',bg:'#fce4e4',border:'#ef9a9a'},
+    'mod-packaging':{color:'#1565c0',bg:'#e3f2fd',border:'#90caf9'},
     'mod-ocr':       {color:'#0f766e',bg:'#f0fdfb',border:'#5eead4'},
     'mod-equipment': {color:'#92400e',bg:'#fef3c7',border:'#fcd34d'},
     'mod-neighbor':  {color:'#1e40af',bg:'#eff6ff',border:'#93c5fd'},
@@ -139,6 +140,7 @@ function sibHTML() {
       sibModuleChip('mod-financial',  '💰 רווח/הפסד',     '#1b5e20', '#e8f5e9', '#a5d6a7', false) +
       sibModuleChip('mod-protocol',   '📝 פרוטוקול שיחה', '#7a5500', '#fffde7', '#f59e0b', false) +
       sibModuleChip('mod-hazmat',    '☣️ חומ"ס',          '#b71c1c', '#fce4e4', '#ef9a9a', false) +
+      sibModuleChip('mod-packaging', '♻️ אריזות',         '#1565c0', '#e3f2fd', '#90caf9', false) +
       sibModuleChip('mod-ocr',        '📐 מדידות OCR',    '#0f766e', '#f0fdfb', '#5eead4', false) +
       sibModuleChip('mod-equipment',  '🔧 השאלת ציוד',    '#92400e', '#fef3c7', '#fcd34d', false) +
       sibModuleChip('mod-neighbor',   '✉️ מכתב שכנים',   '#1e40af', '#eff6ff', '#93c5fd', false) +
@@ -842,6 +844,7 @@ function sibShowPhase2Panel(id) {
     {id:'equipment',   mod:'mod-equipment',   label:'🔧 השאלת ציוד',      color:'#92400e', bg:'#fef3c7', border:'#fcd34d'},
     {id:'general',     mod:'mod-general',     label:'📊 כללי',            color:'#555',    bg:'#f5f5f5', border:'#ccc'},
     {id:'hazmat',      mod:'mod-hazmat',      label:'☣️ חומ"ס',           color:'#b71c1c', bg:'#fce4e4', border:'#ef9a9a'},
+    {id:'packaging',   mod:'mod-packaging',   label:'♻️ אריזות',          color:'#1565c0', bg:'#e3f2fd', border:'#90caf9'},
   ];
   // Show ONLY ticked modules — no forced defaults
   var directions = allDirections.filter(function(d){
@@ -917,7 +920,7 @@ async function sibPhase2Run(id, direction) {
   var p1el = document.getElementById('sib-p1-edit-'+id);
   var p1text = p1el?p1el.value:(_sibPhase1[id]||'');
   var isCloudinaryVid = (item.file_type==='video') && item.cloudinary_url && item.cloudinary_url.includes('cloudinary.com');
-  var isVideoVisual = isCloudinaryVid && (direction==='safety'||direction==='engineering'||direction==='general'||direction==='thirdparty'||direction==='hazmat');
+  var isVideoVisual = isCloudinaryVid && (direction==='safety'||direction==='engineering'||direction==='general'||direction==='thirdparty'||direction==='hazmat'||direction==='packaging');
   // For Cloudinary videos — frame analysis works without transcript
   // For direct uploads — must have transcript from Phase 1
   if(!p1text && !isVideoVisual){
@@ -942,7 +945,7 @@ async function sibPhase2Run(id, direction) {
 
   // For video + visual directions (safety/engineering) — use frame image, not transcript
   var isVideo = (item.file_type==='video');
-  var isVisualDirection = (direction==='safety'||direction==='engineering'||direction==='general'||direction==='thirdparty'||direction==='hazmat');
+  var isVisualDirection = (direction==='safety'||direction==='engineering'||direction==='general'||direction==='thirdparty'||direction==='hazmat'||direction==='packaging');
   // Frame analysis ONLY for Cloudinary-hosted videos (Beni mobile via Cloudinary)
   // Direct uploads from PC/Android to Supabase storage — use transcript only
   var isCloudinaryVideo = isVideo && item.cloudinary_url && item.cloudinary_url.includes('cloudinary.com');
@@ -1024,7 +1027,35 @@ async function sibPhase2Run(id, direction) {
       '## פעולות מיידיות נדרשות\n' +
       '## המלצות לטווח ארוך';
   }
-    else if(direction==='thirdparty'){
+    else if(direction==='packaging'){
+    reportTitle = '♻️ דוח ניהול אריזות';
+    systemPrompt = [
+      'אתה מומחה לניהול פסולת אריזות באתרי בנייה בישראל.',
+      'אתה בודק עמידה בחוק האריזות 2011 ותקנות הניקיון הישראליות.',
+      'לכל סוג אריזה ציין: האם מאוחסנת נכון, היכן לפנות, בסיס חוקי וסיכון לאי-עמידה.'
+    ].join(' ');
+    userPrompt = p1text + '\n\n---\n' +
+      'בדוק עמידה בתקנות ניהול אריזות ופסולת אריזות בישראל:\n\n' +
+      '1. קרטון ואריזות נייר — הפרדה במקור, קיפול ודחיסה, מכל ייעודי סגור\n' +
+      '   פינוי: תאגיד "תמיר" או קבלן מחזור מורשה | חוק האריזות 2011\n\n' +
+      '2. אריזות פלסטיק (ניילון/שרינק) — הפרדה מוחלטת מפסולת רטובה, Big-Bags\n' +
+      '   אחסון: ללא מגע עם קרקע חשופה | פינוי: מפעלי מחזור מאושרים (סיקלה)\n\n' +
+      '3. מכלי פלסטיק קשיח (גריקנים) — ריקון מלא שאריות, אם חומ"ס — לרמת חובב\n' +
+      '   אחסון: על משטחים, לא למכולה רגילה | תקנות חומרים מסוכנים\n\n' +
+      '4. אריזות עץ (משטחים) — שימוש חוזר/החזרה לספק, איסור מוחלט שריפה באתר\n' +
+      '   אחסון: ערמה מסודרת | פינוי: מתקני גריסת עץ | חוק מניעת מפגעים\n\n' +
+      '5. אריזות מתכת (פחי צבע/דבקים) — ייבוש שאריות צבע לפני פינוי\n' +
+      '   פינוי: תחנות איסוף גרוטאות מורשות | חוק האריזות\n\n' +
+      '6. תיעוד ורישום — שמירת אישורי פינוי 7 שנים, ניהול יומן פינוי פסולת\n' +
+      '   תקנות שמירת הניקיון\n\n' +
+      'לכל סוג אריזה הנראה בתמונה/מסמך:\n' +
+      '✅ תקין — מה נראה תקין\n' +
+      '🔴 CRITICAL — פינוי לא חוקי, סיכון קנסות עד 200,000 ש"ח\n' +
+      '🟠 HIGH — ליקוי חשוב לתיקון מיידי\n' +
+      '🟡 MEDIUM — המלצה לשיפור\n\n' +
+      'סיים עם:\n## סיכום ממצאים\n## פעולות מיידיות\n## קישורים: תמיר: https://www.tmir.org.il/business/centers';
+  }
+  else if(direction==='thirdparty'){
     reportTitle = '⚖️ דוח חשיפה לצד שלישי';
     systemPrompt = [
       'אתה יועץ משפטי ומומחה ביטוח המתמחה באחריות קבלנים בישראל.',
