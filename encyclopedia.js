@@ -89,9 +89,7 @@ async function encLoadAll(){
     var tko=(r2.data||[]).map(function(t){return Object.assign({_src:'takeoff',_type:'takeoff',title:(t.session_label||'&#1496;&#1497;&#1497;&#1511;&#1488;&#1493;&#1507;')+(t.total_area?' &#8212; '+t.total_area+' &#1502;"&#1512;':'')},t);});
     var r3=await sbQ('beni_notes','order=created_at.desc&limit=150&select=id,note_text,note_type,photo_url,color,created_at,project_id');
     var notes=(r3.data||[]).map(function(n){var tp=n.note_type==='audio'?'audio':n.note_type==='image'?'image':n.note_type==='video'?'video':'note';return Object.assign({_src:'notes',_type:tp,title:(n.note_text||'').substring(0,60)},n);});
-    var r4=await sbQ('asset_inbox','order=created_at.desc&limit=100&select=id,file_name,file_type,cloudinary_url,thumbnail_url,project_id,created_at,ai_report');
-    var inbox=(r4.data||[]).map(function(a){return Object.assign({_src:'inbox',_type:a.file_type==='audio'?'audio':a.file_type==='pdf'?'pdf':'image',title:a.file_name||'&#1511;&#1493;&#1489;&#1509;'},a);});
-    _encItems=[].concat(enc,tko,notes,inbox);
+    _encItems=[].concat(enc,tko,notes);
     var r5=await sbQ('beni_contacts','order=full_name.asc&limit=200&select=id,full_name,profession,phone,email,rating_skills,rating_reliability,rating_price,notes,project_id');
     _encContacts=r5.data||[];
     var r6=await sbQ('projects','is_archived=eq.true&order=archived_at.desc&select=id,project_name,client_name,total_budget,archived_at,city');
@@ -104,19 +102,7 @@ async function encLoadAll(){
 }
 
 var ENC_SOURCES=[
-  {id:'all',label:'&#1492;&#1499;&#1500;',bg:'',color:''},
-  {id:'enc',label:'&#128203; &#1502;&#1502;&#1510;&#1488;&#1497; &#1513;&#1496;&#1495;',bg:'#fff5f5',color:'#c62828'},
-  {id:'standard',label:'&#128207; &#1514;&#1511;&#1504;&#1497;&#1501; 838',bg:'#ede7f6',color:'#4527a0'},
-  {id:'takeoff',label:'&#128208; &#1496;&#1497;&#1497;&#1511;&#1488;&#1493;&#1508;&#1497;&#1501;',bg:'#fff8e0',color:'#7a5500'},
-  {id:'notes',label:'&#128193; &#1504;&#1499;&#1505;&#1497; &#1489;&#1504;&#1497;',bg:'#f0fdfb',color:'#0f766e'},
-  {id:'inbox',label:'&#128229; &#1514;&#1497;&#1489;&#1492; &#1504;&#1499;&#1504;&#1505;&#1497;&#1501;',bg:'#e3f2fd',color:'#1565c0'},
-  {id:'contacts',label:'&#128101; &#1488;&#1504;&#1513;&#1497; &#1511;&#1513;&#1512;',bg:'#f3e5f5',color:'#4a148c'},
-  {id:'archive',label:'&#128230; &#1488;&#1512;&#1499;&#1497;&#1493;&#1503;',bg:'#e8f5e9',color:'#1b5e20'},
-  {id:'safety_scan',label:'&#128737;&#65039; &#1489;&#1496;&#1497;&#1495;&#1493;&#1514;',bg:'#fff5f5',color:'#c62828'},
-  {id:'defects',label:'&#128269; &#1500;&#1497;&#1511;&#1493;&#1497;&#1497;&#1501;',bg:'#e8f0fd',color:'#1a3d5c'},
-  {id:'std_rel',label:'&#128214; &#1514;&#1511;&#1504;&#1497;&#1501; &#1512;&#1500;&#1493;&#1493;&#1504;&#1514;&#1497;&#1497;&#1501;',bg:'#ede7f6',color:'#4527a0'},
-  {id:'cost_est',label:'&#128176; &#1492;&#1506;&#1512;&#1499;&#1514; &#1506;&#1500;&#1493;&#1497;&#1493;&#1514;',bg:'#e8f5e9',color:'#1b5e20'},
-  {id:'engineering',label:'&#127959;&#65039; &#1497;&#1497;&#1506;&#1493;&#1509; &#1492;&#1504;&#1491;&#1505;&#1497;',bg:'#fff8e0',color:'#7a5500'},
+  {id:'all',label:'&#1492;&#1499;&#1500;',bg:'#1a3d5c',color:'#fff'}
 ];
 
 function encBuildSourceTabs(){
@@ -125,7 +111,7 @@ function encBuildSourceTabs(){
     var a=s.id===_encActiveSource;
     return '<button onclick="encSetSource(\''+s.id+'\')" style="padding:6px 12px;border:0.5px solid '+(a?'#1a3d5c':'#e8ddb5')+';border-radius:14px;font-size:11px;font-weight:700;cursor:pointer;font-family:Heebo,sans-serif;background:'+(a?'#1a3d5c':(s.bg||'#fff'))+';color:'+(a?'#fff':(s.color||'#555'))+';">'+s.label+'</button>';
   }).join('')+
-  '<div style="margin-right:auto;"></div>'+
+  '<div style="margin-right:auto;"></div>'+'<button onclick="encRefresh()" style="background:#f5f0e8;border:1.5px solid #c9a84c;color:#7a5500;border-radius:12px;padding:6px 12px;font-size:11px;font-weight:700;cursor:pointer;font-family:Heebo,sans-serif;margin-left:6px;">&#128260; &#1512;&#1506;&#1504;&#1503;</button>'+
   '<button onclick="encOpenAdd()" style="background:#1a3d5c;border:none;color:#FFD700;border-radius:12px;padding:6px 12px;font-size:11px;font-weight:700;cursor:pointer;font-family:Heebo,sans-serif;">+ &#1492;&#1493;&#1505;&#1507;</button>'+
   '<button onclick="document.getElementById(\'enc-rag\').scrollIntoView({behavior:\'smooth\'})" style="background:#fffbf0;color:#38bdf8;border:0.5px solid rgba(56,189,248,0.3);border-radius:14px;padding:6px 12px;font-size:11px;font-weight:700;cursor:pointer;font-family:Heebo,sans-serif;">&#128269; &#1513;&#1488;&#1497;&#1500;&#1514;&#1493;&#1514; &#8595;</button>';
 }
