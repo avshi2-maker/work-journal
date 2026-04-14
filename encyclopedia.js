@@ -181,7 +181,10 @@ function encRender(){
   else if(_encActiveSource==='archive'){items=_encArchive.map(function(a){return Object.assign({_src:'archiveproj'},a);});}
   else{
     items=_encItems.slice();
-    if(_encActiveSource!=='all'){
+    if(_encActiveSource==='all'){
+      // default view: only enc + standards + takeoffs + prices (not notes/inbox — those have dedicated tabs)
+      items=items.filter(function(i){return i._src==='enc'||i._src==='standards'||i._src==='takeoff'||i._src==='prices';});
+    } else if(_encActiveSource!=='all'){
       var analysisSrcs=['safety_scan','defects','std_rel','cost_est','engineering'];
       if(analysisSrcs.indexOf(_encActiveSource)>=0){
         // Filter enc items by AI report category
@@ -288,7 +291,7 @@ function encBuildNoteCard(item){
   return '<div style="background:#fff;border:0.5px solid #e8ddb5;border-radius:12px;padding:13px 15px;display:flex;flex-direction:column;gap:7px;border-right:3px solid '+bc+';">'+
     '<div style="display:flex;justify-content:space-between;align-items:flex-start;">'+
       '<div style="display:flex;gap:7px;align-items:center;"><span>'+icon+'</span><div>'+
-        '<div style="font-size:12px;font-weight:800;color:#1a3d5c;">'+tl+(proj?' &#8212; '+encEsc(proj):'')+'</div>'+
+        '<div style="font-size:12px;font-weight:800;color:#1a3d5c;">'+encEsc(encDec(tl+(proj?' — '+proj:'')))+'</div>'+
         '<div style="font-size:10px;color:#888;">&#128193; &#1504;&#1499;&#1505;&#1497; &#1489;&#1504;&#1497;'+(date?' &#183; '+date:'')+'</div>'+
       '</div></div>'+
       '<span style="background:#f0fdfb;color:#0f766e;padding:2px 7px;border-radius:7px;font-size:10px;font-weight:800;">'+tl+'</span>'+
@@ -311,7 +314,7 @@ function encBuildInboxCard(item){
   return '<div style="background:#fff;border:0.5px solid #e8ddb5;border-radius:12px;padding:13px 15px;display:flex;flex-direction:column;gap:7px;border-right:3px solid #1565c0;">'+
     '<div style="display:flex;justify-content:space-between;align-items:flex-start;">'+
       '<div style="display:flex;gap:7px;align-items:center;"><span>'+icon+'</span><div>'+
-        '<div style="font-size:12px;font-weight:800;color:#1a3d5c;">'+encEsc((item.file_name||'&#1511;&#1493;&#1489;&#1509;').substring(0,40))+'</div>'+
+        '<div style="font-size:12px;font-weight:800;color:#1a3d5c;">'+encEsc(encDec(item.file_name||'&#1511;&#1493;&#1489;&#1509;').substring(0,40))+'</div>'+
         '<div style="font-size:10px;color:#888;">&#128229; &#1514;&#1497;&#1489;&#1492;'+(date?' &#183; '+date:'')+'</div>'+
       '</div></div>'+
       '<span style="background:#e3f2fd;color:#1565c0;padding:2px 7px;border-radius:7px;font-size:10px;font-weight:800;">'+(isPdf?'PDF':isAud?'&#1492;&#1511;&#1500;&#1496;&#1492;':'&#1514;&#1502;&#1493;&#1504;&#1492;')+'</span>'+
