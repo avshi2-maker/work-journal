@@ -1967,7 +1967,7 @@ function mcStatus(msg, show) {
 // Sources: mamad_spec_chapters + renovation_spec + price_items + Claude
 // ══════════════════════════════════════════════════════════════════════
 
-var Q = {
+var _Q = {
   voices:  [null, null, null],
   running: false
 };
@@ -1982,20 +1982,20 @@ function qVoice(num) {
     showToast('קלט קולי לא נתמך בדפדפן זה', 'error'); return;
   }
   var SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
-  if (Q.voices[num-1]) {
-    Q.voices[num-1].stop(); Q.voices[num-1] = null; return;
+  if (_Q.voices[num-1]) {
+    _Q.voices[num-1].stop(); _Q.voices[num-1] = null; return;
   }
   var rec = new SpeechRec();
   rec.lang = 'he-IL'; rec.continuous = false; rec.interimResults = false;
   rec.onresult = function(e) {
     var txt = e.results[0][0].transcript;
     document.getElementById('q-input-' + num).value = txt;
-    Q.voices[num-1] = null;
+    _Q.voices[num-1] = null;
   };
-  rec.onerror = function() { Q.voices[num-1] = null; };
-  rec.onend   = function() { Q.voices[num-1] = null; };
+  rec.onerror = function() { _Q.voices[num-1] = null; };
+  rec.onend   = function() { _Q.voices[num-1] = null; };
   rec.start();
-  Q.voices[num-1] = rec;
+  _Q.voices[num-1] = rec;
   showToast('🎤 מקשיב לשאלה ' + num + '...', 'success');
 }
 
@@ -2017,7 +2017,7 @@ function qClearAll() {
 
 // ── Main runner ────────────────────────────────────────────────────────
 async function qRunAll() {
-  if (Q.running) return;
+  if (_Q.running) return;
   var apiKey = APP.config && APP.config.anthropic_key;
   if (!apiKey) { showToast('מפתח Anthropic API חסר', 'error'); return; }
 
@@ -2027,7 +2027,7 @@ async function qRunAll() {
 
   if (!questions.length) { showToast('הכנס לפחות שאלה אחת', 'error'); return; }
 
-  Q.running = true;
+  _Q.running = true;
   document.getElementById('q-results').innerHTML = '';
   qStatus('⏳ מחפש מפרטים ומחירים עבור ' + questions.length + ' שאלות...');
 
@@ -2069,7 +2069,7 @@ async function qRunAll() {
   } catch(e) {
     qStatus('⚠️ חלק מהשאלות נכשלו');
   }
-  Q.running = false;
+  _Q.running = false;
 }
 
 // ── Single query: fetch specs + prices + ask Claude ───────────────────
