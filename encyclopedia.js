@@ -31,27 +31,32 @@ function encBuildShell() {
         
       '</div>'+
     '</div>'+
-    '<div id="enc-source-tabs" style="background:#fff;border-bottom:0.5px solid #e8ddb5;padding:8px 18px;display:flex;gap:5px;flex-wrap:wrap;align-items:center;"></div>'+
+    '<div id="enc-source-tabs" style="display:none;"></div>'+
     '<div style="padding:12px 18px 0;">'+
       '<div style="display:flex;gap:7px;flex-wrap:wrap;margin-bottom:8px;">'+
         '<div style="flex:1;min-width:200px;position:relative;display:flex;align-items:center;">'+
           '<input id="enc-search" type="text" placeholder="&#128269; &#1495;&#1508;&#1513; &#1489;&#1499;&#1500; &#1492;&#1502;&#1511;&#1493;&#1512;&#1493;&#1514;..." oninput="encOnSearch(this.value)" style="width:100%;padding:8px 36px 8px 12px;border:1.5px solid #c9a84c;border-radius:8px;font-family:Heebo,sans-serif;font-size:12px;direction:rtl;background:#fffbf0;box-sizing:border-box;">'+
           '<button onclick="encVoiceSearch()" id="enc-voice-search-btn" title="&#1511;&#1500;&#1496; &#1511;&#1493;&#1500;&#1497;" style="position:absolute;left:8px;background:rgba(154,111,0,0.15);border:none;border-radius:50%;width:22px;height:22px;font-size:11px;cursor:pointer;">&#127908;</button>'+
         '</div>'+
-        '<select id="enc-asset-filter" onchange="encSetAsset(this.value)" style="'+encInp()+';min-width:140px;">'+
-          '<option value="all">&#1505;&#1493;&#1490; &#1504;&#1499;&#1505; &#8212; &#1492;&#1499;&#1500;</option>'+
-          '<option value="standard">&#128207; &#1514;&#1511;&#1504;&#1497;&#1501; &#1489;&#1504;&#1497;&#1497;&#1492;</option>'+
-          '<option value="finding">&#128203; &#1502;&#1502;&#1510;&#1488; &#1513;&#1496;&#1495;</option>'+
-          '<option value="call">&#128222; &#1513;&#1497;&#1495;&#1493;&#1514; &#1489;&#1504;&#1497;</option>'+
-          '<option value="note">&#9997;&#65039; &#1492;&#1506;&#1512;&#1493;&#1514; &#1497;&#1491;</option>'+
-          '<option value="personal">&#128274; &#1488;&#1497;&#1513;&#1497;</option>'+
-          '<option value="takeoff">&#128208; &#1502;&#1491;&#1497;&#1491;&#1493;&#1514;</option>'+
+        '<select id="enc-asset-filter" onchange="encSetAsset(this.value)" style="'+encInp()+';min-width:160px;">'+
+          '<option value="all">&#1499;&#1500; &#1492;&#1502;&#1511;&#1493;&#1512;&#1493;&#1514;</option>'+
+          '<option value="__src_enc">&#128203; &#1502;&#1502;&#1510;&#1488;&#1497; &#1513;&#1496;&#1495;</option>'+
+          '<option value="__src_standards">&#128207; &#1514;&#1511;&#1504;&#1497; &#1489;&#1504;&#1497;&#1497;&#1492; (838)</option>'+
+          '<option value="__src_takeoff">&#128208; &#1496;&#1497;&#1497;&#1511;&#1488;&#1493;&#1508;&#1497;&#1501;</option>'+
+          '<option value="__src_notes">&#9997;&#65039; &#1492;&#1506;&#1512;&#1493;&#1514; &#1497;&#1491;</option>'+
+          '<option value="__src_inbox">&#128229; &#1514;&#1497;&#1489;&#1492; &#1504;&#1499;&#1504;&#1505;&#1514;</option>'+
+          '<option value="__src_contacts">&#128101; &#1488;&#1504;&#1513;&#1497; &#1511;&#1513;&#1512;</option>'+
+          '<option value="__src_archive">&#128230; &#1488;&#1512;&#1499;&#1497;&#1493;&#1503;</option>'+
           '<option value="audio">&#127897;&#65039; &#1492;&#1511;&#1500;&#1496;&#1493;&#1514;</option>'+
+          '<option value="call">&#128222; &#1513;&#1497;&#1495;&#1493;&#1514; &#1489;&#1504;&#1497;</option>'+
+          '<option value="finding">&#128203; &#1502;&#1502;&#1510;&#1488; &#1513;&#1496;&#1495;</option>'+
           '<option value="image">&#128247; &#1514;&#1502;&#1493;&#1504;&#1493;&#1514;</option>'+
+          '<option value="note">&#9997;&#65039; &#1492;&#1506;&#1512;&#1492; &#1497;&#1491;</option>'+
           '<option value="pdf">&#128196; &#1502;&#1505;&#1502;&#1499;&#1497;&#1501;</option>'+
+          '<option value="personal">&#128274; &#1488;&#1497;&#1513;&#1497;</option>'+
           '<option value="price">&#128176; &#1502;&#1495;&#1497;&#1512;&#1497;&#1501;</option>'+
-          '<option value="contact">&#128101; &#1488;&#1504;&#1513;&#1497; &#1511;&#1513;&#1512;</option>'+
-          '<option value="archive">&#128230; &#1488;&#1512;&#1499;&#1497;&#1493;&#1503;</option>'+
+          '<option value="standard">&#128207; &#1514;&#1511;&#1503; &#1489;&#1504;&#1497;&#1497;&#1492;</option>'+
+          '<option value="takeoff">&#128208; &#1502;&#1491;&#1497;&#1491;&#1493;&#1514;</option>'+
         '</select>'+
         '<select id="enc-prio-filter" onchange="encSetPrio(this.value)" style="'+encInp()+'">'+
           '<option value="all">&#1512;&#1502;&#1514; &#1495;&#1513;&#1497;&#1489;&#1493;&#1514; &#8212; &#1492;&#1499;&#1500;</option>'+
@@ -92,7 +97,9 @@ async function encLoadAll(){
     // _encItems assembled below with inbox
     var r4b=await sbQ('asset_inbox','order=created_at.desc&limit=100&select=id,file_name,cloudinary_url,file_type,project_id,created_at,ai_report');
     var inbox=(r4b.data||[]).map(function(n){var mt=(n.file_type||'').toLowerCase();var tp=mt.includes('pdf')?'pdf':mt.includes('audio')||mt.includes('mp3')||mt.includes('m4a')?'audio':'image';return Object.assign({_src:'inbox',_type:tp,title:n.file_name||'&#1511;&#1493;&#1489;&#1509;'},n);});
-    _encItems=[].concat(enc,tko,notes,inbox);
+    var r4c=await sbQ('building_standards','order=standard_name.asc&limit=838&select=id,standard_name,standard_number,category,description,created_at');
+    var stds=(r4c.data||[]).map(function(s){return Object.assign({_src:'standards',_type:'standard',title:s.standard_name||s.standard_number||'&#1514;&#1511;&#1503;',category:s.category,description:s.description},s);});
+    _encItems=[].concat(enc,tko,notes,inbox,stds);
     var r5=await sbQ('beni_contacts','order=full_name.asc&limit=200&select=id,full_name,profession,phone,email,rating_skills,rating_reliability,rating_price,notes,project_id');
     _encContacts=r5.data||[];
     var r6=await sbQ('projects','is_archived=eq.true&order=archived_at.desc&select=id,project_name,client_name,total_budget,archived_at,city');
@@ -152,7 +159,7 @@ function encRenderStats(){
   var stats=[
     {n:_encItems.length+_encContacts.length+_encArchive.length,label:'&#1505;&#1492;"&#1499; &#1512;&#1513;&#1493;&#1502;&#1493;&#1514;',color:'#1a3d5c'},
     {n:_encItems.filter(function(i){return i._src==='enc';}).length,label:'&#1502;&#1502;&#1510;&#1488;&#1497; &#1513;&#1496;&#1495;',color:'#c62828'},
-    {n:838,label:'&#1514;&#1511;&#1504;&#1497; &#1489;&#1504;&#1497;&#1497;&#1492;',color:'#4527a0'},
+    {n:_encItems.filter(function(i){return i._src==='standards';}).length,label:'&#1514;&#1511;&#1504;&#1497; &#1489;&#1504;&#1497;&#1497;&#1492;',color:'#4527a0'},
     {n:_encItems.filter(function(i){return i._src==='takeoff';}).length,label:'&#1496;&#1497;&#1497;&#1511;&#1488;&#1493;&#1508;&#1497;&#1501;',color:'#7a5500'},
     {n:_encItems.filter(function(i){return i._src==='notes'||i._src==='inbox';}).length,label:'&#1504;&#1499;&#1505;&#1497; &#1489;&#1504;&#1497;',color:'#0f766e'},
     {n:_encContacts.length,label:'&#1488;&#1504;&#1513;&#1497; &#1511;&#1513;&#1512;',color:'#4a148c'},
@@ -597,7 +604,13 @@ function encPopulateProjFilter(){
 }
 
 function encOnSearch(v){_encSearchQ=v;encRender();}
-function encSetAsset(v){_encAssetFilter=v;encRender();}
+function encSetAsset(v){
+  var srcMap={'__src_enc':'enc','__src_standards':'standards','__src_takeoff':'takeoff',
+    '__src_notes':'notes','__src_inbox':'inbox','__src_contacts':'contacts','__src_archive':'archive'};
+  if(srcMap[v]){_encActiveSource=srcMap[v];_encAssetFilter='all';}
+  else{_encActiveSource='all';_encAssetFilter=v;}
+  encRender();
+}
 function encSetPrio(v){_encPrioFilter=v;encRender();}
 function encSetDate(v){_encDateFilter=v;encRender();}
 function encSetProj(v){_encProjFilter=v;encRender();}
