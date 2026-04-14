@@ -44,8 +44,6 @@ function encBuildShell() {
           '<option value="__src_standards">&#128207; &#1514;&#1511;&#1504;&#1497; &#1489;&#1504;&#1497;&#1497;&#1492; (838)</option>'+
           '<option value="__src_prices">&#128176; &#1502;&#1495;&#1497;&#1512;&#1493;&#1503; &#1491;&#1511;&#1500;</option>'+
           '<option value="__src_takeoff">&#128208; &#1496;&#1497;&#1497;&#1511;&#1488;&#1493;&#1508;&#1497;&#1501;</option>'+
-          '<option value="__src_notes">&#9997;&#65039; &#1492;&#1506;&#1512;&#1493;&#1514; &#1497;&#1491;</option>'+
-          '<option value="__src_inbox">&#128229; &#1514;&#1497;&#1489;&#1492; &#1504;&#1499;&#1504;&#1505;&#1514;</option>'+
           '<option value="__src_contacts">&#128101; &#1488;&#1504;&#1513;&#1497; &#1511;&#1513;&#1512;</option>'+
           '<option value="__src_archive">&#128230; &#1488;&#1512;&#1499;&#1497;&#1493;&#1503;</option>'+
           '<option value="audio">&#127897;&#65039; &#1492;&#1511;&#1500;&#1496;&#1493;&#1514;</option>'+
@@ -93,16 +91,13 @@ async function encLoadAll(){
     var enc=(r1.data||[]).map(function(e){return Object.assign({_src:'enc',_type:encMapType(e.category,e.media_type)},e);});
     var r2=await sbQ('site_takeoffs','is_deleted=not.is.true&order=created_at.desc&limit=100&select=id,project_id,takeoff_date,total_area,notes,session_label,takeoff_type,created_at,file_url');
     var tko=(r2.data||[]).map(function(t){return Object.assign({_src:'takeoff',_type:'takeoff',title:(t.session_label||'&#1496;&#1497;&#1497;&#1511;&#1488;&#1493;&#1507;')+(t.total_area?' &#8212; '+t.total_area+' &#1502;"&#1512;':'')},t);});
-    var r3=await sbQ('beni_notes','order=created_at.desc&limit=150&select=id,note_text,note_type,photo_url,color,created_at,project_id');
-    var notes=(r3.data||[]).map(function(n){var tp=n.note_type==='audio'?'audio':n.note_type==='image'?'image':n.note_type==='video'?'video':'note';return Object.assign({_src:'notes',_type:tp,title:(n.note_text||'').substring(0,60)},n);});
-    // _encItems assembled below with inbox
     var r4b=await sbQ('asset_inbox','order=created_at.desc&limit=100&select=id,file_name,cloudinary_url,file_type,project_id,created_at,ai_report');
     var inbox=(r4b.data||[]).map(function(n){var mt=(n.file_type||'').toLowerCase();var tp=mt.includes('pdf')?'pdf':mt.includes('audio')||mt.includes('mp3')||mt.includes('m4a')?'audio':'image';return Object.assign({_src:'inbox',_type:tp,title:n.file_name||'&#1511;&#1493;&#1489;&#1509;'},n);});
     var r4c=await sbQ('building_standards','order=title_he.asc&limit=838&select=id,standard_id,title_he,title_en,industry_category,standard_category,scope,key_requirements,applies_to,authority,mandatory_in_israel,notes,created_at');
     var stds=(r4c.data||[]).map(function(s){return Object.assign({_src:'standards',_type:'standard',title:s.title_he||s.standard_id||'&#1514;&#1511;&#1503;',category:s.industry_category||s.standard_category||'&#1514;&#1511;&#1503;',description:s.scope||s.applies_to||''},s);});
     var r4d=await sbQ('price_items','is_note=not.is.true&order=item_code.asc&limit=500&select=id,item_code,chapter_name,sub_chapter_name,description,unit,price,source,price_date,created_at');
     var prices=(r4d.data||[]).map(function(p){return Object.assign({_src:'prices',_type:'price',title:p.description||p.item_code||'&#1508;&#1512;&#1497;&#1496;',category:p.sub_chapter_name||p.chapter_name||'&#1502;&#1495;&#1497;&#1512;'},p);});
-    _encItems=[].concat(enc,tko,notes,inbox,stds,prices);
+    _encItems=[].concat(enc,tko,inbox,stds,prices);
     var r5=await sbQ('beni_contacts','order=full_name.asc&limit=200&select=id,full_name,profession,phone,email,rating_skills,rating_reliability,rating_price,notes,project_id');
     _encContacts=r5.data||[];
     var r6=await sbQ('projects','is_archived=eq.true&order=archived_at.desc&select=id,project_name,client_name,total_budget,archived_at,city');
@@ -645,6 +640,24 @@ function encOnSearch(v){_encSearchQ=v;encRender();}
 function encSetAsset(v){
   var srcMap={'__src_enc':'enc','__src_standards':'standards','__src_prices':'prices','__src_takeoff':'takeoff',
     '__src_notes':'notes','__src_inbox':'inbox','__src_contacts':'contacts','__src_archive':'archive'};
+  // Big sources — block card load, redirect to RAG search
+  if(v==='__src_standards'||v==='__src_prices'){
+    var label=v==='__src_standards'?'838 &#1514;&#1511;&#1504;&#1497; &#1489;&#1504;&#1497;&#1497;&#1492;':'6,325 &#1508;&#1512;&#1497;&#1496;&#1497; &#1502;&#1495;&#1497;&#1512;&#1493;&#1503;';
+    // Reset dropdown back to all
+    var sel=document.getElementById('enc-asset-filter');if(sel)sel.value='all';
+    // Show banner pointing to RAG
+    var grid=document.getElementById('enc-grid');
+    if(grid){
+      grid.innerHTML='<div style="grid-column:1/-1;background:#fff;border:1.5px solid #c9a84c;border-radius:14px;padding:22px 20px;text-align:center;direction:rtl;font-family:Heebo,sans-serif;">'+
+        '<div style="font-size:32px;margin-bottom:10px;">&#128269;</div>'+
+        '<div style="font-size:15px;font-weight:900;color:#1a3d5c;margin-bottom:8px;">'+label+'</div>'+
+        '<div style="font-size:13px;color:#7a5500;margin-bottom:16px;line-height:1.7;">&#9888;&#65039; &#1502;&#1511;&#1493;&#1512; &#1494;&#1492; &#1490;&#1491;&#1493;&#1500; &#8212; &#1492;&#1510;&#1490;&#1514; &#1499;&#1500; &#1492;&#1499;&#1512;&#1496;&#1497;&#1505;&#1497;&#1501; &#1514;&#1506;&#1502;&#1497;&#1505; &#1488;&#1514; &#1492;&#1502;&#1506;&#1512;&#1499;&#1514;.<br><b>&#1492;&#1513;&#1514;&#1502;&#1513; &#1489;&#1513;&#1488;&#1497;&#1500;&#1514;&#1493;&#1514; &#1502;&#1511;&#1510;&#1493;&#1506;&#1497;&#1493;&#1514; &#1500;&#1502;&#1496;&#1492; &#1500;&#1495;&#1508;&#1513; &#1489;&#1502;&#1493;&#1511;&#1491;</b></div>'+
+        '<button onclick="document.getElementById(\'enc-rag\').scrollIntoView({behavior:\'smooth\'});this.closest(\'.enc-big-banner\')||document.getElementById(\'enc-grid\').innerHTML=\'\';" style="background:linear-gradient(135deg,#38bdf8,#6366f1);border:none;color:#fff;border-radius:10px;padding:11px 28px;font-size:13px;font-weight:800;cursor:pointer;font-family:Heebo,sans-serif;">&#128640; &#1506;&#1489;&#1493;&#1512; &#1500;&#1513;&#1488;&#1497;&#1500;&#1514;&#1493;&#1514; &#1502;&#1511;&#1510;&#1493;&#1506;&#1497;&#1493;&#1514; &#8595;</button>'+
+      '</div>';
+      setTimeout(function(){document.getElementById('enc-rag')&&document.getElementById('enc-rag').scrollIntoView({behavior:'smooth'});},400);
+    }
+    return;
+  }
   if(srcMap[v]){_encActiveSource=srcMap[v];_encAssetFilter='all';}
   else{_encActiveSource='all';_encAssetFilter=v;}
   encRender();
