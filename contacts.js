@@ -317,13 +317,13 @@ async function ctSave() {
 
   try {
     var method = _ctEditId ? 'PATCH' : 'POST';
-    var url = window.SB_URL+'/rest/v1/beni_contacts'+(_ctEditId ? '?id=eq.'+_ctEditId : '');
+    var url = SB_URL+'/rest/v1/beni_contacts'+(_ctEditId ? '?id=eq.'+_ctEditId : '');
     if (!_ctEditId) payload.created_at = new Date().toISOString();
 
     var res = await fetch(url, {
       method: method,
       headers: {
-        apikey: window.SB_KEY, Authorization: 'Bearer '+window.SB_KEY,
+        apikey: SB_KEY, Authorization: 'Bearer '+SB_KEY,
         'Content-Type': 'application/json',
         Prefer: _ctEditId ? 'return=minimal' : 'return=representation'
       },
@@ -338,9 +338,9 @@ async function ctSave() {
       var newId = savedData[0] && savedData[0].id;
       if (newId) {
         var proj = (window.allProjects||[]).find(function(p){return p.id===projId;});
-        await fetch(window.SB_URL+'/rest/v1/beni_contact_projects', {
+        await fetch(SB_URL+'/rest/v1/beni_contact_projects', {
           method: 'POST',
-          headers: {apikey:window.SB_KEY, Authorization:'Bearer '+window.SB_KEY, 'Content-Type':'application/json', Prefer:'return=minimal'},
+          headers: {apikey:SB_KEY, Authorization:'Bearer '+SB_KEY, 'Content-Type':'application/json', Prefer:'return=minimal'},
           body: JSON.stringify({contact_id:newId, project_id:projId, project_name:proj?proj.project_name:'', role_in_project:''})
         });
       }
@@ -360,9 +360,9 @@ async function ctSave() {
 async function ctDelete(id) {
   if (!confirm('מחק איש קשר זה?')) return;
   try {
-    await fetch(window.SB_URL+'/rest/v1/beni_contacts?id=eq.'+id, {
+    await fetch(SB_URL+'/rest/v1/beni_contacts?id=eq.'+id, {
       method: 'PATCH',
-      headers: {apikey:window.SB_KEY, Authorization:'Bearer '+window.SB_KEY, 'Content-Type':'application/json', Prefer:'return=minimal'},
+      headers: {apikey:SB_KEY, Authorization:'Bearer '+SB_KEY, 'Content-Type':'application/json', Prefer:'return=minimal'},
       body: JSON.stringify({is_active: false})
     });
     showToast('🗑️ נמחק','success');
@@ -414,9 +414,9 @@ async function ctSaveProjectLink(contactId) {
   if (!projId) { showToast('בחר פרויקט','error'); return; }
   var proj = (window.allProjects||[]).find(function(p){return p.id===projId;});
   try {
-    await fetch(window.SB_URL+'/rest/v1/beni_contact_projects', {
+    await fetch(SB_URL+'/rest/v1/beni_contact_projects', {
       method: 'POST',
-      headers: {apikey:window.SB_KEY, Authorization:'Bearer '+window.SB_KEY, 'Content-Type':'application/json', Prefer:'return=minimal'},
+      headers: {apikey:SB_KEY, Authorization:'Bearer '+SB_KEY, 'Content-Type':'application/json', Prefer:'return=minimal'},
       body: JSON.stringify({contact_id:contactId, project_id:projId, project_name:proj?proj.project_name:'', role_in_project:role})
     });
     document.querySelector('div[style*="position:fixed"]') && document.querySelector('div[style*="position:fixed"]').remove();
