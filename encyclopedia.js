@@ -178,6 +178,16 @@ function encRenderStats(){
 
 function encRender(){
   var grid=document.getElementById('enc-grid');if(!grid)return;
+  // idle state — no search, no filter, no specific source selected → show prompt only
+  var isIdle=(_encSearchQ===''&&_encActiveSource==='all'&&_encAssetFilter==='all'&&_encPrioFilter==='all'&&!_encProjFilter);
+  if(isIdle){
+    grid.innerHTML='<div style="grid-column:1/-1;text-align:center;padding:60px 20px;color:#888;direction:rtl;font-family:Heebo,sans-serif;">'+
+      '<div style="font-size:40px;margin-bottom:14px;">&#128269;</div>'+
+      '<div style="font-size:15px;font-weight:800;color:#1a3d5c;margin-bottom:8px;">&#1495;&#1508;&#1513; &#1488;&#1493; &#1489;&#1495;&#1512; &#1502;&#1511;&#1493;&#1512;</div>'+
+      '<div style="font-size:12px;color:#9a6f00;">&#1492;&#1513;&#1514;&#1502;&#1513; &#1489;&#1513;&#1488;&#1497;&#1500;&#1514;&#1493;&#1514; &#1502;&#1511;&#1510;&#1493;&#1506;&#1497;&#1493;&#1514; &#1500;&#1502;&#1496;&#1492; &#183; &#1489;&#1495;&#1512; &#1502;&#1511;&#1493;&#1512; &#183; &#1505;&#1504;&#1503; &#1500;&#1508;&#1497; &#1508;&#1512;&#1493;&#1497;&#1511;&#1496; &#183; &#1505&#1504;&#1503; &#1500;&#1508;&#1497; &#1514;&#1511;&#1493;&#1508;&#1492;</div>'+
+    '</div>';
+    return;
+  }
   grid.innerHTML='<div style="grid-column:1/-1;text-align:center;padding:20px;color:#888;font-size:12px;">&#9203; &#1496;&#1506;&#1503;...</div>';
   var items=[];
   if(_encActiveSource==='contacts'){items=_encContacts.map(function(c){return Object.assign({_src:'contacts'},c);});}
