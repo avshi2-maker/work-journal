@@ -68,7 +68,7 @@ function encBuildShell() {
           '<option value="3months">3 &#1495;&#1493;&#1491;&#1513;&#1497;&#1501;</option>'+
         '</select>'+
       '</div>'+
-      '<div id="enc-cat-chips" style="display:flex;gap:5px;flex-wrap:wrap;padding-bottom:10px;"></div>'+
+      '<div style="height:6px;"></div>'+
     '</div>'+
     '<div id="enc-stats" style="padding:0 18px 12px;display:grid;grid-template-columns:repeat(auto-fit,minmax(95px,1fr));gap:7px;"></div>'+
     '<div id="enc-grid" style="padding:0 18px;display:grid;grid-template-columns:repeat(auto-fill,minmax(min(290px,100%),1fr));gap:11px;margin-bottom:18px;"><div style="grid-column:1/-1;text-align:center;padding:40px;color:#888;font-size:13px;">&#9203; &#1496;&#1506;&#1503;...</div></div>'+
@@ -109,9 +109,14 @@ var ENC_SOURCES=[
   {id:'standard',label:'&#128207; &#1514;&#1511;&#1504;&#1497;&#1501; 838',bg:'#ede7f6',color:'#4527a0'},
   {id:'takeoff',label:'&#128208; &#1496;&#1497;&#1497;&#1511;&#1488;&#1493;&#1508;&#1497;&#1501;',bg:'#fff8e0',color:'#7a5500'},
   {id:'notes',label:'&#128193; &#1504;&#1499;&#1505;&#1497; &#1489;&#1504;&#1497;',bg:'#f0fdfb',color:'#0f766e'},
-  {id:'inbox',label:'&#128229; &#1514;&#1497;&#1489;&#1492;',bg:'#e3f2fd',color:'#1565c0'},
+  {id:'inbox',label:'&#128229; &#1514;&#1497;&#1489;&#1492; &#1504;&#1499;&#1504;&#1505;&#1497;&#1501;',bg:'#e3f2fd',color:'#1565c0'},
   {id:'contacts',label:'&#128101; &#1488;&#1504;&#1513;&#1497; &#1511;&#1513;&#1512;',bg:'#f3e5f5',color:'#4a148c'},
   {id:'archive',label:'&#128230; &#1488;&#1512;&#1499;&#1497;&#1493;&#1503;',bg:'#e8f5e9',color:'#1b5e20'},
+  {id:'safety_scan',label:'&#128737;&#65039; &#1489;&#1496;&#1497;&#1495;&#1493;&#1514;',bg:'#fff5f5',color:'#c62828'},
+  {id:'defects',label:'&#128269; &#1500;&#1497;&#1511;&#1493;&#1497;&#1497;&#1501;',bg:'#e8f0fd',color:'#1a3d5c'},
+  {id:'std_rel',label:'&#128214; &#1514;&#1511;&#1504;&#1497;&#1501; &#1512;&#1500;&#1493;&#1493;&#1504;&#1514;&#1497;&#1497;&#1501;',bg:'#ede7f6',color:'#4527a0'},
+  {id:'cost_est',label:'&#128176; &#1492;&#1506;&#1512;&#1499;&#1514; &#1506;&#1500;&#1493;&#1497;&#1493;&#1514;',bg:'#e8f5e9',color:'#1b5e20'},
+  {id:'engineering',label:'&#127959;&#65039; &#1497;&#1497;&#1506;&#1493;&#1509; &#1492;&#1504;&#1491;&#1505;&#1497;',bg:'#fff8e0',color:'#7a5500'},
 ];
 
 function encBuildSourceTabs(){
@@ -137,12 +142,7 @@ var ENC_CATS=[
   {id:'ok',label:'&#9989; &#1514;&#1511;&#1497;&#1503;',bg:'#e8f5e9',color:'#1b5e20',border:'#a5d6a7'},
 ];
 
-function encBuildCatChips(){
-  var el=document.getElementById('enc-cat-chips');if(!el)return;
-  el.innerHTML=ENC_CATS.map(function(c){
-    return '<span onclick="encToggleCat(\''+c.id+'\')" id="enc-cat-'+c.id+'" style="padding:3px 9px;border-radius:10px;font-size:11px;font-weight:700;cursor:pointer;border:0.5px solid '+c.border+';background:'+c.bg+';color:'+c.color+';font-family:Heebo,sans-serif;">'+c.label+'</span>';
-  }).join('');
-}
+function encBuildCatChips(){/* removed - use filter dropdowns instead */}
 
 function encToggleCat(id){
   _encActiveCats[id]=!_encActiveCats[id];
@@ -174,7 +174,23 @@ function encRender(){
   else if(_encActiveSource==='archive'){items=_encArchive.map(function(a){return Object.assign({_src:'archiveproj'},a);});}
   else{
     items=_encItems.slice();
-    if(_encActiveSource!=='all')items=items.filter(function(i){return i._src===_encActiveSource||i._type===_encActiveSource;});
+    if(_encActiveSource!=='all'){
+      var analysisSrcs=['safety_scan','defects','std_rel','cost_est','engineering'];
+      if(analysisSrcs.indexOf(_encActiveSource)>=0){
+        // Filter enc items by AI report category
+        items=items.filter(function(i){
+          var cat=(i.category||i.ai_report||'').toLowerCase();
+          if(_encActiveSource==='safety_scan')return cat.includes('&#1489;&#1496;&#1497;&#1495;&#1493;&#1514;')||cat.includes('safety');
+          if(_encActiveSource==='defects')return cat.includes('&#1500;&#1497;&#1511;&#1493;&#1497;')||cat.includes('defect');
+          if(_encActiveSource==='std_rel')return cat.includes('&#1514;&#1511;&#1503;')||cat.includes('standard');
+          if(_encActiveSource==='cost_est')return cat.includes('&#1506;&#1500;&#1493;&#1497;&#1493;&#1514;')||cat.includes('cost')||cat.includes('&#1502;&#1495;&#1497;&#1512;');
+          if(_encActiveSource==='engineering')return cat.includes('&#1492;&#1504;&#1491;&#1505;&#1497;')||cat.includes('engineer');
+          return true;
+        });
+      } else {
+        items=items.filter(function(i){return i._src===_encActiveSource||i._type===_encActiveSource;});
+      }
+    }
     if(_encAssetFilter!=='all')items=items.filter(function(i){return i._type===_encAssetFilter;});
     if(_encPrioFilter!=='all')items=items.filter(function(i){
       var s=(i.severity||i.color||'').toLowerCase();
@@ -373,6 +389,7 @@ function encBuildRag(){
       encRagToggle('contacts','&#1488;&#1504;&#1513;&#1497; &#1511;&#1513;&#1512;','#c084fc')+
       encRagToggle('archive','&#1488;&#1512;&#1499;&#1497;&#1493;&#1503;','#86efac')+
     '</div>'+
+    '<div id="enc-token-meter" style="display:none;background:rgba(201,168,76,0.1);border:0.5px solid rgba(201,168,76,0.3);border-radius:8px;padding:7px 12px;margin-top:10px;font-size:11px;color:#c9a84c;font-family:Heebo,sans-serif;align-items:center;gap:8px;"></div>'+
     '<div id="enc-rag-results" style="margin-top:12px;"></div>';
 }
 
@@ -440,11 +457,36 @@ function encVoiceSearch(){
   setTimeout(function(){try{rec.stop();}catch(e){}},8000);
 }
 
+var _encRagStartTime=0;
+var _encRagTokens={in:0,out:0};
+
+function encShowTokenMeter(active){
+  var el=document.getElementById('enc-token-meter');
+  if(!el)return;
+  if(active){
+    _encRagStartTime=Date.now();
+    el.style.display='flex';
+    el.innerHTML='&#9203; &#1502;&#1506;&#1489;&#1491;... <span id="enc-token-elapsed">0&#1513;&#39;</span>';
+    var t=setInterval(function(){
+      if(!document.getElementById('enc-token-elapsed')){clearInterval(t);return;}
+      var s=((Date.now()-_encRagStartTime)/1000).toFixed(0);
+      document.getElementById('enc-token-elapsed').textContent=s+'&#1513;&#39;';
+    },500);
+    el._timer=t;
+  } else {
+    if(el._timer)clearInterval(el._timer);
+    var sec=((Date.now()-_encRagStartTime)/1000).toFixed(1);
+    var cost=((_encRagTokens.in*0.000003)+(_encRagTokens.out*0.000015)).toFixed(4);
+    el.innerHTML='&#9989; '+sec+'&#1513;&#39; | &#128172; '+(_encRagTokens.in||'?')+' &#1499;&#1504;&#1497;&#1505;&#1492; | '+(_encRagTokens.out||'?')+' &#1497;&#1510;&#1497;&#1488;&#1492; | $'+cost;
+  }
+}
+
 async function encRagRunAll(){
   var q1=(document.getElementById('enc-q-1')||{}).value||'';
   var q2=(document.getElementById('enc-q-2')||{}).value||'';
   var q3=(document.getElementById('enc-q-3')||{}).value||'';
-  if(!q1&&!q2&&!q3){showToast('&#1492;&#1494;&#1503; &#1500;&#1508;&#1495;&#1493;&#1514; &#1513;&#1488;&#1500;&#1492; &#1488;&#1495;&#1514;','error');return;}
+  encShowTokenMeter(true);
+  if(!q1&&!q2&&!q3){encShowTokenMeter(false);showToast('&#1492;&#1494;&#1503; &#1500;&#1508;&#1495;&#1493;&#1514; &#1513;&#1488;&#1500;&#1492; &#1488;&#1495;&#1514;','error');return;}
   // Route to query tab — load rag module first then run
   if(typeof switchTab==='function'){
     switchTab('query');
@@ -498,6 +540,19 @@ async function encRestoreProject(id){
   catch(e){showToast('&#1513;&#1490;&#1497;&#1488;&#1492;: '+e.message,'error');}
 }
 function encOpenArchivedProject(id){switchTab&&switchTab('crm');showToast('&#1508;&#1493;&#1514;&#1495; &#1508;&#1512;&#1493;&#1497;&#1511;&#1496;...','success');}
+
+function encRefresh(){
+  _encLoaded=false;_encItems=[];_encContacts=[];_encArchive=[];
+  _encSearchQ='';_encAssetFilter='all';_encPrioFilter='all';_encProjFilter='';_encDateFilter='all';_encActiveSource='all';_encActiveCats={};
+  var s=document.getElementById('enc-search');if(s)s.value='';
+  var af=document.getElementById('enc-asset-filter');if(af)af.value='all';
+  var pf=document.getElementById('enc-prio-filter');if(pf)pf.value='all';
+  var df=document.getElementById('enc-date-filter');if(df)df.value='all';
+  var ps=document.getElementById('enc-proj-sel');if(ps)ps.value='';
+  showToast('&#1502;&#1512;&#1506;&#1504;&#1503;...','success');
+  encBuildShell();
+  encLoadAll();
+}
 
 function encOpenAdd(){
   var ov=document.createElement('div');
