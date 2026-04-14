@@ -44,7 +44,7 @@ async function sibInit() {
 // ── AI MODULE SELECTOR HELPERS ────────────────────────────────────────
 var _sibModuleDefaults = {
   'mod-safety':false,'mod-engineering':false,'mod-standards':false,
-  'mod-thirdparty':false,'mod-financial':false,'mod-protocol':false,'mod-hazmat':false,'mod-packaging':false,
+  'mod-thirdparty':false,'mod-financial':false,'mod-protocol':false,'mod-hazmat':false,'mod-packaging':false,'mod-laydown':false,
   'mod-ocr':false,'mod-equipment':false,'mod-neighbor':false,
   'mod-evidence':false,'mod-general':false
 };
@@ -74,6 +74,7 @@ function sibToggleModule(id, labelEl) {
     'mod-protocol':  {color:'#7a5500',bg:'#fffde7',border:'#f59e0b'},
     'mod-hazmat':   {color:'#b71c1c',bg:'#fce4e4',border:'#ef9a9a'},
     'mod-packaging':{color:'#1565c0',bg:'#e3f2fd',border:'#90caf9'},
+    'mod-laydown':  {color:'#4a148c',bg:'#f3e5f5',border:'#ce93d8'},
     'mod-ocr':       {color:'#0f766e',bg:'#f0fdfb',border:'#5eead4'},
     'mod-equipment': {color:'#92400e',bg:'#fef3c7',border:'#fcd34d'},
     'mod-neighbor':  {color:'#1e40af',bg:'#eff6ff',border:'#93c5fd'},
@@ -141,6 +142,7 @@ function sibHTML() {
       sibModuleChip('mod-protocol',   '📝 פרוטוקול שיחה', '#7a5500', '#fffde7', '#f59e0b', false) +
       sibModuleChip('mod-hazmat',    '☣️ חומ"ס',          '#b71c1c', '#fce4e4', '#ef9a9a', false) +
       sibModuleChip('mod-packaging', '♻️ אריזות',         '#1565c0', '#e3f2fd', '#90caf9', false) +
+      sibModuleChip('mod-laydown',  '🏗️ התארגנות',      '#4a148c', '#f3e5f5', '#ce93d8', false) +
       sibModuleChip('mod-ocr',        '📐 מדידות OCR',    '#0f766e', '#f0fdfb', '#5eead4', false) +
       sibModuleChip('mod-equipment',  '🔧 השאלת ציוד',    '#92400e', '#fef3c7', '#fcd34d', false) +
       sibModuleChip('mod-neighbor',   '✉️ מכתב שכנים',   '#1e40af', '#eff6ff', '#93c5fd', false) +
@@ -845,6 +847,7 @@ function sibShowPhase2Panel(id) {
     {id:'general',     mod:'mod-general',     label:'📊 כללי',            color:'#555',    bg:'#f5f5f5', border:'#ccc'},
     {id:'hazmat',      mod:'mod-hazmat',      label:'☣️ חומ"ס',           color:'#b71c1c', bg:'#fce4e4', border:'#ef9a9a'},
     {id:'packaging',   mod:'mod-packaging',   label:'♻️ אריזות',          color:'#1565c0', bg:'#e3f2fd', border:'#90caf9'},
+    {id:'laydown',     mod:'mod-laydown',     label:'🏗️ התארגנות',        color:'#4a148c', bg:'#f3e5f5', border:'#ce93d8'},
   ];
   // Show ONLY ticked modules — no forced defaults
   var directions = allDirections.filter(function(d){
@@ -920,7 +923,7 @@ async function sibPhase2Run(id, direction) {
   var p1el = document.getElementById('sib-p1-edit-'+id);
   var p1text = p1el?p1el.value:(_sibPhase1[id]||'');
   var isCloudinaryVid = (item.file_type==='video') && item.cloudinary_url && item.cloudinary_url.includes('cloudinary.com');
-  var isVideoVisual = isCloudinaryVid && (direction==='safety'||direction==='engineering'||direction==='general'||direction==='thirdparty'||direction==='hazmat'||direction==='packaging');
+  var isVideoVisual = isCloudinaryVid && (direction==='safety'||direction==='engineering'||direction==='general'||direction==='thirdparty'||direction==='hazmat'||direction==='packaging'||direction==='laydown');
   // For Cloudinary videos — frame analysis works without transcript
   // For direct uploads — must have transcript from Phase 1
   if(!p1text && !isVideoVisual){
@@ -945,7 +948,7 @@ async function sibPhase2Run(id, direction) {
 
   // For video + visual directions (safety/engineering) — use frame image, not transcript
   var isVideo = (item.file_type==='video');
-  var isVisualDirection = (direction==='safety'||direction==='engineering'||direction==='general'||direction==='thirdparty'||direction==='hazmat'||direction==='packaging');
+  var isVisualDirection = (direction==='safety'||direction==='engineering'||direction==='general'||direction==='thirdparty'||direction==='hazmat'||direction==='packaging'||direction==='laydown');
   // Frame analysis ONLY for Cloudinary-hosted videos (Beni mobile via Cloudinary)
   // Direct uploads from PC/Android to Supabase storage — use transcript only
   var isCloudinaryVideo = isVideo && item.cloudinary_url && item.cloudinary_url.includes('cloudinary.com');
@@ -1054,6 +1057,48 @@ async function sibPhase2Run(id, direction) {
       '🟠 HIGH — ליקוי חשוב לתיקון מיידי\n' +
       '🟡 MEDIUM — המלצה לשיפור\n\n' +
       'סיים עם:\n## סיכום ממצאים\n## פעולות מיידיות\n## קישורים: תמיר: https://www.tmir.org.il/business/centers';
+  }
+  else if(direction==='laydown'){
+    reportTitle = '🏗️ דוח תקני אזור התארגנות';
+    systemPrompt = [
+      'אתה מומחה בטיחות ומפקח אתרי בנייה ישראלי.',
+      'אתה בודק עמידה ב-8 תקנות אזור ההתארגנות (Laydown Area) באתרי בנייה.',
+      'בדוק כל תקנה, ציין ממצא, רמת חומרה וצעדי תיקון נדרשים.',
+      'החזר דוח מובנה בעברית.'
+    ].join(' ');
+    userPrompt = p1text + '\n\n---\n' +
+      'בדוק עמידה ב-8 תקנות אזור ההתארגנות והאחסון באתר בנייה:\n\n' +
+      'L01 — תוכנית התארגנות (CRITICAL)\n' +
+      'חובת תוכנית ארגון בטיחותי חתומה ע"י מנהל עבודה ומבצע בנייה\n' +
+      'תקנות הבטיחות בעבודה סעיף 166\n\n' +
+      'L02 — גידור היקפי (HIGH)\n' +
+      'גידור קשיח בגובה 2 מטר לפחות למניעת כניסת בלתי מורשים\n' +
+      'פקודת הבטיחות בעבודה\n\n' +
+      'L03 — משטחי אחסון (HIGH)\n' +
+      'אחסון חומרים על משטחים יציבים ומפולסים למניעת קריסה\n' +
+      'תקנות הבטיחות (עבודות בנייה)\n\n' +
+      'L04 — תאורת לילה (MEDIUM)\n' +
+      'תאורה מספקת באזורי פריקה, טעינה ואחסון\n' +
+      'הנחיות מפקח עבודה ראשי\n\n' +
+      'L05 — הפרדת חומרים (CRITICAL)\n' +
+      'הפרדה פיזית בין חומרי גלם, פסולת בנייה וחומרים מסוכנים\n' +
+      'חוק חומרים מסוכנים\n\n' +
+      'L06 — שילוט אזהרה (HIGH)\n' +
+      'שלטי "אין כניסה לזרים" ושלטי זיהוי חומרים בעברית ובערבית\n' +
+      'תקנות הבטיחות בעבודה\n\n' +
+      'L07 — גישה לציוד כיבוי (CRITICAL)\n' +
+      'מעברים פנויים ברוחב 4 מטר לפחות לרכב חירום\n' +
+      'הוראות כבאות והצלה\n\n' +
+      'L08 — שמירה ואבטחה (MEDIUM)\n' +
+      'נעילת מחסנים וגידור כלי עבודה יקרים בסוף יום עבודה\n' +
+      'נהלי אתר / דרישות ביטוח\n\n' +
+      'לכל סעיף שנראה בתמונה/מסמך:\n' +
+      '✅ עומד בתקן\n' +
+      '🔴 CRITICAL — ליקוי קריטי, צו הפסקת עבודה אפשרי\n' +
+      '🟠 HIGH — ליקוי חשוב, תיקון תוך 24 שעות\n' +
+      '🟡 MEDIUM — המלצה לשיפור\n' +
+      'לא נראה — "לא נבדק"\n\n' +
+      'סיים עם:\n## סיכום ממצאים\n## פעולות מיידיות נדרשות\n## סיכון משפטי';
   }
   else if(direction==='thirdparty'){
     reportTitle = '⚖️ דוח חשיפה לצד שלישי';
