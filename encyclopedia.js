@@ -114,7 +114,8 @@ function encRenderGrid(items) {
 
 function encCardHTML(item) {
   var date = item.created_at ? new Date(item.created_at).toLocaleDateString('he-IL') : '';
-  var tags = (item.tags || '').split(',').filter(Boolean).map(function(t) {
+  var tagsArr = Array.isArray(item.tags) ? item.tags : (item.tags ? String(item.tags).split(',') : []);
+  var tags = tagsArr.filter(Boolean).map(function(t) {
     return '<span style="background:#f0e8cc;color:#7a5500;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:700;">' + t.trim() + '</span>';
   }).join(' ');
 
@@ -123,7 +124,7 @@ function encCardHTML(item) {
   else if (item.source_type === 'manual') sourceBadge = '<span style="background:#e8eef8;color:#1a3d5c;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:700;">✍️ ידני</span>';
   else if (item.source_type === 'photo') sourceBadge = '<span style="background:#fef0e0;color:#a05000;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:700;">📸 תמונה</span>';
 
-  var preview = (item.content || item.ai_report || item.notes || '').substring(0, 180);
+  var preview = (item.description || item.ai_report || item.notes || '').substring(0, 180);
   if (preview.length === 180) preview += '...';
 
   return '<div style="background:#fff;border:1px solid #e8ddb5;border-radius:12px;padding:16px;box-shadow:0 2px 8px rgba(0,0,0,0.06);cursor:pointer;transition:box-shadow 0.2s;" onmouseover="this.style.boxShadow=\'0 4px 16px rgba(0,0,0,0.12)\'" onmouseout="this.style.boxShadow=\'0 2px 8px rgba(0,0,0,0.06)\'">' +
@@ -146,7 +147,7 @@ function encCardHTML(item) {
 function encViewItem(id) {
   var item = _encData.find(function(x) { return x.id === id; });
   if (!item) return;
-  var content = item.content || item.ai_report || item.notes || '';
+  var content = item.description || item.ai_report || item.notes || '';
   var formatted = content.replace(/\n/g,'<br>').replace(/\*\*([^*]+)\*\*/g,'<strong>$1</strong>');
   encOpenModal(
     '📖 ' + (item.title || 'ערך'),
