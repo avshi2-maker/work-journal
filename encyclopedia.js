@@ -28,7 +28,7 @@ function encBuildShell() {
       '<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">'+
         '<select id="enc-proj-sel" onchange="encSetProj(this.value)" style="'+encInp()+'"><option value="">&#1499;&#1500; &#1492;&#1508;&#1512;&#1493;&#1497;&#1511;&#1496;&#1497;&#1501;</option><option value="__archive__">&#128230; &#1488;&#1512;&#1499;&#1497;&#1493;&#1503; &#1489;&#1500;&#1489;&#1491;</option></select>'+
         '<button onclick="encOpenAdd()" style="background:#1a3d5c;border:none;color:#FFD700;border-radius:8px;padding:8px 14px;font-family:Heebo,sans-serif;font-size:12px;font-weight:800;cursor:pointer;">+ &#1492;&#1493;&#1505;&#1507; &#1497;&#1491;&#1506;</button>'+
-        '<button onclick="encOpenArchive()" style="background:#2e7d32;border:none;color:#fff;border-radius:8px;padding:8px 14px;font-family:Heebo,sans-serif;font-size:12px;font-weight:800;cursor:pointer;">&#128230; &#1488;&#1512;&#1499;&#1497;&#1493;&#1503; &#1508;&#1512;&#1493;&#1497;&#1511;&#1496;&#1497;&#1501;</button>'+
+        
       '</div>'+
     '</div>'+
     '<div id="enc-source-tabs" style="background:#fff;border-bottom:0.5px solid #e8ddb5;padding:8px 18px;display:flex;gap:5px;flex-wrap:wrap;align-items:center;"></div>'+
@@ -126,6 +126,7 @@ function encBuildSourceTabs(){
     return '<button onclick="encSetSource(\''+s.id+'\')" style="padding:6px 12px;border:0.5px solid '+(a?'#1a3d5c':'#e8ddb5')+';border-radius:14px;font-size:11px;font-weight:700;cursor:pointer;font-family:Heebo,sans-serif;background:'+(a?'#1a3d5c':(s.bg||'#fff'))+';color:'+(a?'#fff':(s.color||'#555'))+';">'+s.label+'</button>';
   }).join('')+
   '<div style="margin-right:auto;"></div>'+
+  '<button onclick="encOpenAdd()" style="background:#1a3d5c;border:none;color:#FFD700;border-radius:12px;padding:6px 12px;font-size:11px;font-weight:700;cursor:pointer;font-family:Heebo,sans-serif;">+ &#1492;&#1493;&#1505;&#1507;</button>'+
   '<button onclick="document.getElementById(\'enc-rag\').scrollIntoView({behavior:\'smooth\'})" style="background:#0f0f1a;color:#38bdf8;border:0.5px solid rgba(56,189,248,0.3);border-radius:14px;padding:6px 12px;font-size:11px;font-weight:700;cursor:pointer;font-family:Heebo,sans-serif;">&#128269; &#1513;&#1488;&#1497;&#1500;&#1514;&#1493;&#1514; &#8595;</button>';
 }
 
