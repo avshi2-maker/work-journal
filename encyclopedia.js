@@ -91,13 +91,11 @@ async function encLoadAll(){
     var enc=(r1.data||[]).map(function(e){return Object.assign({_src:'enc',_type:encMapType(e.category,e.media_type)},e);});
     var r2=await sbQ('site_takeoffs','is_deleted=not.is.true&order=created_at.desc&limit=100&select=id,project_id,takeoff_date,total_area,notes,session_label,takeoff_type,created_at,file_url');
     var tko=(r2.data||[]).map(function(t){return Object.assign({_src:'takeoff',_type:'takeoff',title:(t.session_label||'&#1496;&#1497;&#1497;&#1511;&#1488;&#1493;&#1507;')+(t.total_area?' &#8212; '+t.total_area+' &#1502;"&#1512;':'')},t);});
-    var r4b=await sbQ('asset_inbox','order=created_at.desc&limit=100&select=id,file_name,cloudinary_url,file_type,project_id,created_at,ai_report');
-    var inbox=(r4b.data||[]).map(function(n){var mt=(n.file_type||'').toLowerCase();var tp=mt.includes('pdf')?'pdf':mt.includes('audio')||mt.includes('mp3')||mt.includes('m4a')?'audio':'image';return Object.assign({_src:'inbox',_type:tp,title:n.file_name||'&#1511;&#1493;&#1489;&#1509;'},n);});
     var r4c=await sbQ('building_standards','order=title_he.asc&limit=838&select=id,standard_id,title_he,title_en,industry_category,standard_category,scope,key_requirements,applies_to,authority,mandatory_in_israel,notes,created_at');
     var stds=(r4c.data||[]).map(function(s){return Object.assign({_src:'standards',_type:'standard',title:s.title_he||s.standard_id||'&#1514;&#1511;&#1503;',category:s.industry_category||s.standard_category||'&#1514;&#1511;&#1503;',description:s.scope||s.applies_to||''},s);});
     var r4d=await sbQ('price_items','is_note=not.is.true&order=item_code.asc&limit=500&select=id,item_code,chapter_name,sub_chapter_name,description,unit,price,source,price_date,created_at');
     var prices=(r4d.data||[]).map(function(p){return Object.assign({_src:'prices',_type:'price',title:p.description||p.item_code||'&#1508;&#1512;&#1497;&#1496;',category:p.sub_chapter_name||p.chapter_name||'&#1502;&#1495;&#1497;&#1512;'},p);});
-    _encItems=[].concat(enc,tko,inbox,stds,prices);
+    _encItems=[].concat(enc,tko,stds,prices);
     var r5=await sbQ('beni_contacts','order=full_name.asc&limit=200&select=id,full_name,profession,phone,email,rating_skills,rating_reliability,rating_price,notes,project_id');
     _encContacts=r5.data||[];
     var r6=await sbQ('projects','is_archived=eq.true&order=archived_at.desc&select=id,project_name,client_name,total_budget,archived_at,city');
