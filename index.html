@@ -6,7 +6,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#f5e9c4">
-<meta name="version" content="14042026-v5">
+<meta name="version" content="14042026-v6">
 <title id="app-title-tag">יומן פעילות</title>
 <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;600;700;800;900&family=Rubik:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
@@ -8596,7 +8596,7 @@ if (typeof qRunAll === 'undefined') {
     var q3 = (document.getElementById('q-input-3')||{}).value||'';
     if (!q1&&!q2&&!q3) { showToast('הזן לפחות שאלה אחת','error'); return; }
     if (typeof ragQuery !== 'function') { showToast('מנוע RAG טוען... נסה שוב','error'); return; }
-    var results = document.getElementById('query-results');
+    var results = document.getElementById('q-results');
     if (results) results.innerHTML = '<div style="text-align:center;padding:30px;color:#38bdf8;">&#9203; מחפש...</div>';
     var qs = [{q:q1,color:'#38bdf8',border:'rgba(56,189,248,0.3)'},{q:q2,color:'#a78bfa',border:'rgba(167,139,250,0.3)'},{q:q3,color:'#22c55e',border:'rgba(34,197,94,0.3)'}].filter(function(x){return x.q;});
     var done = await Promise.all(qs.map(function(item,i){
