@@ -6,7 +6,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#f5e9c4">
-<meta name="version" content="14042026-v6">
+<meta name="version" content="14042026-v7">
 <title id="app-title-tag">יומן פעילות</title>
 <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;600;700;800;900&family=Rubik:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
@@ -8570,9 +8570,20 @@ async function _fetchStandardsModule() {
 async function _fetchRagModule() {
   if (_ragFetched) return;
   _ragFetched = true;
-  // Safety stubs only — full engine comes from Supabase shared_modules (rag_engine)
-  // rag_03042026.js disabled: it overwrites ragHandlePhoto with broken legacy version
   _ragInjectFallback();
+  // Load rag_03042026.js for query tab (qRunAll, qRunSingle, _Q object)
+  // Preserve ragHandlePhoto from rag_engine before loading
+  var _savedRagHandlePhoto = window.ragHandlePhoto;
+  try {
+    var res = await fetch('rag_03042026.js?v=' + Date.now());
+    if (res.ok) {
+      var code = await res.text();
+      var s = document.createElement('script');
+      s.textContent = code;
+      document.head.appendChild(s);
+      if (_savedRagHandlePhoto) window.ragHandlePhoto = _savedRagHandlePhoto;
+    }
+  } catch(e) { console.warn('[rag] failed to load rag_03042026.js:', e.message); }
 }
 
 // ── QUERY TAB STUBS ──────────────────────────────────────────────────
