@@ -359,7 +359,7 @@ function encBuildRag(){
       '<div style="font-size:16px;font-weight:900;color:#fff;">&#128269; &#1513;&#1488;&#1497;&#1500;&#1514;&#1493;&#1514; &#1502;&#1511;&#1510;&#1493;&#1506;&#1497;&#1493;&#1514;</div>'+
       '<div style="font-size:11px;color:#475569;margin-top:3px;">3 &#1513;&#1488;&#1500;&#1493;&#1514; &#1489;&#1502;&#1511;&#1489;&#1497;&#1500; &#8212; &#1514;&#1511;&#1504;&#1497;&#1501; &#183; &#1502;&#1495;&#1497;&#1512;&#1497;&#1501; &#183; &#1502;&#1502;&#1510;&#1488;&#1497;&#1501; &#183; &#1488;&#1504;&#1513;&#1497; &#1511;&#1513;&#1512; &#183; &#1488;&#1512;&#1499;&#1497;&#1493;&#1503;</div>'+
     '</div>'+
-    '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(240px,100%),1fr));gap:10px;margin-bottom:12px;">'+
+    '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(240px,100%),1fr));gap:10px;margin-bottom:12px;direction:ltr;">'+
       encRagBox(1,'&#1514;&#1511;&#1504;&#1497;&#1501;','#38bdf8','rgba(56,189,248,0.12)','838 &#1514;&#1511;&#1504;&#1497;&#1501;',['&#1489;&#1496;&#1493;&#1503; C25','&#1488;&#1497;&#1496;&#1493;&#1501; &#1490;&#1490;','L05'],'&#1502;&#1492; &#1491;&#1512;&#1497;&#1513;&#1493;&#1514; &#1502;&#1502;"&#1491; &#1500;&#1508;&#1497; IS?')+
       encRagBox(2,'&#1502;&#1495;&#1497;&#1512;&#1497;&#1501;','#a78bfa','rgba(167,139,250,0.12)','6,325 &#1508;&#1512;&#1497;&#1496;&#1497;&#1501;',['&#1512;&#1497;&#1510;&#1493;&#1507;','&#1494;&#1497;&#1493;&#1503;','CFRP'],'&#1499;&#1502;&#1492; &#1506;&#1493;&#1500;&#1492; &#1512;&#1497;&#1510;&#1493;&#1507; &#1508;&#1493;&#1512;&#1510;&#1500;&#1503;?')+
       encRagBox(3,'&#1513;&#1496;&#1495; / &#1511;&#1513;&#1512;&#1497;&#1501;','#22c55e','rgba(34,197,94,0.12)','247 &#1512;&#1513;&#1493;&#1502;&#1493;&#1514;',['&#1495;&#1493;&#1502;"&#1505;','&#128101; &#1511;&#1489;&#1500;&#1504;&#1497;&#1501;','&#128230;'],'&#1502;&#1492; &#1492;&#1502;&#1502;&#1510;&#1488;&#1497;&#1501; &#1489;&#1490;&#1489;&#1506;&#1493;&#1503;?')+
@@ -445,15 +445,22 @@ async function encRagRunAll(){
   var q2=(document.getElementById('enc-q-2')||{}).value||'';
   var q3=(document.getElementById('enc-q-3')||{}).value||'';
   if(!q1&&!q2&&!q3){showToast('&#1492;&#1494;&#1503; &#1500;&#1508;&#1495;&#1493;&#1514; &#1513;&#1488;&#1500;&#1492; &#1488;&#1495;&#1514;','error');return;}
-  // Route to query tab if available
-  if(typeof switchTab==='function'&&typeof qRunAll==='function'){
+  // Route to query tab — load rag module first then run
+  if(typeof switchTab==='function'){
     switchTab('query');
-    setTimeout(function(){
-      var i1=document.getElementById('q-input-1');if(i1&&q1)i1.value=q1;
-      var i2=document.getElementById('q-input-2');if(i2&&q2)i2.value=q2;
-      var i3=document.getElementById('q-input-3');if(i3&&q3)i3.value=q3;
-      qRunAll();
-    },400);
+    var tries=0;
+    var tryRun=function(){
+      tries++;
+      var i1=document.getElementById('q-input-1');
+      var i2=document.getElementById('q-input-2');
+      var i3=document.getElementById('q-input-3');
+      if(i1&&q1)i1.value=q1;
+      if(i2&&q2)i2.value=q2;
+      if(i3&&q3)i3.value=q3;
+      if(typeof qRunAll==='function'){qRunAll();return;}
+      if(tries<20)setTimeout(tryRun,200);
+    };
+    setTimeout(tryRun,300);
     return;
   }
   var results=document.getElementById('enc-rag-results');if(!results)return;
