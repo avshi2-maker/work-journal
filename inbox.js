@@ -44,7 +44,7 @@ async function sibInit() {
 // ── AI MODULE SELECTOR HELPERS ────────────────────────────────────────
 var _sibModuleDefaults = {
   'mod-safety':false,'mod-engineering':false,'mod-standards':false,
-  'mod-thirdparty':false,'mod-financial':false,'mod-protocol':false,'mod-hazmat':false,'mod-packaging':false,'mod-laydown':false,
+  'mod-thirdparty':false,'mod-financial':false,'mod-protocol':false,'mod-hazmat':false,'mod-packaging':false,'mod-laydown':false,'mod-traffic':false,
   'mod-ocr':false,'mod-equipment':false,'mod-neighbor':false,
   'mod-evidence':false,'mod-general':false
 };
@@ -75,6 +75,7 @@ function sibToggleModule(id, labelEl) {
     'mod-hazmat':   {color:'#b71c1c',bg:'#fce4e4',border:'#ef9a9a'},
     'mod-packaging':{color:'#1565c0',bg:'#e3f2fd',border:'#90caf9'},
     'mod-laydown':  {color:'#4a148c',bg:'#f3e5f5',border:'#ce93d8'},
+    'mod-traffic':  {color:'#e65100',bg:'#fff3e0',border:'#ffb74d'},
     'mod-ocr':       {color:'#0f766e',bg:'#f0fdfb',border:'#5eead4'},
     'mod-equipment': {color:'#92400e',bg:'#fef3c7',border:'#fcd34d'},
     'mod-neighbor':  {color:'#1e40af',bg:'#eff6ff',border:'#93c5fd'},
@@ -143,6 +144,7 @@ function sibHTML() {
       sibModuleChip('mod-hazmat',    '☣️ חומ"ס',          '#b71c1c', '#fce4e4', '#ef9a9a', false) +
       sibModuleChip('mod-packaging', '♻️ אריזות',         '#1565c0', '#e3f2fd', '#90caf9', false) +
       sibModuleChip('mod-laydown',  '🏗️ התארגנות',      '#4a148c', '#f3e5f5', '#ce93d8', false) +
+      sibModuleChip('mod-traffic',  '🚛 תנועה וחניה',   '#e65100', '#fff3e0', '#ffb74d', false) +
       sibModuleChip('mod-ocr',        '📐 מדידות OCR',    '#0f766e', '#f0fdfb', '#5eead4', false) +
       sibModuleChip('mod-equipment',  '🔧 השאלת ציוד',    '#92400e', '#fef3c7', '#fcd34d', false) +
       sibModuleChip('mod-neighbor',   '✉️ מכתב שכנים',   '#1e40af', '#eff6ff', '#93c5fd', false) +
@@ -848,6 +850,7 @@ function sibShowPhase2Panel(id) {
     {id:'hazmat',      mod:'mod-hazmat',      label:'☣️ חומ"ס',           color:'#b71c1c', bg:'#fce4e4', border:'#ef9a9a'},
     {id:'packaging',   mod:'mod-packaging',   label:'♻️ אריזות',          color:'#1565c0', bg:'#e3f2fd', border:'#90caf9'},
     {id:'laydown',     mod:'mod-laydown',     label:'🏗️ התארגנות',        color:'#4a148c', bg:'#f3e5f5', border:'#ce93d8'},
+    {id:'traffic',     mod:'mod-traffic',     label:'🚛 תנועה וחניה',      color:'#e65100', bg:'#fff3e0', border:'#ffb74d'},
   ];
   // Show ONLY ticked modules — no forced defaults
   var directions = allDirections.filter(function(d){
@@ -923,7 +926,7 @@ async function sibPhase2Run(id, direction) {
   var p1el = document.getElementById('sib-p1-edit-'+id);
   var p1text = p1el?p1el.value:(_sibPhase1[id]||'');
   var isCloudinaryVid = (item.file_type==='video') && item.cloudinary_url && item.cloudinary_url.includes('cloudinary.com');
-  var isVideoVisual = isCloudinaryVid && (direction==='safety'||direction==='engineering'||direction==='general'||direction==='thirdparty'||direction==='hazmat'||direction==='packaging'||direction==='laydown');
+  var isVideoVisual = isCloudinaryVid && (direction==='safety'||direction==='engineering'||direction==='general'||direction==='thirdparty'||direction==='hazmat'||direction==='packaging'||direction==='laydown'||direction==='traffic');
   // For Cloudinary videos — frame analysis works without transcript
   // For direct uploads — must have transcript from Phase 1
   if(!p1text && !isVideoVisual){
@@ -948,7 +951,7 @@ async function sibPhase2Run(id, direction) {
 
   // For video + visual directions (safety/engineering) — use frame image, not transcript
   var isVideo = (item.file_type==='video');
-  var isVisualDirection = (direction==='safety'||direction==='engineering'||direction==='general'||direction==='thirdparty'||direction==='hazmat'||direction==='packaging'||direction==='laydown');
+  var isVisualDirection = (direction==='safety'||direction==='engineering'||direction==='general'||direction==='thirdparty'||direction==='hazmat'||direction==='packaging'||direction==='laydown'||direction==='traffic');
   // Frame analysis ONLY for Cloudinary-hosted videos (Beni mobile via Cloudinary)
   // Direct uploads from PC/Android to Supabase storage — use transcript only
   var isCloudinaryVideo = isVideo && item.cloudinary_url && item.cloudinary_url.includes('cloudinary.com');
@@ -1099,6 +1102,40 @@ async function sibPhase2Run(id, direction) {
       '🟡 MEDIUM — המלצה לשיפור\n' +
       'לא נראה — "לא נבדק"\n\n' +
       'סיים עם:\n## סיכום ממצאים\n## פעולות מיידיות נדרשות\n## סיכון משפטי';
+  }
+  else if(direction==='traffic'){
+    reportTitle = '🚛 דוח תנועה וחניה באתר';
+    systemPrompt = [
+      'אתה מומחה בטיחות ומפקח תנועה באתרי בנייה ישראלי.',
+      'אתה בודק עמידה ב-8 תקנות תנועה וחניה לפי תקנות הבטיחות בעבודה (עבודות בנייה) 1988.',
+      'בדוק כל רכב/מצב הנראה, ציין ממצא ורמת חומרה.',
+      'החזר דוח מובנה בעברית.'
+    ].join(' ');
+    userPrompt = p1text + '\n\n---\n' +
+      'בדוק עמידה ב-8 תקנות תנועה וחניה באתר בנייה:\n\n' +
+      'V01 — הגבלת מהירות\n' +
+      'מקסימום 15-20 קמ"ש בתוך האתר | עילה להרחקה מהאתר\n\n' +
+      'V02 — הפרדת תנועה (CRITICAL)\n' +
+      'הפרדה מוחלטת הולכי רגל מרכב כבד/צמ"ה | חובה לפי תוכנית ארגון\n\n' +
+      'V03 — חניית רכב פרטי\n' +
+      'איסור חניה בשטח העבודה — רק באזור חניה מוגדר | גרירה ע"י הקבלן\n\n' +
+      'V04 — נסיעה לאחור (CRITICAL)\n' +
+      'חובת אותת + צופר נסיעה לאחור פועל בכל רכב מסחרי/צמ"ה\n\n' +
+      'V05 — פריקה וטעינה\n' +
+      'פריקה בתיאום מנהל עבודה + אזור פריקה מאושר | ללא חסימת חירום\n\n' +
+      'V06 — PPE ליוצאי רכב\n' +
+      'כל נהג היוצא מרכב — קסדה ונעלי בטיחות מיידית | חובת מנהל עבודה\n\n' +
+      'V07 — חניית לילה\n' +
+      'איסור מפתחות ברכב + בלם יד + ציוד נעילה | נהלי אבטחה\n\n' +
+      'V08 — מניעת מפגעי אבק\n' +
+      'נסיעה בדרכי גישה סלולות או מורטבות בלבד | הנחיות איכות סביבה\n\n' +
+      'לכל מצב הנראה בתמונה/מסמך:\n' +
+      '✅ תקין\n' +
+      '🔴 CRITICAL — סכנת חיים מיידית, עצירת עבודה\n' +
+      '🟠 HIGH — ליקוי חשוב, תיקון תוך 24 שעות\n' +
+      '🟡 MEDIUM — המלצה\n' +
+      'לא נראה — "לא נבדק"\n\n' +
+      'סיים עם:\n## סיכום ממצאים\n## פעולות מיידיות\n## המלצות לשיפור';
   }
   else if(direction==='thirdparty'){
     reportTitle = '⚖️ דוח חשיפה לצד שלישי';
