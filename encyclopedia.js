@@ -97,8 +97,8 @@ async function encLoadAll(){
     // _encItems assembled below with inbox
     var r4b=await sbQ('asset_inbox','order=created_at.desc&limit=100&select=id,file_name,cloudinary_url,file_type,project_id,created_at,ai_report');
     var inbox=(r4b.data||[]).map(function(n){var mt=(n.file_type||'').toLowerCase();var tp=mt.includes('pdf')?'pdf':mt.includes('audio')||mt.includes('mp3')||mt.includes('m4a')?'audio':'image';return Object.assign({_src:'inbox',_type:tp,title:n.file_name||'&#1511;&#1493;&#1489;&#1509;'},n);});
-    var r4c=await sbQ('building_standards','order=standard_name.asc&limit=838&select=id,standard_name,standard_number,category,description,created_at');
-    var stds=(r4c.data||[]).map(function(s){return Object.assign({_src:'standards',_type:'standard',title:s.standard_name||s.standard_number||'&#1514;&#1511;&#1503;',category:s.category,description:s.description},s);});
+    var r4c=await sbQ('building_standards','order=title_he.asc&limit=838&select=id,standard_id,title_he,title_en,industry_category,standard_category,scope,key_requirements,applies_to,authority,mandatory_in_israel,notes,created_at');
+    var stds=(r4c.data||[]).map(function(s){return Object.assign({_src:'standards',_type:'standard',title:s.title_he||s.standard_id||'&#1514;&#1511;&#1503;',category:s.industry_category||s.standard_category||'&#1514;&#1511;&#1503;',description:s.scope||s.applies_to||''},s);});
     _encItems=[].concat(enc,tko,notes,inbox,stds);
     var r5=await sbQ('beni_contacts','order=full_name.asc&limit=200&select=id,full_name,profession,phone,email,rating_skills,rating_reliability,rating_price,notes,project_id');
     _encContacts=r5.data||[];
@@ -218,34 +218,39 @@ function encRender(){
 }
 
 function encBuildEncCard(item){
+  var isStd=item._src==='standards';
   var sev=(item.severity||'').toLowerCase();
   var isCrit=sev.includes('critical'),isHigh=sev.includes('high');
-  var bc=isCrit?'#c62828':isHigh?'#e65100':sev.includes('medium')?'#c9a84c':'#22c55e';
-  var bbg=isCrit?'#fce4e4':isHigh?'#fff3e0':sev.includes('medium')?'#fff8e0':'#e8f5e9';
-  var bcolor=isCrit?'#b71c1c':isHigh?'#e65100':sev.includes('medium')?'#7a5500':'#1b5e20';
-  var bl=isCrit?'CRITICAL':isHigh?'HIGH':sev.includes('medium')?'MEDIUM':(item.category||'&#1502;&#1502;&#1510;&#1488;');
+  var bc=isStd?'#4527a0':isCrit?'#c62828':isHigh?'#e65100':sev.includes('medium')?'#c9a84c':'#22c55e';
+  var bbg=isStd?'#ede7f6':isCrit?'#fce4e4':isHigh?'#fff3e0':sev.includes('medium')?'#fff8e0':'#e8f5e9';
+  var bcolor=isStd?'#4527a0':isCrit?'#b71c1c':isHigh?'#e65100':sev.includes('medium')?'#7a5500':'#1b5e20';
+  var bl=isStd?(item.standard_id||'&#1514;&#1511;&#1503;'):isCrit?'CRITICAL':isHigh?'HIGH':sev.includes('medium')?'MEDIUM':(item.category||'&#1502;&#1502;&#1510;&#1488;');
   var proj=encProjName(item.source_project_id||item.project_id);
   var date=encFmtDate(item.created_at);
-  var icon=item.media_type==='image'?'&#128247;':item.media_type==='pdf'?'&#128196;':item.media_type==='audio'?'&#127897;&#65039;':'&#128203;';
+  var icon=isStd?'&#128207;':item.media_type==='image'?'&#128247;':item.media_type==='pdf'?'&#128196;':item.media_type==='audio'?'&#127897;&#65039;':'&#128203;';
+  var desc=item.description||item.scope||item.applies_to||'';
+  var subtitle=isStd?(item.standard_category||item.industry_category||''):(item.category||'');
   return '<div style="background:#fff;border:0.5px solid #e8ddb5;border-radius:12px;padding:13px 15px;display:flex;flex-direction:column;gap:7px;border-right:3px solid '+bc+';">'+
     '<div style="display:flex;justify-content:space-between;align-items:flex-start;">'+
       '<div style="display:flex;gap:7px;align-items:flex-start;flex:1;">'+
         '<span>'+icon+'</span>'+
         '<div style="flex:1;">'+
           '<div style="font-size:12px;font-weight:800;color:#1a3d5c;line-height:1.4;">'+encEsc(encDec(item.title||''))+'</div>'+
-          '<div style="font-size:10px;color:#888;">'+encEsc(encDec(item.category||''))+(date?' &#183; '+date:'')+'</div>'+
+          '<div style="font-size:10px;color:#888;">'+encEsc(encDec(subtitle))+(date?' &#183; '+date:'')+'</div>'+
         '</div>'+
       '</div>'+
-      '<span style="background:'+bbg+';color:'+bcolor+';padding:2px 7px;border-radius:7px;font-size:10px;font-weight:800;white-space:nowrap;margin-right:8px;">'+bl+'</span>'+
+      '<span style="background:'+bbg+';color:'+bcolor+';padding:2px 7px;border-radius:7px;font-size:10px;font-weight:800;white-space:nowrap;margin-right:8px;">'+encEsc(bl)+'</span>'+
     '</div>'+
-    (item.description?'<div style="font-size:11px;color:#555;line-height:1.6;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;">'+encEsc((item.description||'').substring(0,120))+'</div>':'')+
+    (desc?'<div style="font-size:11px;color:#555;line-height:1.6;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;">'+encEsc(desc.substring(0,150))+'</div>':'')+
+    (isStd&&item.applies_to?'<div style="font-size:10px;color:#4527a0;background:#ede7f6;border-radius:6px;padding:3px 7px;">&#128204; '+encEsc(item.applies_to.substring(0,80))+'</div>':'')+
     (proj?'<span style="font-size:10px;background:#e8f0fd;color:#1a3d5c;border:0.5px solid #93c5fd;border-radius:8px;padding:2px 7px;align-self:flex-start;">&#127959;&#65039; '+encEsc(proj)+'</span>':'')+
     '<div style="display:flex;gap:5px;flex-wrap:wrap;border-top:0.5px solid #f0e8d0;padding-top:7px;">'+
-      encAb('&#128065;&#65039;','encView(\''+item.id+'\')')+
-      encAb('&#128424;&#65039; PDF','encPrint(\''+item.id+'\')')+
-      encAb('&#9993;&#65039;','encMail(\''+item.id+'\')')+
-      encAb('&#128172;','encWA(\''+item.id+'\')')+
-      (proj?'<button onclick="encLinkToProject(\''+item.id+'\')" style="margin-right:auto;'+encAbS()+'color:#1a3d5c;background:#e8f0fd;border-color:rgba(26,61,92,0.3);">&#128279; '+encEsc(proj)+'</button>':'')+
+      '<button onclick="encView(\''+item.id+'\')" title="&#1510;&#1508;&#1497;&#1497;&#1492;" style="'+encAbS()+'">&#128065;&#65039; &#1510;&#1508;&#1492;</button>'+
+      '<button onclick="encPrint(\''+item.id+'\')" title="&#1492;&#1491;&#1508;&#1505;" style="'+encAbS()+'">&#128424;&#65039; &#1492;&#1491;&#1508;&#1505;</button>'+
+      '<button onclick="encMail(\''+item.id+'\')" title="&#1513;&#1500;&#1495; &#1489;&#1502;&#1497;&#1497;&#1500;" style="'+encAbS()+'">&#9993;&#65039; &#1502;&#1497;&#1497;&#1500;</button>'+
+      '<button onclick="encWA(\''+item.id+'\')" title="&#1513;&#1500;&#1495; &#1489;&#1493;&#1493;&#1488;&#1496;&#1505;&#1488;&#1508;" style="'+encAbS()+'">&#128172; WA</button>'+
+      (item.media_url?'<button onclick="window.open(\''+encEsc(item.media_url)+'\',\'_blank\')" title="&#1508;&#1514;&#1495; &#1511;&#1493;&#1489;&#1509;" style="'+encAbS()+'background:#e8f0fd;color:#1a3d5c;">&#128196; &#1508;&#1514;&#1495;</button>':'')+
+      (proj?'<button onclick="encLinkToProject(\''+item.id+'\')" style="margin-right:auto;'+encAbS()+'color:#1a3d5c;background:#e8f0fd;border-color:rgba(26,61,92,0.3);" title="&#1513;&#1497;&#1497;&#1498; &#1500;&#1508;&#1512;&#1493;&#1497;&#1511;&#1496;">&#128279; '+encEsc(proj)+'</button>':'')+
     '</div>'+
   '</div>';
 }
@@ -262,10 +267,9 @@ function encBuildTakeoffCard(item){
     '</div>'+
     (proj?'<span style="font-size:10px;background:#fff8e0;color:#7a5500;border:0.5px solid #c9a84c;border-radius:8px;padding:2px 7px;align-self:flex-start;">&#127959;&#65039; '+encEsc(proj)+'</span>':'')+
     '<div style="display:flex;gap:5px;flex-wrap:wrap;border-top:0.5px solid #f0e8d0;padding-top:7px;">'+
-      encAb('&#128065;&#65039;','switchTab&&switchTab(\'takeoff\')')+
-      encAb('&#128196; PDF','tkMail&&generateTakeoffPDF&&generateTakeoffPDF(\''+item.id+'\')')+
-      encAb('&#9993;&#65039;','tkMail&&tkMail(\''+item.id+'\')')+
-      encAb('&#128172;','tkWA&&tkWA(\''+item.id+'\')')+
+      '<button onclick="switchTab&&switchTab(\'takeoff\')" title="&#1508;&#1514;&#1495; &#1496;&#1497;&#1497;&#1511;&#1488;&#1493;&#1508;" style="'+encAbS()+'">&#128065;&#65039; &#1510;&#1508;&#1492;</button>'+
+      '<button onclick="tkMail&&tkMail(\''+item.id+'\')" title="&#1513;&#1500;&#1495; &#1489;&#1502;&#1497;&#1497;&#1500;" style="'+encAbS()+'">&#9993;&#65039; &#1502;&#1497;&#1497;&#1500;</button>'+
+      '<button onclick="tkWA&&tkWA(\''+item.id+'\')" title="&#1513;&#1500;&#1495; &#1489;&#1493;&#1493;&#1488;&#1496;&#1505;&#1488;&#1508;" style="'+encAbS()+'">&#128172; WA</button>'+
     '</div>'+
   '</div>';
 }
@@ -286,9 +290,11 @@ function encBuildNoteCard(item){
     '</div>'+
     (item.note_text?'<div style="font-size:11px;color:#555;line-height:1.6;">'+encEsc(item.note_text.substring(0,100))+'</div>':'')+
     '<div style="display:flex;gap:5px;flex-wrap:wrap;border-top:0.5px solid #f0e8d0;padding-top:7px;">'+
-      (isAudio?encAb('&#9654;&#65039;','encPlayAudio(\''+encEsc(item.photo_url||'')+'\')'):'')+(isImg?encAb('&#128065;&#65039;','openLightbox&&openLightbox(\''+encEsc(item.photo_url||'')+'\',\'\')'):'')+(isImg||isAudio?'':encAb('&#9997;&#65039;',''))+
-      encAb('&#9993;&#65039;','encMailNote(\''+item.id+'\')')+
-      encAb('&#128172;','encWANote(\''+item.id+'\')')+
+      (isAudio?'<button onclick="encPlayAudio(\''+encEsc(item.photo_url||'')+'\')" title="&#1504;&#1490;&#1503;" style="'+encAbS()+'">&#9654;&#65039; &#1504;&#1490;&#1503;</button>':'')+
+      (isImg?'<button onclick="openLightbox&&openLightbox(\''+encEsc(item.photo_url||'')+'\',\'\')" title="&#1510;&#1508;&#1492;" style="'+encAbS()+'">&#128065;&#65039; &#1510;&#1508;&#1492;</button>':'')+
+      (!isImg&&!isAudio?'<button onclick="" title="&#1506;&#1512;&#1493;&#1498;" style="'+encAbS()+'">&#9997;&#65039; &#1506;&#1512;&#1493;&#1498;</button>':'')+
+      '<button onclick="encMailNote(\''+item.id+'\')" title="&#1513;&#1500;&#1495; &#1489;&#1502;&#1497;&#1497;&#1500;" style="'+encAbS()+'">&#9993;&#65039; &#1502;&#1497;&#1497;&#1500;</button>'+
+      '<button onclick="encWANote(\''+item.id+'\')" title="&#1513;&#1500;&#1495; &#1489;&#1493;&#1493;&#1488;&#1496;&#1505;&#1488;&#1508;" style="'+encAbS()+'">&#128172; WA</button>'+
     '</div>'+
   '</div>';
 }
@@ -307,9 +313,9 @@ function encBuildInboxCard(item){
     '</div>'+
     (proj?'<span style="font-size:10px;background:#e8f0fd;color:#1a3d5c;border:0.5px solid #93c5fd;border-radius:8px;padding:2px 7px;align-self:flex-start;">&#127959;&#65039; '+encEsc(proj)+'</span>':'')+
     '<div style="display:flex;gap:5px;flex-wrap:wrap;border-top:0.5px solid #f0e8d0;padding-top:7px;">'+
-      encAb('&#128065;&#65039;','tkViewFile&&tkViewFile(\''+encEsc(item.cloudinary_url||'')+'\',\''+item._type+'\')')+
-      encAb('&#9993;&#65039;','encMailInbox(\''+item.id+'\')')+
-      encAb('&#128172;','encWAInbox(\''+item.id+'\')')+
+      '<button onclick="tkViewFile&&tkViewFile(\''+encEsc(item.cloudinary_url||'')+'\',\''+item._type+'\')" title="&#1508;&#1514;&#1495; &#1511;&#1493;&#1489;&#1509;" style="'+encAbS()+'">&#128065;&#65039; &#1510;&#1508;&#1492;</button>'+
+      '<button onclick="encMailInbox(\''+item.id+'\')" title="&#1513;&#1500;&#1495; &#1489;&#1502;&#1497;&#1497;&#1500;" style="'+encAbS()+'">&#9993;&#65039; &#1502;&#1497;&#1497;&#1500;</button>'+
+      '<button onclick="encWAInbox(\''+item.id+'\')" title="&#1513;&#1500;&#1495; &#1489;&#1493;&#1493;&#1488;&#1496;&#1505;&#1488;&#1508;" style="'+encAbS()+'">&#128172; WA</button>'+
     '</div>'+
   '</div>';
 }
