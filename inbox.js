@@ -44,7 +44,7 @@ async function sibInit() {
 // ── AI MODULE SELECTOR HELPERS ────────────────────────────────────────
 var _sibModuleDefaults = {
   'mod-safety':false,'mod-engineering':false,'mod-standards':false,
-  'mod-thirdparty':false,'mod-financial':false,'mod-protocol':false,
+  'mod-thirdparty':false,'mod-financial':false,'mod-protocol':false,'mod-hazmat':false,
   'mod-ocr':false,'mod-equipment':false,'mod-neighbor':false,
   'mod-evidence':false,'mod-general':false
 };
@@ -72,6 +72,7 @@ function sibToggleModule(id, labelEl) {
     'mod-thirdparty':{color:'#7c2d12',bg:'#fff7ed',border:'#fb923c'},
     'mod-financial': {color:'#1b5e20',bg:'#e8f5e9',border:'#a5d6a7'},
     'mod-protocol':  {color:'#7a5500',bg:'#fffde7',border:'#f59e0b'},
+    'mod-hazmat':   {color:'#b71c1c',bg:'#fce4e4',border:'#ef9a9a'},
     'mod-ocr':       {color:'#0f766e',bg:'#f0fdfb',border:'#5eead4'},
     'mod-equipment': {color:'#92400e',bg:'#fef3c7',border:'#fcd34d'},
     'mod-neighbor':  {color:'#1e40af',bg:'#eff6ff',border:'#93c5fd'},
@@ -137,6 +138,7 @@ function sibHTML() {
       sibModuleChip('mod-thirdparty', '⚖️ צד שלישי',      '#7c2d12', '#fff7ed', '#fb923c', false) +
       sibModuleChip('mod-financial',  '💰 רווח/הפסד',     '#1b5e20', '#e8f5e9', '#a5d6a7', false) +
       sibModuleChip('mod-protocol',   '📝 פרוטוקול שיחה', '#7a5500', '#fffde7', '#f59e0b', false) +
+      sibModuleChip('mod-hazmat',    '☣️ חומ"ס',          '#b71c1c', '#fce4e4', '#ef9a9a', false) +
       sibModuleChip('mod-ocr',        '📐 מדידות OCR',    '#0f766e', '#f0fdfb', '#5eead4', false) +
       sibModuleChip('mod-equipment',  '🔧 השאלת ציוד',    '#92400e', '#fef3c7', '#fcd34d', false) +
       sibModuleChip('mod-neighbor',   '✉️ מכתב שכנים',   '#1e40af', '#eff6ff', '#93c5fd', false) +
@@ -839,6 +841,7 @@ function sibShowPhase2Panel(id) {
     {id:'ocr',         mod:'mod-ocr',         label:'📐 מדידות OCR',      color:'#0f766e', bg:'#f0fdfb', border:'#5eead4'},
     {id:'equipment',   mod:'mod-equipment',   label:'🔧 השאלת ציוד',      color:'#92400e', bg:'#fef3c7', border:'#fcd34d'},
     {id:'general',     mod:'mod-general',     label:'📊 כללי',            color:'#555',    bg:'#f5f5f5', border:'#ccc'},
+    {id:'hazmat',      mod:'mod-hazmat',      label:'☣️ חומ"ס',           color:'#b71c1c', bg:'#fce4e4', border:'#ef9a9a'},
   ];
   // Show ONLY ticked modules — no forced defaults
   var directions = allDirections.filter(function(d){
@@ -914,7 +917,7 @@ async function sibPhase2Run(id, direction) {
   var p1el = document.getElementById('sib-p1-edit-'+id);
   var p1text = p1el?p1el.value:(_sibPhase1[id]||'');
   var isCloudinaryVid = (item.file_type==='video') && item.cloudinary_url && item.cloudinary_url.includes('cloudinary.com');
-  var isVideoVisual = isCloudinaryVid && (direction==='safety'||direction==='engineering'||direction==='general'||direction==='thirdparty');
+  var isVideoVisual = isCloudinaryVid && (direction==='safety'||direction==='engineering'||direction==='general'||direction==='thirdparty'||direction==='hazmat');
   // For Cloudinary videos — frame analysis works without transcript
   // For direct uploads — must have transcript from Phase 1
   if(!p1text && !isVideoVisual){
@@ -939,7 +942,7 @@ async function sibPhase2Run(id, direction) {
 
   // For video + visual directions (safety/engineering) — use frame image, not transcript
   var isVideo = (item.file_type==='video');
-  var isVisualDirection = (direction==='safety'||direction==='engineering'||direction==='general'||direction==='thirdparty');
+  var isVisualDirection = (direction==='safety'||direction==='engineering'||direction==='general'||direction==='thirdparty'||direction==='hazmat');
   // Frame analysis ONLY for Cloudinary-hosted videos (Beni mobile via Cloudinary)
   // Direct uploads from PC/Android to Supabase storage — use transcript only
   var isCloudinaryVideo = isVideo && item.cloudinary_url && item.cloudinary_url.includes('cloudinary.com');
@@ -985,7 +988,43 @@ async function sibPhase2Run(id, direction) {
     systemPrompt = 'אתה מנהל פרויקטי בניה. הפק פרוטוקול שיחה מקצועי ותמציתי מהתמלול.';
     userPrompt = 'הפק פרוטוקול מהתמלול הבא:\n\n'+p1text+'\n\nפורמט:\n\n## פרטי שיחה\nתאריך: [אם מוזכר]\nמשתתפים: [שמות/תפקידים]\n\n## נושאים שנדונו\n[ממוספר]\n\n## החלטות שהתקבלו\n[ממוספר]\n\n## משימות לביצוע\n[משימה | אחראי | דדליין]\n\n## נושאים פתוחים\n\n## פעולות הבאות';
   }
-  else if(direction==='thirdparty'){
+  else if(direction==='hazmat'){
+    reportTitle = '☣️ דוח חומרים מסוכנים';
+    systemPrompt = [
+      'אתה מומחה לחומרים מסוכנים (חומ"ס) ובטיחות סביבתית בישראל.',
+      'אתה בודק עמידה ב-15 תקנות חומ"ס ישראליות.',
+      'לכל ממצא ציין: נושא, דרישה, תקנה רלוונטית, סיכון לאי-עמידה, ועדיפות (CRITICAL/HIGH/MEDIUM).',
+      'החזר דוח מובנה בעברית עם פירוט ברור של מה תקין ומה מצריך תיקון.'
+    ].join(' ');
+    userPrompt = p1text + '\n\n---\n' +
+      'בדוק עמידה בתקנות חומ"ס ישראליות הבאות:\n\n' +
+      '1. אחסון רעלים — מאצרות תקניות 110% מהכלי הגדול (תקנות חומרים מסוכנים)\n' +
+      '2. הפרדת חומרים — מחמצנים/דליקים/בסיסים (המשרד להגנת הסביבה)\n' +
+      '3. שילוט וסימון — מדבקות שם/UN/סיכונים (חוק חומרים מסוכנים)\n' +
+      '4. גיליונות MSDS — עברית, בקרבת מקום האחסון (תקנות בטיחות בעבודה)\n' +
+      '5. ציוד ספיגה — Spill Kit: חול/סופגים/כפפות/שקיות פינוי (המשרד להגנת הסביבה)\n' +
+      '6. פינוי פסולת — מוביל מורשה לרמת חובב בלבד (תקנות חומרים מסוכנים)\n' +
+      '7. מיכלי דלק סולר — דופן כפולה או מאצרה מקורה (תקנות המים)\n' +
+      '8. ניהול מלאי — פנקס רעלים עם כניסות/יציאות/יתרות (תנאי היתר רעלים)\n' +
+      '9. הדרכת עובדים — הדרכה תקופתית עם חתימה (תקנות בטיחות בעבודה)\n' +
+      '10. מניעת נגר מזוהם — איסור שטיפה לניקוז עירוני (חוק המים)\n' +
+      '11. נעילה ואבטחה — מחסן חומ"ס נעול ומוגן (תנאי היתר רעלים)\n' +
+      '12. איוורור — מניעת הצטברות אדים רעילים (תקנות גיהות תעסוקתית)\n' +
+      '13. איטום משטחי — עבודה על בטון אטום, לא אדמה חשופה (הנחיות זיהום קרקע)\n' +
+      '14. כיבוי אש — מטפי אבקה/CO2 לפי הנחיות כב"א (חוק הרשות לכבאות)\n' +
+      '15. דוח אירוע חריג — דיווח מיידי למוקד סביבה על דליפה (חוק חומרים מסוכנים)\n\n' +
+      'לכל נושא שנראה בתמונה/מסמך, פרט:\n' +
+      '✅ עומד בתקן — מה נראה תקין\n' +
+      '🔴 CRITICAL — ליקוי קריטי — סיכון פלילי/כספי מיידי\n' +
+      '🟠 HIGH — ליקוי חשוב — טיפול תוך 48 שעות\n' +
+      '🟡 MEDIUM — המלצה לשיפור\n' +
+      'לא נראה בתמונה — ציין "לא נבדק"\n\n' +
+      'סיים עם:\n' +
+      '## סיכום סיכונים\n' +
+      '## פעולות מיידיות נדרשות\n' +
+      '## המלצות לטווח ארוך';
+  }
+    else if(direction==='thirdparty'){
     reportTitle = '⚖️ דוח חשיפה לצד שלישי';
     systemPrompt = [
       'אתה יועץ משפטי ומומחה ביטוח המתמחה באחריות קבלנים בישראל.',
