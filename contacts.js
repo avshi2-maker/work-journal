@@ -221,22 +221,77 @@ function ctOpenEdit(id) {
 
       '<div style="padding:20px;display:flex;flex-direction:column;gap:12px;">' +
 
+        // ── Row 1: Name + Company ─────────────────────────────────
         '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">' +
-          '<div><div style="font-size:11px;color:#888;margin-bottom:4px;font-weight:700;">שם מלא *</div>'+
-            '<input id="ct-inp-name" type="text" value="'+ctEsc(c.full_name||'')+'" placeholder="שם פרטי ומשפחה" style="'+inp+'"></div>' +
-          '<div><div style="font-size:11px;color:#888;margin-bottom:4px;font-weight:700;">חברה / עסק</div>'+
+          '<div>' +
+            '<div style="font-size:11px;color:#888;margin-bottom:4px;font-weight:700;">שם מלא <span style="color:#c62828;">*</span></div>'+
+            '<input id="ct-inp-name" type="text" value="'+ctEsc(c.full_name||'')+'" placeholder="שם פרטי ומשפחה" ' +
+              'oninput="ctValidateName(this)" ' +
+              'style="'+inp+'" required></div>' +
+          '<div>' +
+            '<div style="font-size:11px;color:#888;margin-bottom:4px;font-weight:700;">חברה / עסק</div>'+
             '<input id="ct-inp-company" type="text" value="'+ctEsc(c.company||'')+'" placeholder="שם החברה" style="'+inp+'"></div>' +
         '</div>' +
 
+        // ── Row 2: עוסק מורשה + ח.פ / ת.ז ─────────────────────────
         '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">' +
-          '<div><div style="font-size:11px;color:#888;margin-bottom:4px;font-weight:700;">טלפון ראשי</div>'+
-            '<input id="ct-inp-phone" type="tel" value="'+ctEsc(c.phone||'')+'" placeholder="05X-XXXXXXX" style="'+inp+';direction:ltr;text-align:right;"></div>' +
-          '<div><div style="font-size:11px;color:#888;margin-bottom:4px;font-weight:700;">טלפון נוסף</div>'+
-            '<input id="ct-inp-phone2" type="tel" value="'+ctEsc(c.phone2||'')+'" placeholder="05X-XXXXXXX" style="'+inp+';direction:ltr;text-align:right;"></div>' +
+          '<div>' +
+            '<div style="font-size:11px;color:#888;margin-bottom:4px;font-weight:700;">עוסק מורשה</div>'+
+            '<div style="position:relative;">' +
+              '<input id="ct-inp-osek" type="text" inputmode="numeric" maxlength="9" value="'+ctEsc(c.osek_mursha||'')+'" placeholder="9 ספרות" ' +
+                'oninput="ctValidateOsek(this)" ' +
+                'style="'+inp+';direction:ltr;padding-left:32px;" autocomplete="off">' +
+              '<span id="ct-osek-icon" style="position:absolute;left:8px;top:50%;transform:translateY(-50%);font-size:14px;display:'+(c.osek_mursha?'block':'none')+';">'+(ctCheckOsek(c.osek_mursha||'')?'✅':'❌')+'</span>' +
+            '</div>' +
+            '<div id="ct-osek-tip" style="font-size:10px;color:#c62828;margin-top:2px;display:none;">9 ספרות בדיוק</div>' +
+          '</div>' +
+          '<div>' +
+            '<div style="font-size:11px;color:#888;margin-bottom:4px;font-weight:700;">ח.פ / תעודת זהות</div>'+
+            '<div style="position:relative;">' +
+              '<input id="ct-inp-idnum" type="text" inputmode="numeric" maxlength="9" value="'+ctEsc(c.id_number||'')+'" placeholder="9 ספרות" ' +
+                'oninput="ctValidateId(this)" ' +
+                'style="'+inp+';direction:ltr;padding-left:32px;" autocomplete="off">' +
+              '<span id="ct-id-icon" style="position:absolute;left:8px;top:50%;transform:translateY(-50%);font-size:14px;display:'+(c.id_number?'block':'none')+';">'+(ctCheckIsraeliId(c.id_number||'')?'✅':'❌')+'</span>' +
+            '</div>' +
+            '<div id="ct-id-tip" style="font-size:10px;color:#c62828;margin-top:2px;display:none;">ת.ז: 9 ספרות + ספרת ביקורת תקנית</div>' +
+          '</div>' +
         '</div>' +
 
-        '<div><div style="font-size:11px;color:#888;margin-bottom:4px;font-weight:700;">אימייל</div>'+
-          '<input id="ct-inp-email" type="email" value="'+ctEsc(c.email||'')+'" placeholder="name@example.com" style="'+inp+';direction:ltr;"></div>' +
+        // ── Row 3: נייד + טלפון קווי ────────────────────────────────
+        '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">' +
+          '<div>' +
+            '<div style="font-size:11px;color:#888;margin-bottom:4px;font-weight:700;">נייד <span style="color:#c62828;">*</span></div>'+
+            '<div style="position:relative;">' +
+              '<input id="ct-inp-phone" type="tel" inputmode="numeric" value="'+ctEsc(c.phone||'')+'" placeholder="05X-XXXXXXX (10 ספרות)" ' +
+                'oninput="ctValidateMobile(this)" ' +
+                'style="'+inp+';direction:ltr;text-align:right;padding-left:32px;">' +
+              '<span id="ct-phone-icon" style="position:absolute;left:8px;top:50%;transform:translateY(-50%);font-size:14px;display:'+(c.phone?'block':'none')+';">'+(ctCheckMobile(c.phone||'')?'✅':'❌')+'</span>' +
+            '</div>' +
+            '<div id="ct-phone-tip" style="font-size:10px;color:#c62828;margin-top:2px;display:none;">05X + 7 ספרות = 10 ספרות</div>' +
+          '</div>' +
+          '<div>' +
+            '<div style="font-size:11px;color:#888;margin-bottom:4px;font-weight:700;">טלפון קווי</div>'+
+            '<div style="position:relative;">' +
+              '<input id="ct-inp-phone2" type="tel" inputmode="numeric" value="'+ctEsc(c.phone2||'')+'" placeholder="0X-XXXXXXX (כל אורך)" ' +
+                'oninput="ctValidateLandline(this)" ' +
+                'style="'+inp+';direction:ltr;text-align:right;padding-left:32px;">' +
+              '<span id="ct-phone2-icon" style="position:absolute;left:8px;top:50%;transform:translateY(-50%);font-size:14px;display:'+(c.phone2?'block':'none')+';">'+(ctCheckPhone(c.phone2||'')?'✅':'❌')+'</span>' +
+            '</div>' +
+            '<div id="ct-phone2-tip" style="font-size:10px;color:#c62828;margin-top:2px;display:none;">ספרות בלבד, מינימום 7</div>' +
+          '</div>' +
+        '</div>' +
+
+        // ── Row 4: Email ─────────────────────────────────────────────
+        '<div>' +
+          '<div style="font-size:11px;color:#888;margin-bottom:4px;font-weight:700;">אימייל <span style="color:#c62828;">*</span></div>'+
+          '<div style="position:relative;">' +
+            '<input id="ct-inp-email" type="email" value="'+ctEsc(c.email||'')+'" placeholder="name@example.com" ' +
+              'oninput="ctValidateEmail(this)" ' +
+              'style="'+inp+';direction:ltr;padding-left:32px;">' +
+            '<span id="ct-email-icon" style="position:absolute;left:8px;top:50%;transform:translateY(-50%);font-size:14px;display:'+(c.email?'block':'none')+';">'+(ctCheckEmail(c.email||'')?'✅':'❌')+'</span>' +
+          '</div>' +
+          '<div id="ct-email-tip" style="font-size:10px;color:#c62828;margin-top:2px;display:none;">פורמט תקני: name@domain.com</div>' +
+        '</div>' +
 
         '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">' +
           '<div><div style="font-size:11px;color:#888;margin-bottom:4px;font-weight:700;">מקצוע מהרשימה</div>'+
@@ -273,6 +328,82 @@ function ctOpenEdit(id) {
   document.body.appendChild(ov);
 }
 
+// ── VALIDATION HELPERS ────────────────────────────────────────────────
+function ctCheckMobile(v) {
+  var d = v.replace(/[-\s]/g,'');
+  return /^05[0-9]{8}$/.test(d);
+}
+function ctCheckPhone(v) {
+  var d = v.replace(/[-\s]/g,'');
+  return /^[0-9]{7,12}$/.test(d);
+}
+function ctCheckEmail(v) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v.trim());
+}
+function ctCheckOsek(v) {
+  var d = v.replace(/[-\s]/g,'');
+  return /^[0-9]{9}$/.test(d);
+}
+function ctCheckIsraeliId(v) {
+  var d = v.replace(/[-\s]/g,'');
+  if (!/^[0-9]{1,9}$/.test(d)) return false;
+  d = d.padStart(9,'0');
+  var sum = 0;
+  for (var i=0;i<9;i++) {
+    var digit = parseInt(d[i]) * (i%2===0 ? 1 : 2);
+    sum += digit > 9 ? digit-9 : digit;
+  }
+  return sum % 10 === 0;
+}
+
+function ctSetFieldState(inputEl, iconId, tipId, isValid, isEmpty) {
+  if (isEmpty) {
+    inputEl.style.borderColor = '#c9a84c';
+    inputEl.style.background  = '#fffbf0';
+    document.getElementById(iconId) && (document.getElementById(iconId).style.display='none');
+    document.getElementById(tipId)  && (document.getElementById(tipId).style.display='none');
+    return;
+  }
+  inputEl.style.borderColor = isValid ? '#22c55e' : '#ef4444';
+  inputEl.style.background  = isValid ? '#f0fdf4' : '#fff5f5';
+  var icon = document.getElementById(iconId);
+  var tip  = document.getElementById(tipId);
+  if (icon) { icon.textContent = isValid ? '✅' : '❌'; icon.style.display='block'; }
+  if (tip)  { tip.style.display = isValid ? 'none' : 'block'; }
+}
+
+function ctValidateName(inp) {
+  var v = inp.value.trim();
+  var ok = v.length >= 2 && v.split(' ').length >= 1;
+  inp.style.borderColor = ok ? '#22c55e' : '#ef4444';
+  inp.style.background  = ok ? '#f0fdf4' : v ? '#fff5f5' : '#fffbf0';
+}
+
+function ctValidateMobile(inp) {
+  var v = inp.value;
+  ctSetFieldState(inp, 'ct-phone-icon', 'ct-phone-tip', ctCheckMobile(v), !v);
+}
+
+function ctValidateLandline(inp) {
+  var v = inp.value;
+  ctSetFieldState(inp, 'ct-phone2-icon', 'ct-phone2-tip', ctCheckPhone(v), !v);
+}
+
+function ctValidateEmail(inp) {
+  var v = inp.value;
+  ctSetFieldState(inp, 'ct-email-icon', 'ct-email-tip', ctCheckEmail(v), !v);
+}
+
+function ctValidateOsek(inp) {
+  var v = inp.value;
+  ctSetFieldState(inp, 'ct-osek-icon', 'ct-osek-tip', ctCheckOsek(v), !v);
+}
+
+function ctValidateId(inp) {
+  var v = inp.value;
+  ctSetFieldState(inp, 'ct-id-icon', 'ct-id-tip', ctCheckIsraeliId(v), !v);
+}
+
 function ctSetStar(field, val) {
   var inp = document.getElementById('ct-inp-'+field);
   if (inp) inp.value = val;
@@ -289,7 +420,10 @@ function ctSetStar(field, val) {
 
 // ── SAVE ───────────────────────────────────────────────────────────────
 async function ctSave() {
-  var name = (document.getElementById('ct-inp-name')||{}).value||'';
+  var name  = (document.getElementById('ct-inp-name')||{}).value||'';
+  var phone = (document.getElementById('ct-inp-phone')||{}).value||'';
+  var email = (document.getElementById('ct-inp-email')||{}).value||'';
+  // Validate mandatory fields
   if (!name.trim()) { showToast('הכנס שם','error'); return; }
 
   var profId   = parseInt((document.getElementById('ct-inp-prof')||{}).value)||null;
@@ -302,6 +436,8 @@ async function ctSave() {
     phone:          (document.getElementById('ct-inp-phone')||{}).value||null,
     phone2:         (document.getElementById('ct-inp-phone2')||{}).value||null,
     email:          (document.getElementById('ct-inp-email')||{}).value||null,
+    osek_mursha:    (document.getElementById('ct-inp-osek')||{}).value||null,
+    id_number:      (document.getElementById('ct-inp-idnum')||{}).value||null,
     profession_id:  profId,
     profession_free:profFree||null,
     category:       prof ? prof.category : null,
@@ -425,6 +561,11 @@ async function ctSaveProjectLink(contactId) {
 }
 
 // ── UTIL ───────────────────────────────────────────────────────────────
+function ctShowError(msg) {
+  var st = document.getElementById('ct-modal-status');
+  if (st) { st.style.display='block'; st.innerHTML='<div style="background:#fff5f5;border:1px solid #fca5a5;border-radius:8px;padding:10px;color:#c62828;font-size:13px;">'+msg+'</div>'; }
+}
+
 function ctEsc(s) {
   return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
