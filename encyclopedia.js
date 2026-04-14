@@ -169,6 +169,7 @@ function encRenderStats(){
 
 function encRender(){
   var grid=document.getElementById('enc-grid');if(!grid)return;
+  grid.innerHTML='<div style="grid-column:1/-1;text-align:center;padding:20px;color:#888;font-size:12px;">&#9203; &#1496;&#1506;&#1503;...</div>';
   var items=[];
   if(_encActiveSource==='contacts'){items=_encContacts.map(function(c){return Object.assign({_src:'contacts'},c);});}
   else if(_encActiveSource==='archive'){items=_encArchive.map(function(a){return Object.assign({_src:'archiveproj'},a);});}
