@@ -36,7 +36,7 @@ async function encLoadData() {
       order: 'created_at.desc',
       filters: [{ col: 'is_deleted', op: 'neq', val: true }]
     });
-    _encData = res || [];
+    _encData = (res && res.data) ? res.data : (Array.isArray(res) ? res : []);
     encBuildCategories();
     encRenderFilters();
     encRenderGrid(_encData);
