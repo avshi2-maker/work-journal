@@ -31,7 +31,7 @@ function encBuildShell() {
     // TOP BAR
     '<div style="background:#fff;border-bottom:0.5px solid #e8ddb5;padding:12px 18px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;position:sticky;top:0;z-index:100;">'+
       '<div>'+
-        '<div style="font-size:9px;letter-spacing:3px;color:#9a6f00;font-weight:700;margin-bottom:2px;">KNOWLEDGE HUB</div>'+
+        '<div style="font-size:11px;letter-spacing:3px;color:#111;font-weight:800;margin-bottom:2px;">KNOWLEDGE HUB</div>'+
         '<div style="font-size:18px;font-weight:900;color:#1a3d5c;">&#128218; &#1488;&#1504;&#1510;&#1497;&#1511;&#1500;&#1493;&#1508;&#1491;&#1497;&#1492; &#1502;&#1512;&#1499;&#1494;&#1497;&#1514;</div>'+
       '</div>'+
       '<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">'+
@@ -43,7 +43,7 @@ function encBuildShell() {
     '<div style="padding:12px 18px 0;">'+
       '<div style="display:flex;gap:7px;flex-wrap:wrap;margin-bottom:8px;">'+
         '<div style="flex:1;min-width:200px;position:relative;display:flex;align-items:center;">'+
-          '<input id="enc-search" type="text" placeholder="&#128269; &#1495;&#1508;&#1513; &#1489;&#1499;&#1500; &#1492;&#1502;&#1511;&#1493;&#1512;&#1493;&#1514;..." oninput="encOnSearch(this.value)" style="width:100%;padding:8px 36px 8px 12px;border:1.5px solid #c9a84c;border-radius:8px;font-family:Heebo,sans-serif;font-size:12px;direction:rtl;background:#fffbf0;box-sizing:border-box;">'+
+          '<input id="enc-search" type="text" placeholder="&#128269; &#1495;&#1508;&#1513; &#1489;&#1499;&#1500; &#1492;&#1502;&#1511;&#1493;&#1512;&#1493;&#1514;..." oninput="encOnSearch(this.value)" style="width:100%;padding:8px 36px 8px 12px;border:1.5px solid #c9a84c;border-radius:8px;font-family:Heebo,sans-serif;font-size:13px;font-weight:700;color:#111;direction:rtl;background:#fffbf0;box-sizing:border-box;">'+
           '<button onclick="encVoiceSearch()" id="enc-voice-search-btn" title="&#1511;&#1500;&#1496; &#1511;&#1493;&#1500;&#1497;" style="position:absolute;left:8px;background:rgba(154,111,0,0.15);border:none;border-radius:50%;width:22px;height:22px;font-size:11px;cursor:pointer;">&#127908;</button>'+
         '</div>'+
         '<select id="enc-asset-filter" onchange="encSetAsset(this.value)" style="'+encInp()+';min-width:160px;">'+
@@ -402,9 +402,9 @@ function encBuildRag(){
   var el=document.getElementById('enc-rag');if(!el)return;
   el.innerHTML=
     '<div style="text-align:center;margin-bottom:14px;">'+
-      '<div style="font-size:9px;letter-spacing:3px;color:#9a6f00;font-weight:700;margin-bottom:3px;">AI + SUPABASE RAG &#8212; 3 PARALLEL QUERIES</div>'+
+      '<div style="font-size:9px;letter-spacing:3px;color:#111;font-weight:800;margin-bottom:3px;">AI + SUPABASE RAG &#8212; 3 PARALLEL QUERIES</div>'+
       '<div style="font-size:16px;font-weight:900;color:#1a3d5c;">&#128269; &#1513;&#1488;&#1497;&#1500;&#1514;&#1493;&#1514; &#1502;&#1511;&#1510;&#1493;&#1506;&#1497;&#1493;&#1514;</div>'+
-      '<div style="font-size:11px;color:#7a5500;margin-top:3px;">3 &#1513;&#1488;&#1500;&#1493;&#1514; &#1489;&#1502;&#1511;&#1489;&#1497;&#1500; &#8212; &#1514;&#1511;&#1504;&#1497;&#1501; &#183; &#1502;&#1495;&#1497;&#1512;&#1497;&#1501; &#183; &#1502;&#1502;&#1510;&#1488;&#1497;&#1501; &#183; &#1488;&#1504;&#1513;&#1497; &#1511;&#1513;&#1512; &#183; &#1488;&#1512;&#1499;&#1497;&#1493;&#1503;</div>'+
+      '<div style="font-size:11px;color:#111;font-weight:700;margin-top:3px;">3 &#1513;&#1488;&#1500;&#1493;&#1514; &#1489;&#1502;&#1511;&#1489;&#1497;&#1500; &#8212; &#1514;&#1511;&#1504;&#1497;&#1501; &#183; &#1502;&#1495;&#1497;&#1512;&#1497;&#1501; &#183; &#1502;&#1502;&#1510;&#1488;&#1497;&#1501; &#183; &#1488;&#1504;&#1513;&#1497; &#1511;&#1513;&#1512; &#183; &#1488;&#1512;&#1499;&#1497;&#1493;&#1503;</div>'+
     '</div>'+
     '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(240px,100%),1fr));gap:10px;margin-bottom:12px;direction:ltr;">'+
       encRagBox(1,'&#1514;&#1511;&#1504;&#1497;&#1501;','#38bdf8','rgba(56,189,248,0.12)','838 &#1514;&#1511;&#1504;&#1497;&#1501;',['&#1489;&#1496;&#1493;&#1503; C25','&#1488;&#1497;&#1496;&#1493;&#1501; &#1490;&#1490;','L05'],'&#1502;&#1492; &#1491;&#1512;&#1497;&#1513;&#1493;&#1514; &#1502;&#1502;"&#1491; &#1500;&#1508;&#1497; IS?')+
@@ -435,7 +435,7 @@ function encRagBox(n,label,color,bg,count,chips,ph){
         '<button onclick="var i=document.getElementById(\'enc-q-'+n+'\');if(i)i.value=\'\'" style="width:26px;height:26px;border-radius:50%;background:rgba(255,255,255,0.04);border:0.5px solid rgba(255,255,255,0.1);color:#444;font-size:11px;cursor:pointer;">&#10005;</button>'+
       '</div>'+
     '</div>'+
-    '<textarea id="enc-q-'+n+'" rows="2" placeholder="'+ph+'" style="width:100%;background:#fffbf0;border:0.5px solid '+color+'22;border-radius:7px;padding:7px 9px;color:#1a3d5c;font-family:Heebo,sans-serif;font-size:11px;direction:rtl;resize:none;outline:none;box-sizing:border-box;" onkeydown="if(event.key===\'Enter\'&&event.ctrlKey)encRagRunAll()"></textarea>'+
+    '<textarea id="enc-q-'+n+'" rows="2" placeholder="'+ph+'" style="width:100%;background:#fffbf0;border:0.5px solid '+color+'22;border-radius:7px;padding:7px 9px;color:#1a3d5c;font-family:Heebo,sans-serif;font-size:12px;font-weight:700;color:#111;direction:rtl;resize:none;outline:none;box-sizing:border-box;" onkeydown="if(event.key===\'Enter\'&&event.ctrlKey)encRagRunAll()"></textarea>'+
     '<div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:5px;">'+ch+'</div>'+
   '</div>';
 }
@@ -539,12 +539,11 @@ async function encRagRunAll(){
   var html='<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(240px,100%),1fr));gap:10px;">';
   done.forEach(function(d){
     var text=d.err?'&#10060; &#1513;&#1490;&#1497;&#1488;&#1492;: '+d.err:(d.r||'&#1488;&#1497;&#1503; &#1514;&#1493;&#1510;&#1488;&#1492;');
-    var waText=encodeURIComponent('\u{1F4D8} '+d.q+'\n\n'+text.substring(0,600));
-    var mailBody=encodeURIComponent(d.q+'\n\n'+text.substring(0,600));
+    var _q=d.q; var _t=text.substring(0,600);
     var footer='<div style="display:flex;gap:6px;margin-top:10px;padding-top:8px;border-top:0.5px solid #e8ddb5;">'+
-      '<button onclick="var w=window.open(\'\',\'_blank\',\'width=600,height=500\');w.document.write(\'<html><head><meta charset=utf-8><style>body{font-family:Heebo,Arial,sans-serif;direction:rtl;padding:20px;font-weight:700;color:#111;}@media print{button{display:none}}</style></head><body><h3>\'+encEsc(d.q)+\'</h3><pre style=white-space:pre-wrap>\'+encEsc(text.substring(0,600))+\'</pre></body></html>\');w.document.close();setTimeout(function(){w.print();},300);" style="padding:5px 10px;background:#1a3d5c;border:none;color:#FFD700;border-radius:7px;font-family:Heebo,sans-serif;font-size:11px;font-weight:800;cursor:pointer;">&#128424;&#65039; &#1492;&#1491;&#1508;&#1505;</button>'+
-      '<button onclick="window.location.href=\'mailto:?subject=\'+encodeURIComponent(d.q)+\'&body=\'+mailBody" style="padding:5px 10px;background:#f5f0e8;border:0.5px solid #c9a84c;color:#111;border-radius:7px;font-family:Heebo,sans-serif;font-size:11px;font-weight:800;cursor:pointer;">&#9993;&#65039; &#1502;&#1497;&#1497;&#1500;</button>'+
-      '<button onclick="window.open(\'https://wa.me/?text=\'+waText,\'_blank\')" style="padding:5px 10px;background:#f5f0e8;border:0.5px solid #c9a84c;color:#111;border-radius:7px;font-family:Heebo,sans-serif;font-size:11px;font-weight:800;cursor:pointer;">&#128172; WA</button>'+
+      '<button onclick="encRagPrint(this)" data-q="'+encEsc(_q)+'" data-t="'+encEsc(_t)+'" style="padding:5px 10px;background:#1a3d5c;border:none;color:#FFD700;border-radius:7px;font-family:Heebo,sans-serif;font-size:11px;font-weight:800;cursor:pointer;">&#128424;&#65039; &#1492;&#1491;&#1508;&#1505;</button>'+
+      '<button onclick="encRagMail(this)" data-q="'+encEsc(_q)+'" data-t="'+encEsc(_t)+'" style="padding:5px 10px;background:#f5f0e8;border:0.5px solid #c9a84c;color:#111;border-radius:7px;font-family:Heebo,sans-serif;font-size:11px;font-weight:800;cursor:pointer;">&#9993;&#65039; &#1502;&#1497;&#1497;&#1500;</button>'+
+      '<button onclick="encRagWA(this)" data-q="'+encEsc(_q)+'" data-t="'+encEsc(_t)+'" style="padding:5px 10px;background:#25D366;border:none;color:#fff;border-radius:7px;font-family:Heebo,sans-serif;font-size:11px;font-weight:800;cursor:pointer;">&#128172; WA</button>'+
     '</div>';
     html+='<div style="background:#fff;border:0.5px solid '+borders[d.i]+';border-radius:10px;padding:12px;">'+
       '<div style="font-size:10px;color:'+colors[d.i]+';font-weight:800;margin-bottom:7px;">&#1513;&#1488;&#1500;&#1492; '+(d.i+1)+': '+encEsc(d.q)+'</div>'+
@@ -554,6 +553,27 @@ async function encRagRunAll(){
   });
   results.innerHTML=html+'</div>';
   encShowTokenMeter(false);
+}
+
+
+function encRagPrint(btn){
+  var q=btn.getAttribute('data-q')||'';
+  var t=btn.getAttribute('data-t')||'';
+  var w=window.open('','_blank','width=650,height=550');
+  if(!w)return;
+  w.document.write('<html><head><meta charset="utf-8"><style>body{font-family:Heebo,Arial,sans-serif;direction:rtl;padding:24px;font-weight:700;color:#111;}h3{color:#1a3d5c;}pre{white-space:pre-wrap;line-height:1.8;}@media print{button{display:none}}</style></head><body><h3>'+q+'</h3><pre>'+t+'</pre><br><button onclick="window.print()">הדפס</button></body></html>');
+  w.document.close();
+  setTimeout(function(){w.print();},400);
+}
+function encRagMail(btn){
+  var q=btn.getAttribute('data-q')||'';
+  var t=btn.getAttribute('data-t')||'';
+  window.location.href='mailto:?subject='+encodeURIComponent(q)+'&body='+encodeURIComponent(q+'\n\n'+t);
+}
+function encRagWA(btn){
+  var q=btn.getAttribute('data-q')||'';
+  var t=btn.getAttribute('data-t')||'';
+  window.open('https://wa.me/?text='+encodeURIComponent('📘 '+q+'\n\n'+t),'_blank');
 }
 
 function encFmtRag(r){
@@ -725,7 +745,7 @@ async function encDeleteContact(id){if(!confirm('&#1502;&#1495;&#1511; &#1488;&#
 
 function encEsc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 function encDec(s){var t=document.createElement('textarea');t.innerHTML=String(s||'');return t.value;}
-function encInp(){return 'width:100%;padding:8px 12px;border:1px solid #c9a84c;border-radius:8px;font-family:Heebo,sans-serif;font-size:12px;direction:rtl;background:#fffbf0;box-sizing:border-box;';}
+function encInp(){return 'width:100%;padding:8px 12px;border:1px solid #c9a84c;border-radius:8px;font-family:Heebo,sans-serif;font-size:13px;font-weight:700;color:#111;direction:rtl;background:#fffbf0;box-sizing:border-box;';}
 function encAbS(){return 'padding:5px 9px;border:0.5px solid #e8ddb5;border-radius:7px;font-size:11px;cursor:pointer;background:#f5f0e8;color:#1a3d5c;font-family:Heebo,sans-serif;font-weight:700;';}
 function encAb(label,onclick){return '<button onclick="'+onclick+'" style="'+encAbS()+'">'+label+'</button>';}
 function encFmtDate(d){if(!d)return'';try{return new Date(d).toLocaleDateString('he-IL',{day:'2-digit',month:'2-digit',year:'2-digit'});}catch(e){return'';}}
