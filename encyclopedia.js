@@ -85,6 +85,7 @@ function encBuildShell() {
     '</div>'+
     '<div id="enc-type-tabs" style="display:flex;gap:4px;flex-wrap:wrap;padding:8px 18px;background:#f5f0e8;border-bottom:0.5px solid #e8ddb5;"></div>'+
     '<div id="enc-stats" style="padding:0 18px 12px;display:none;grid-template-columns:repeat(auto-fit,minmax(95px,1fr));gap:7px;"></div>'+
+    '<div id="enc-grid" style="padding:0 18px;display:grid;grid-template-columns:repeat(auto-fill,minmax(min(290px,100%),1fr));gap:11px;margin-bottom:18px;"></div>'+
     '<div id="enc-archive-banner" style="margin:0 18px 16px;display:none;"></div>'+
     '<div id="enc-rag" style="background:#f5f0e8;padding:18px;border-top:2px solid #c9a84c;display:block;"></div>'+
     '</div>';
