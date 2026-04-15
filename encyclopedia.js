@@ -497,7 +497,7 @@ function encShowTokenMeter(active){
   if(active){
     _encRagStartTime=Date.now();
     el.style.display='flex';
-    el.innerHTML='⏱ AI עובד... <span id="enc-token-elapsed">0ש\'</span>';
+    el.innerHTML='<div style="text-align:center;"><div style="font-size:10px;color:#38bdf8;font-weight:700;">AI עובד...</div><div id="enc-token-elapsed" style="font-size:28px;font-weight:900;color:#fff;">0ש\'</div></div>';
     var t=setInterval(function(){
       if(!document.getElementById('enc-token-elapsed')){clearInterval(t);return;}
       var s=((Date.now()-_encRagStartTime)/1000).toFixed(0);
