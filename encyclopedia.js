@@ -27,7 +27,7 @@ function encBuildShell() {
   var panel=document.getElementById('encyclopedia-panel');
   if(!panel)return;
   panel.innerHTML=
-    '<div style="padding:0 0 80px;direction:rtl;font-family:Heebo,Arial,sans-serif;background:#f5f0e8;min-height:100vh;">'+
+    '<div style="padding:0 0 80px;direction:rtl;font-family:Heebo,Arial,sans-serif;background:#f5f0e8;min-height:100vh;font-weight:700;color:#111;">'+
     // TOP BAR
     '<div style="background:#fff;border-bottom:0.5px solid #e8ddb5;padding:12px 18px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;position:sticky;top:0;z-index:100;">'+
       '<div>'+
@@ -539,9 +539,17 @@ async function encRagRunAll(){
   var html='<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(240px,100%),1fr));gap:10px;">';
   done.forEach(function(d){
     var text=d.err?'&#10060; &#1513;&#1490;&#1497;&#1488;&#1492;: '+d.err:(d.r||'&#1488;&#1497;&#1503; &#1514;&#1493;&#1510;&#1488;&#1492;');
+    var waText=encodeURIComponent('\u{1F4D8} '+d.q+'\n\n'+text.substring(0,600));
+    var mailBody=encodeURIComponent(d.q+'\n\n'+text.substring(0,600));
+    var footer='<div style="display:flex;gap:6px;margin-top:10px;padding-top:8px;border-top:0.5px solid #e8ddb5;">'+
+      '<button onclick="var w=window.open(\'\',\'_blank\',\'width=600,height=500\');w.document.write(\'<html><head><meta charset=utf-8><style>body{font-family:Heebo,Arial,sans-serif;direction:rtl;padding:20px;font-weight:700;color:#111;}@media print{button{display:none}}</style></head><body><h3>\'+encEsc(d.q)+\'</h3><pre style=white-space:pre-wrap>\'+encEsc(text.substring(0,600))+\'</pre></body></html>\');w.document.close();setTimeout(function(){w.print();},300);" style="padding:5px 10px;background:#1a3d5c;border:none;color:#FFD700;border-radius:7px;font-family:Heebo,sans-serif;font-size:11px;font-weight:800;cursor:pointer;">&#128424;&#65039; &#1492;&#1491;&#1508;&#1505;</button>'+
+      '<button onclick="window.location.href=\'mailto:?subject=\'+encodeURIComponent(d.q)+\'&body=\'+mailBody" style="padding:5px 10px;background:#f5f0e8;border:0.5px solid #c9a84c;color:#111;border-radius:7px;font-family:Heebo,sans-serif;font-size:11px;font-weight:800;cursor:pointer;">&#9993;&#65039; &#1502;&#1497;&#1497;&#1500;</button>'+
+      '<button onclick="window.open(\'https://wa.me/?text=\'+waText,\'_blank\')" style="padding:5px 10px;background:#f5f0e8;border:0.5px solid #c9a84c;color:#111;border-radius:7px;font-family:Heebo,sans-serif;font-size:11px;font-weight:800;cursor:pointer;">&#128172; WA</button>'+
+    '</div>';
     html+='<div style="background:#fff;border:0.5px solid '+borders[d.i]+';border-radius:10px;padding:12px;">'+
-      '<div style="font-size:10px;color:'+colors[d.i]+';font-weight:700;margin-bottom:7px;">&#1513;&#1488;&#1500;&#1492; '+(d.i+1)+': '+encEsc(d.q)+'</div>'+
-      '<div style="font-size:11px;color:#1a3d5c;line-height:1.7;white-space:pre-wrap;">'+encEsc(text.substring(0,600))+'</div>'+
+      '<div style="font-size:10px;color:'+colors[d.i]+';font-weight:800;margin-bottom:7px;">&#1513;&#1488;&#1500;&#1492; '+(d.i+1)+': '+encEsc(d.q)+'</div>'+
+      '<div style="font-size:12px;color:#111;font-weight:700;line-height:1.8;white-space:pre-wrap;">'+encEsc(text.substring(0,600))+'</div>'+
+      footer+
     '</div>';
   });
   results.innerHTML=html+'</div>';
