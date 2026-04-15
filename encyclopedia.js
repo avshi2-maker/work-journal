@@ -36,7 +36,6 @@ function encBuildShell() {
       '</div>'+
       '<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">'+
         '<select id="enc-proj-sel" onchange="encSetProj(this.value)" style="'+encInp()+'"><option value="">&#1499;&#1500; &#1492;&#1508;&#1512;&#1493;&#1497;&#1511;&#1496;&#1497;&#1501;</option><option value="__archive__">&#128230; &#1488;&#1512;&#1499;&#1497;&#1493;&#1503; &#1489;&#1500;&#1489;&#1491;</option></select>'+
-        '<button onclick="encOpenAdd()" style="background:#1a3d5c;border:none;color:#FFD700;border-radius:8px;padding:8px 14px;font-family:Heebo,sans-serif;font-size:12px;font-weight:800;cursor:pointer;">+ &#1492;&#1493;&#1505;&#1507; &#1497;&#1491;&#1506;</button>'+
         '<button onclick="encRefresh()" title="&#1512;&#1506;&#1504;&#1503; &#1492;&#1499;&#1500;" style="background:#f5f0e8;border:1.5px solid #c9a84c;color:#7a5500;border-radius:8px;padding:8px 12px;font-family:Heebo,sans-serif;font-size:12px;font-weight:800;cursor:pointer;">&#128260; &#1512;&#1506;&#1504;&#1503;</button>'+
       '</div>'+
     '</div>'+
@@ -84,9 +83,8 @@ function encBuildShell() {
       '<div style="height:6px;"></div>'+
     '</div>'+
     '<div id="enc-stats" style="padding:0 18px 12px;display:none;grid-template-columns:repeat(auto-fit,minmax(95px,1fr));gap:7px;"></div>'+
-    '<div id="enc-grid" style="padding:0 18px;display:grid;grid-template-columns:repeat(auto-fill,minmax(min(290px,100%),1fr));gap:11px;margin-bottom:18px;"><div style="grid-column:1/-1;text-align:center;padding:40px;color:#888;font-size:13px;">&#9203; &#1496;&#1506;&#1503;...</div></div>'+
     '<div id="enc-archive-banner" style="margin:0 18px 16px;display:none;"></div>'+
-    '<div id="enc-rag" style="background:#f5f0e8;padding:18px;border-top:2px solid #c9a84c;display:none;"></div>'+
+    '<div id="enc-rag" style="background:#f5f0e8;padding:18px;border-top:2px solid #c9a84c;display:block;"></div>'+
     '</div>';
 
   encBuildSourceTabs();
