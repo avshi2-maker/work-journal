@@ -377,6 +377,9 @@ function sibActionButtons(item) {
     btns += sibBtn('🚀 שלב 2: נתח','sibShowPhase2Panel(\''+id+'\')','phase2');
   }
 
+  // Encyclopedia button — always visible
+  btns += sibBtn('📚 אנציקלופדיה','sibSaveToEnc(\''+id+'\')','enc');
+
   // Approve button — smart guard
   var hasAnalysis = !!(_sibAnalysis[id] || _sibPhase1[id]);
   if(hasAnalysis){
