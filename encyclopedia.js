@@ -156,7 +156,6 @@ function encBuildCatChips(){/* removed - use filter dropdowns instead */}
 
 var _ENC_TABS=[
   {id:'all',     label:'&#1492;&#1499;&#1500;'},
-  {id:'enc',     label:'&#128203; &#1502;&#1502;&#1510;&#1488;&#1497;&#1501;'},
   {id:'audio',   label:'&#127908; &#1492;&#1511;&#1500;&#1496;&#1493;&#1514;'},
   {id:'video',   label:'&#127909; &#1493;&#1497;&#1491;&#1488;&#1493;'},
   {id:'image',   label:'&#128247; &#1514;&#1502;&#1493;&#1504;&#1493;&#1514;'},
@@ -209,6 +208,7 @@ function encRenderStats(){
 function encRender(){
   var grid=document.getElementById('enc-grid');if(!grid)return;
   if(_encTypeTab==='contacts'){encRenderContacts();return;}
+  if(_encTypeTab==='all'){grid.innerHTML='<div style="grid-column:1/-1;text-align:center;padding:40px 20px;color:#888;direction:rtl;font-family:Heebo,sans-serif;"><div style="font-size:32px;margin-bottom:12px;">&#128269;</div><div style="font-size:14px;font-weight:800;color:#1a3d5c;">&#1489;&#1495;&#1512; &#1496;&#1488;&#1489; &#1500;&#1502;&#1506;&#1500;&#1492; &#1500;&#1510;&#1508;&#1497;&#1497;&#1492;</div><div style="font-size:11px;color:#9a6f00;margin-top:6px;">&#1488;&#1493; &#1492;&#1513;&#1514;&#1502;&#1513; &#1489;&#1513;&#1488;&#1497;&#1500;&#1514;&#1493;&#1514; &#1502;&#1511;&#1510;&#1493;&#1506;&#1497;&#1493;&#1514; &#1500;&#1502;&#1496;&#1492;</div></div>';return;}
   grid.innerHTML='<div style="grid-column:1/-1;text-align:center;padding:20px;color:#888;font-size:12px;">&#9203; &#1496;&#1506;&#1503;...</div>';
   var items=[];
   if(_encActiveSource==='contacts'){items=_encContacts.map(function(c){return Object.assign({_src:'contacts'},c);});}
@@ -249,10 +249,10 @@ function encRender(){
       items=_encArchive.map(function(a){return Object.assign({_src:'archiveproj'},a);});
     } else if(_encTypeTab!=='all'&&_encTypeTab!=='contacts'){
       items=items.filter(function(i){
-        if(_encTypeTab==='enc')return i._src==='enc';
         return i._type===_encTypeTab||(i.media_type&&i.media_type===_encTypeTab);
       });
     }
+    if(items.length>50)items=items.slice(0,50);
     if(_encSearchQ){var q=_encSearchQ.toLowerCase();items=items.filter(function(i){return(i.title||'').toLowerCase().includes(q)||(i.description||i.note_text||i.notes||'').toLowerCase().includes(q)||(i.category||'').toLowerCase().includes(q)||(i.session_label||'').toLowerCase().includes(q);});}
   }
   if(!items.length){grid.innerHTML='<div style="grid-column:1/-1;text-align:center;padding:60px 20px;color:#888;"><div style="font-size:40px;margin-bottom:12px;">&#128218;</div><div style="font-size:14px;font-weight:700;">&#1488;&#1497;&#1503; &#1512;&#1513;&#1493;&#1502;&#1493;&#1514; &#1514;&#1493;&#1488;&#1502;&#1493;&#1514;</div></div>';return;}
