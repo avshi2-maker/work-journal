@@ -497,7 +497,7 @@ function encShowTokenMeter(active){
   if(active){
     _encRagStartTime=Date.now();
     el.style.display='flex';
-    el.innerHTML='<span style="font-size:22px;">&#9203;</span>  AI &#1506;&#1493;&#1489;&#1491;...  <span id="enc-token-elapsed" style="font-size:20px;color:#38bdf8;">0&#1513;&#39;</span>';
+    el.innerHTML='⏱ AI עובד... <span id="enc-token-elapsed">0ש\'</span>';
     var t=setInterval(function(){
       if(!document.getElementById('enc-token-elapsed')){clearInterval(t);return;}
       var s=((Date.now()-_encRagStartTime)/1000).toFixed(0);
@@ -508,7 +508,12 @@ function encShowTokenMeter(active){
     if(el._timer)clearInterval(el._timer);
     var sec=((Date.now()-_encRagStartTime)/1000).toFixed(1);
     var cost=((_encRagTokens.in*0.000003)+(_encRagTokens.out*0.000015)).toFixed(4);
-    el.innerHTML='<span style="font-size:18px;">&#9989;</span>  <span style="color:#38bdf8;font-size:16px;">'+sec+'&#1513;&#39;</span>  |  &#128229; <span style="color:#a78bfa;">'+(_encRagTokens.in||'?')+'</span> &#1499;&#1504;&#1497;&#1505;&#1492;  |  &#128228; <span style="color:#22c55e;">'+(_encRagTokens.out||'?')+'</span> &#1497;&#1510;&#1497;&#1488;&#1492;  |  <span style="color:#fbbf24;font-size:16px;">$'+cost+'</span>';
+    el.innerHTML=
+      '<div style="display:flex;gap:10px;justify-content:center;align-items:center;">'+
+        '<div style="background:#0f2a42;border-radius:8px;padding:8px 16px;text-align:center;"><div style="font-size:10px;color:#38bdf8;font-weight:700;">זמן</div><div style="font-size:18px;font-weight:900;color:#fff;">'+sec+'ש\'</div></div>'+
+        '<div style="background:#0f2a42;border-radius:8px;padding:8px 16px;text-align:center;"><div style="font-size:10px;color:#a78bfa;font-weight:700;">טוקנים</div><div style="font-size:18px;font-weight:900;color:#fff;">'+(_encRagTokens.in+_encRagTokens.out)+'</div></div>'+
+        '<div style="background:#0f2a42;border-radius:8px;padding:8px 16px;text-align:center;"><div style="font-size:10px;color:#fbbf24;font-weight:700;">עלות</div><div style="font-size:18px;font-weight:900;color:#fff;">$'+cost+'</div></div>'+
+      '</div>';
   }
 }
 
@@ -524,6 +529,7 @@ async function encRagRunAll(){
   if(!apiKey){results.innerHTML='<div style="color:#f87171;font-size:12px;padding:14px;">&#9888;&#65039; &#1502;&#1508;&#1514;&#1495; API &#1495;&#1505;&#1512;</div>';encShowTokenMeter(false);return;}
   var colors=['#38bdf8','#a78bfa','#22c55e'];
   var borders=['rgba(56,189,248,0.2)','rgba(167,139,250,0.2)','rgba(34,197,94,0.2)'];
+  _encRagTokens={in:0,out:0};
   var qs=[q1,q2,q3].filter(Boolean);
   var done=await Promise.all(qs.map(function(q,i){
     return claudeFetch(JSON.stringify({
@@ -533,7 +539,7 @@ async function encRagRunAll(){
       messages:[{role:'user',content:'אתה יועץ הנדסי בנייה ישראלי. עברית בלבד. תשובה קצרה ומעשית.\n\n'+q}]
     }),null)
     .then(function(res){return res.json();})
-    .then(function(data){return{i:i,q:q,r:(data.content&&data.content[0]&&data.content[0].text)||''};})
+    .then(function(data){if(data.usage){_encRagTokens.in+=data.usage.input_tokens||0;_encRagTokens.out+=data.usage.output_tokens||0;}return{i:i,q:q,r:(data.content&&data.content[0]&&data.content[0].text)||''};})
     .catch(function(e){return{i:i,q:q,err:e.message};});
   }));
   var html='<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(240px,100%),1fr));gap:10px;">';
