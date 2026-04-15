@@ -15,7 +15,7 @@ async function encInit() {
 }
 
 async function encRefresh() {
-  _encLoaded=false;
+  _encLoaded=false; 
   _encItems=[];_encContacts=[];_encArchive=[];
   var grid=document.getElementById('enc-grid');
   if(grid)grid.innerHTML='<div style="grid-column:1/-1;text-align:center;padding:40px;color:#888;font-size:13px;">&#128260; &#1496;&#1506;&#1503; &#1502;&#1495;&#1491;&#1513;...</div>';
