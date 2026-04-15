@@ -106,7 +106,17 @@ async function encLoadAll(){
     var stds=(r4c.data||[]).map(function(s){return Object.assign({_src:'standards',_type:'standard',title:s.title_he||s.standard_id||'&#1514;&#1511;&#1503;',category:s.industry_category||s.standard_category||'&#1514;&#1511;&#1503;',description:s.scope||s.applies_to||''},s);});
     var r4d=await sbQ('price_items','is_note=not.is.true&order=item_code.asc&limit=500&select=id,item_code,chapter_name,sub_chapter_name,description,unit,price,source,price_date,created_at');
     var prices=(r4d.data||[]).map(function(p){return Object.assign({_src:'prices',_type:'price',title:p.description||p.item_code||'&#1508;&#1512;&#1497;&#1496;',category:p.sub_chapter_name||p.chapter_name||'&#1502;&#1495;&#1497;&#1512;'},p);});
-    _encItems=[].concat(enc,tko,stds,prices);
+    var r7=await sbQ('asset_inbox','order=created_at.desc&limit=300&select=id,cloudinary_url,file_name,file_type,file_size,duration_sec,thumbnail_url,ai_suggestion,ai_reason,ai_confidence,status,routed_to,routed_at,project_id,uploaded_by,created_at,notes,ai_report');
+    var inbox=(r7.data||[]).map(function(a){return Object.assign({
+      _src:'inbox',
+      _type:encMapType('',a.file_type||''),
+      title:a.file_name||'&#1511;&#1493;&#1489;&#1509;',
+      media_url:a.cloudinary_url||'',
+      media_type:a.file_type||'',
+      description:a.ai_suggestion||a.notes||'',
+      category:a.routed_to||'inbox'
+    },a);});
+    _encItems=[].concat(enc,tko,stds,prices,inbox);
     var r5=await sbQ('beni_contacts','order=full_name.asc&limit=200&select=id,full_name,profession,phone,email,rating_skills,rating_reliability,rating_price,notes,project_id');
     _encContacts=r5.data||[];
     var r6=await sbQ('projects','is_archived=eq.true&order=archived_at.desc&select=id,project_name,client_name,total_budget,archived_at,city');
