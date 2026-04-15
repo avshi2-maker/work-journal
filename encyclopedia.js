@@ -99,11 +99,15 @@ function encBuildShell() {
 async function encLoadAll(){
   try{
     var r1=await sbQ('field_encyclopedia','is_deleted=not.is.true&order=created_at.desc&limit=200&select=id,title,category,description,severity,source_project_id,media_url,media_type,created_at,notes,ai_report');
-    var enc=(r1.data||[]).map(function(e){return Object.assign({_src:'enc',_type:encMapType(e.category,e.media_type)},e);});
+    var encRaw=(r1.data||[]).map(function(e){return Object.assign({_src:'enc',_type:encMapType(e.category,e.media_type)},e);});
+    var _encSeen={};
+    var enc=encRaw.filter(function(e){var k=(e.title||'')+(e.media_url||'');if(_encSeen[k])return false;_encSeen[k]=true;return true;});
     var r2=await sbQ('site_takeoffs','is_deleted=not.is.true&order=created_at.desc&limit=100&select=id,project_id,takeoff_date,total_area,notes,session_label,takeoff_type,created_at,file_url');
     var tko=(r2.data||[]).map(function(t){return Object.assign({_src:'takeoff',_type:'takeoff',title:(t.session_label||'&#1496;&#1497;&#1497;&#1511;&#1488;&#1493;&#1507;')+(t.total_area?' &#8212; '+t.total_area+' &#1502;"&#1512;':'')},t);});
     var r4c=await sbQ('building_standards','order=title_he.asc&limit=838&select=id,standard_id,title_he,title_en,industry_category,standard_category,scope,key_requirements,applies_to,authority,mandatory_in_israel,notes,created_at');
-    var stds=(r4c.data||[]).map(function(s){return Object.assign({_src:'standards',_type:'standard',title:s.title_he||s.standard_id||'&#1514;&#1511;&#1503;',category:s.industry_category||s.standard_category||'&#1514;&#1511;&#1503;',description:s.scope||s.applies_to||''},s);});
+    var stdsRaw=(r4c.data||[]).map(function(s){return Object.assign({_src:'standards',_type:'standard',title:s.title_he||s.standard_id||'&#1514;&#1511;&#1503;',category:s.industry_category||s.standard_category||'&#1514;&#1511;&#1503;',description:s.scope||s.applies_to||''},s);});
+    var _stdSeen={};
+    var stds=stdsRaw.filter(function(s){var k=s.standard_id||s.title;if(_stdSeen[k])return false;_stdSeen[k]=true;return true;});
     var r4d=await sbQ('price_items','is_note=not.is.true&order=item_code.asc&limit=500&select=id,item_code,chapter_name,sub_chapter_name,description,unit,price,source,price_date,created_at');
     var prices=(r4d.data||[]).map(function(p){return Object.assign({_src:'prices',_type:'price',title:p.description||p.item_code||'&#1508;&#1512;&#1497;&#1496;',category:p.sub_chapter_name||p.chapter_name||'&#1502;&#1495;&#1497;&#1512;'},p);});
     var r7=await sbQ('asset_inbox','order=created_at.desc&limit=300&select=id,cloudinary_url,file_name,file_type,file_size,duration_sec,thumbnail_url,ai_suggestion,ai_reason,ai_confidence,status,routed_to,routed_at,project_id,uploaded_by,created_at,notes,ai_report');
@@ -116,7 +120,11 @@ async function encLoadAll(){
       description:a.ai_suggestion||a.notes||'',
       category:a.routed_to||'inbox'
     },a);});
-    _encItems=[].concat(enc,tko,stds,prices,inbox);
+    // Only include inbox items NOT already in field_encyclopedia
+    var encUrls={};
+    enc.forEach(function(e){if(e.media_url)encUrls[e.media_url]=true;});
+    var inboxNew=inbox.filter(function(a){return!encUrls[a.media_url];});
+    _encItems=[].concat(enc,tko,stds,prices,inboxNew);
     var r5=await sbQ('beni_contacts','order=full_name.asc&limit=200&select=id,full_name,profession,phone,email,rating_skills,rating_reliability,rating_price,notes,project_id');
     _encContacts=r5.data||[];
     var r6=await sbQ('projects','is_archived=eq.true&order=archived_at.desc&select=id,project_name,client_name,total_budget,archived_at,city');
@@ -189,9 +197,13 @@ function encGroupForItem(item){
   var src=(item._src||'');
   if(src==='contacts')return'contacts';
   if(src==='archiveproj')return'archive';
+  if(src==='standards')return'standards';
+  if(src==='prices')return'standards';
   if(src==='takeoff'||type==='takeoff')return'takeoff';
   if(type==='image'||type==='photo'||type==='video'||type==='audio'||type==='mp4'||type==='heic')return'media';
   if(type==='pdf'||type==='doc'||type==='xls'||type==='document'||type==='spreadsheet'||type==='csv')return'docs';
+  // English category = building standard
+  if(/^[A-Z]/.test(item.category||''))return'standards';
   if(cat.indexOf('\u05d1\u05d8\u05d9\u05d7')>=0)return'safety';
   if(cat.indexOf('\u05d4\u05e0\u05d3\u05e1')>=0)return'engineering';
   if(cat.indexOf('\u05ea\u05e7\u05e0')>=0)return'standards';
