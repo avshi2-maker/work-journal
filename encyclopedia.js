@@ -541,24 +541,6 @@ async function encRagRunAll(){
   var q3=(document.getElementById('enc-q-3')||{}).value||'';
   encShowTokenMeter(true);
   if(!q1&&!q2&&!q3){encShowTokenMeter(false);showToast('&#1492;&#1494;&#1503; &#1500;&#1508;&#1495;&#1493;&#1514; &#1513;&#1488;&#1500;&#1492; &#1488;&#1495;&#1514;','error');return;}
-  // Route to query tab — load rag module first then run
-  if(typeof switchTab==='function'){
-    switchTab('query');
-    var tries=0;
-    var tryRun=function(){
-      tries++;
-      var i1=document.getElementById('q-input-1');
-      var i2=document.getElementById('q-input-2');
-      var i3=document.getElementById('q-input-3');
-      if(i1&&q1)i1.value=q1;
-      if(i2&&q2)i2.value=q2;
-      if(i3&&q3)i3.value=q3;
-      if(typeof qRunAll==='function'){qRunAll();return;}
-      if(tries<20)setTimeout(tryRun,200);
-    };
-    setTimeout(tryRun,300);
-    return;
-  }
   var results=document.getElementById('enc-rag-results');if(!results)return;
   results.innerHTML='<div style="color:#38bdf8;font-size:12px;padding:14px;">&#9203; &#1502;&#1506;&#1489;&#1491; &#1513;&#1488;&#1500;&#1493;&#1514;...</div>';
   if(typeof ragQuery!=='function'){results.innerHTML='<div style="background:#fff;border:0.5px solid rgba(239,68,68,0.3);border-radius:10px;padding:14px;color:#f87171;font-size:12px;">&#9888;&#65039; &#1502;&#1504;&#1493;&#1506; RAG &#1500;&#1488; &#1504;&#1496;&#1506;&#1503; &#8212; &#1506;&#1489;&#1493;&#1512; &#1500;&#1496;&#1488;&#1489; &#1513;&#1488;&#1497;&#1500;&#1514;&#1493;&#1514; &#1502;&#1511;&#1510;&#1493;&#1506;&#1497;&#1493;&#1514;</div>';return;}
