@@ -833,6 +833,15 @@ function sibShowPhase2Panel(id) {
   var p1text = _sibPhase1[id]||'';
   var panel = document.getElementById('sib-analysis-panel');
   if(!panel) return;
+  // Auto-activate smart defaults if NO modules are ticked
+  var anyActive = Object.keys(_sibModules).some(function(k){return _sibModules[k];});
+  if(!anyActive){
+    ['mod-safety','mod-engineering','mod-general'].forEach(function(id){
+      _sibModules[id]=true;
+      var chip=document.getElementById('chip-'+id);
+      if(chip)sibToggleModule(id,chip);
+    });
+  }
 
   var type = item.file_type||'image';
   var isFinancial = (type==='spreadsheet'||type==='csv'||(item.file_name||'').match(/\.xlsx?$|\.csv$/i));
