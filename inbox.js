@@ -2044,7 +2044,11 @@ async function sibApproveWithReport(id) {
     // 2. Save to field_encyclopedia with project link
     var encTitle = analysis ? (analysis.title || item.file_name || 'ממצא שטח') : (item.file_name || 'קובץ מאושר');
     var encDesc  = analysis ? analysis.text : (p1text ? p1text.substr(0,1000) : '');
-    var encCat   = analysis ? (analysis.mode === 'safety' ? 'בטיחות' : analysis.mode === 'engineering' ? 'הנדסי' : 'שטח') : 'שטח';
+    var _modCats={'safety':'בטיחות','engineering':'הנדסי','standards':'תקנים','thirdparty':'צד שלישי',
+      'financial':'רווח הפסד','protocol':'פרוטוקול','hazmat':'חומס','packaging':'אריזות',
+      'laydown':'התארגנות','traffic':'תנועה','ocr':'מדידות','equipment':'ציוד',
+      'neighbor':'שכנים','evidence':'מסמך הגנתי','general':'כללי'};
+    var encCat = analysis ? (_modCats[analysis.mode]||'שטח') : 'שטח';
     var encSev   = analysis ? (analysis.mode === 'safety' ? 'critical' : 'important') : 'guideline';
     if (encDesc) {
       await sb.from('field_encyclopedia').insert({
