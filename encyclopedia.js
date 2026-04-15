@@ -86,7 +86,7 @@ function encBuildShell() {
     '<div id="enc-stats" style="padding:0 18px 12px;display:grid;grid-template-columns:repeat(auto-fit,minmax(95px,1fr));gap:7px;"></div>'+
     '<div id="enc-grid" style="padding:0 18px;display:grid;grid-template-columns:repeat(auto-fill,minmax(min(290px,100%),1fr));gap:11px;margin-bottom:18px;"><div style="grid-column:1/-1;text-align:center;padding:40px;color:#888;font-size:13px;">&#9203; &#1496;&#1506;&#1503;...</div></div>'+
     '<div id="enc-archive-banner" style="margin:0 18px 16px;display:none;"></div>'+
-    '<div id="enc-rag" style="background:#f5f0e8;padding:18px;border-top:2px solid #c9a84c;"></div>'+
+    '<div id="enc-rag" style="background:#f5f0e8;padding:18px;border-top:2px solid #c9a84c;display:none;"></div>'+
     '</div>';
 
   encBuildSourceTabs();
@@ -134,7 +134,7 @@ function encBuildSourceTabs(){
   }).join('')+
   '<div style="margin-right:auto;"></div>'+'<button onclick="encRefresh()" style="background:#f5f0e8;border:1.5px solid #c9a84c;color:#7a5500;border-radius:12px;padding:6px 12px;font-size:11px;font-weight:700;cursor:pointer;font-family:Heebo,sans-serif;margin-left:6px;">&#128260; &#1512;&#1506;&#1504;&#1503;</button>'+
   '<button onclick="encOpenAdd()" style="background:#1a3d5c;border:none;color:#FFD700;border-radius:12px;padding:6px 12px;font-size:11px;font-weight:700;cursor:pointer;font-family:Heebo,sans-serif;">+ &#1492;&#1493;&#1505;&#1507;</button>'+
-  '<button onclick="document.getElementById(\'enc-rag\').scrollIntoView({behavior:\'smooth\'})" style="background:#fffbf0;color:#38bdf8;border:0.5px solid rgba(56,189,248,0.3);border-radius:14px;padding:6px 12px;font-size:11px;font-weight:700;cursor:pointer;font-family:Heebo,sans-serif;">&#128269; &#1513;&#1488;&#1497;&#1500;&#1514;&#1493;&#1514; &#8595;</button>';
+  '<button onclick="var r=document.getElementById(\'enc-rag\');if(r){r.style.display=\'block\';setTimeout(function(){r.scrollIntoView({behavior:\'smooth\'});},50);}" style="background:#fffbf0;color:#38bdf8;border:0.5px solid rgba(56,189,248,0.3);border-radius:14px;padding:6px 12px;font-size:11px;font-weight:700;cursor:pointer;font-family:Heebo,sans-serif;">&#128269; &#1513;&#1488;&#1497;&#1500;&#1514;&#1493;&#1514; &#8595;</button>';
 }
 
 function encSetSource(s){_encActiveSource=s;encBuildSourceTabs();encRender();}
@@ -531,24 +531,33 @@ async function encRagRunAll(){
   encShowTokenMeter(true);
   if(!q1&&!q2&&!q3){encShowTokenMeter(false);showToast('&#1492;&#1494;&#1503; &#1500;&#1508;&#1495;&#1493;&#1514; &#1513;&#1488;&#1500;&#1492; &#1488;&#1495;&#1514;','error');return;}
   var results=document.getElementById('enc-rag-results');if(!results)return;
-  results.innerHTML='<div style="color:#9a6f00;font-size:12px;padding:14px;text-align:center;">&#9203; &#1502;&#1502;&#1514;&#1497;&#1503; &#1500;&#1502;&#1504;&#1493;&#1506; RAG...</div>';
-  // Wait up to 5s for ragQuery to load
-  var waited=0;
-  while(typeof ragQuery!=='function'&&waited<50){await new Promise(function(r){setTimeout(r,100);});waited++;}
-  if(typeof ragQuery!=='function'){results.innerHTML='<div style="background:#fff;border:0.5px solid rgba(239,68,68,0.3);border-radius:10px;padding:14px;color:#f87171;font-size:12px;">&#9888;&#65039; &#1502;&#1504;&#1493;&#1506; RAG &#1500;&#1488; &#1504;&#1496;&#1506;&#1503; &#8212; &#1504;&#1505;&#1492; &#1513;&#1493;&#1489; &#1489;&#1506;&#1493;&#1491; &#1499;&#1502;&#1492; &#1513;&#1504;&#1497;&#1493;&#1514;</div>';encShowTokenMeter(false);return;}
+  results.innerHTML='<div style="color:#9a6f00;font-size:12px;padding:14px;text-align:center;">&#9203; &#1513;&#1493;&#1500;&#1495; &#1513;&#1488;&#1500;&#1493;&#1514;...</div>';
+  var apiKey=(window.APP&&window.APP.config&&window.APP.config.anthropic_key)||null;
+  if(!apiKey){results.innerHTML='<div style="color:#f87171;font-size:12px;padding:14px;">&#9888;&#65039; &#1502;&#1508;&#1514;&#1495; API &#1495;&#1505;&#1512;</div>';encShowTokenMeter(false);return;}
   var colors=['#38bdf8','#a78bfa','#22c55e'];
   var borders=['rgba(56,189,248,0.2)','rgba(167,139,250,0.2)','rgba(34,197,94,0.2)'];
   var qs=[q1,q2,q3].filter(Boolean);
-  var done=await Promise.all(qs.map(function(q,i){return ragQuery(q).then(function(r){return{i:i,q:q,r:r};}).catch(function(e){return{i:i,q:q,err:e.message};});}));
+  var done=await Promise.all(qs.map(function(q,i){
+    return claudeFetch(JSON.stringify({
+      _apiKey:apiKey,
+      model:'claude-sonnet-4-20250514',
+      max_tokens:800,
+      messages:[{role:'user',content:'אתה יועץ הנדסי בנייה ישראלי. עברית בלבד. תשובה קצרה ומעשית.\n\n'+q}]
+    }),null)
+    .then(function(res){return res.json();})
+    .then(function(data){return{i:i,q:q,r:(data.content&&data.content[0]&&data.content[0].text)||''};})
+    .catch(function(e){return{i:i,q:q,err:e.message};});
+  }));
   var html='<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(240px,100%),1fr));gap:10px;">';
   done.forEach(function(d){
-    var text=d.err?'&#10060; &#1513;&#1490;&#1497;&#1488;&#1492;: '+d.err:encFmtRag(d.r);
+    var text=d.err?'&#10060; &#1513;&#1490;&#1497;&#1488;&#1492;: '+d.err:(d.r||'&#1488;&#1497;&#1503; &#1514;&#1493;&#1510;&#1488;&#1492;');
     html+='<div style="background:#fff;border:0.5px solid '+borders[d.i]+';border-radius:10px;padding:12px;">'+
       '<div style="font-size:10px;color:'+colors[d.i]+';font-weight:700;margin-bottom:7px;">&#1513;&#1488;&#1500;&#1492; '+(d.i+1)+': '+encEsc(d.q)+'</div>'+
-      '<div style="font-size:11px;color:#1a3d5c;line-height:1.7;white-space:pre-wrap;">'+encEsc(text.substring(0,500))+'</div>'+
+      '<div style="font-size:11px;color:#1a3d5c;line-height:1.7;white-space:pre-wrap;">'+encEsc(text.substring(0,600))+'</div>'+
     '</div>';
   });
   results.innerHTML=html+'</div>';
+  encShowTokenMeter(false);
 }
 
 function encFmtRag(r){
