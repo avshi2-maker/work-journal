@@ -2107,16 +2107,7 @@ async function qRunSingle(num, question, apiKey) {
     return qLow.includes(kw.toLowerCase());
   });
 
-  if (!isConstruction) {
-    // Off-topic — show redirect card, open Claude.ai, stop
-    clearInterval(_timerInterval);
-    if (_barEl) { _barEl.style.width = '100%'; _barEl.style.background = '#f59e0b'; }
-    var claudeUrl = 'https://claude.ai/new?q=' + encodeURIComponent(question);
-    ansEl.innerHTML = qRenderOffTopic(question, claudeUrl);
-    // Auto-open Claude.ai in new tab after 1.5s
-    setTimeout(function() { window.open(claudeUrl, '_blank'); }, 1500);
-    return;
-  }
+  // Off-topic detector disabled — always run query
 
   try {
     // 1. Parallel: search all 3 spec tables + price items
