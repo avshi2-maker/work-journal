@@ -420,7 +420,7 @@ function encBuildRag(){
       encRagToggle('contacts','&#1488;&#1504;&#1513;&#1497; &#1511;&#1513;&#1512;','#c084fc')+
       encRagToggle('archive','&#1488;&#1512;&#1499;&#1497;&#1493;&#1503;','#86efac')+
     '</div>'+
-    '<div id="enc-token-meter" style="display:none;background:rgba(201,168,76,0.1);border:0.5px solid rgba(201,168,76,0.3);border-radius:8px;padding:7px 12px;margin-top:10px;font-size:11px;color:#c9a84c;font-family:Heebo,sans-serif;align-items:center;gap:8px;"></div>'+
+    '<div id="enc-token-meter" style="display:none;background:#1a3d5c;border:2px solid #38bdf8;border-radius:10px;padding:12px 18px;margin-top:14px;font-size:14px;font-weight:800;color:#fff;font-family:Heebo,sans-serif;align-items:center;gap:10px;text-align:center;letter-spacing:0.5px;"></div>'+
     '<div id="enc-rag-results" style="margin-top:12px;"></div>';
 }
 
@@ -497,7 +497,7 @@ function encShowTokenMeter(active){
   if(active){
     _encRagStartTime=Date.now();
     el.style.display='flex';
-    el.innerHTML='&#9203; &#1502;&#1506;&#1489;&#1491;... <span id="enc-token-elapsed">0&#1513;&#39;</span>';
+    el.innerHTML='<span style="font-size:22px;">&#9203;</span>  AI &#1506;&#1493;&#1489;&#1491;...  <span id="enc-token-elapsed" style="font-size:20px;color:#38bdf8;">0&#1513;&#39;</span>';
     var t=setInterval(function(){
       if(!document.getElementById('enc-token-elapsed')){clearInterval(t);return;}
       var s=((Date.now()-_encRagStartTime)/1000).toFixed(0);
@@ -508,7 +508,7 @@ function encShowTokenMeter(active){
     if(el._timer)clearInterval(el._timer);
     var sec=((Date.now()-_encRagStartTime)/1000).toFixed(1);
     var cost=((_encRagTokens.in*0.000003)+(_encRagTokens.out*0.000015)).toFixed(4);
-    el.innerHTML='&#9989; '+sec+'&#1513;&#39; | &#128172; '+(_encRagTokens.in||'?')+' &#1499;&#1504;&#1497;&#1505;&#1492; | '+(_encRagTokens.out||'?')+' &#1497;&#1510;&#1497;&#1488;&#1492; | $'+cost;
+    el.innerHTML='<span style="font-size:18px;">&#9989;</span>  <span style="color:#38bdf8;font-size:16px;">'+sec+'&#1513;&#39;</span>  |  &#128229; <span style="color:#a78bfa;">'+(_encRagTokens.in||'?')+'</span> &#1499;&#1504;&#1497;&#1505;&#1492;  |  &#128228; <span style="color:#22c55e;">'+(_encRagTokens.out||'?')+'</span> &#1497;&#1510;&#1497;&#1488;&#1492;  |  <span style="color:#fbbf24;font-size:16px;">$'+cost+'</span>';
   }
 }
 
