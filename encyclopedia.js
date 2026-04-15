@@ -161,19 +161,8 @@ function encToggleCat(id){
 
 function encRenderStats(){
   var el=document.getElementById('enc-stats');if(!el)return;
-  var stats=[
-    {n:_encItems.length+_encContacts.length+_encArchive.length,label:'&#1505;&#1492;"&#1499; &#1512;&#1513;&#1493;&#1502;&#1493;&#1514;',color:'#1a3d5c'},
-    {n:_encItems.filter(function(i){return i._src==='enc';}).length,label:'&#1502;&#1502;&#1510;&#1488;&#1497; &#1513;&#1496;&#1495;',color:'#c62828'},
-    {n:_encItems.filter(function(i){return i._src==='standards';}).length,label:'&#1514;&#1511;&#1504;&#1497; &#1489;&#1504;&#1497;&#1497;&#1492;',color:'#4527a0'},
-    {n:_encItems.filter(function(i){return i._src==='prices';}).length,label:'&#1502;&#1495;&#1497;&#1512;&#1493;&#1503; &#1491;&#1511;&#1500;',color:'#0f766e'},
-    {n:_encItems.filter(function(i){return i._src==='takeoff';}).length,label:'&#1496;&#1497;&#1497;&#1511;&#1488;&#1493;&#1508;&#1497;&#1501;',color:'#7a5500'},
-    {n:_encItems.filter(function(i){return i._src==='notes'||i._src==='inbox';}).length,label:'&#1504;&#1499;&#1505;&#1497; &#1489;&#1504;&#1497;',color:'#0f766e'},
-    {n:_encContacts.length,label:'&#1488;&#1504;&#1513;&#1497; &#1511;&#1513;&#1512;',color:'#4a148c'},
-    {n:_encArchive.length,label:'&#1488;&#1512;&#1499;&#1497;&#1493;&#1503;',color:'#1b5e20'},
-  ];
-  el.innerHTML=stats.map(function(s){
-    return '<div style="background:#fff;border:0.5px solid #e8ddb5;border-radius:8px;padding:8px 10px;text-align:center;"><div style="font-size:19px;font-weight:900;color:'+s.color+';">'+s.n.toLocaleString()+'</div><div style="font-size:10px;color:#888;font-weight:700;">'+s.label+'</div></div>';
-  }).join('');
+  el.style.display='none';
+  el.innerHTML='';
 }
 
 function encRender(){
@@ -542,8 +531,11 @@ async function encRagRunAll(){
   encShowTokenMeter(true);
   if(!q1&&!q2&&!q3){encShowTokenMeter(false);showToast('&#1492;&#1494;&#1503; &#1500;&#1508;&#1495;&#1493;&#1514; &#1513;&#1488;&#1500;&#1492; &#1488;&#1495;&#1514;','error');return;}
   var results=document.getElementById('enc-rag-results');if(!results)return;
-  results.innerHTML='<div style="color:#38bdf8;font-size:12px;padding:14px;">&#9203; &#1502;&#1506;&#1489;&#1491; &#1513;&#1488;&#1500;&#1493;&#1514;...</div>';
-  if(typeof ragQuery!=='function'){results.innerHTML='<div style="background:#fff;border:0.5px solid rgba(239,68,68,0.3);border-radius:10px;padding:14px;color:#f87171;font-size:12px;">&#9888;&#65039; &#1502;&#1504;&#1493;&#1506; RAG &#1500;&#1488; &#1504;&#1496;&#1506;&#1503; &#8212; &#1506;&#1489;&#1493;&#1512; &#1500;&#1496;&#1488;&#1489; &#1513;&#1488;&#1497;&#1500;&#1514;&#1493;&#1514; &#1502;&#1511;&#1510;&#1493;&#1506;&#1497;&#1493;&#1514;</div>';return;}
+  results.innerHTML='<div style="color:#9a6f00;font-size:12px;padding:14px;text-align:center;">&#9203; &#1502;&#1502;&#1514;&#1497;&#1503; &#1500;&#1502;&#1504;&#1493;&#1506; RAG...</div>';
+  // Wait up to 5s for ragQuery to load
+  var waited=0;
+  while(typeof ragQuery!=='function'&&waited<50){await new Promise(function(r){setTimeout(r,100);});waited++;}
+  if(typeof ragQuery!=='function'){results.innerHTML='<div style="background:#fff;border:0.5px solid rgba(239,68,68,0.3);border-radius:10px;padding:14px;color:#f87171;font-size:12px;">&#9888;&#65039; &#1502;&#1504;&#1493;&#1506; RAG &#1500;&#1488; &#1504;&#1496;&#1506;&#1503; &#8212; &#1504;&#1505;&#1492; &#1513;&#1493;&#1489; &#1489;&#1506;&#1493;&#1491; &#1499;&#1502;&#1492; &#1513;&#1504;&#1497;&#1493;&#1514;</div>';encShowTokenMeter(false);return;}
   var colors=['#38bdf8','#a78bfa','#22c55e'];
   var borders=['rgba(56,189,248,0.2)','rgba(167,139,250,0.2)','rgba(34,197,94,0.2)'];
   var qs=[q1,q2,q3].filter(Boolean);
