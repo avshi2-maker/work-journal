@@ -595,9 +595,9 @@ function encBuildHubSummary(buckets){
   function hdr(bg,borC,iconBg,icon,title,sub,arrowFn){
     return '<div style="background:'+bg+';border-bottom:1.5px solid '+borC+';padding:10px 14px;display:flex;align-items:center;justify-content:space-between;direction:rtl;">'+
       '<div style="display:flex;align-items:center;gap:8px;">'+
-        '<div style="width:34px;height:34px;border-radius:9px;background:'+iconBg+';display:flex;align-items:center;justify-content:center;font-size:18px;">'+icon+'</div>'+
+        '<div style="width:28px;height:28px;border-radius:7px;background:'+iconBg+';display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;">'+icon+'</div>'+
         '<div>'+
-          '<div style="font-size:13px;font-weight:900;color:#1a3d5c;">'+title+'</div>'+
+          '<div style="font-size:11px;font-weight:900;color:#1a3d5c;line-height:1.3;">'+title+'</div>'+
           '<div style="font-size:9px;color:#777;font-weight:700;">'+sub+'</div>'+
         '</div>'+
       '</div>'+
@@ -846,7 +846,7 @@ function encBuildHubSummary(buckets){
     )
   );
 
-  var gridS='display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;padding:10px 18px 4px;direction:rtl;';
+  var gridS='display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;padding:10px 18px 4px;direction:rtl;';
   return '<div style="padding:0;direction:rtl;">'+
     '<div style="'+gridS+'">'+b6+b3+b1+'</div>'+
     '<div style="'+gridS+'">'+b5+b2+b4+'</div>'+
