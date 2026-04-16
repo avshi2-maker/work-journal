@@ -846,10 +846,12 @@ function encBuildHubSummary(buckets){
     )
   );
 
-  return '<div style="padding:10px 18px 4px;direction:rtl;">'+
-    '<div style="'+wrapS+'">'+b1+b2+'</div>'+
-    '<div style="'+wrapS+'">'+b3+b4+'</div>'+
-    '<div style="'+wrapS+'">'+b5+b6+'</div>'+
+  var row3S='display:flex;gap:12px;flex-wrap:wrap;padding:10px 18px 4px;direction:rtl;';
+  var colS='flex:1;min-width:220px;';
+  function col(b){return '<div style="'+colS+'">'+b+'</div>';}
+  return '<div style="padding:0;direction:rtl;">'+
+    '<div style="'+row3S+'">'+col(b6)+col(b3)+col(b1)+'</div>'+
+    '<div style="'+row3S+'">'+col(b5)+col(b2)+col(b4)+'</div>'+
   '</div>';
 }
 
