@@ -846,10 +846,13 @@ function encBuildHubSummary(buckets){
     )
   );
 
-  var gridS='display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;padding:10px 18px 4px;direction:rtl;';
-  return '<div style="padding:0;direction:rtl;">'+
-    '<div style="'+gridS+'">'+b6+b3+b1+'</div>'+
-    '<div style="'+gridS+'">'+b5+b2+b4+'</div>'+
+  var tdS='width:50%;vertical-align:top;padding:4px;';
+  return '<div style="padding:6px 14px;direction:rtl;">'+
+    '<table style="width:100%;border-collapse:collapse;table-layout:fixed;direction:rtl;"><tbody>'+
+      '<tr><td style="'+tdS+'">'+b6+'</td><td style="'+tdS+'">'+b3+'</td></tr>'+
+      '<tr><td style="'+tdS+'">'+b1+'</td><td style="'+tdS+'">'+b5+'</td></tr>'+
+      '<tr><td style="'+tdS+'">'+b2+'</td><td style="'+tdS+'">'+b4+'</td></tr>'+
+    '</tbody></table>'+
   '</div>';
 }
 
