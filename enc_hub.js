@@ -1,4 +1,4 @@
-// enc_hub.js — Stage 1 v16042026-b
+// enc_hub.js — Stage 1 v16042026-c
 // Collapsed topic boxes, live counts, tap-to-expand, hard cap on heavy sources
 // Reuses: _encItems, _encContacts, _encArchive, encGroupForItem, encEsc, encDec,
 //         encProjName, encFmtDate, encMapType, sbQ, showToast (all from encyclopedia.js)
@@ -97,21 +97,40 @@ var _HUB_SRC_STYLE = {
 function hubInit() {
   var el = document.getElementById('hub-root');
   if (!el) return;
-  // Wait for encyclopedia data to be ready
-  if (!_encItems || !_encItems.length) {
-    el.innerHTML = '<div style="padding:40px;text-align:center;font-family:Heebo,sans-serif;direction:rtl;color:#888;">⏳ טוען נתונים...</div>';
-    // Retry after enc loads
+  // Show loading state immediately
+  el.innerHTML = '<div style="padding:20px;text-align:center;font-family:Heebo,Arial,sans-serif;direction:rtl;color:#1a3d5c;font-size:13px;">⏳ טוען נתונים...</div>';
+  // Ensure encyclopedia.js is loaded (it owns _encItems)
+  if (typeof _fetchEncyclopedia === 'function') {
+    _fetchEncyclopedia().then(function() {
+      // Now wait for encInit to populate _encItems
+      var tries = 0;
+      var wait = setInterval(function() {
+        tries++;
+        if (_encItems && _encItems.length > 0) {
+          clearInterval(wait);
+          hubRender();
+        } else if (tries === 1 && typeof encInit === 'function') {
+          // Trigger encInit to load data into _encItems
+          encInit();
+        } else if (tries > 30) {
+          clearInterval(wait);
+          el.innerHTML = '<div style="padding:20px;text-align:center;font-family:Heebo,Arial,sans-serif;direction:rtl;color:#c62828;">⚠️ שגיאה בטעינת נתונים</div>';
+        }
+      }, 300);
+    });
+  } else {
+    // Fallback — retry waiting for _fetchEncyclopedia to appear
     var tries = 0;
     var wait = setInterval(function() {
       tries++;
-      if ((_encItems && _encItems.length) || tries > 20) {
+      if (typeof _fetchEncyclopedia === 'function') {
         clearInterval(wait);
-        hubRender();
+        hubInit();
+      } else if (tries > 20) {
+        clearInterval(wait);
       }
     }, 500);
-    return;
   }
-  hubRender();
 }
 
 // ─── RENDER SHELL ─────────────────────────────────────────────────────────────
