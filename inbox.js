@@ -1224,7 +1224,8 @@ async function sibPhase2Run(id, direction) {
 
     // Standards direction — use ragQuery() directly (it runs Claude internally)
     if(direction==='standards'){
-      if(typeof ragQuery!=='function'){ sibStopMeter(); sibShowError('מנוע RAG לא טעון — פתח לשונית ייעוץ הנדסי פעם אחת לטעינה'); return; }
+      // Use ragQuery if loaded, otherwise fall back to claudeFetch directly
+      var _useRag = typeof ragQuery==='function';
       if(resultEl) resultEl.innerHTML='<div style="text-align:center;padding:20px;color:#4527a0;font-size:12px;">📚 מחפש ב-838 תקנים...</div>';
 
       // For audio/video transcripts — extract engineering keywords first
@@ -1245,15 +1246,27 @@ async function sibPhase2Run(id, direction) {
         if(resultEl) resultEl.innerHTML='<div style="text-align:center;padding:20px;color:#4527a0;font-size:12px;">📚 מחפש ב-838 תקנים...</div>';
       }
 
-      var ragResult = await ragQuery(ragQuery_text.substr(0,600));
-      if(ragResult.error) throw new Error('RAG: '+ragResult.error);
-      var retrieved = ragResult.retrieved||{};
-      var allSources = (retrieved.building_standards||[]).concat(retrieved.mamad||[]).concat(retrieved.spec||[]).concat(retrieved.renovation||[]);
-      if(allSources.length===0) throw new Error('לא נמצאו תקנים רלוונטיים — הטקסט לא מכיל מונחי בנייה מספיקים');
-      var srcCount = allSources.length;
-      sibStopMeter({input_tokens:srcCount*50+200, output_tokens:400});
-      var ragAnswer = ragResult.answer||'';
-      var result = {mode:'standards', text:'## תקנים רלוונטיים שנמצאו: '+srcCount+' רשומות\n\n'+ragAnswer, timestamp:new Date().toISOString(), title:'📋 דוח תאימות תקנים', usage:{input_tokens:srcCount*50+200,output_tokens:400}};
+      var result;
+      if(_useRag){
+        var ragResult = await ragQuery(ragQuery_text.substr(0,600));
+        if(ragResult.error) throw new Error('RAG: '+ragResult.error);
+        var retrieved = ragResult.retrieved||{};
+        var allSources = (retrieved.building_standards||[]).concat(retrieved.mamad||[]).concat(retrieved.spec||[]).concat(retrieved.renovation||[]);
+        var srcCount = allSources.length;
+        sibStopMeter({input_tokens:srcCount*50+200, output_tokens:400});
+        result = {mode:'standards', text:'## תקנים רלוונטיים שנמצאו: '+srcCount+' רשומות\n\n'+(ragResult.answer||''), timestamp:new Date().toISOString(), title:'📋 דוח תאימות תקנים', usage:{input_tokens:srcCount*50+200,output_tokens:400}};
+      } else {
+        // fallback: Claude direct without RAG
+        if(resultEl) resultEl.innerHTML='<div style="text-align:center;padding:20px;color:#4527a0;font-size:12px;">🤖 מנתח מול תקני בנייה ישראליים...</div>';
+        var fbRaw = await claudeFetch({_apiKey:apiKey, model:'claude-sonnet-4-20250514', max_tokens:1000,
+          system:'אתה מומחה לתקני בנייה ישראליים. בדוק את הטקסט מול תקני IS רלוונטיים. ציין תקנים ספציפיים, דרישות ולקויים. עברית בלבד.',
+          messages:[{role:'user',content:ragQuery_text.substr(0,1500)}]
+        }, null);
+        var fbResp = fbRaw&&typeof fbRaw.json==='function'?await fbRaw.json():fbRaw;
+        var fbText = fbResp&&fbResp.content&&fbResp.content[0]?fbResp.content[0].text:'אין תוצאה';
+        sibStopMeter(fbResp&&fbResp.usage?fbResp.usage:{});
+        result = {mode:'standards', text:fbText, timestamp:new Date().toISOString(), title:'📋 ניתוח תקנים', usage:fbResp&&fbResp.usage?fbResp.usage:{}};
+      }
       _sibAnalysis[id] = result;
       sibRenderReport(id, result, p1text);
       return;
