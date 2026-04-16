@@ -1268,6 +1268,7 @@ async function sibPhase2Run(id, direction) {
         result = {mode:'standards', text:fbText, timestamp:new Date().toISOString(), title:'📋 ניתוח תקנים', usage:fbResp&&fbResp.usage?fbResp.usage:{}};
       }
       _sibAnalysis[id] = result;
+      try{sb.from('asset_inbox').update({ai_report:JSON.stringify(result),ai_reason:direction}).eq('id',id);}catch(pe){}
       sibRenderReport(id, result, p1text);
       return;
     }
@@ -1309,6 +1310,8 @@ async function sibPhase2Run(id, direction) {
 
     var result = {mode:direction, text:finalText, timestamp:new Date().toISOString(), usage:resp&&resp.usage, title:reportTitle};
     _sibAnalysis[id] = result;
+    // Persist to DB so it survives page reload
+    try{sb.from('asset_inbox').update({ai_report:JSON.stringify(result),ai_reason:direction}).eq('id',id);}catch(pe){}
     sibRenderReport(id, result, p1text);
     // Wire third-party action buttons after report renders
     if (direction==='thirdparty') setTimeout(function(){ sibAddTPActions(id); }, 100);
@@ -2028,6 +2031,17 @@ async function sibApproveWithReport(id) {
   var analysis = _sibAnalysis[id];
   var p1text   = _sibPhase1[id] || '';
   if (!item) return;
+  // If memory cleared, reload analysis from DB
+  if(!analysis && !p1text){
+    try{
+      var dbRow=await sb.from('asset_inbox').select('ai_report,notes').eq('id',id).single();
+      if(dbRow.data&&dbRow.data.ai_report){
+        try{analysis=JSON.parse(dbRow.data.ai_report);}catch(e){}
+        if(analysis)_sibAnalysis[id]=analysis;
+      }
+      if(!p1text&&dbRow.data&&dbRow.data.notes)p1text=dbRow.data.notes;
+    }catch(e){}
+  }
 
   var sel = document.getElementById('sib-proj-sel-'+id);
   var projectId = (sel && sel.value) ? sel.value : (item.project_id || null);
