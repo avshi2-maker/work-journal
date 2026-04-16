@@ -6307,7 +6307,7 @@ async function switchTab(tab) {
   }
   if (tab === 'standards')   { _fetchStandardsModule().then(function(){ setTimeout(standardsRagInit, 100); }); }
   if (tab === 'smartscan')   { _fetchSmartScanModule().then(function(){ setTimeout(function(){ smartScanInit(); _ssPopulateProjects(); }, 100); }); }
-  if (tab === 'inbox')       { _fetchInboxModule().then(function(){ setTimeout(function(){ if(typeof sibInit==='function') sibInit(); }, 100); }); _fetchEncHub().then(function(){ setTimeout(function(){ if(typeof hubInit==='function') hubInit(); else console.warn('[hub] hubInit still undefined after fetch'); }, 500); }); }
+  if (tab === 'inbox')       { _fetchInboxModule().then(function(){ setTimeout(function(){ if(typeof sibInit==='function') sibInit(); }, 100); }); _fetchEncHub().then(function(){ var _tries=0; var _wait=setInterval(function(){ _tries++; if(typeof hubInit==='function'){ clearInterval(_wait); hubInit(); } else if(_tries>20){ clearInterval(_wait); console.warn('[hub] hubInit not found after 10s'); } },500); }); }
   if (tab === 'misc')        { setTimeout(loadMiscTab, 100); }
   if (tab === 'takeoff') {
     // When switching to laser sub-tab, init gavoim module

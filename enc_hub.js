@@ -1,4 +1,4 @@
-// enc_hub.js — Stage 1: Beni Hub Shell
+// enc_hub.js — Stage 1 v16042026-b
 // Collapsed topic boxes, live counts, tap-to-expand, hard cap on heavy sources
 // Reuses: _encItems, _encContacts, _encArchive, encGroupForItem, encEsc, encDec,
 //         encProjName, encFmtDate, encMapType, sbQ, showToast (all from encyclopedia.js)
