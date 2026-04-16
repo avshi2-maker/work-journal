@@ -556,113 +556,301 @@ function encRenderContacts(){
 }
 
 function encBuildHubSummary(buckets){
-  var takeoffCount=(buckets['takeoff']||[]).length;
-  var archiveCount=(buckets['archive']||[]).length;
-  var contactCount=(buckets['contacts']||[]).length;
-  var noteCount=(buckets['notes']||[]).length;
-  var inboxCount=(buckets['inbox']||[]).length;
-  var personalCount=(buckets['personal']||[]).length;
-  var equipCount=inboxCount; // inbox items treated as equipment/docs
+  // counts per source
+  var cntTakeoff=(buckets['takeoff']||[]).length;
+  var cntArchive=(buckets['archive']||[]).length;
+  var cntContacts=(buckets['contacts']||[]).length;
+  var cntNotes=(buckets['notes']||[]).length;
+  var cntPersonal=(buckets['personal']||[]).length;
+  var cntInbox=(buckets['inbox']||[]).length;
+  var cntEnc=(buckets['general']||[]).length+(buckets['safety']||[]).length+(buckets['engineering']||[]).length;
+  var cntStandards=(_encItems.filter(function(i){return i._src==='standards';})).length;
+  var cntPrices=(_encItems.filter(function(i){return i._src==='prices';})).length;
+  var cntFindings=(_encItems.filter(function(i){return i._type==='finding';})).length;
+  var cntImages=(_encItems.filter(function(i){return i._type==='image';})).length;
+  var cntAudio=(_encItems.filter(function(i){return i._type==='audio'||i._type==='call';})).length;
+  var cntPdf=(_encItems.filter(function(i){return i._type==='pdf';})).length;
 
-  var btnS='padding:5px 10px;border-radius:8px;font-size:10px;font-weight:800;cursor:pointer;font-family:Heebo,sans-serif;border:0.5px solid #e8ddb5;background:#fff;color:#1a3d5c;';
-  var rowS='display:flex;align-items:center;gap:7px;padding:8px 0;border-bottom:0.5px dashed #e8ddb5;direction:rtl;';
-  var iconBoxS='width:28px;height:28px;border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;background:#f5f0e8;border:0.5px solid #e8ddb5;';
-  var badgeSGold='padding:2px 8px;border-radius:10px;font-size:9px;font-weight:800;background:#fff8e0;color:#7a5500;border:0.5px solid #c9a84c;white-space:nowrap;';
-  var badgeSPurple='padding:2px 8px;border-radius:10px;font-size:9px;font-weight:800;background:#f3e5f5;color:#4a148c;border:0.5px solid #ce93d8;white-space:nowrap;';
-  var badgeSNote='padding:2px 8px;border-radius:10px;font-size:9px;font-weight:800;background:#e8f5e9;color:#2e7d32;border:0.5px solid #a5d6a7;white-space:nowrap;';
+  // shared style strings
+  var wrapS='display:flex;gap:12px;flex-wrap:wrap;padding:10px 18px 4px;direction:rtl;';
+  var boxS='border-radius:14px;padding:0;flex:1;min-width:260px;overflow:hidden;border:1.5px solid ';
+  var rowS='display:flex;align-items:center;gap:6px;padding:7px 0;border-bottom:0.5px dashed #e0e0e0;direction:rtl;';
+  var rowLastS='display:flex;align-items:center;gap:6px;padding:7px 0;direction:rtl;';
+  var secS='font-size:9px;font-weight:800;color:#888;text-align:right;padding:6px 0 2px;';
+  var iS='width:26px;height:26px;border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0;background:#f5f5f5;border:0.5px solid #e0e0e0;cursor:pointer;';
+  var txtS='flex:1;font-size:11px;font-weight:800;color:#1a3d5c;text-align:right;';
+  var cntS='border-radius:6px;padding:1px 6px;font-size:10px;font-weight:900;margin-right:3px;';
+  var ftrS='border-top:1.5px solid #e0e0e0;padding:8px 14px;display:flex;gap:5px;flex-wrap:wrap;direction:rtl;';
+  var btnS='padding:5px 9px;border-radius:8px;font-size:10px;font-weight:800;cursor:pointer;font-family:Heebo,sans-serif;border:0.5px solid #e0e0e0;background:#fff;color:#1a3d5c;';
 
-  // LEFT BOX — מדידות, מסמכים וארכיון
-  var leftBox=
-    '<div style="background:#fffbf0;border:1.5px solid #c9a84c;border-radius:14px;padding:0;flex:1;min-width:260px;overflow:hidden;">'+
-      // header
-      '<div style="background:#fff8e0;border-bottom:1.5px solid #c9a84c;padding:10px 14px;display:flex;align-items:center;justify-content:space-between;direction:rtl;">'+
-        '<div style="display:flex;align-items:center;gap:8px;">'+
-          '<div style="width:34px;height:34px;border-radius:9px;background:#c9a84c;display:flex;align-items:center;justify-content:center;font-size:18px;">&#128208;</div>'+
-          '<div>'+
-            '<div style="font-size:13px;font-weight:900;color:#1a3d5c;">&#1502;&#1491;&#1497;&#1491;&#1493;&#1514;, &#1502;&#1505;&#1502;&#1499;&#1497;&#1501; &#1493;&#1488;&#1512;&#1499;&#1497;&#1493;&#1503;</div>'+
-            '<div style="font-size:9px;color:#7a5500;font-weight:700;">takeoff | pdf | archive</div>'+
-          '</div>'+
-        '</div>'+
-        '<span onclick="encToggleGroup(\'takeoff\')" style="cursor:pointer;font-size:18px;color:#c9a84c;">&#9660;</span>'+
-      '</div>'+
-      // rows
-      '<div style="padding:4px 14px;">'+
-        // takeoff row
-        '<div style="'+rowS+'">'+
-          '<div style="'+iconBoxS+'">&#128193;</div>'+
-          '<div style="'+iconBoxS+'">&#128196;</div>'+
-          '<div style="'+iconBoxS+'" onclick="encToggleGroup(\'takeoff\')" title="&#1510;&#1508;&#1492;" style="cursor:pointer;">&#128065;&#65039;</div>'+
-          '<span style="'+badgeSGold+'">takeoff</span>'+
-          '<div style="flex:1;font-size:11px;font-weight:800;color:#1a3d5c;text-align:right;">&#9679; &#1496;&#1497;&#1497;&#1511;&#1488;&#1493;&#1508;&#1497;&#1501; &#1500;&#1508;&#1497; &#1508;&#1512;&#1493;&#1497;&#1511;&#1496; <span style="background:#fff8e0;color:#7a5500;border-radius:6px;padding:1px 6px;font-size:10px;">'+takeoffCount+'</span></div>'+
-        '</div>'+
-        // archive row
-        '<div style="'+rowS+'border-bottom:none;">'+
-          '<div style="'+iconBoxS+'">&#128193;</div>'+
-          '<div style="'+iconBoxS+'">&#128202;</div>'+
-          '<div style="'+iconBoxS+'" onclick="encToggleGroup(\'archive\')" title="&#1510;&#1508;&#1492;" style="cursor:pointer;">&#128065;&#65039;</div>'+
-          '<span style="'+badgeSGold+'">archive</span>'+
-          '<div style="flex:1;font-size:11px;font-weight:800;color:#1a3d5c;text-align:right;">&#9679; &#1508;&#1512;&#1493;&#1497;&#1511;&#1496;&#1497;&#1501; &#1505;&#1490;&#1493;&#1512;&#1497;&#1501; <span style="background:#fff8e0;color:#7a5500;border-radius:6px;padding:1px 6px;font-size:10px;">'+archiveCount+'</span></div>'+
+  function badge(label,bg,color,border){
+    return '<span style="padding:2px 7px;border-radius:10px;font-size:9px;font-weight:800;background:'+bg+';color:'+color+';border:0.5px solid '+border+';white-space:nowrap;">'+label+'</span>';
+  }
+  function cnt(n,bg,color){
+    return '<span style="'+cntS+'background:'+bg+';color:'+color+';">'+n+'</span>';
+  }
+  function iBtn(icon,onclick){
+    return '<div style="'+iS+'" onclick="'+onclick+'">'+icon+'</div>';
+  }
+  function hdr(bg,borC,iconBg,icon,title,sub,arrowFn){
+    return '<div style="background:'+bg+';border-bottom:1.5px solid '+borC+';padding:10px 14px;display:flex;align-items:center;justify-content:space-between;direction:rtl;">'+
+      '<div style="display:flex;align-items:center;gap:8px;">'+
+        '<div style="width:34px;height:34px;border-radius:9px;background:'+iconBg+';display:flex;align-items:center;justify-content:center;font-size:18px;">'+icon+'</div>'+
+        '<div>'+
+          '<div style="font-size:13px;font-weight:900;color:#1a3d5c;">'+title+'</div>'+
+          '<div style="font-size:9px;color:#777;font-weight:700;">'+sub+'</div>'+
         '</div>'+
       '</div>'+
-      // footer buttons
-      '<div style="border-top:1.5px solid #e8ddb5;padding:8px 14px;display:flex;gap:6px;flex-wrap:wrap;background:#fffdf5;direction:rtl;">'+
-        '<button onclick="encPrint(\'takeoff\')" style="'+btnS+'background:#f5f0e8;">&#128424;&#65039; &#1492;&#1491;&#1508;&#1505;</button>'+
-        '<button onclick="encWA(\'takeoff\')" style="'+btnS+'background:#e8f8ef;color:#1b5e20;border-color:#a5d6a7;">&#128172; WA</button>'+
-        '<button onclick="encMail(\'takeoff\')" style="'+btnS+'">&#9993;&#65039; &#1502;&#1497;&#1497;&#1500;</button>'+
-        '<button onclick="encSetTypeTab(\'takeoff\');encSetSource(\'all\')" style="'+btnS+'background:#e8f0fd;">&#128193; &#1508;&#1512;&#1493;&#1497;&#1511;&#1496;</button>'+
-      '</div>'+
+      '<span onclick="'+arrowFn+'" style="cursor:pointer;font-size:16px;color:'+borC+';">&#9660;</span>'+
     '</div>';
+  }
+  function ftr(bg,borC,btns){
+    return '<div style="'+ftrS+'background:'+bg+';border-color:'+borC+';">'+btns+'</div>';
+  }
+  function box(borC,bgBody,hdrHTML,rowsHTML,ftrHTML){
+    return '<div style="'+boxS+borC+';">'+hdrHTML+
+      '<div style="padding:2px 14px;background:'+bgBody+';">'+rowsHTML+'</div>'+
+      ftrHTML+'</div>';
+  }
 
-  // RIGHT BOX — קשרים, ציוד והערות
-  var rightBox=
-    '<div style="background:#fdf8ff;border:1.5px solid #ce93d8;border-radius:14px;padding:0;flex:1;min-width:260px;overflow:hidden;">'+
-      // header
-      '<div style="background:#f3e5f5;border-bottom:1.5px solid #ce93d8;padding:10px 14px;display:flex;align-items:center;justify-content:space-between;direction:rtl;">'+
-        '<div style="display:flex;align-items:center;gap:8px;">'+
-          '<div style="width:34px;height:34px;border-radius:9px;background:#9c27b0;display:flex;align-items:center;justify-content:center;font-size:18px;">&#128101;</div>'+
-          '<div>'+
-            '<div style="font-size:13px;font-weight:900;color:#1a3d5c;">&#1511;&#1513;&#1512;&#1497;&#1501;, &#1510;&#1497;&#1493;&#1491; &#1493;&#1492;&#1506;&#1512;&#1493;&#1514;</div>'+
-            '<div style="font-size:9px;color:#6a1b9a;font-weight:700;">contacts | notes</div>'+
-          '</div>'+
-        '</div>'+
-        '<span onclick="encSetTypeTab(\'contacts\')" style="cursor:pointer;font-size:18px;color:#ce93d8;">&#9660;</span>'+
-      '</div>'+
-      // rows
-      '<div style="padding:4px 14px;">'+
-        // contacts row
-        '<div style="'+rowS+'">'+
-          '<div style="'+iconBoxS+'">&#128193;</div>'+
-          '<div style="'+iconBoxS+'" onclick="encSetTypeTab(\'contacts\')" title="WA" style="cursor:pointer;font-size:11px;font-weight:800;color:#25D366;">WA</div>'+
-          '<div style="'+iconBoxS+'" onclick="encSetTypeTab(\'contacts\')" title="&#1510;&#1508;&#1492;" style="cursor:pointer;">&#128065;&#65039;</div>'+
-          '<span style="'+badgeSPurple+'">contacts</span>'+
-          '<div style="flex:1;font-size:11px;font-weight:800;color:#1a3d5c;text-align:right;">&#9679; &#1505;&#1508;&#1511;&#1497;&#1501; &#1493;&#1511;&#1489;&#1500;&#1504;&#1497;&#1501; &#1500;&#1508;... <span style="background:#f3e5f5;color:#4a148c;border-radius:6px;padding:1px 6px;font-size:10px;">'+contactCount+'</span></div>'+
-        '</div>'+
-        // equipment/inbox row
-        '<div style="'+rowS+'">'+
-          '<div style="'+iconBoxS+'">&#128193;</div>'+
-          '<div style="'+iconBoxS+'" style="font-size:11px;font-weight:800;color:#25D366;">WA</div>'+
-          '<div style="'+iconBoxS+'" onclick="encSetTypeTab(\'inbox\')" title="&#1510;&#1508;&#1492;" style="cursor:pointer;">&#128065;&#65039;</div>'+
-          '<span style="'+badgeSPurple+'">contacts</span>'+
-          '<div style="flex:1;font-size:11px;font-weight:800;color:#1a3d5c;text-align:right;">&#9679; &#1492;&#1513;&#1488;&#1500;&#1514; &#1510;&#1497;&#1493;&#1491; &#8212; 0... <span style="background:#f3e5f5;color:#4a148c;border-radius:6px;padding:1px 6px;font-size:10px;">'+equipCount+'</span></div>'+
-        '</div>'+
-        // notes/personal row
-        '<div style="'+rowS+'border-bottom:none;">'+
-          '<div style="'+iconBoxS+'">&#128193;</div>'+
-          '<div style="'+iconBoxS+'" style="font-size:11px;font-weight:800;color:#25D366;">WA</div>'+
-          '<div style="'+iconBoxS+'" onclick="encSetTypeTab(\'note\')" title="&#1510;&#1508;&#1492;" style="cursor:pointer;">&#128065;&#65039;</div>'+
-          '<span style="'+badgeSNote+'">note</span>'+
-          '<div style="flex:1;font-size:11px;font-weight:800;color:#1a3d5c;text-align:right;">&#9679; &#1492;&#1506;&#1512;&#1493;&#1514; &#1497;&#1491; &#1493;&#1502;&#1494;&#1499;&#1512;&#1497;&#1501; <span style="background:#e8f5e9;color:#2e7d32;border-radius:6px;padding:1px 6px;font-size:10px;">'+(noteCount+personalCount)+'</span></div>'+
-        '</div>'+
-      '</div>'+
-      // footer buttons
-      '<div style="border-top:1.5px solid #e8ddb5;padding:8px 14px;display:flex;gap:6px;flex-wrap:wrap;background:#fdf8ff;direction:rtl;">'+
-        '<button onclick="encSetTypeTab(\'contacts\');encSetSource(\'all\')" style="'+btnS+'background:#f3e5f5;color:#4a148c;border-color:#ce93d8;">&#128193; &#1508;&#1512;&#1493;&#1497;&#1511;&#1496;</button>'+
-        '<button onclick="encMail(\'contacts\')" style="'+btnS+'">&#9993;&#65039; &#1502;&#1497;&#1497;&#1500;</button>'+
-        '<button onclick="window.open(\'https://wa.me/\',\'_blank\')" style="'+btnS+'background:#e8f8ef;color:#1b5e20;border-color:#a5d6a7;">&#128172; WA</button>'+
-      '</div>'+
+  // ── BOX 1: הגדסה, תקנים ומחירון ──
+  var b1rows=
+    '<div style="'+secS+'">&#1502;&#1502;&#1510;&#1488;&#1497;&#1501; &#1492;&#1504;&#1491;&#1505;&#1497;&#1497;&#1501;</div>'+
+    '<div style="'+rowS+'">'+
+      iBtn('&#128193;','encToggleGroup(\'general\')')+
+      iBtn('&#128196;','encToggleGroup(\'general\')')+
+      iBtn('&#128065;&#65039;','encToggleGroup(\'general\')')+
+      badge('finding','#fff3e0','#e65100','#ffcc80')+
+      '<div style="'+txtS+'">&#9679; &#1502;&#1502;&#1510;&#1488;&#1497;&#1501; &#1492;&#1504;&#1491;&#1505;&#1497;&#1497;&#1501; &#8212; AI '+cnt(cntFindings,'#fff3e0','#e65100')+'</div>'+
+    '</div>'+
+    '<div style="'+secS+'">&#1514;&#1511;&#1504;&#1497;&#1501; &#1493;&#1502;&#1495;&#1497;&#1512;&#1497;&#1501; &#8212; &#1502;&#1510;&#1497;&#1490; 10 &#1502;&#1514;&#1493;&#1498; '+cntStandards+'</div>'+
+    '<div style="'+rowS+'">'+
+      iBtn('&#128196;','encSetSource(\'__src_standards\')')+
+      iBtn('&#128065;&#65039;','encSetSource(\'__src_standards\')')+
+      badge('standard','#ede7f6','#4527a0','#ce93d8')+
+      '<div style="'+txtS+'">&#9679; &#1514;&#1511;&#1503; &#1489;&#1504;&#1497;&#1497;&#1492; IS 466 &#8212; &#1512;&#1497;&#1510;&#1493;&#1507; '+cnt(cntStandards,'#ede7f6','#4527a0')+'</div>'+
+    '</div>'+
+    '<div style="'+rowLastS+'">'+
+      iBtn('&#128172;','encSetSource(\'__src_prices\')')+
+      iBtn('&#128065;&#65039;','encSetSource(\'__src_prices\')')+
+      badge('price','#e8f5e9','#2e7d32','#a5d6a7')+
+      '<div style="'+txtS+'">&#9679; &#1491;&#1511;&#1500; &#8212; &#1508;&#1512;&#1497;&#1496; 3.2.1 &#1512;&#1497;&#1510;&#1493;&#1507; '+cnt(cntPrices,'#e8f5e9','#2e7d32')+'</div>'+
+    '</div>'+
+    (cntStandards>10?'<div style="background:#fff8e0;border-radius:7px;padding:4px 8px;font-size:9px;font-weight:800;color:#7a5500;text-align:right;margin:4px 0;">&#9888;&#65039; &#1502;&#1510;&#1497;&#1490; 10 &#1502;&#1514;&#1493;&#1498; '+cntStandards+' &#8212; &#1492;&#1513;&#1514;&#1502;&#1513; &#1489;&#1495;&#1497;&#1508;&#1493;&#1513; &#1500;&#1510;&#1502;&#1510;&#1493;&#1501;</div>':'');
+  var b1=box('#c9a84c','#fffbf0',
+    hdr('#fff8e0','#c9a84c','#c9a84c','&#128202;','&#1492;&#1490;&#1491;&#1505;&#1492;, &#1514;&#1511;&#1504;&#1497;&#1501; &#1493;&#1502;&#1495;&#1497;&#1512;&#1493;&#1503;','standards | prices | findings','encSetSource(\'__src_standards\')'),
+    b1rows,
+    ftr('#fffdf5','#c9a84c',
+      '<button onclick="encPrint(\'general\')" style="'+btnS+'">&#128424;&#65039; &#1492;&#1491;&#1508;&#1505;</button>'+
+      '<button onclick="encWA(\'general\')" style="'+btnS+'background:#e8f8ef;color:#1b5e20;">&#128172; WA</button>'+
+      '<button onclick="encMail(\'general\')" style="'+btnS+'">&#9993;&#65039; &#1502;&#1497;&#1497;&#1500;</button>'+
+      '<button onclick="encSetSource(\'all\')" style="'+btnS+'background:#e8f0fd;">&#128193; &#1508;&#1512;&#1493;&#1497;&#1511;&#1496;</button>'+
+      '<button onclick="encSetSource(\'__src_standards\')" style="'+btnS+'font-size:14px;padding:4px 7px;">&#8595;</button>'
+    )
+  );
+
+  // ── BOX 2: בטיחות, חומ"ס ותנועה ──
+  var cntSafety=(_encItems.filter(function(i){return (i.category||'').includes('\u05d1\u05d8\u05d9\u05d7\u05d5\u05ea')||(i._src==='inbox');})).length;
+  var b2rows=
+    '<div style="'+secS+'">&#1502;&#1502;&#1510;&#1488;&#1497; &#1513;&#1496;&#1495; (enc)</div>'+
+    '<div style="'+rowS+'">'+
+      iBtn('&#128193;','encToggleGroup(\'safety\')')+
+      iBtn('&#128172;','encToggleGroup(\'safety\')')+
+      iBtn('&#128196;','encToggleGroup(\'safety\')')+
+      iBtn('&#128065;&#65039;','encToggleGroup(\'safety\')')+
+      badge('finding','#fff3e0','#e65100','#ffcc80')+
+      '<div style="'+txtS+'">&#9679; &#1502;&#1502;&#1510;&#1488;&#1497;... '+cnt(cntFindings,'#fff3e0','#e65100')+'</div>'+
+    '</div>'+
+    '<div style="'+rowS+'">'+
+      iBtn('&#128193;','encSetSource(\'inbox\')')+
+      iBtn('&#128172;','encSetSource(\'inbox\')')+
+      iBtn('&#128196;','encSetSource(\'inbox\')')+
+      iBtn('&#128065;&#65039;','encSetSource(\'inbox\')')+
+      badge('inbox','#e3f2fd','#1565c0','#90caf9')+
+      '<div style="'+txtS+'">&#9679; &#1495;&#1493;&#1502;\u05d4\u05e1 &#8212; &#1504;&#1497;&#1514;&#1493;&#1495; AI &#1502;... '+cnt(cntInbox,'#e3f2fd','#1565c0')+'</div>'+
+    '</div>'+
+    '<div style="'+rowS+'">'+
+      iBtn('&#128193;','encSetSource(\'inbox\')')+
+      iBtn('&#128172;','encSetSource(\'inbox\')')+
+      iBtn('&#128196;','encSetSource(\'inbox\')')+
+      iBtn('&#128065;&#65039;','encSetSource(\'inbox\')')+
+      badge('inbox','#e3f2fd','#1565c0','#90caf9')+
+      '<div style="'+txtS+'">&#9679; &#1514;&#1504;&#1493;&#1506;&#1492; &#1493;&#1492;&#1514;&#1488;&#1512;&#1490;&#1504;&#1493;&#1514; &#1488;&#1514;&#1512;</div>'+
+    '</div>'+
+    '<div style="'+rowLastS+'">'+
+      iBtn('&#128193;','encSetSource(\'inbox\')')+
+      iBtn('&#128172;','encSetSource(\'inbox\')')+
+      iBtn('&#128196;','encSetSource(\'inbox\')')+
+      iBtn('&#128065;&#65039;','encSetSource(\'inbox\')')+
+      badge('inbox','#e3f2fd','#1565c0','#90caf9')+
+      '<div style="'+txtS+'">&#9679; &#1488;&#1512;&#1497;&#1494;&#1493;&#1514; &#1493;&#1508;&#1505;&#1493;&#1500;&#1514; &#8212; AI</div>'+
     '</div>';
+  var b2=box('#ef9a9a','#fff5f5',
+    hdr('#ffebee','#ef9a9a','#c62828','&#9888;&#65039;','&#1489;&#1496;&#1497;&#1495;&#1493;&#1514;, &#1495;&#1493;&#1502;\u05d4\u05e1 &#1493;&#1514;&#1504;&#1493;&#1506;&#1492;','safety | hazmat | traffic','encSetSource(\'safety_scan\')'),
+    b2rows,
+    ftr('#fff5f5','#ef9a9a',
+      '<button onclick="encPrint(\'safety\')" style="'+btnS+'">&#128424;&#65039; &#1492;&#1491;&#1508;&#1505;</button>'+
+      '<button onclick="encWA(\'safety\')" style="'+btnS+'background:#e8f8ef;color:#1b5e20;">&#128172; WA</button>'+
+      '<button onclick="encMail(\'safety\')" style="'+btnS+'">&#9993;&#65039; &#1502;&#1497;&#1497;&#1500;</button>'+
+      '<button onclick="encSetSource(\'safety_scan\')" style="'+btnS+'background:#e8f0fd;">&#128193; &#1508;&#1512;&#1493;&#1497;&#1511;&#1496;</button>'
+    )
+  );
 
-  return '<div style="display:flex;gap:12px;flex-wrap:wrap;padding:14px 18px 6px;direction:rtl;">'+leftBox+rightBox+'</div>';
+  // ── BOX 3: מדיה, קול ותיבה נכנסת ──
+  var b3rows=
+    '<div style="'+secS+'">&#1514;&#1502;&#1493;&#1504;&#1493;&#1514; &#1513;&#1496;&#1495; (image)</div>'+
+    '<div style="'+rowS+'">'+
+      iBtn('&#128193;','encSetTypeTab(\'image\')')+
+      iBtn('&#128172;','encSetTypeTab(\'image\')')+
+      iBtn('&#128065;&#65039;','encSetTypeTab(\'image\')')+
+      badge('image','#fce4ec','#880e4f','#f48fb1')+
+      '<div style="'+txtS+'">&#9679; &#1514;&#1502;&#1493;&#1504;&#1493;&#1514; &#1513;&#1496;&#1495; &#1502;&#1488;&#1493;&#1513;&#1512;&#1493;&#1514; '+cnt(cntImages,'#fce4ec','#880e4f')+'</div>'+
+    '</div>'+
+    '<div style="'+secS+'">&#1492;&#1511;&#1500;&#1496;&#1493;&#1514; &#1493;&#1513;&#1497;&#1495;&#1493;&#1514; (audio | call)</div>'+
+    '<div style="'+rowS+'">'+
+      iBtn('&#128193;','encSetTypeTab(\'audio\')')+
+      iBtn('&#128172;','encSetTypeTab(\'audio\')')+
+      iBtn('&#128065;&#65039;','encSetTypeTab(\'audio\')')+
+      badge('audio','#f3e5f5','#6a1b9a','#ce93d8')+
+      '<div style="'+txtS+'">&#9679; &#1492;&#1511;&#1500;&#1496;&#1493;&#1514; &#1513;&#1496;&#1495; &#8212; &#1502;&#1504;&#1493;... '+cnt(cntAudio,'#f3e5f5','#6a1b9a')+'</div>'+
+    '</div>'+
+    '<div style="'+rowS+'">'+
+      iBtn('&#128193;','encSetTypeTab(\'call\')')+
+      iBtn('&#128196;','encSetTypeTab(\'call\')')+
+      iBtn('&#128065;&#65039;','encSetTypeTab(\'call\')')+
+      badge('call','#e8eaf6','#283593','#9fa8da')+
+      '<div style="'+txtS+'">&#9679; &#1513;&#1497;&#1495;&#1493;&#1514; &#1489;&#1504;&#1497; &#8212; &#1504;&#1497;&#1514;&#1493;&#1495; AI</div>'+
+    '</div>'+
+    '<div style="'+secS+'">&#1502;&#1505;&#1502;&#1499;&#1497;&#1501; (pdf)</div>'+
+    '<div style="'+rowLastS+'">'+
+      iBtn('&#128193;','encSetTypeTab(\'pdf\')')+
+      iBtn('&#128196;','encSetTypeTab(\'pdf\')')+
+      iBtn('&#128065;&#65039;','encSetTypeTab(\'pdf\')')+
+      badge('pdf','#fbe9e7','#bf360c','#ffab91')+
+      '<div style="'+txtS+'">&#9679; PDF &#1493;&#1502;&#1505;&#1502;&#1499;&#1497;&#1501; &#1504;&#1499;&#1504;&#1505;&#1497;&#1501; '+cnt(cntPdf,'#fbe9e7','#bf360c')+'</div>'+
+    '</div>';
+  var b3=box('#4db6ac','#f0faf9',
+    hdr('#e0f2f1','#4db6ac','#00796b','&#128229;','&#1502;&#1491;&#1497;&#1492;, &#1511;&#1493;&#1500; &#1493;&#1514;&#1497;&#1489;&#1492; &#1504;&#1499;&#1504;&#1505;&#1514;','image | audio | call','encSetTypeTab(\'image\')'),
+    b3rows,
+    ftr('#f0faf9','#4db6ac',
+      '<button onclick="encPrint(\'media\')" style="'+btnS+'">&#128424;&#65039; &#1492;&#1491;&#1508;&#1505;</button>'+
+      '<button onclick="encWA(\'media\')" style="'+btnS+'background:#e8f8ef;color:#1b5e20;">&#128172; WA</button>'+
+      '<button onclick="encMail(\'media\')" style="'+btnS+'">&#9993;&#65039; &#1502;&#1497;&#1497;&#1500;</button>'+
+      '<button onclick="encSetTypeTab(\'image\')" style="'+btnS+'background:#e8f0fd;">&#128193; &#1508;&#1512;&#1493;&#1497;&#1511;&#1496;</button>'
+    )
+  );
+
+  // ── BOX 4: כספי, משפטי ופרוטוקול ──
+  var cntLegal=(_encItems.filter(function(i){return i._type==='personal'||i._type==='finding';})).length;
+  var b4rows=
+    '<div style="'+rowS+'">'+
+      iBtn('&#128193;','encSetTypeTab(\'finding\')')+
+      iBtn('&#128196;','encSetTypeTab(\'finding\')')+
+      iBtn('&#128065;&#65039;','encSetTypeTab(\'finding\')')+
+      badge('finding','#fff3e0','#e65100','#ffcc80')+
+      '<div style="'+txtS+'">&#9679; &#1504;&#1497;&#1514;&#1493;&#1495; &#1512;&#1493;&#1493;&#1495;/&#1492;&#1508;&#1505;&#1491; &#8212; AI '+cnt(cntFindings,'#fff3e0','#e65100')+'</div>'+
+    '</div>'+
+    '<div style="'+rowS+'">'+
+      iBtn('&#128193;','encSetTypeTab(\'finding\')')+
+      iBtn('&#128196;','encSetTypeTab(\'finding\')')+
+      iBtn('&#128065;&#65039;','encSetTypeTab(\'finding\')')+
+      badge('finding','#fff3e0','#e65100','#ffcc80')+
+      '<div style="'+txtS+'">&#9679; &#1510;&#1491; &#1513;&#1500;&#1497;&#1513;&#1497; &#8212; &#1504;&#1497;&#1514;&#1493;&#1495; 0...</div>'+
+    '</div>'+
+    '<div style="'+rowS+'">'+
+      iBtn('&#128193;','encSetTypeTab(\'finding\')')+
+      iBtn('&#128196;','encSetTypeTab(\'finding\')')+
+      iBtn('&#128065;&#65039;','encSetTypeTab(\'finding\')')+
+      badge('finding','#fff3e0','#e65100','#ffcc80')+
+      '<div style="'+txtS+'">&#9679; &#1508;&#1512;&#1493;&#1496;&#1493;&#1511;&#1493;&#1500; &#1513;&#1497;&#1495;&#1492; &#8212; AI</div>'+
+    '</div>'+
+    '<div style="'+rowLastS+'">'+
+      iBtn('&#128193;','encSetTypeTab(\'personal\')')+
+      iBtn('&#128196;','encSetTypeTab(\'personal\')')+
+      iBtn('&#128065;&#65039;','encSetTypeTab(\'personal\')')+
+      badge('personal','#f1f8e9','#33691e','#aed581')+
+      '<div style="'+txtS+'">&#9679; &#1502;&#1499;&#1514;&#1489; &#1513;&#1499;&#1504;&#1497;&#1501; / &#1492;&#1490;&#1503;... '+cnt(cntLegal,'#f1f8e9','#33691e')+'</div>'+
+    '</div>';
+  var b4=box('#81c784','#f9fef9',
+    hdr('#f1f8e9','#81c784','#2e7d32','&#128176;','&#1499;&#1505;&#1508;&#1497;, &#1502;&#1513;&#1508;&#1496;&#1497; &#1493;&#1508;&#1512;&#1493;&#1496;&#1493;&#1511;&#1493;&#1500;','personal | findings | protocol','encSetTypeTab(\'personal\')'),
+    b4rows,
+    ftr('#f9fef9','#81c784',
+      '<button onclick="encPrint(\'legal\')" style="'+btnS+'">&#128424;&#65039; &#1492;&#1491;&#1508;&#1505;</button>'+
+      '<button onclick="encWA(\'legal\')" style="'+btnS+'background:#e8f8ef;color:#1b5e20;">&#128172; WA</button>'+
+      '<button onclick="encMail(\'legal\')" style="'+btnS+'">&#9993;&#65039; &#1502;&#1497;&#1497;&#1500;</button>'+
+      '<button onclick="encSetTypeTab(\'personal\')" style="'+btnS+'background:#e8f0fd;">&#128193; &#1508;&#1512;&#1493;&#1497;&#1511;&#1496;</button>'
+    )
+  );
+
+  // ── BOX 5: מדידות, מסמכים וארכיון ──
+  var b5rows=
+    '<div style="'+secS+'">&#1496;&#1497;&#1497;&#1511;&#1488;&#1493;&#1508;&#1497;&#1501; (takeoff)</div>'+
+    '<div style="'+rowS+'">'+
+      iBtn('&#128193;','encSetTypeTab(\'takeoff\')')+
+      iBtn('&#128196;','encSetTypeTab(\'takeoff\')')+
+      iBtn('&#128065;&#65039;','encSetTypeTab(\'takeoff\')')+
+      badge('takeoff','#fff8e0','#7a5500','#c9a84c')+
+      '<div style="'+txtS+'">&#9679; &#1496;&#1497;&#1497;&#1511;&#1488;&#1493;&#1508;&#1497;&#1501; &#1500;&#1508;&#1497; &#1508;&#1512;&#1493;&#1497;&#1511;&#1496; '+cnt(cntTakeoff,'#fff8e0','#7a5500')+'</div>'+
+    '</div>'+
+    '<div style="'+secS+'">&#1488;&#1512;&#1499;&#1497;&#1493;&#1503; (archive)</div>'+
+    '<div style="'+rowLastS+'">'+
+      iBtn('&#128193;','encToggleGroup(\'archive\')')+
+      iBtn('&#128196;','encToggleGroup(\'archive\')')+
+      iBtn('&#128065;&#65039;','encToggleGroup(\'archive\')')+
+      badge('archive','#e8eaf6','#283593','#9fa8da')+
+      '<div style="'+txtS+'">&#9679; &#1508;&#1512;&#1493;&#1497;&#1511;&#1496;&#1497;&#1501; &#1505;&#1490;&#1493;&#1512;&#1497;&#1501; '+cnt(cntArchive,'#e8eaf6','#283593')+'</div>'+
+    '</div>';
+  var b5=box('#c9a84c','#fffbf0',
+    hdr('#fff8e0','#c9a84c','#c9a84c','&#128208;','&#1502;&#1491;&#1497;&#1491;&#1493;&#1514;, &#1502;&#1505;&#1502;&#1499;&#1497;&#1501; &#1493;&#1488;&#1512;&#1499;&#1497;&#1493;&#1503;','takeoff | pdf | archive','encSetTypeTab(\'takeoff\')'),
+    b5rows,
+    ftr('#fffdf5','#c9a84c',
+      '<button onclick="encPrint(\'takeoff\')" style="'+btnS+'">&#128424;&#65039; &#1492;&#1491;&#1508;&#1505;</button>'+
+      '<button onclick="encWA(\'takeoff\')" style="'+btnS+'background:#e8f8ef;color:#1b5e20;">&#128172; WA</button>'+
+      '<button onclick="encMail(\'takeoff\')" style="'+btnS+'">&#9993;&#65039; &#1502;&#1497;&#1497;&#1500;</button>'+
+      '<button onclick="encSetTypeTab(\'takeoff\')" style="'+btnS+'background:#e8f0fd;">&#128193; &#1508;&#1512;&#1493;&#1497;&#1511;&#1496;</button>'
+    )
+  );
+
+  // ── BOX 6: קשרים, ציוד והערות ──
+  var b6rows=
+    '<div style="'+secS+'">&#1488;&#1504;&#1513;&#1497; &#1511;&#1513;&#1512; (contacts)</div>'+
+    '<div style="'+rowS+'">'+
+      iBtn('&#128193;','encSetTypeTab(\'contacts\')')+
+      iBtn('&#128172;','encSetTypeTab(\'contacts\')')+
+      iBtn('&#128065;&#65039;','encSetTypeTab(\'contacts\')')+
+      badge('contacts','#f3e5f5','#4a148c','#ce93d8')+
+      '<div style="'+txtS+'">&#9679; &#1505;&#1508;&#1511;&#1497;&#1501; &#1493;&#1511;&#1489;&#1500;&#1504;&#1497;&#1501; &#1500;&#1508;... '+cnt(cntContacts,'#f3e5f5','#4a148c')+'</div>'+
+    '</div>'+
+    '<div style="'+rowS+'">'+
+      iBtn('&#128193;','encSetTypeTab(\'contacts\')')+
+      iBtn('&#128172;','encSetTypeTab(\'contacts\')')+
+      iBtn('&#128065;&#65039;','encSetTypeTab(\'contacts\')')+
+      badge('contacts','#f3e5f5','#4a148c','#ce93d8')+
+      '<div style="'+txtS+'">&#9679; &#1492;&#1513;&#1488;&#1500;&#1514; &#1510;&#1497;&#1493;&#1491; &#8212; 0...</div>'+
+    '</div>'+
+    '<div style="'+secS+'">&#1504;&#1499;&#1505;&#1497; &#1489;&#1504;&#1497; (notes | personal)</div>'+
+    '<div style="'+rowLastS+'">'+
+      iBtn('&#128193;','encSetTypeTab(\'note\')')+
+      iBtn('&#128172;','encSetTypeTab(\'note\')')+
+      iBtn('&#128065;&#65039;','encSetTypeTab(\'note\')')+
+      badge('note','#e8f5e9','#2e7d32','#a5d6a7')+
+      '<div style="'+txtS+'">&#9679; &#1492;&#1506;&#1512;&#1493;&#1514; &#1497;&#1491; &#1493;&#1502;&#1494;&#1499;&#1512;&#1497;&#1501; '+cnt(cntNotes+cntPersonal,'#e8f5e9','#2e7d32')+'</div>'+
+    '</div>';
+  var b6=box('#ce93d8','#fdf8ff',
+    hdr('#f3e5f5','#ce93d8','#9c27b0','&#128101;','&#1511;&#1513;&#1512;&#1497;&#1501;, &#1510;&#1497;&#1493;&#1491; &#1493;&#1492;&#1506;&#1512;&#1493;&#1514;','contacts | notes','encSetTypeTab(\'contacts\')'),
+    b6rows,
+    ftr('#fdf8ff','#ce93d8',
+      '<button onclick="encWA(\'contacts\')" style="'+btnS+'background:#e8f8ef;color:#1b5e20;">&#128172; WA</button>'+
+      '<button onclick="encMail(\'contacts\')" style="'+btnS+'">&#9993;&#65039; &#1502;&#1497;&#1497;&#1500;</button>'+
+      '<button onclick="encSetTypeTab(\'contacts\')" style="'+btnS+'background:#e8f0fd;">&#128193; &#1508;&#1512;&#1493;&#1497;&#1511;&#1496;</button>'
+    )
+  );
+
+  return '<div style="padding:10px 18px 4px;direction:rtl;">'+
+    '<div style="'+wrapS+'">'+b1+b2+'</div>'+
+    '<div style="'+wrapS+'">'+b3+b4+'</div>'+
+    '<div style="'+wrapS+'">'+b5+b6+'</div>'+
+  '</div>';
 }
 
 function encRenderGrouped(){
