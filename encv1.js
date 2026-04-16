@@ -573,7 +573,7 @@ function encBuildHubSummary(buckets){
 
   // shared style strings
   var wrapS='display:flex;gap:12px;flex-wrap:wrap;padding:10px 18px 4px;direction:rtl;';
-  var boxS='border-radius:14px;padding:0;flex:1;min-width:260px;overflow:hidden;border:1.5px solid ';
+  var boxS='border-radius:14px;padding:0;overflow:hidden;border:1.5px solid ';
   var rowS='display:flex;align-items:center;gap:6px;padding:7px 0;border-bottom:0.5px dashed #e0e0e0;direction:rtl;';
   var rowLastS='display:flex;align-items:center;gap:6px;padding:7px 0;direction:rtl;';
   var secS='font-size:9px;font-weight:800;color:#888;text-align:right;padding:6px 0 2px;';
@@ -846,12 +846,10 @@ function encBuildHubSummary(buckets){
     )
   );
 
-  var row3S='display:flex;gap:12px;flex-wrap:wrap;padding:10px 18px 4px;direction:rtl;';
-  var colS='flex:1;min-width:220px;';
-  function col(b){return '<div style="'+colS+'">'+b+'</div>';}
+  var gridS='display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;padding:10px 18px 4px;direction:rtl;';
   return '<div style="padding:0;direction:rtl;">'+
-    '<div style="'+row3S+'">'+col(b6)+col(b3)+col(b1)+'</div>'+
-    '<div style="'+row3S+'">'+col(b5)+col(b2)+col(b4)+'</div>'+
+    '<div style="'+gridS+'">'+b6+b3+b1+'</div>'+
+    '<div style="'+gridS+'">'+b5+b2+b4+'</div>'+
   '</div>';
 }
 
