@@ -204,6 +204,8 @@ function encGroupForItem(item){
   if(cat.indexOf('\u05d7\u05d5\u05de')>=0)return'hazmat';
   if(cat.indexOf('\u05ea\u05e0\u05d5\u05e2')>=0||cat.indexOf('\u05d4\u05ea\u05d0\u05e8\u05d2')>=0)return'traffic';
   if(cat.indexOf('\u05e9\u05db\u05e0')>=0||cat.indexOf('\u05d4\u05d2\u05e0')>=0)return'neighbor';
+  if(cat.indexOf('\u05de\u05d3\u05d9\u05d3')>=0)return'takeoff';
+  if(cat==='\u05db\u05dc\u05dc\u05d9'||cat==='\u05e9\u05d8\u05d7'||cat==='\u05d1\u05d8\u05d9\u05d7\u05d5\u05ea \u05e9\u05d8\u05d7'||cat==='xyz'||cat==='')return'general';
   if(type==='image'||type==='photo'||type==='video'||type==='audio'||type==='mp4'||type==='heic')return'media';
   if(type==='pdf'||type==='doc'||type==='xls'||type==='document'||type==='spreadsheet'||type==='csv')return'docs';
   return'general';
