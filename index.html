@@ -6307,7 +6307,7 @@ async function switchTab(tab) {
   }
   if (tab === 'standards')   { _fetchStandardsModule().then(function(){ setTimeout(standardsRagInit, 100); }); }
   if (tab === 'smartscan')   { _fetchSmartScanModule().then(function(){ setTimeout(function(){ smartScanInit(); _ssPopulateProjects(); }, 100); }); }
-  if (tab === 'inbox')       { _fetchInboxModule().then(function(){ setTimeout(function(){ if(typeof sibInit==='function') sibInit(); }, 100); }); }
+  if (tab === 'inbox')       { _fetchInboxModule().then(function(){ setTimeout(function(){ if(typeof sibInit==='function') sibInit(); }, 100); }); _fetchEncHub().then(function(){ setTimeout(function(){ if(typeof hubInit==='function') hubInit(); }, 200); }); }
   if (tab === 'misc')        { setTimeout(loadMiscTab, 100); }
   if (tab === 'takeoff') {
     // When switching to laser sub-tab, init gavoim module
@@ -8494,6 +8494,20 @@ async function _fetchEncyclopedia() {
   } catch(e) { console.error('encyclopedia.js fetch failed:', e); _encFetched = false; }
 }
 
+var _encHubFetched = false;
+async function _fetchEncHub() {
+  if (_encHubFetched) return;
+  _encHubFetched = true;
+  try {
+    var res = await fetch('enc_hub.js?v=' + Date.now());
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    var code = await res.text();
+    if (code.trim().startsWith('<')) throw new Error('Got HTML not JS');
+    var ns = document.createElement('script'); ns.textContent = code;
+    document.head.appendChild(ns);
+  } catch(e) { console.error('enc_hub.js fetch failed:', e); _encHubFetched = false; }
+}
+
 // ══════════════════════════════════════════════════════
 // TAKEOFF SYSTEM — Full featured
 // ══════════════════════════════════════════════════════
@@ -9671,6 +9685,9 @@ window.luClosePreview = function() {
 </div>
 
 <div class="app-panel" id="inbox-panel">
+  <!-- Hub root — enc_hub.js renders here -->
+  <div id="hub-root"></div>
+
   <div style="padding:70px 24px 60px;min-height:100vh;background:#1a1a2e;font-family:Heebo,sans-serif;direction:rtl;">
 
     <!-- Header -->
