@@ -6,7 +6,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#f5e9c4">
-<meta name="version" content="14042026-v9">
+<meta name="version" content="17042026-v1-encv1-loader">
 <title id="app-title-tag">יומן פעילות</title>
 <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;600;700;800;900&family=Rubik:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
@@ -5024,7 +5024,7 @@ function openGoogleCalendar(calData) {
 
 // [FIELD JOURNAL JS — moved to wizard.js]
 
-// [ENCYCLOPEDIA — loaded via encyclopedia.js fetch()]
+// [ENCYCLOPEDIA — loaded via encv1.js fetch()]
 
 
 
@@ -8486,12 +8486,12 @@ async function _fetchEncyclopedia() {
   try {
     await new Promise(function(resolve, reject) {
       var s = document.createElement('script');
-      s.src = 'encyclopedia.js?v=' + Date.now();
+      s.src = 'encv1.js?v=' + Date.now();
       s.onload = resolve;
-      s.onerror = function() { _encFetched = false; reject(new Error('Failed to load encyclopedia.js')); };
+      s.onerror = function() { _encFetched = false; reject(new Error('Failed to load encv1.js')); };
       document.head.appendChild(s);
     });
-  } catch(e) { console.error('encyclopedia.js fetch failed:', e); _encFetched = false; }
+  } catch(e) { console.error('encv1.js fetch failed:', e); _encFetched = false; }
 }
 
 var _encHubFetched = false;
