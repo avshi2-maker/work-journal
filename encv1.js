@@ -6,7 +6,8 @@
 // TASK 2 (18042026): card footer 5 buttons Print/WA/Mail/Project/Delete — bold colors, picker modal, soft delete.
 // TASK 3 (18042026): 20 module rows now clickable → dedicated workspace modal (6 actions incl. preview). Removed 5 footer btns + 3 row icons + Task1 dead code.
 // TASK 3b (18042026): fix HTML entity double-escape in header/print/WA/mail + build destination-project prompt for 📁 Project action.
-console.log('[enc] encv1.js TASK3b (18042026) loaded');
+// TASK 3c (18042026): print embeds images + close btn, WA removes header line, mail switched to Gmail compose URL.
+console.log('[enc] encv1.js TASK3c (18042026) loaded');
 var _encItems=[], _encContacts=[], _encArchive=[];
 var _encActiveSource='all', _encAssetFilter='all', _encPrioFilter='all';
 var _encProjFilter='', _encSearchQ='', _encDateFilter='all';
@@ -1162,25 +1163,36 @@ function encCardItemLine(i){
 }
 
 function encCardPrintRun(items,group){
-  var w=window.open('','_blank','width=800,height=700');
+  var w=window.open('','_blank','width=900,height=750');
   if(!w){showToast&&showToast('&#1492;&#1491;&#1508;&#1505;&#1492; &#1504;&#1495;&#1505;&#1502;&#1492;','error');return;}
   var rows=items.map(function(i){
     var l=encCardItemLine(i);
-    return '<tr><td style="padding:6px 10px;border-bottom:1px solid #eee;">'+encEsc(l.title)+'</td><td style="padding:6px 10px;border-bottom:1px solid #eee;color:#888;white-space:nowrap;">'+l.date+'</td></tr>';
+    var t=(i._type||i.media_type||'').toLowerCase();
+    var isImg=(t==='image'||t==='jpg'||t==='jpeg'||t==='png'||t==='heic');
+    var mediaCell='';
+    if(isImg&&l.url){
+      mediaCell='<img src="'+l.url+'" style="max-width:200px;max-height:150px;object-fit:contain;border:1px solid #ddd;border-radius:4px;background:#fff;" onerror="this.style.display=\'none\'">';
+    } else if(l.url){
+      mediaCell='<a href="'+l.url+'" target="_blank" style="color:#0d6efd;font-size:11px;word-break:break-all;">'+l.url+'</a>';
+    } else {
+      mediaCell='<span style="color:#aaa;">&#8212;</span>';
+    }
+    return '<tr><td style="padding:10px;border-bottom:1px solid #eee;vertical-align:top;">'+encEsc(l.title)+'</td>'+
+           '<td style="padding:10px;border-bottom:1px solid #eee;color:#888;white-space:nowrap;vertical-align:top;">'+l.date+'</td>'+
+           '<td style="padding:10px;border-bottom:1px solid #eee;text-align:center;vertical-align:top;">'+mediaCell+'</td></tr>';
   }).join('');
-  w.document.write('<html><head><meta charset="utf-8"><style>body{font-family:Heebo,Arial,sans-serif;direction:rtl;padding:24px;color:#111;}h2{color:#1a3d5c;}table{width:100%;border-collapse:collapse;font-size:13px;}th{text-align:right;background:#f5f0e8;padding:8px 10px;font-weight:800;}@media print{button{display:none}}</style></head><body>'+
+  w.document.write('<html><head><meta charset="utf-8"><title>'+group+'</title><style>body{font-family:Heebo,Arial,sans-serif;direction:rtl;padding:24px;color:#111;}h2{color:#1a3d5c;margin:0 0 6px;}table{width:100%;border-collapse:collapse;font-size:13px;margin-top:12px;}th{text-align:right;background:#f5f0e8;padding:10px;font-weight:800;border-bottom:2px solid #c9a84c;}.topbar{display:flex;gap:10px;margin-bottom:16px;}.topbar button{padding:9px 18px;font-family:Heebo,Arial,sans-serif;font-size:13px;font-weight:800;cursor:pointer;border:none;border-radius:8px;}.btn-print{background:#1a3d5c;color:#FFD700;}.btn-close{background:#f5f5f5;color:#333;border:1px solid #ccc;}@media print{.topbar{display:none}}</style></head><body>'+
+    '<div class="topbar"><button class="btn-print" onclick="window.print()">&#128424;&#65039; &#1492;&#1491;&#1508;&#1505;</button><button class="btn-close" onclick="window.close()">&#10005; &#1505;&#1490;&#1493;&#1512;</button></div>'+
     '<h2>&#128218; '+encEsc(group)+' &#8212; '+items.length+' &#1508;&#1512;&#1497;&#1496;&#1497;&#1501;</h2>'+
-    '<p style="color:#888;font-size:11px;">&#1492;&#1493;&#1491;&#1508;&#1505; &#1489;-'+new Date().toLocaleDateString('he-IL')+'</p>'+
-    '<table><thead><tr><th>&#1499;&#1493;&#1514;&#1512;&#1514;</th><th>&#1514;&#1488;&#1512;&#1497;&#1498;</th></tr></thead><tbody>'+rows+'</tbody></table>'+
-    '<br><button onclick="window.print()" style="padding:8px 16px;font-family:Heebo;font-size:13px;cursor:pointer;">&#128424;&#65039; &#1492;&#1491;&#1508;&#1505;</button>'+
+    '<p style="color:#888;font-size:11px;margin:0;">&#1492;&#1493;&#1491;&#1508;&#1505; &#1489;-'+new Date().toLocaleDateString('he-IL')+'</p>'+
+    '<table><thead><tr><th>&#1499;&#1493;&#1514;&#1512;&#1514;</th><th>&#1514;&#1488;&#1512;&#1497;&#1498;</th><th style="text-align:center;">&#1511;&#1493;&#1489;&#1509;</th></tr></thead><tbody>'+rows+'</tbody></table>'+
     '</body></html>');
   w.document.close();
-  setTimeout(function(){try{w.print();}catch(e){}},500);
   document.getElementById('enc-card-action')&&document.getElementById('enc-card-action').remove();
 }
 
 function encCardWARun(items,group){
-  var text='📚 *'+group+'* — '+items.length+' פריטים\n\n';
+  var text='';
   items.slice(0,40).forEach(function(i,idx){
     var l=encCardItemLine(i);
     text+=(idx+1)+'. '+l.title+(l.date?' ('+l.date+')':'')+(l.url?'\n   '+l.url:'')+'\n';
@@ -1191,13 +1203,17 @@ function encCardWARun(items,group){
 }
 
 function encCardMailRun(items,group){
-  var body='נושא: '+group+' — '+items.length+' פריטים\n\n';
+  var body='';
   items.slice(0,60).forEach(function(i,idx){
     var l=encCardItemLine(i);
     body+=(idx+1)+'. '+l.title+(l.date?' ('+l.date+')':'')+(l.url?'\n   '+l.url:'')+'\n';
   });
   if(items.length>60)body+='\n... ועוד '+(items.length-60)+' פריטים';
-  window.location.href='mailto:?subject='+encodeURIComponent('אנציקלופדיה — '+group)+'&body='+encodeURIComponent(body);
+  // Gmail web compose (Chrome-friendly, handles UTF-8/RTL correctly). Opens in new tab.
+  var gmailUrl='https://mail.google.com/mail/?view=cm&fs=1'+
+    '&su='+encodeURIComponent('אנציקלופדיה — '+group)+
+    '&body='+encodeURIComponent(body);
+  window.open(gmailUrl,'_blank');
   document.getElementById('enc-card-action')&&document.getElementById('enc-card-action').remove();
 }
 
