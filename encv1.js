@@ -3,7 +3,8 @@
 //          asset_inbox + beni_notes + beni_contacts + projects (archive)
 // TASK 1 (17042026): row eye 👁️ opens filter modal → pick item → preview. 💬 removed.
 // TASK 1b (17042026): self-contained image viewer (fix: host openLightbox was silently failing).
-console.log('[enc] encv1.js TASK1b (17042026) loaded');
+// TASK 2 (18042026): card footer 5 buttons Print/WA/Mail/Project/Delete — bold colors, picker modal, soft delete.
+console.log('[enc] encv1.js TASK2 (18042026) loaded');
 var _encItems=[], _encContacts=[], _encArchive=[];
 var _encActiveSource='all', _encAssetFilter='all', _encPrioFilter='all';
 var _encProjFilter='', _encSearchQ='', _encDateFilter='all';
@@ -593,6 +594,16 @@ function encRenderGrouped(){
   var secS='font-size:9px;font-weight:800;color:#888;text-align:right;padding:5px 0 2px;';
   var txtS='flex:1;font-size:10px;font-weight:800;color:#1a3d5c;text-align:right;';
   var btnS='padding:4px 8px;border-radius:7px;font-size:10px;font-weight:800;cursor:pointer;font-family:Heebo,sans-serif;border:0.5px solid #e0e0e0;background:#fff;color:#1a3d5c;';
+  // TASK2: bold colorful footer buttons — 5 per card, same on every card, Print/WA/Mail/Project/Delete
+  var btnBase='padding:6px 11px;border-radius:8px;font-size:11px;font-weight:900;cursor:pointer;font-family:Heebo,sans-serif;border:none;color:#fff;box-shadow:0 1px 3px rgba(0,0,0,0.15);';
+  function encFooterBtns(group){
+    var g=String(group||'').replace(/'/g,"\\'");
+    return '<button onclick="encCardPrint(\''+g+'\')" style="'+btnBase+'background:#1a3d5c;">&#128424;&#65039; &#1492;&#1491;&#1508;&#1505;</button>'+
+           '<button onclick="encCardWA(\''+g+'\')"    style="'+btnBase+'background:#25D366;">&#128172; WA</button>'+
+           '<button onclick="encCardMail(\''+g+'\')"  style="'+btnBase+'background:#0d6efd;">&#9993;&#65039; &#1502;&#1497;&#1497;&#1500;</button>'+
+           '<button onclick="encCardProj(\''+g+'\')"  style="'+btnBase+'background:#9a6f00;">&#128193; &#1508;&#1512;&#1493;&#1497;&#1511;&#1496;</button>'+
+           '<button onclick="encCardDel(\''+g+'\')"   style="'+btnBase+'background:#b71c1c;">&#128465;&#65039; &#1502;&#1495;&#1511;</button>';
+  }
   var ftrS='border-top:1.5px solid #e0e0e0;padding:7px 12px;display:flex;gap:5px;flex-wrap:wrap;direction:rtl;';
 
   function bdg(label,bg,color,bor){return '<span style="padding:2px 6px;border-radius:9px;font-size:9px;font-weight:800;background:'+bg+';color:'+color+';border:0.5px solid '+bor+';white-space:nowrap;">'+label+'</span>';}
@@ -630,7 +641,7 @@ function encRenderGrouped(){
     '<div style="'+rowS+'">'+ib('&#128196;','encSetSource(\'__src_standards\')')+ib('&#128065;&#65039;','encSetSource(\'__src_standards\')')+bdg('standard','#ede7f6','#4527a0','#ce93d8')+'<div style="'+txtS+'">&#9679; &#1514;&#1511;&#1504;&#1497; &#1489;&#1504;&#1497;&#1497;&#1492; IS 466 '+cn(cntStandards,'#ede7f6','#4527a0')+'</div></div>'+
     '<div style="'+rowLastS+'">'+ib('&#128172;','encSetSource(\'__src_prices\')')+ib('&#128065;&#65039;','encSetSource(\'__src_prices\')')+bdg('price','#e8f5e9','#2e7d32','#a5d6a7')+'<div style="'+txtS+'">&#9679; &#1491;&#1511;&#1500; &#8212; &#1508;&#1512;&#1497;&#1496; &#1512;&#1497;&#1510;&#1493;&#1507; '+cn(cntPrices,'#e8f5e9','#2e7d32')+'</div></div>'+
     (cntStandards>10?'<div style="background:#fff8e0;border-radius:6px;padding:3px 7px;font-size:9px;font-weight:800;color:#7a5500;text-align:right;margin:3px 0;">&#9888;&#65039; &#1502;&#1510;&#1497;&#1490; 10 &#1502;&#1514;&#1493;&#1498; '+cntStandards+' &#8212; &#1492;&#1513;&#1514;&#1502;&#1513; &#1489;&#1495;&#1497;&#1508;&#1493;&#1513; &#1500;&#1510;&#1502;&#1510;&#1493;&#1501;</div>':''),
-    ftr('#fffdf5','#c9a84c','<button onclick="encPrint(\'general\')" style="'+btnS+'">&#128424;&#65039; &#1492;&#1491;&#1508;&#1505;</button><button onclick="encWA(\'general\')" style="'+btnS+'background:#e8f8ef;color:#1b5e20;">&#128172; WA</button><button onclick="encMail(\'general\')" style="'+btnS+'">&#9993;&#65039; &#1502;&#1497;&#1497;&#1500;</button><button onclick="encSetSource(\'all\')" style="'+btnS+'background:#e8f0fd;">&#128193; &#1508;&#1512;&#1493;&#1497;&#1511;&#1496;</button>')
+    ftr('#fffdf5','#c9a84c',encFooterBtns('general'))
   );
 
   // BOX2 בטיחות
@@ -641,7 +652,7 @@ function encRenderGrouped(){
     '<div style="'+rowS+'">'+ib('&#128193;','encSetSource(\'inbox\')')+ib('&#128172;','encSetSource(\'inbox\')')+ib('&#128196;','encSetSource(\'inbox\')')+ib('&#128065;&#65039;','encSetSource(\'inbox\')')+bdg('inbox','#e3f2fd','#1565c0','#90caf9')+'<div style="'+txtS+'">&#9679; &#1495;&#1493;&#1502;\u05d4\u05e1 &#8212; &#1504;&#1497;&#1514;&#1493;&#1495; AI '+cn(cntInbox,'#e3f2fd','#1565c0')+'</div></div>'+
     '<div style="'+rowS+'">'+ib('&#128193;','encSetSource(\'inbox\')')+ib('&#128172;','encSetSource(\'inbox\')')+ib('&#128196;','encSetSource(\'inbox\')')+ib('&#128065;&#65039;','encSetSource(\'inbox\')')+bdg('inbox','#e3f2fd','#1565c0','#90caf9')+'<div style="'+txtS+'">&#9679; &#1514;&#1504;&#1493;&#1506;&#1492; &#1493;&#1492;&#1514;&#1488;&#1512;&#1490;&#1504;&#1493;&#1514; &#1488;&#1514;&#1512;</div></div>'+
     '<div style="'+rowLastS+'">'+ib('&#128193;','encSetSource(\'inbox\')')+ib('&#128172;','encSetSource(\'inbox\')')+ib('&#128196;','encSetSource(\'inbox\')')+ib('&#128065;&#65039;','encSetSource(\'inbox\')')+bdg('inbox','#e3f2fd','#1565c0','#90caf9')+'<div style="'+txtS+'">&#9679; &#1488;&#1512;&#1497;&#1494;&#1493;&#1514; &#1493;&#1508;&#1505;&#1493;&#1500;&#1514; &#8212; AI</div></div>',
-    ftr('#fff5f5','#ef9a9a','<button onclick="encPrint(\'safety\')" style="'+btnS+'">&#128424;&#65039; &#1492;&#1491;&#1508;&#1505;</button><button onclick="encWA(\'safety\')" style="'+btnS+'background:#e8f8ef;color:#1b5e20;">&#128172; WA</button><button onclick="encMail(\'safety\')" style="'+btnS+'">&#9993;&#65039; &#1502;&#1497;&#1497;&#1500;</button><button onclick="encSetSource(\'safety_scan\')" style="'+btnS+'background:#e8f0fd;">&#128193; &#1508;&#1512;&#1493;&#1497;&#1511;&#1496;</button>')
+    ftr('#fff5f5','#ef9a9a',encFooterBtns('safety'))
   );
 
   // BOX3 מדיה
@@ -654,7 +665,7 @@ function encRenderGrouped(){
     '<div style="'+rowS+'">'+ib('&#128193;','encSetTypeTab(\'call\')')+ib('&#128196;','encSetTypeTab(\'call\')')+ib('&#128065;&#65039;','encSetTypeTab(\'call\')')+bdg('call','#e8eaf6','#283593','#9fa8da')+'<div style="'+txtS+'">&#9679; &#1513;&#1497;&#1495;&#1493;&#1514; &#1489;&#1504;&#1497; &#8212; &#1504;&#1497;&#1514;&#1493;&#1495; AI</div></div>'+
     '<div style="'+secS+'">&#1502;&#1505;&#1502;&#1499;&#1497;&#1501; (pdf)</div>'+
     '<div style="'+rowLastS+'">'+ib('&#128193;','encSetTypeTab(\'pdf\')')+ib('&#128196;','encSetTypeTab(\'pdf\')')+ib('&#128065;&#65039;','encSetTypeTab(\'pdf\')')+bdg('pdf','#fbe9e7','#bf360c','#ffab91')+'<div style="'+txtS+'">&#9679; PDF &#1493;&#1502;&#1505;&#1502;&#1499;&#1497;&#1501; &#1504;&#1499;&#1504;&#1505;&#1497;&#1501; '+cn(cntPdf,'#fbe9e7','#bf360c')+'</div></div>',
-    ftr('#f0faf9','#4db6ac','<button onclick="encPrint(\'media\')" style="'+btnS+'">&#128424;&#65039; &#1492;&#1491;&#1508;&#1505;</button><button onclick="encWA(\'media\')" style="'+btnS+'background:#e8f8ef;color:#1b5e20;">&#128172; WA</button><button onclick="encMail(\'media\')" style="'+btnS+'">&#9993;&#65039; &#1502;&#1497;&#1497;&#1500;</button><button onclick="encSetTypeTab(\'image\')" style="'+btnS+'background:#e8f0fd;">&#128193; &#1508;&#1512;&#1493;&#1497;&#1511;&#1496;</button>')
+    ftr('#f0faf9','#4db6ac',encFooterBtns('media'))
   );
 
   // BOX4 כספי משפטי
@@ -664,7 +675,7 @@ function encRenderGrouped(){
     '<div style="'+rowS+'">'+ib('&#128193;','encSetTypeTab(\'finding\')')+ib('&#128196;','encSetTypeTab(\'finding\')')+ib('&#128065;&#65039;','encSetTypeTab(\'finding\')')+bdg('finding','#fff3e0','#e65100','#ffcc80')+'<div style="'+txtS+'">&#9679; &#1510;&#1491; &#1513;&#1500;&#1497;&#1513;&#1497; &#8212; &#1504;&#1497;&#1514;&#1493;&#1495; 0...</div></div>'+
     '<div style="'+rowS+'">'+ib('&#128193;','encSetTypeTab(\'finding\')')+ib('&#128196;','encSetTypeTab(\'finding\')')+ib('&#128065;&#65039;','encSetTypeTab(\'finding\')')+bdg('finding','#fff3e0','#e65100','#ffcc80')+'<div style="'+txtS+'">&#9679; &#1508;&#1512;&#1493;&#1496;&#1493;&#1511;&#1493;&#1500; &#1513;&#1497;&#1495;&#1492; &#8212; AI</div></div>'+
     '<div style="'+rowLastS+'">'+ib('&#128193;','encSetTypeTab(\'personal\')')+ib('&#128196;','encSetTypeTab(\'personal\')')+ib('&#128065;&#65039;','encSetTypeTab(\'personal\')')+bdg('personal','#f1f8e9','#33691e','#aed581')+'<div style="'+txtS+'">&#9679; &#1502;&#1499;&#1514;&#1489; &#1513;&#1499;&#1504;&#1497;&#1501; / &#1492;&#1490;&#1503;... '+cn(cntLegal,'#f1f8e9','#33691e')+'</div></div>',
-    ftr('#f9fef9','#81c784','<button onclick="encPrint(\'legal\')" style="'+btnS+'">&#128424;&#65039; &#1492;&#1491;&#1508;&#1505;</button><button onclick="encWA(\'legal\')" style="'+btnS+'background:#e8f8ef;color:#1b5e20;">&#128172; WA</button><button onclick="encMail(\'legal\')" style="'+btnS+'">&#9993;&#65039; &#1502;&#1497;&#1497;&#1500;</button><button onclick="encSetTypeTab(\'personal\')" style="'+btnS+'background:#e8f0fd;">&#128193; &#1508;&#1512;&#1493;&#1497;&#1511;&#1496;</button>')
+    ftr('#f9fef9','#81c784',encFooterBtns('legal'))
   );
 
   // BOX5 מדידות ארכיון
@@ -674,7 +685,7 @@ function encRenderGrouped(){
     '<div style="'+rowS+'">'+ib('&#128193;','encSetTypeTab(\'takeoff\')')+ib('&#128196;','encSetTypeTab(\'takeoff\')')+ib('&#128065;&#65039;','encSetTypeTab(\'takeoff\')')+bdg('takeoff','#fff8e0','#7a5500','#c9a84c')+'<div style="'+txtS+'">&#9679; &#1496;&#1497;&#1497;&#1511;&#1488;&#1493;&#1508;&#1497;&#1501; &#1500;&#1508;&#1497; &#1508;&#1512;&#1493;&#1497;&#1511;&#1496; '+cn(cntTakeoff,'#fff8e0','#7a5500')+'</div></div>'+
     '<div style="'+secS+'">&#1488;&#1512;&#1499;&#1497;&#1493;&#1503; (archive)</div>'+
     '<div style="'+rowLastS+'">'+ib('&#128193;','encToggleGroup(\'archive\')')+ib('&#128196;','encToggleGroup(\'archive\')')+ib('&#128065;&#65039;','encToggleGroup(\'archive\')')+bdg('archive','#e8eaf6','#283593','#9fa8da')+'<div style="'+txtS+'">&#9679; &#1508;&#1512;&#1493;&#1497;&#1511;&#1496;&#1497;&#1501; &#1505;&#1490;&#1493;&#1512;&#1497;&#1501; '+cn(cntArchive,'#e8eaf6','#283593')+'</div></div>',
-    ftr('#fffdf5','#c9a84c','<button onclick="encPrint(\'takeoff\')" style="'+btnS+'">&#128424;&#65039; &#1492;&#1491;&#1508;&#1505;</button><button onclick="encWA(\'takeoff\')" style="'+btnS+'background:#e8f8ef;color:#1b5e20;">&#128172; WA</button><button onclick="encMail(\'takeoff\')" style="'+btnS+'">&#9993;&#65039; &#1502;&#1497;&#1497;&#1500;</button><button onclick="encSetTypeTab(\'takeoff\')" style="'+btnS+'background:#e8f0fd;">&#128193; &#1508;&#1512;&#1493;&#1497;&#1511;&#1496;</button>')
+    ftr('#fffdf5','#c9a84c',encFooterBtns('takeoff'))
   );
 
   // BOX6 קשרים
@@ -685,7 +696,7 @@ function encRenderGrouped(){
     '<div style="'+rowS+'">'+ib('&#128193;','encSetTypeTab(\'contacts\')')+ib('&#128172;','encSetTypeTab(\'contacts\')')+ib('&#128065;&#65039;','encSetTypeTab(\'contacts\')')+bdg('contacts','#f3e5f5','#4a148c','#ce93d8')+'<div style="'+txtS+'">&#9679; &#1492;&#1513;&#1488;&#1500;&#1514; &#1510;&#1497;&#1493;&#1491; &#8212; 0...</div></div>'+
     '<div style="'+secS+'">&#1504;&#1499;&#1505;&#1497; &#1489;&#1504;&#1497; (notes | personal)</div>'+
     '<div style="'+rowLastS+'">'+ib('&#128193;','encSetTypeTab(\'note\')')+ib('&#128172;','encSetTypeTab(\'note\')')+ib('&#128065;&#65039;','encSetTypeTab(\'note\')')+bdg('note','#e8f5e9','#2e7d32','#a5d6a7')+'<div style="'+txtS+'">&#9679; &#1492;&#1506;&#1512;&#1493;&#1514; &#1497;&#1491; &#1493;&#1502;&#1494;&#1499;&#1512;&#1497;&#1501; '+cn(cntNotes+cntPersonal,'#e8f5e9','#2e7d32')+'</div></div>',
-    ftr('#fdf8ff','#ce93d8','<button onclick="encWA(\'contacts\')" style="'+btnS+'background:#e8f8ef;color:#1b5e20;">&#128172; WA</button><button onclick="encMail(\'contacts\')" style="'+btnS+'">&#9993;&#65039; &#1502;&#1497;&#1497;&#1500;</button><button onclick="encSetTypeTab(\'contacts\')" style="'+btnS+'background:#e8f0fd;">&#128193; &#1508;&#1512;&#1493;&#1497;&#1511;&#1496;</button>')
+    ftr('#fdf8ff','#ce93d8',encFooterBtns('contacts'))
   );
 
   // Render into enc-grid parent as a separate hub div
@@ -1376,4 +1387,335 @@ function encPreviewItem(id){
 }
 // ══════════════════════════════════════════════════════
 // END TASK 1
+// ══════════════════════════════════════════════════════
+
+// ══════════════════════════════════════════════════════
+// TASK 2 — Card footer actions (Print / WA / Mail / Project / Delete)
+// Each opens a picker modal — user selects items — then action runs.
+// Uses the same pool-collection logic as encRowFilter for the card's group.
+// ══════════════════════════════════════════════════════
+
+function encCardPool(group){
+  // Return items belonging to a whole card (broader than a row)
+  var g=String(group||'').toLowerCase();
+  if(g==='safety'){
+    return _encItems.filter(function(i){
+      var c=(i.category||'').toLowerCase();
+      return c.includes('&#1489;&#1496;&#1497;&#1495;&#1493;&#1514;')||c.includes('safety')||c.includes('&#1495;&#1493;&#1502;&#1505;')||c.includes('hazmat')||c.includes('&#1514;&#1504;&#1493;&#1506;&#1492;')||c.includes('traffic')||i._src==='inbox';
+    });
+  }
+  if(g==='media'){
+    return _encItems.filter(function(i){return i._type==='image'||i._type==='audio'||i._type==='video'||i._type==='call'||i._type==='pdf';});
+  }
+  if(g==='legal'){
+    return _encItems.filter(function(i){return i._type==='personal'||i._type==='finding';});
+  }
+  if(g==='takeoff'){
+    var a=_encItems.filter(function(i){return i._src==='takeoff'||i._type==='takeoff';});
+    var b=_encArchive.map(function(x){return Object.assign({_src:'archiveproj'},x);});
+    return a.concat(b);
+  }
+  if(g==='contacts'){
+    var c1=_encContacts.slice();
+    var c2=_encItems.filter(function(i){return i._src==='notes'||i._type==='note'||i._type==='personal';});
+    return c1.concat(c2);
+  }
+  if(g==='general'){
+    return _encItems.filter(function(i){return i._src==='standards'||i._src==='prices'||i._type==='finding';});
+  }
+  // fallback: all
+  return _encItems.slice();
+}
+
+function encCardActionModal(group,action,title){
+  // action: 'print' | 'wa' | 'mail' | 'proj' | 'del'
+  var pool=encCardPool(group);
+  var existing=document.getElementById('enc-card-action');
+  if(existing)existing.remove();
+
+  // Build project options from pool
+  var projSet={};
+  pool.forEach(function(i){var pid=i.source_project_id||i.project_id;if(pid)projSet[pid]=1;});
+  var projOpts='<option value="">&#1499;&#1500; &#1492;&#1508;&#1512;&#1493;&#1497;&#1511;&#1496;&#1497;&#1501;</option>';
+  (window.allProjects||[]).forEach(function(p){
+    if(projSet[p.id])projOpts+='<option value="'+p.id+'">'+encEsc(p.project_name)+'</option>';
+  });
+
+  // For 'proj' action, also build a destination project dropdown (all projects)
+  var destProjOpts='<option value="">&#8212; &#1489;&#1495;&#1512; &#1508;&#1512;&#1493;&#1497;&#1511;&#1496; &#1497;&#1506;&#1491; &#8212;</option>';
+  (window.allProjects||[]).forEach(function(p){
+    destProjOpts+='<option value="'+p.id+'">'+encEsc(p.project_name)+'</option>';
+  });
+
+  // Action button color + label
+  var actColor={'print':'#1a3d5c','wa':'#25D366','mail':'#0d6efd','proj':'#9a6f00','del':'#b71c1c'}[action]||'#1a3d5c';
+  var actLabel={'print':'&#128424;&#65039; &#1492;&#1491;&#1508;&#1505; &#1504;&#1489;&#1495;&#1512;&#1497;&#1501;','wa':'&#128172; &#1513;&#1500;&#1495; &#1489;-WA','mail':'&#9993;&#65039; &#1513;&#1500;&#1495; &#1489;&#1502;&#1497;&#1497;&#1500;','proj':'&#128193; &#1513;&#1497;&#1497;&#1498; &#1500;&#1508;&#1512;&#1493;&#1497;&#1511;&#1496;','del':'&#128465;&#65039; &#1502;&#1495;&#1511; &#1504;&#1489;&#1495;&#1512;&#1497;&#1501;'}[action]||'&#1488;&#1497;&#1513;&#1493;&#1512;';
+
+  var ov=document.createElement('div');
+  ov.id='enc-card-action';
+  ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:10000;display:flex;align-items:center;justify-content:center;padding:20px;';
+  ov.onclick=function(e){if(e.target===ov)ov.remove();};
+
+  var inpS=encInp();
+  ov.innerHTML=
+    '<div style="background:#fff;border-radius:14px;padding:20px;width:100%;max-width:680px;max-height:85vh;display:flex;flex-direction:column;direction:rtl;font-family:Heebo,sans-serif;">'+
+      '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">'+
+        '<div>'+
+          '<div style="font-size:10px;letter-spacing:2px;color:'+actColor+';font-weight:800;">CARD ACTION</div>'+
+          '<div style="font-size:16px;font-weight:900;color:#1a3d5c;">'+title+' &#8212; '+group+' ('+pool.length+')</div>'+
+        '</div>'+
+        '<button onclick="document.getElementById(\'enc-card-action\').remove()" style="background:#f5f5f5;border:none;border-radius:50%;width:30px;height:30px;font-size:14px;cursor:pointer;">&#10005;</button>'+
+      '</div>'+
+      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;">'+
+        '<div><div style="font-size:10px;font-weight:800;color:#666;margin-bottom:3px;">&#1502;&#1514;&#1488;&#1512;&#1497;&#1498;</div><input type="date" id="enc-ca-from" style="'+inpS+'"></div>'+
+        '<div><div style="font-size:10px;font-weight:800;color:#666;margin-bottom:3px;">&#1506;&#1491; &#1514;&#1488;&#1512;&#1497;&#1498;</div><input type="date" id="enc-ca-to" style="'+inpS+'"></div>'+
+        '<div style="grid-column:1/-1;"><div style="font-size:10px;font-weight:800;color:#666;margin-bottom:3px;">&#1505;&#1504;&#1503; &#1500;&#1508;&#1497; &#1508;&#1512;&#1493;&#1497;&#1511;&#1496;</div><select id="enc-ca-proj" style="'+inpS+'">'+projOpts+'</select></div>'+
+      '</div>'+
+      (action==='proj'?'<div style="margin-bottom:10px;padding:10px;background:#fff8e8;border:1.5px solid #c9a84c;border-radius:8px;"><div style="font-size:11px;font-weight:800;color:#7a5500;margin-bottom:4px;">&#128193; &#1513;&#1497;&#1497;&#1498; &#1488;&#1514; &#1492;&#1504;&#1489;&#1495;&#1512;&#1497;&#1501; &#1500;&#1508;&#1512;&#1493;&#1497;&#1511;&#1496;:</div><select id="enc-ca-dest-proj" style="'+inpS+'">'+destProjOpts+'</select></div>':'')+
+      '<div style="display:flex;gap:8px;margin-bottom:10px;">'+
+        '<button onclick="encCardActionFilter(\''+group+'\',\''+action+'\')" style="flex:1;padding:9px;background:#1a3d5c;border:none;color:#FFD700;border-radius:8px;font-size:12px;font-weight:900;cursor:pointer;font-family:Heebo,sans-serif;">&#128269; &#1505;&#1504;&#1503;</button>'+
+        '<button onclick="encCardActionSelectAll()" style="padding:9px 14px;background:#f5f0e8;border:1px solid #c9a84c;color:#1a3d5c;border-radius:8px;font-size:11px;font-weight:800;cursor:pointer;font-family:Heebo,sans-serif;">&#9745; &#1489;&#1495;&#1512; &#1492;&#1499;&#1500;</button>'+
+        '<button onclick="encCardActionSelectNone()" style="padding:9px 14px;background:#f5f5f5;border:1px solid #ccc;color:#555;border-radius:8px;font-size:11px;font-weight:800;cursor:pointer;font-family:Heebo,sans-serif;">&#9744; &#1504;&#1511;&#1492;</button>'+
+      '</div>'+
+      '<div id="enc-ca-list" style="flex:1;overflow-y:auto;border:1px solid #eee;border-radius:8px;padding:8px;margin-bottom:10px;">'+
+        encCardActionListHtml(pool)+
+      '</div>'+
+      '<button onclick="encCardActionRun(\''+group+'\',\''+action+'\')" style="padding:12px;background:'+actColor+';border:none;color:#fff;border-radius:10px;font-size:14px;font-weight:900;cursor:pointer;font-family:Heebo,sans-serif;box-shadow:0 2px 6px rgba(0,0,0,0.2);">'+actLabel+'</button>'+
+    '</div>';
+
+  document.body.appendChild(ov);
+  ov._pool=pool;
+}
+
+function encCardActionListHtml(items){
+  if(!items||!items.length){
+    return '<div style="text-align:center;padding:30px 15px;color:#888;font-size:13px;">&#1488;&#1497;&#1503; &#1514;&#1493;&#1510;&#1488;&#1493;&#1514;</div>';
+  }
+  var html='<div style="font-size:10px;color:#666;margin-bottom:6px;font-weight:700;">'+items.length+' &#1514;&#1493;&#1510;&#1488;&#1493;&#1514;</div>';
+  var rowS='display:flex;align-items:center;gap:8px;padding:6px 8px;border-bottom:0.5px dashed #e0e0e0;';
+  items.slice(0,500).forEach(function(i){
+    var title=i.title||i.full_name||i.project_name||i.file_name||i.item_code||'&#8212;';
+    var dateStr=encFmtDate(i.created_at||i.archived_at||i.takeoff_date||i.price_date||'');
+    var src=i._src||'';
+    var id=String(i.id||'').replace(/"/g,'&quot;');
+    html+='<div style="'+rowS+'">'+
+      '<input type="checkbox" class="enc-ca-cb" data-id="'+id+'" data-src="'+src+'" checked style="width:16px;height:16px;cursor:pointer;flex-shrink:0;">'+
+      '<div style="flex:1;min-width:0;">'+
+        '<div style="font-size:12px;font-weight:800;color:#1a3d5c;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+encEsc(title)+'</div>'+
+        (dateStr?'<div style="font-size:9px;color:#888;">'+dateStr+'</div>':'')+
+      '</div>'+
+    '</div>';
+  });
+  if(items.length>500)html+='<div style="text-align:center;padding:8px;color:#888;font-size:10px;">&#1502;&#1510;&#1497;&#1490; 500 &#1502;&#1514;&#1493;&#1498; '+items.length+' &#8212; &#1505;&#1504;&#1503; &#1500;&#1510;&#1502;&#1510;&#1493;&#1501;</div>';
+  return html;
+}
+
+function encCardActionFilter(group,action){
+  var ov=document.getElementById('enc-card-action');if(!ov)return;
+  var pool=ov._pool||[];
+  var from=(document.getElementById('enc-ca-from')||{}).value||'';
+  var to=(document.getElementById('enc-ca-to')||{}).value||'';
+  var proj=(document.getElementById('enc-ca-proj')||{}).value||'';
+  var fromT=from?new Date(from).getTime():0;
+  var toT=to?new Date(to).getTime()+86400000:0;
+  var filtered=pool.filter(function(i){
+    if(proj){var pid=i.source_project_id||i.project_id||'';if(String(pid)!==String(proj))return false;}
+    if(fromT||toT){
+      var d=i.created_at||i.archived_at||i.takeoff_date||i.price_date;
+      if(!d)return false;
+      var t=new Date(d).getTime();
+      if(fromT&&t<fromT)return false;
+      if(toT&&t>toT)return false;
+    }
+    return true;
+  });
+  var el=document.getElementById('enc-ca-list');
+  if(el)el.innerHTML=encCardActionListHtml(filtered);
+}
+
+function encCardActionSelectAll(){
+  var cbs=document.querySelectorAll('#enc-ca-list .enc-ca-cb');
+  cbs.forEach(function(cb){cb.checked=true;});
+}
+function encCardActionSelectNone(){
+  var cbs=document.querySelectorAll('#enc-ca-list .enc-ca-cb');
+  cbs.forEach(function(cb){cb.checked=false;});
+}
+
+function encCardActionGetSelected(){
+  var cbs=document.querySelectorAll('#enc-ca-list .enc-ca-cb:checked');
+  var ids=[];
+  cbs.forEach(function(cb){ids.push(cb.getAttribute('data-id'));});
+  // Look up in pool first, then fallbacks
+  var ov=document.getElementById('enc-card-action');
+  var pool=(ov&&ov._pool)||[];
+  var found=[];
+  ids.forEach(function(id){
+    var item=pool.find(function(i){return String(i.id)===String(id);});
+    if(!item)item=_encItems.find(function(i){return String(i.id)===String(id);});
+    if(!item)item=_encContacts.find(function(i){return String(i.id)===String(id);});
+    if(!item)item=_encArchive.find(function(i){return String(i.id)===String(id);});
+    if(item)found.push(item);
+  });
+  return found;
+}
+
+function encCardActionRun(group,action){
+  var items=encCardActionGetSelected();
+  if(!items.length){if(typeof showToast==='function')showToast('&#1500;&#1488; &#1504;&#1489;&#1495;&#1512;&#1493; &#1508;&#1512;&#1497;&#1496;&#1497;&#1501;','error');return;}
+
+  if(action==='print')return encCardPrintRun(items,group);
+  if(action==='wa')   return encCardWARun(items,group);
+  if(action==='mail') return encCardMailRun(items,group);
+  if(action==='proj') return encCardProjRun(items,group);
+  if(action==='del')  return encCardDelRun(items,group);
+}
+
+// Entry points called from footer buttons
+function encCardPrint(g){encCardActionModal(g,'print','&#128424;&#65039; &#1492;&#1491;&#1508;&#1505;');}
+function encCardWA(g)   {encCardActionModal(g,'wa','&#128172; WhatsApp');}
+function encCardMail(g) {encCardActionModal(g,'mail','&#9993;&#65039; &#1502;&#1497;&#1497;&#1500;');}
+function encCardProj(g) {encCardActionModal(g,'proj','&#128193; &#1513;&#1497;&#1497;&#1498; &#1500;&#1508;&#1512;&#1493;&#1497;&#1511;&#1496;');}
+function encCardDel(g)  {encCardActionModal(g,'del','&#128465;&#65039; &#1502;&#1495;&#1511;');}
+
+// === Action runners ===
+
+function encCardItemLine(i){
+  var title=i.title||i.full_name||i.project_name||i.file_name||i.item_code||'—';
+  var dateStr=encFmtDate(i.created_at||i.archived_at||i.takeoff_date||i.price_date||'');
+  var url=i.media_url||i.cloudinary_url||i.file_url||'';
+  return {title:title,date:dateStr,url:url,item:i};
+}
+
+function encCardPrintRun(items,group){
+  var w=window.open('','_blank','width=800,height=700');
+  if(!w){showToast&&showToast('&#1492;&#1491;&#1508;&#1505;&#1492; &#1504;&#1495;&#1505;&#1502;&#1492;','error');return;}
+  var rows=items.map(function(i){
+    var l=encCardItemLine(i);
+    return '<tr><td style="padding:6px 10px;border-bottom:1px solid #eee;">'+encEsc(l.title)+'</td><td style="padding:6px 10px;border-bottom:1px solid #eee;color:#888;white-space:nowrap;">'+l.date+'</td></tr>';
+  }).join('');
+  w.document.write('<html><head><meta charset="utf-8"><style>body{font-family:Heebo,Arial,sans-serif;direction:rtl;padding:24px;color:#111;}h2{color:#1a3d5c;}table{width:100%;border-collapse:collapse;font-size:13px;}th{text-align:right;background:#f5f0e8;padding:8px 10px;font-weight:800;}@media print{button{display:none}}</style></head><body>'+
+    '<h2>&#128218; '+encEsc(group)+' &#8212; '+items.length+' &#1508;&#1512;&#1497;&#1496;&#1497;&#1501;</h2>'+
+    '<p style="color:#888;font-size:11px;">&#1492;&#1493;&#1491;&#1508;&#1505; &#1489;-'+new Date().toLocaleDateString('he-IL')+'</p>'+
+    '<table><thead><tr><th>&#1499;&#1493;&#1514;&#1512;&#1514;</th><th>&#1514;&#1488;&#1512;&#1497;&#1498;</th></tr></thead><tbody>'+rows+'</tbody></table>'+
+    '<br><button onclick="window.print()" style="padding:8px 16px;font-family:Heebo;font-size:13px;cursor:pointer;">&#128424;&#65039; &#1492;&#1491;&#1508;&#1505;</button>'+
+    '</body></html>');
+  w.document.close();
+  setTimeout(function(){try{w.print();}catch(e){}},500);
+  document.getElementById('enc-card-action')&&document.getElementById('enc-card-action').remove();
+}
+
+function encCardWARun(items,group){
+  var text='📚 *'+group+'* — '+items.length+' פריטים\n\n';
+  items.slice(0,40).forEach(function(i,idx){
+    var l=encCardItemLine(i);
+    text+=(idx+1)+'. '+l.title+(l.date?' ('+l.date+')':'')+(l.url?'\n   '+l.url:'')+'\n';
+  });
+  if(items.length>40)text+='\n... ועוד '+(items.length-40)+' פריטים';
+  window.open('https://wa.me/?text='+encodeURIComponent(text),'_blank');
+  document.getElementById('enc-card-action')&&document.getElementById('enc-card-action').remove();
+}
+
+function encCardMailRun(items,group){
+  var body='נושא: '+group+' — '+items.length+' פריטים\n\n';
+  items.slice(0,60).forEach(function(i,idx){
+    var l=encCardItemLine(i);
+    body+=(idx+1)+'. '+l.title+(l.date?' ('+l.date+')':'')+(l.url?'\n   '+l.url:'')+'\n';
+  });
+  if(items.length>60)body+='\n... ועוד '+(items.length-60)+' פריטים';
+  window.location.href='mailto:?subject='+encodeURIComponent('אנציקלופדיה — '+group)+'&body='+encodeURIComponent(body);
+  document.getElementById('enc-card-action')&&document.getElementById('enc-card-action').remove();
+}
+
+async function encCardProjRun(items,group){
+  var dest=(document.getElementById('enc-ca-dest-proj')||{}).value||'';
+  if(!dest){if(typeof showToast==='function')showToast('&#1489;&#1495;&#1512; &#1508;&#1512;&#1493;&#1497;&#1511;&#1496; &#1497;&#1506;&#1491;','error');return;}
+  if(!window.sb){if(typeof showToast==='function')showToast('&#1488;&#1497;&#1503; &#1495;&#1497;&#1489;&#1493;&#1512; Supabase','error');return;}
+  // Group items by source table — only update tables that have project_id / source_project_id columns
+  var byTable={field_encyclopedia:[],asset_inbox:[],site_takeoffs:[],beni_contacts:[]};
+  items.forEach(function(i){
+    if(i._src==='enc')byTable.field_encyclopedia.push(i.id);
+    else if(i._src==='inbox')byTable.asset_inbox.push(i.id);
+    else if(i._src==='takeoff')byTable.site_takeoffs.push(i.id);
+    else if(i._src==='contacts')byTable.beni_contacts.push(i.id);
+  });
+  var errors=[],success=0;
+  try{
+    if(byTable.field_encyclopedia.length){
+      var r1=await window.sb.from('field_encyclopedia').update({source_project_id:dest}).in('id',byTable.field_encyclopedia);
+      if(r1.error)errors.push('enc: '+r1.error.message); else success+=byTable.field_encyclopedia.length;
+    }
+    if(byTable.asset_inbox.length){
+      var r2=await window.sb.from('asset_inbox').update({project_id:dest}).in('id',byTable.asset_inbox);
+      if(r2.error)errors.push('inbox: '+r2.error.message); else success+=byTable.asset_inbox.length;
+    }
+    if(byTable.site_takeoffs.length){
+      var r3=await window.sb.from('site_takeoffs').update({project_id:dest}).in('id',byTable.site_takeoffs);
+      if(r3.error)errors.push('takeoff: '+r3.error.message); else success+=byTable.site_takeoffs.length;
+    }
+    if(byTable.beni_contacts.length){
+      var r4=await window.sb.from('beni_contacts').update({project_id:dest}).in('id',byTable.beni_contacts);
+      if(r4.error)errors.push('contacts: '+r4.error.message); else success+=byTable.beni_contacts.length;
+    }
+    if(success>0){
+      showToast&&showToast('&#9989; &#1513;&#1493;&#1497;&#1497;&#1499;&#1493; '+success+' &#1508;&#1512;&#1497;&#1496;&#1497;&#1501;','success');
+      document.getElementById('enc-card-action')&&document.getElementById('enc-card-action').remove();
+      encRefresh&&encRefresh();
+    }
+    if(errors.length)showToast&&showToast('&#1513;&#1490;&#1497;&#1488;&#1493;&#1514;: '+errors.join('; '),'error');
+  }catch(e){showToast&&showToast('&#1513;&#1490;&#1497;&#1488;&#1492;: '+e.message,'error');}
+}
+
+async function encCardDelRun(items,group){
+  // Hebrew confirm popup
+  var msg='&#9888;&#65039; &#1488;&#1514;&#1492; &#1506;&#1493;&#1502;&#1491; &#1500;&#1502;&#1495;&#1511; '+items.length+' &#1508;&#1512;&#1497;&#1496;&#1497;&#1501;.\n\n';
+  msg+='&#1492;&#1502;&#1495;&#1497;&#1511;&#1492; &#1492;&#1497;&#1488; &#1512;&#1499;&#1492; (soft delete) &#8212; &#1504;&#1497;&#1514;&#1503; &#1500;&#1513;&#1495;&#1494;&#1512;.\n\n';
+  msg+='&#1492;&#1488;&#1501; &#1500;&#1492;&#1502;&#1513;&#1497;&#1498;?';
+  // Decode HTML entities for the confirm dialog
+  var tmp=document.createElement('textarea');tmp.innerHTML=msg;
+  if(!confirm(tmp.value))return;
+
+  if(!window.sb){if(typeof showToast==='function')showToast('&#1488;&#1497;&#1503; &#1495;&#1497;&#1489;&#1493;&#1512; Supabase','error');return;}
+  var byTable={field_encyclopedia:[],asset_inbox:[],site_takeoffs:[],beni_contacts:[],projects:[]};
+  items.forEach(function(i){
+    if(i._src==='enc')byTable.field_encyclopedia.push(i.id);
+    else if(i._src==='inbox')byTable.asset_inbox.push(i.id);
+    else if(i._src==='takeoff')byTable.site_takeoffs.push(i.id);
+    else if(i._src==='contacts')byTable.beni_contacts.push(i.id);
+    else if(i._src==='archiveproj')byTable.projects.push(i.id);
+  });
+  var errors=[],success=0;
+  try{
+    if(byTable.field_encyclopedia.length){
+      var r1=await window.sb.from('field_encyclopedia').update({is_deleted:true}).in('id',byTable.field_encyclopedia);
+      if(r1.error)errors.push('enc: '+r1.error.message); else success+=byTable.field_encyclopedia.length;
+    }
+    if(byTable.asset_inbox.length){
+      // asset_inbox may not have is_deleted — try status='deleted' as fallback
+      var r2=await window.sb.from('asset_inbox').update({status:'deleted'}).in('id',byTable.asset_inbox);
+      if(r2.error)errors.push('inbox: '+r2.error.message); else success+=byTable.asset_inbox.length;
+    }
+    if(byTable.site_takeoffs.length){
+      var r3=await window.sb.from('site_takeoffs').update({is_deleted:true}).in('id',byTable.site_takeoffs);
+      if(r3.error)errors.push('takeoff: '+r3.error.message); else success+=byTable.site_takeoffs.length;
+    }
+    if(byTable.beni_contacts.length){
+      // beni_contacts likely has no is_deleted — try soft flag else skip (no hard delete on contacts)
+      var r4=await window.sb.from('beni_contacts').update({is_deleted:true}).in('id',byTable.beni_contacts);
+      if(r4.error)errors.push('contacts: '+r4.error.message+' (&#1504;&#1497;&#1514;&#1503; &#1500;&#1502;&#1495;&#1493;&#1511; &#1691;&#1491;&#1504;&#1497;&#1514;)'); else success+=byTable.beni_contacts.length;
+    }
+    if(byTable.projects.length){
+      // archived projects — no delete
+      errors.push('&#1508;&#1512;&#1493;&#1497;&#1511;&#1496;&#1497;&#1501; &#1489;&#1488;&#1512;&#1499;&#1497;&#1493;&#1503; &#1500;&#1488; &#1504;&#1502;&#1495;&#1511;&#1497;&#1501; &#1502;&#1499;&#1488;&#1503;');
+    }
+    if(success>0){
+      showToast&&showToast('&#128465;&#65039; &#1504;&#1502;&#1495;&#1511;&#1493; '+success+' &#1508;&#1512;&#1497;&#1496;&#1497;&#1501;','success');
+      document.getElementById('enc-card-action')&&document.getElementById('enc-card-action').remove();
+      encRefresh&&encRefresh();
+    }
+    if(errors.length)showToast&&showToast('&#1513;&#1490;&#1497;&#1488;&#1493;&#1514;: '+errors.join('; '),'error');
+  }catch(e){showToast&&showToast('&#1513;&#1490;&#1497;&#1488;&#1492;: '+e.message,'error');}
+}
+// ══════════════════════════════════════════════════════
+// END TASK 2
 // ══════════════════════════════════════════════════════
