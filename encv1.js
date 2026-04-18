@@ -7,7 +7,8 @@
 // TASK 3 (18042026): 20 module rows now clickable → dedicated workspace modal (6 actions incl. preview). Removed 5 footer btns + 3 row icons + Task1 dead code.
 // TASK 3b (18042026): fix HTML entity double-escape in header/print/WA/mail + build destination-project prompt for 📁 Project action.
 // TASK 3c (18042026): print embeds images + close btn, WA removes header line, mail switched to Gmail compose URL.
-console.log('[enc] encv1.js TASK3c (18042026) loaded');
+// TASK 3d (18042026): module modal checkboxes default = UNCHECKED (user picks what to process).
+console.log('[enc] encv1.js TASK3d (18042026) loaded');
 var _encItems=[], _encContacts=[], _encArchive=[];
 var _encActiveSource='all', _encAssetFilter='all', _encPrioFilter='all';
 var _encProjFilter='', _encSearchQ='', _encDateFilter='all';
@@ -1512,7 +1513,7 @@ function encModuleListHtml(items){
     var dateStr=encFmtDate(i.created_at||i.archived_at||i.takeoff_date||i.price_date||'');
     var id=String(i.id||'').replace(/"/g,'&quot;');
     html+='<div style="'+rowS+'">'+
-      '<input type="checkbox" class="enc-mw-cb" data-id="'+id+'" checked style="width:16px;height:16px;cursor:pointer;flex-shrink:0;">'+
+      '<input type="checkbox" class="enc-mw-cb" data-id="'+id+'" style="width:16px;height:16px;cursor:pointer;flex-shrink:0;">'+
       '<div style="flex:1;min-width:0;">'+
         '<div style="font-size:12px;font-weight:800;color:#1a3d5c;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+encEsc(title)+'</div>'+
         (dateStr?'<div style="font-size:9px;color:#888;">'+dateStr+'</div>':'')+
