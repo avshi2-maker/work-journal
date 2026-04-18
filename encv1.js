@@ -8,7 +8,8 @@
 // TASK 3b (18042026): fix HTML entity double-escape in header/print/WA/mail + build destination-project prompt for 📁 Project action.
 // TASK 3c (18042026): print embeds images + close btn, WA removes header line, mail switched to Gmail compose URL.
 // TASK 3d (18042026): module modal checkboxes default = UNCHECKED (user picks what to process).
-console.log('[enc] encv1.js TASK3d (18042026) loaded');
+// TASK 3e (18042026): delete + project-link refresh modal list in place (no modal close, no full reload).
+console.log('[enc] encv1.js TASK3e (18042026) loaded');
 var _encItems=[], _encContacts=[], _encArchive=[];
 var _encActiveSource='all', _encAssetFilter='all', _encPrioFilter='all';
 var _encProjFilter='', _encSearchQ='', _encDateFilter='all';
@@ -1580,14 +1581,14 @@ function encModuleAction(moduleId,action){
     encPreviewItem(items[0].id);
     return;
   }
-  // Reuse Task 2 action runners — decode HTML entities so Hebrew displays correctly in text contexts (print/wa/mail)
+  // Reuse Task 2 runners for read-only actions; use module-scoped runners for data-modifying actions
   var rawLabel=(_ENC_MODULES[moduleId]||{}).title||moduleId;
   var label=encDec(rawLabel);
   if(action==='print')return encCardPrintRun(items,label);
   if(action==='wa')   return encCardWARun(items,label);
   if(action==='mail') return encCardMailRun(items,label);
   if(action==='proj') return encModuleProjRun(items,label,moduleId);
-  if(action==='del')  return encCardDelRun(items,label);
+  if(action==='del')  return encModuleDelRun(items,label,moduleId);
 }
 
 // Preview a single item (reused from Task 1 — re-added cleanly here)
@@ -1678,14 +1679,112 @@ function encModuleProjRun(items,label,moduleId){
     '</div>'+
   '</div>';
   document.body.appendChild(ov);
-  // Wire confirm — delegate to Task 2 encCardProjRun which reads #enc-ca-dest-proj
+  // Wire confirm — call Task 2 encCardProjRun, then update in-memory arrays + refresh module list
   document.getElementById('enc-mw-destproj-confirm').onclick=function(){
     var dest=(document.getElementById('enc-ca-dest-proj')||{}).value||'';
     if(!dest){showToast&&showToast('&#1489;&#1495;&#1512; &#1508;&#1512;&#1493;&#1497;&#1511;&#1496; &#1497;&#1506;&#1491;','error');return;}
     encCardProjRun(items,label).then(function(){
+      // Mutate in-memory arrays so UI reflects new project link immediately
+      var linkedIds={};items.forEach(function(i){linkedIds[String(i.id)]=true;});
+      _encItems.forEach(function(it){
+        if(linkedIds[String(it.id)]){
+          if(it._src==='enc'||it._src==='standards'||it._src==='prices')it.source_project_id=dest;
+          else it.project_id=dest;
+        }
+      });
+      _encContacts.forEach(function(c){if(linkedIds[String(c.id)])c.project_id=dest;});
+      // Close dest modal
       document.getElementById('enc-mw-destproj')&&document.getElementById('enc-mw-destproj').remove();
+      // Refresh module list in place
+      encModuleRefreshList(moduleId);
     }).catch(function(){});
   };
+}
+
+// Module-scoped delete — soft-deletes items, mutates memory, refreshes modal list in place
+async function encModuleDelRun(items,label,moduleId){
+  var msg='&#9888;&#65039; &#1488;&#1514;&#1492; &#1506;&#1493;&#1502;&#1491; &#1500;&#1502;&#1495;&#1511; '+items.length+' &#1508;&#1512;&#1497;&#1496;&#1497;&#1501;.\n\n';
+  msg+='&#1492;&#1502;&#1495;&#1497;&#1511;&#1492; &#1492;&#1497;&#1488; &#1512;&#1499;&#1492; (soft delete) &#8212; &#1504;&#1497;&#1514;&#1503; &#1500;&#1513;&#1495;&#1494;&#1512;.\n\n';
+  msg+='&#1492;&#1488;&#1501; &#1500;&#1492;&#1502;&#1513;&#1497;&#1498;?';
+  var tmp=document.createElement('textarea');tmp.innerHTML=msg;
+  if(!confirm(tmp.value))return;
+  if(!window.sb){if(typeof showToast==='function')showToast('&#1488;&#1497;&#1503; &#1495;&#1497;&#1489;&#1493;&#1512; Supabase','error');return;}
+  var byTable={field_encyclopedia:[],asset_inbox:[],site_takeoffs:[],beni_contacts:[],projects:[]};
+  items.forEach(function(i){
+    if(i._src==='enc')byTable.field_encyclopedia.push(i.id);
+    else if(i._src==='inbox')byTable.asset_inbox.push(i.id);
+    else if(i._src==='takeoff')byTable.site_takeoffs.push(i.id);
+    else if(i._src==='contacts')byTable.beni_contacts.push(i.id);
+    else if(i._src==='archiveproj')byTable.projects.push(i.id);
+  });
+  var errors=[],success=0,deletedIds={};
+  try{
+    if(byTable.field_encyclopedia.length){
+      var r1=await window.sb.from('field_encyclopedia').update({is_deleted:true}).in('id',byTable.field_encyclopedia);
+      if(r1.error)errors.push('enc: '+r1.error.message);
+      else{success+=byTable.field_encyclopedia.length;byTable.field_encyclopedia.forEach(function(id){deletedIds[String(id)]=true;});}
+    }
+    if(byTable.asset_inbox.length){
+      var r2=await window.sb.from('asset_inbox').update({status:'deleted'}).in('id',byTable.asset_inbox);
+      if(r2.error)errors.push('inbox: '+r2.error.message);
+      else{success+=byTable.asset_inbox.length;byTable.asset_inbox.forEach(function(id){deletedIds[String(id)]=true;});}
+    }
+    if(byTable.site_takeoffs.length){
+      var r3=await window.sb.from('site_takeoffs').update({is_deleted:true}).in('id',byTable.site_takeoffs);
+      if(r3.error)errors.push('takeoff: '+r3.error.message);
+      else{success+=byTable.site_takeoffs.length;byTable.site_takeoffs.forEach(function(id){deletedIds[String(id)]=true;});}
+    }
+    if(byTable.beni_contacts.length){
+      var r4=await window.sb.from('beni_contacts').update({is_deleted:true}).in('id',byTable.beni_contacts);
+      if(r4.error)errors.push('contacts: '+r4.error.message);
+      else{success+=byTable.beni_contacts.length;byTable.beni_contacts.forEach(function(id){deletedIds[String(id)]=true;});}
+    }
+    if(byTable.projects.length){
+      errors.push('&#1508;&#1512;&#1493;&#1497;&#1511;&#1496;&#1497;&#1501; &#1489;&#1488;&#1512;&#1499;&#1497;&#1493;&#1503; &#1500;&#1488; &#1504;&#1502;&#1495;&#1511;&#1497;&#1501; &#1502;&#1499;&#1488;&#1503;');
+    }
+    if(success>0){
+      showToast&&showToast('&#128465;&#65039; &#1504;&#1502;&#1495;&#1511;&#1493; '+success+' &#1508;&#1512;&#1497;&#1496;&#1497;&#1501;','success');
+      _encItems=_encItems.filter(function(i){return !deletedIds[String(i.id)];});
+      _encContacts=_encContacts.filter(function(c){return !deletedIds[String(c.id)];});
+      _encArchive=_encArchive.filter(function(a){return !deletedIds[String(a.id)];});
+      encModuleRefreshList(moduleId);
+    }
+    if(errors.length)showToast&&showToast('&#1513;&#1490;&#1497;&#1488;&#1493;&#1514;: '+errors.join('; '),'error');
+  }catch(e){showToast&&showToast('&#1513;&#1490;&#1497;&#1488;&#1492;: '+e.message,'error');}
+}
+
+// Refresh the module modal list in place — re-queries the module pool and re-renders list
+function encModuleRefreshList(moduleId){
+  var ov=document.getElementById('enc-mod-ws');
+  if(!ov)return;
+  var freshPool=encModulePool(moduleId);
+  ov._pool=freshPool;
+  var from=(document.getElementById('enc-mw-from')||{}).value||'';
+  var to=(document.getElementById('enc-mw-to')||{}).value||'';
+  var proj=(document.getElementById('enc-mw-proj')||{}).value||'';
+  var fromT=from?new Date(from).getTime():0;
+  var toT=to?new Date(to).getTime()+86400000:0;
+  var filtered=freshPool;
+  if(proj||fromT||toT){
+    filtered=freshPool.filter(function(i){
+      if(proj){var pid=i.source_project_id||i.project_id||'';if(String(pid)!==String(proj))return false;}
+      if(fromT||toT){
+        var d=i.created_at||i.archived_at||i.takeoff_date||i.price_date;
+        if(!d)return false;
+        var t=new Date(d).getTime();
+        if(fromT&&t<fromT)return false;
+        if(toT&&t>toT)return false;
+      }
+      return true;
+    });
+  }
+  var hdrTitle=ov.querySelector('div[style*="font-size:16px"][style*="color:#1a3d5c"]');
+  if(hdrTitle){
+    var def=_ENC_MODULES[moduleId];
+    if(def)hdrTitle.innerHTML=def.title+' ('+freshPool.length+')';
+  }
+  var el=document.getElementById('enc-mw-list');
+  if(el)el.innerHTML=encModuleListHtml(filtered);
 }
 // ══════════════════════════════════════════════════════
 // END TASK 3
